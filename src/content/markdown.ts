@@ -175,22 +175,34 @@ export function conversationToNote(data: ConversationData, options: TemplateOpti
     id: `${data.source}_${data.id}`,
     title: data.title,
     source: data.source,
+    ...(data.type && { type: data.type }),
     url: data.url,
     created: data.extractedAt.toISOString(),
     modified: now,
-    tags: ['ai-conversation', data.source],
+    tags:
+      data.type === 'deep-research'
+        ? ['ai-research', 'deep-research', data.source]
+        : ['ai-conversation', data.source],
     message_count: data.messages.length,
   };
 
-  // Generate body with formatted messages
-  const bodyParts: string[] = [];
+  // Generate body - different format for Deep Research vs normal conversation
+  let body: string;
 
-  for (const message of data.messages) {
-    const formatted = formatMessage(message.content, message.role, options);
-    bodyParts.push(formatted);
+  if (data.type === 'deep-research') {
+    // Deep Research の場合は本文をそのまま変換（見出し構造維持）
+    body = htmlToMarkdown(data.messages[0].content);
+  } else {
+    // 通常会話のフォーマット（Callout 形式）
+    const bodyParts: string[] = [];
+
+    for (const message of data.messages) {
+      const formatted = formatMessage(message.content, message.role, options);
+      bodyParts.push(formatted);
+    }
+
+    body = bodyParts.join('\n\n');
   }
-
-  const body = bodyParts.join('\n\n');
 
   // Generate filename and content hash
   const fileName = generateFileName(data.title, data.id);

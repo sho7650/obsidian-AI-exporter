@@ -8,6 +8,8 @@ import {
   createGeminiConversationDOM,
   setGeminiTitle,
   resetLocation,
+  createDeepResearchDOM,
+  createEmptyDeepResearchPanel,
 } from '../fixtures/dom-helpers';
 
 describe('GeminiExtractor', () => {
@@ -321,6 +323,131 @@ describe('GeminiExtractor', () => {
       expect(result.error).toBe('Unknown extraction error');
 
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Deep Research extraction', () => {
+    describe('isDeepResearchVisible', () => {
+      it('returns true when panel is present', () => {
+        setGeminiLocation('test123');
+        loadFixture(createDeepResearchDOM('Test Report', '<p>Content</p>'));
+        expect(extractor.isDeepResearchVisible()).toBe(true);
+      });
+
+      it('returns false when panel is not present', () => {
+        setGeminiLocation('test123');
+        loadFixture('<div>No panel</div>');
+        expect(extractor.isDeepResearchVisible()).toBe(false);
+      });
+    });
+
+    describe('getDeepResearchTitle', () => {
+      it('extracts title from panel', () => {
+        setGeminiLocation('test123');
+        loadFixture(createDeepResearchDOM('Hawaii Travel Report', '<p>Content</p>'));
+        expect(extractor.getDeepResearchTitle()).toBe('Hawaii Travel Report');
+      });
+
+      it('returns default title when not found', () => {
+        setGeminiLocation('test123');
+        loadFixture('<deep-research-immersive-panel></deep-research-immersive-panel>');
+        expect(extractor.getDeepResearchTitle()).toBe('Untitled Deep Research Report');
+      });
+    });
+
+    describe('extractDeepResearchContent', () => {
+      it('extracts content from panel', () => {
+        setGeminiLocation('test123');
+        loadFixture(createDeepResearchDOM('Test', '<h1>Report</h1><p>Content</p>'));
+        const content = extractor.extractDeepResearchContent();
+        expect(content).toContain('<h1>Report</h1>');
+        expect(content).toContain('<p>Content</p>');
+      });
+
+      it('returns empty string when content not found', () => {
+        setGeminiLocation('test123');
+        loadFixture(createEmptyDeepResearchPanel());
+        expect(extractor.extractDeepResearchContent()).toBe('');
+      });
+    });
+
+    describe('extractDeepResearch', () => {
+      it('returns successful result with report data', () => {
+        setGeminiLocation('test123');
+        loadFixture(createDeepResearchDOM('Test Report', '<h1>Title</h1><p>Content</p>'));
+
+        const result = extractor.extractDeepResearch();
+
+        expect(result.success).toBe(true);
+        expect(result.data?.type).toBe('deep-research');
+        expect(result.data?.source).toBe('gemini');
+        expect(result.data?.title).toBe('Test Report');
+        expect(result.data?.messages.length).toBe(1);
+        expect(result.data?.messages[0].role).toBe('assistant');
+      });
+
+      it('returns error when content is empty', () => {
+        setGeminiLocation('test123');
+        loadFixture(createEmptyDeepResearchPanel());
+
+        const result = extractor.extractDeepResearch();
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('content not found');
+      });
+
+      it('generates consistent ID from title for overwrite', () => {
+        setGeminiLocation('test123');
+        loadFixture(createDeepResearchDOM('Same Title', '<p>Content 1</p>'));
+        const result1 = extractor.extractDeepResearch();
+
+        clearFixture();
+        loadFixture(createDeepResearchDOM('Same Title', '<p>Content 2</p>'));
+        const result2 = extractor.extractDeepResearch();
+
+        expect(result1.data?.id).toBe(result2.data?.id);
+      });
+    });
+
+    describe('extract routing', () => {
+      it('extracts Deep Research when panel is visible', async () => {
+        setGeminiLocation('test123');
+        loadFixture(createDeepResearchDOM('Report', '<p>Content</p>'));
+
+        const result = await extractor.extract();
+
+        expect(result.success).toBe(true);
+        expect(result.data?.type).toBe('deep-research');
+      });
+
+      it('extracts normal conversation when panel is not visible', async () => {
+        setGeminiLocation('test123');
+        const html = createGeminiConversationDOM([
+          { role: 'user', content: 'Hello' },
+          { role: 'assistant', content: 'Hi' },
+        ]);
+        loadFixture(html);
+
+        const result = await extractor.extract();
+
+        expect(result.success).toBe(true);
+        expect(result.data?.type).toBeUndefined();
+      });
+
+      it('prioritizes Deep Research when both exist', async () => {
+        setGeminiLocation('test123');
+        const conversationHtml = createGeminiConversationDOM([
+          { role: 'user', content: 'Hello' },
+          { role: 'assistant', content: 'Hi' },
+        ]);
+        const deepResearchHtml = createDeepResearchDOM('Report', '<p>Content</p>');
+        loadFixture(conversationHtml + deepResearchHtml);
+
+        const result = await extractor.extract();
+
+        expect(result.success).toBe(true);
+        expect(result.data?.type).toBe('deep-research');
+      });
     });
   });
 });

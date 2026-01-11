@@ -22,6 +22,7 @@ export interface ConversationData {
   title: string;
   url: string;
   source: 'gemini' | 'claude' | 'perplexity';
+  type?: 'conversation' | 'deep-research';
   messages: ConversationMessage[];
   extractedAt: Date;
   metadata: ConversationMetadata;
@@ -55,6 +56,7 @@ export interface NoteFrontmatter {
   id: string;
   title: string;
   source: string;
+  type?: string;
   url: string;
   created: string;
   modified: string;

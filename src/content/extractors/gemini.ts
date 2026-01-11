@@ -39,6 +39,29 @@ const SELECTORS = {
   ],
 };
 
+/**
+ * Deep Research specific selectors
+ * Used to detect and extract content from the Deep Research immersive panel
+ */
+const DEEP_RESEARCH_SELECTORS = {
+  // Deep Research panel (existence check)
+  panel: ['deep-research-immersive-panel'],
+
+  // Report title
+  title: [
+    'deep-research-immersive-panel h2.title-text.gds-title-s',
+    'deep-research-immersive-panel .title-text',
+    'toolbar h2.title-text',
+  ],
+
+  // Report content
+  content: [
+    '#extended-response-markdown-content',
+    'message-content#extended-response-message-content .markdown-main-panel',
+    'structured-content-container[data-test-id="message-content"] .markdown-main-panel',
+  ],
+};
+
 export class GeminiExtractor extends BaseExtractor {
   readonly platform = 'gemini' as const;
 
@@ -47,6 +70,36 @@ export class GeminiExtractor extends BaseExtractor {
    */
   canExtract(): boolean {
     return window.location.hostname === 'gemini.google.com';
+  }
+
+  /**
+   * Deep Research パネルが表示中かどうかを判定
+   */
+  isDeepResearchVisible(): boolean {
+    const panel = this.queryWithFallback<HTMLElement>(DEEP_RESEARCH_SELECTORS.panel);
+    return panel !== null;
+  }
+
+  /**
+   * Deep Research レポートのタイトルを取得
+   */
+  getDeepResearchTitle(): string {
+    const titleEl = this.queryWithFallback<HTMLElement>(DEEP_RESEARCH_SELECTORS.title);
+    if (titleEl?.textContent) {
+      return this.sanitizeText(titleEl.textContent).substring(0, 200);
+    }
+    return 'Untitled Deep Research Report';
+  }
+
+  /**
+   * Deep Research レポートの本文を抽出
+   */
+  extractDeepResearchContent(): string {
+    const contentEl = this.queryWithFallback<HTMLElement>(DEEP_RESEARCH_SELECTORS.content);
+    if (contentEl) {
+      return sanitizeHtml(contentEl.innerHTML);
+    }
+    return '';
   }
 
   /**
@@ -242,6 +295,53 @@ export class GeminiExtractor extends BaseExtractor {
   }
 
   /**
+   * Deep Research レポートを抽出
+   */
+  extractDeepResearch(): ExtractionResult {
+    const title = this.getDeepResearchTitle();
+    const content = this.extractDeepResearchContent();
+
+    if (!content) {
+      return {
+        success: false,
+        error: 'Deep Research content not found',
+        warnings: ['Panel is visible but content element is empty or missing'],
+      };
+    }
+
+    // タイトルからIDを生成（上書き用）
+    const titleHash = this.generateHashValue(title);
+    const conversationId = `deep-research-${titleHash}`;
+
+    return {
+      success: true,
+      data: {
+        id: conversationId,
+        title,
+        url: window.location.href,
+        source: 'gemini',
+        type: 'deep-research',
+        messages: [
+          {
+            id: 'report-0',
+            role: 'assistant',
+            content,
+            htmlContent: content,
+            index: 0,
+          },
+        ],
+        extractedAt: new Date(),
+        metadata: {
+          messageCount: 1,
+          userMessageCount: 0,
+          assistantMessageCount: 1,
+          hasCodeBlocks: content.includes('<code') || content.includes('```'),
+        },
+      },
+    };
+  }
+
+  /**
    * Main extraction method
    */
   async extract(): Promise<ExtractionResult> {
@@ -253,6 +353,14 @@ export class GeminiExtractor extends BaseExtractor {
         };
       }
 
+      // ルーティング: Deep Research パネルが表示中の場合はレポートを抽出
+      if (this.isDeepResearchVisible()) {
+        console.info('[G2O] Deep Research panel detected, extracting report');
+        return this.extractDeepResearch();
+      }
+
+      // 通常の会話抽出
+      console.info('[G2O] Extracting normal conversation');
       const messages = this.extractMessages();
       const warnings: string[] = [];
 

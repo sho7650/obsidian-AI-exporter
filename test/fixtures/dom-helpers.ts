@@ -249,3 +249,54 @@ export function createGeminiPage(
     </div>
   `);
 }
+
+
+/**
+ * Create Deep Research パネル DOM 構造
+ */
+export function createDeepResearchDOM(title: string, content: string): string {
+  return `
+    <deep-research-immersive-panel class="ng-star-inserted">
+      <toolbar>
+        <div class="toolbar has-title">
+          <div class="left-panel">
+            <h2 class="title-text gds-title-s">${title}</h2>
+          </div>
+        </div>
+      </toolbar>
+      <div class="container">
+        <response-container>
+          <structured-content-container data-test-id="message-content">
+            <message-content id="extended-response-message-content">
+              <div id="extended-response-markdown-content" 
+                   class="markdown markdown-main-panel">
+                ${content}
+              </div>
+            </message-content>
+          </structured-content-container>
+        </response-container>
+      </div>
+    </deep-research-immersive-panel>
+  `;
+}
+
+/**
+ * Create パネルのみ（コンテンツなし）の DOM
+ */
+export function createEmptyDeepResearchPanel(): string {
+  return `
+    <deep-research-immersive-panel class="ng-star-inserted">
+      <toolbar>
+        <div class="toolbar has-title">
+          <div class="left-panel">
+            <h2 class="title-text gds-title-s">Test Report</h2>
+          </div>
+        </div>
+      </toolbar>
+      <div class="container">
+        <response-container>
+        </response-container>
+      </div>
+    </deep-research-immersive-panel>
+  `;
+}
