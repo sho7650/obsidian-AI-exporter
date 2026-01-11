@@ -40,22 +40,27 @@ export abstract class BaseExtractor implements IConversationExtractor {
       return { isValid: false, warnings, errors };
     }
 
-    const { messages } = result.data;
+    const { messages, type } = result.data;
+    const isDeepResearch = type === 'deep-research';
 
     if (messages.length === 0) {
       errors.push('No messages found in conversation');
     }
 
-    if (messages.length < 2) {
+    // Deep Research reports have only 1 message (the report itself), so skip this warning
+    if (messages.length < 2 && !isDeepResearch) {
       warnings.push('Very few messages extracted - selectors may need updating');
     }
 
     // Check for balanced conversation (roughly equal user/assistant messages)
-    const userCount = messages.filter(m => m.role === 'user').length;
-    const assistantCount = messages.filter(m => m.role === 'assistant').length;
+    // Skip for Deep Research which only has assistant content
+    if (!isDeepResearch) {
+      const userCount = messages.filter(m => m.role === 'user').length;
+      const assistantCount = messages.filter(m => m.role === 'assistant').length;
 
-    if (Math.abs(userCount - assistantCount) > 1) {
-      warnings.push('Unbalanced message count - some messages may not have been extracted');
+      if (Math.abs(userCount - assistantCount) > 1) {
+        warnings.push('Unbalanced message count - some messages may not have been extracted');
+      }
     }
 
     // Check for empty content

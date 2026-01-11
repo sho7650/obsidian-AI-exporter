@@ -53,7 +53,7 @@ describe('storage', () => {
 
       expect(settings.obsidianApiKey).toBe('');
       expect(settings.obsidianPort).toBe(27123);
-      expect(settings.vaultPath).toBe('03_Extra/Gemini');
+      expect(settings.vaultPath).toBe('AI/Gemini');
       expect(settings.templateOptions.messageFormat).toBe('callout');
     });
 
