@@ -77,3 +77,40 @@ export const AUTO_SAVE_CHECK_INTERVAL = 10000;
 
 /** Event throttle delay (milliseconds) */
 export const EVENT_THROTTLE_DELAY = 1000;
+
+// ============================================================
+// Security Constants
+// ============================================================
+
+/**
+ * Allowed origins for content script messages (M-02)
+ * Only these origins can send messages to the background worker
+ */
+export const ALLOWED_ORIGINS = [
+  'https://gemini.google.com',
+  'https://claude.ai',
+  'https://chatgpt.com',
+  'https://www.perplexity.ai',
+] as const;
+
+/**
+ * Valid message actions for background worker (M-02)
+ * Whitelist of actions accepted from content scripts
+ */
+export const VALID_MESSAGE_ACTIONS = [
+  'getSettings',
+  'getExistingFile',
+  'testConnection',
+  'saveToObsidian',
+  'saveToOutputs',
+] as const;
+
+/**
+ * Valid output destinations for multi-output operations
+ */
+export const VALID_OUTPUT_DESTINATIONS = ['obsidian', 'file', 'clipboard'] as const;
+
+/**
+ * Valid AI platform sources
+ */
+export const VALID_SOURCES = ['gemini', 'claude', 'perplexity', 'chatgpt'] as const;

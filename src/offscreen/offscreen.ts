@@ -10,7 +10,7 @@
  * See: https://github.com/GoogleChrome/developer.chrome.com/issues/4660
  */
 
-import { extractErrorMessage } from '../content/extractors/base';
+import { extractErrorMessage } from '../lib/error-utils';
 
 interface ClipboardWriteMessage {
   action: 'clipboardWrite';

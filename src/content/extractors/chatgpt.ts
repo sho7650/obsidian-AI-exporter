@@ -7,7 +7,8 @@
  * @see docs/design/DES-003-chatgpt-extractor.md
  */
 
-import { BaseExtractor, extractErrorMessage } from './base';
+import { BaseExtractor } from './base';
+import { extractErrorMessage } from '../../lib/error-utils';
 import { sanitizeHtml } from '../../lib/sanitize';
 import type { ConversationMessage, ExtractionResult } from '../../lib/types';
 import { MAX_CONVERSATION_TITLE_LENGTH } from '../../lib/constants';

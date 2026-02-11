@@ -3,8 +3,8 @@
  * Handles HTTP communication with Obsidian REST API
  */
 
-import { ObsidianApiClient, getErrorMessage } from '../lib/obsidian-api';
-import { extractErrorMessage } from '../content/extractors/base';
+import { ObsidianApiClient } from '../lib/obsidian-api';
+import { extractErrorMessage, getErrorMessage } from '../lib/error-utils';
 import { getSettings, migrateSettings } from '../lib/storage';
 import { generateNoteContent } from '../lib/note-generator';
 import {
@@ -12,6 +12,10 @@ import {
   MAX_FILENAME_LENGTH,
   MAX_FRONTMATTER_TITLE_LENGTH,
   MAX_TAGS_COUNT,
+  ALLOWED_ORIGINS,
+  VALID_MESSAGE_ACTIONS,
+  VALID_OUTPUT_DESTINATIONS,
+  VALID_SOURCES,
 } from '../lib/constants';
 import type {
   ExtensionMessage,
@@ -29,15 +33,7 @@ migrateSettings().catch(error => {
   console.error('[G2O Background] Settings migration failed:', error);
 });
 
-/**
- * Allowed origins for content script messages (M-02)
- */
-const ALLOWED_ORIGINS = [
-  'https://gemini.google.com',
-  'https://claude.ai',
-  'https://chatgpt.com',
-  'https://www.perplexity.ai',
-] as const;
+// ALLOWED_ORIGINS imported from constants.ts
 
 /**
  * Validate message sender (M-02)
@@ -72,15 +68,8 @@ function validateSender(sender: chrome.runtime.MessageSender): boolean {
  * Validate and sanitize all input per Chrome extension best practices.
  */
 function validateMessageContent(message: ExtensionMessage): boolean {
-  // Validate action against whitelist
-  const validActions = [
-    'getSettings',
-    'getExistingFile',
-    'testConnection',
-    'saveToObsidian',
-    'saveToOutputs',
-  ];
-  if (!validActions.includes(message.action)) {
+  // Validate action against whitelist (using centralized constants)
+  if (!VALID_MESSAGE_ACTIONS.includes(message.action as (typeof VALID_MESSAGE_ACTIONS)[number])) {
     return false;
   }
 
@@ -96,12 +85,15 @@ function validateMessageContent(message: ExtensionMessage): boolean {
     if (!validateNoteData(message.data)) {
       return false;
     }
-    // Validate outputs array
+    // Validate outputs array (using centralized constants)
     if (!Array.isArray(message.outputs) || message.outputs.length === 0) {
       return false;
     }
-    const validOutputs: OutputDestination[] = ['obsidian', 'file', 'clipboard'];
-    if (!message.outputs.every(o => validOutputs.includes(o))) {
+    if (
+      !message.outputs.every(o =>
+        VALID_OUTPUT_DESTINATIONS.includes(o as (typeof VALID_OUTPUT_DESTINATIONS)[number])
+      )
+    ) {
       return false;
     }
   }
@@ -138,7 +130,7 @@ function validateNoteData(note: ObsidianNote): boolean {
     }
     if (
       typeof note.frontmatter.source !== 'string' ||
-      !['gemini', 'claude', 'perplexity', 'chatgpt'].includes(note.frontmatter.source)
+      !VALID_SOURCES.includes(note.frontmatter.source as (typeof VALID_SOURCES)[number])
     ) {
       return false;
     }

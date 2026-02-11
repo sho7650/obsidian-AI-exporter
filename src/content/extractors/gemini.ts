@@ -3,7 +3,8 @@
  * Based on DOM analysis from elements-sample.html
  */
 
-import { BaseExtractor, extractErrorMessage } from './base';
+import { BaseExtractor } from './base';
+import { extractErrorMessage } from '../../lib/error-utils';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { MAX_DEEP_RESEARCH_TITLE_LENGTH, MAX_CONVERSATION_TITLE_LENGTH } from '../../lib/constants';
 import type {

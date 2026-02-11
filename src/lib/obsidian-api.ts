@@ -241,25 +241,4 @@ export function isObsidianApiError(error: unknown): error is ObsidianApiError {
   return typeof error === 'object' && error !== null && 'status' in error && 'message' in error;
 }
 
-/**
- * Get user-friendly error message
- */
-export function getErrorMessage(error: unknown): string {
-  if (isObsidianApiError(error)) {
-    switch (error.status) {
-      case 0:
-        return 'Obsidian REST API is not running. Please ensure Obsidian is open and the Local REST API plugin is enabled.';
-      case 401:
-      case 403:
-        return 'Invalid API key. Please check your settings.';
-      case 404:
-        return 'File not found in vault.';
-      default:
-        return error.message;
-    }
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return 'An unknown error occurred';
-}
+// getErrorMessage moved to src/lib/error-utils.ts for centralization

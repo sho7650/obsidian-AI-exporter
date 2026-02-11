@@ -7,7 +7,7 @@ import { GeminiExtractor } from './extractors/gemini';
 import { ClaudeExtractor } from './extractors/claude';
 import { ChatGPTExtractor } from './extractors/chatgpt';
 import { PerplexityExtractor } from './extractors/perplexity';
-import { extractErrorMessage } from './extractors/base';
+import { extractErrorMessage } from '../lib/error-utils';
 import type { IConversationExtractor } from '../lib/types';
 import { conversationToNote } from './markdown';
 import {

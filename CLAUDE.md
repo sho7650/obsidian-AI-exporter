@@ -31,6 +31,7 @@ The following are **forbidden under any circumstances**. No exceptions. No conte
 - **NEVER** expand scope during execution phase
 - **NEVER** guess configuration parameters
 - **NEVER** try alternatives without error analysis
+- **NEVER** modify files directly on the main branch
 
 ### ✅ ALWAYS (Mandatory Actions)
 
@@ -53,6 +54,7 @@ The following are **always required**. No shortcuts.
 - **ALWAYS** wait for explicit approval before execution
 - **ALWAYS** follow approved plan strictly
 - **ALWAYS** output progress for each step
+- **ALWAYS** Create a branch with an appropriate name and switch to it before making any modifications
 
 **ADR Guide:**
 

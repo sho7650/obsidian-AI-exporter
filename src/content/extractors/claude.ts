@@ -7,7 +7,8 @@
  * @see docs/design/DES-002-claude-extractor.md
  */
 
-import { BaseExtractor, extractErrorMessage } from './base';
+import { BaseExtractor } from './base';
+import { extractErrorMessage } from '../../lib/error-utils';
 import { sanitizeHtml } from '../../lib/sanitize';
 import type {
   ConversationMessage,

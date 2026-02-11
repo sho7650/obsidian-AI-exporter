@@ -11,15 +11,8 @@ import type {
 } from '../../lib/types';
 import { generateHash } from '../../lib/hash';
 
-/**
- * Extract a human-readable error message from an unknown error value
- */
-export function extractErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-}
+// Re-export for backward compatibility (function moved to lib/error-utils.ts)
+export { extractErrorMessage } from '../../lib/error-utils';
 
 /**
  * Abstract base class for conversation extractors

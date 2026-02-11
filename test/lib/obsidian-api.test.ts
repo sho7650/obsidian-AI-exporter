@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
   ObsidianApiClient,
   isObsidianApiError,
-  getErrorMessage,
   classifyNetworkError,
 } from '../../src/lib/obsidian-api';
+import { getErrorMessage } from '../../src/lib/error-utils';
 
 describe('ObsidianApiClient', () => {
   let client: ObsidianApiClient;
@@ -368,11 +368,12 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage(error)).toBe('Something went wrong');
   });
 
-  it('returns default message for unknown error types', () => {
-    expect(getErrorMessage('string error')).toBe('An unknown error occurred');
-    expect(getErrorMessage(123)).toBe('An unknown error occurred');
-    expect(getErrorMessage(null)).toBe('An unknown error occurred');
-    expect(getErrorMessage(undefined)).toBe('An unknown error occurred');
+  it('returns stringified value for unknown error types', () => {
+    // getErrorMessage now uses extractErrorMessage as fallback which stringifies the value
+    expect(getErrorMessage('string error')).toBe('string error');
+    expect(getErrorMessage(123)).toBe('123');
+    expect(getErrorMessage(null)).toBe('null');
+    expect(getErrorMessage(undefined)).toBe('undefined');
   });
 });
 
