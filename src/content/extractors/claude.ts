@@ -271,7 +271,19 @@ export class ClaudeExtractor extends BaseExtractor {
    * @see NFR-001-2 in design document
    */
   private extractAssistantContent(element: Element): string {
-    // Try to find markdown content inside the response
+    // Extended Thinking: scope to .row-start-2 to skip thinking in .row-start-1
+    const responseSection = element.querySelector('.row-start-2');
+    if (responseSection) {
+      const markdownEl = this.queryWithFallback<HTMLElement>(
+        SELECTORS.markdownContent,
+        responseSection
+      );
+      if (markdownEl) {
+        return sanitizeHtml(markdownEl.innerHTML);
+      }
+    }
+
+    // Non-Extended-Thinking fallback: existing behavior
     const markdownEl = this.queryWithFallback<HTMLElement>(SELECTORS.markdownContent, element);
     if (markdownEl) {
       return sanitizeHtml(markdownEl.innerHTML);

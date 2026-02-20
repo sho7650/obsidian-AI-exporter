@@ -383,6 +383,51 @@ export function createEmptyDeepResearchPanel(): string {
 interface ClaudeConversationMessage {
   role: 'user' | 'assistant';
   content: string;
+  thinking?: string[];  // Extended Thinking chunks (assistant only)
+}
+
+/**
+ * Create Extended Thinking assistant response DOM
+ *
+ * Generates the grid layout with .row-start-1 (thinking) and .row-start-2 (response)
+ * @see docs/investigation/claude-extended-thinking-dom.md
+ */
+function createClaudeExtendedThinkingResponse(
+  content: string,
+  thinkingChunks: string[],
+  collapsed: boolean = true
+): string {
+  const gridRows = collapsed ? '0fr_1fr' : '1fr_1fr';
+  const thinkingMarkdown = thinkingChunks
+    .map(chunk => `<div class="standard-markdown">${chunk}</div>`)
+    .join('\n                            ');
+
+  return `
+    <div class="grid grid-rows-[${gridRows}]">
+      <div class="row-start-1">
+        <div style="overflow:hidden; min-height:0;">
+          <div class="group/thinking border rounded">
+            <div>
+              <button>Claude's Thoughts</button>
+              <div>
+                <div>
+                  <div class="grid">
+                    ${thinkingMarkdown}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row-start-2">
+        <div>
+          <div class="standard-markdown">
+            ${content}
+          </div>
+        </div>
+      </div>
+    </div>`;
 }
 
 /**
@@ -407,12 +452,15 @@ export function createClaudeConversationDOM(messages: ClaudeConversationMessage[
         </div>
       `);
     } else {
+      const responseInner = msg.thinking
+        ? createClaudeExtendedThinkingResponse(msg.content, msg.thinking)
+        : `<div class="standard-markdown">
+              ${msg.content}
+            </div>`;
       blocks.push(`
         <div data-test-render-count="2" class="group" style="height: auto;">
           <div class="font-claude-response" data-is-streaming="false">
-            <div class="standard-markdown">
-              ${msg.content}
-            </div>
+            ${responseInner}
           </div>
         </div>
       `);

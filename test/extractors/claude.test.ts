@@ -266,6 +266,123 @@ describe('ClaudeExtractor', () => {
     });
   });
 
+  // ========== Extended Thinking (5 tests) ==========
+  describe('Extended Thinking', () => {
+    it('extracts response content, not thinking content (collapsed)', async () => {
+      setClaudeLocation('test-123');
+      createClaudePage('test-123', [
+        { role: 'user', content: 'What is TypeScript?' },
+        {
+          role: 'assistant',
+          content: '<p>TypeScript is a typed superset of JavaScript.</p>',
+          thinking: ['<p>Let me think about TypeScript...</p>'],
+        },
+      ]);
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('typed superset');
+      expect(assistantMsg?.content).not.toContain('Let me think');
+    });
+
+    it('extracts response content, not thinking content (expanded)', async () => {
+      setClaudeLocation('test-123');
+      // Manually build expanded DOM (grid-rows-[1fr_1fr])
+      loadFixture(`
+        <div class="conversation-thread">
+          <div data-test-render-count="2" class="group" style="height: auto;">
+            <p class="whitespace-pre-wrap break-words">Question</p>
+          </div>
+          <div data-test-render-count="2" class="group" style="height: auto;">
+            <div class="font-claude-response" data-is-streaming="false">
+              <div class="grid grid-rows-[1fr_1fr]">
+                <div class="row-start-1">
+                  <div style="overflow:hidden; min-height:0;">
+                    <div class="group/thinking border rounded">
+                      <div>
+                        <button>Claude's Thoughts</button>
+                        <div><div><div class="grid">
+                          <div class="standard-markdown"><p>Expanded thinking visible</p></div>
+                        </div></div></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row-start-2">
+                  <div>
+                    <div class="standard-markdown"><p>Actual expanded response</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `);
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('Actual expanded response');
+      expect(assistantMsg?.content).not.toContain('Expanded thinking visible');
+    });
+
+    it('handles multiple thinking chunks without capturing any', async () => {
+      setClaudeLocation('test-123');
+      createClaudePage('test-123', [
+        { role: 'user', content: 'Explain quantum computing' },
+        {
+          role: 'assistant',
+          content: '<p>Quantum computing uses qubits.</p>',
+          thinking: [
+            '<p>First, I need to consider the basics...</p>',
+            '<p>Then, the mathematical framework...</p>',
+            '<p>Finally, practical applications...</p>',
+          ],
+        },
+      ]);
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('qubits');
+      expect(assistantMsg?.content).not.toContain('basics');
+      expect(assistantMsg?.content).not.toContain('mathematical framework');
+      expect(assistantMsg?.content).not.toContain('practical applications');
+    });
+
+    it('works with mixed conversation (some turns with thinking, some without)', async () => {
+      setClaudeLocation('test-123');
+      createClaudePage('test-123', [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: '<p>Hi there!</p>' },
+        { role: 'user', content: 'Tell me about Rust' },
+        {
+          role: 'assistant',
+          content: '<p>Rust is a systems language.</p>',
+          thinking: ['<p>Thinking about Rust features...</p>'],
+        },
+      ]);
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      expect(result.data?.messages.length).toBe(4);
+      // First assistant (no thinking): normal extraction
+      expect(result.data?.messages[1].content).toContain('Hi there!');
+      // Second assistant (with thinking): should get response, not thinking
+      expect(result.data?.messages[3].content).toContain('systems language');
+      expect(result.data?.messages[3].content).not.toContain('Thinking about Rust');
+    });
+
+    it('backward compatible: non-thinking responses still work', async () => {
+      setClaudeLocation('test-123');
+      createClaudePage('test-123', [
+        { role: 'user', content: 'Simple question' },
+        { role: 'assistant', content: '<p>Simple answer</p>' },
+      ]);
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('Simple answer');
+    });
+  });
+
   // ========== 6.3.6 Deep Research (10 tests) ==========
   describe('Deep Research', () => {
     it('extracts report title from h1', () => {
