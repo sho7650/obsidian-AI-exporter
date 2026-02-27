@@ -52,11 +52,18 @@ function escapeAngleBracketsInLine(line: string): string {
   // 2. Split by inline code segments (capture group → odd indices are code)
   const parts = rest.split(/(`[^`]+`)/);
 
-  // 3. Escape < and > only in non-code segments
+  // 3. Escape angle brackets in non-code segments.
+  //    Also handle \< and \> (backslash+angle) to prevent incomplete escaping (CodeQL js/incomplete-sanitization).
   const escaped = parts
     .map((part, i) => {
       if (i % 2 === 1) return part; // inline code — preserve
-      return part.replace(/</g, '\\<').replace(/>/g, '\\>');
+      return part.replace(/\\[<>]|[<>]/g, match => {
+        if (match.length === 2) {
+          // \< or \> → escaped backslash + escaped angle bracket
+          return '\\\\' + '\\' + match[1];
+        }
+        return '\\' + match;
+      });
     })
     .join('');
 
