@@ -36,7 +36,7 @@ const CITATION_PATTERN_STANDALONE =
  * Prevents injection of Markdown links via crafted titles
  */
 function escapeMarkdownLink(text: string): string {
-  return text.replace(/[[\]()]/g, '\\$&');
+  return text.replace(/[\\[\]()]/g, '\\$&');
 }
 
 /**
