@@ -13,7 +13,11 @@ import type {
 } from '../lib/types';
 import { generateHash } from '../lib/hash';
 import { buildSourceMap } from '../lib/source-map';
-import { MAX_FILENAME_BASE_LENGTH, FILENAME_ID_SUFFIX_LENGTH } from '../lib/constants';
+import {
+  MAX_FILENAME_BASE_LENGTH,
+  FILENAME_ID_SUFFIX_LENGTH,
+  PLATFORM_LABELS,
+} from '../lib/constants';
 
 // ============================================================
 // Deep Research Link Processing Functions (Obsidian Footnote Mode)
@@ -26,6 +30,14 @@ const CITATION_PATTERN_WRAPPED =
 /** Pre-compiled regex for standalone sup citations (fallback) */
 const CITATION_PATTERN_STANDALONE =
   /<sup[^>]*?data-turn-source-index="(\d+)"[^>]*?>[\s\S]*?<\/sup>/gi;
+
+/**
+ * Escape Markdown link metacharacters in text
+ * Prevents injection of Markdown links via crafted titles
+ */
+function escapeMarkdownLink(text: string): string {
+  return text.replace(/[[\]()]/g, '\\$&');
+}
 
 /**
  * Sanitize URL to remove dangerous schemes
@@ -123,10 +135,10 @@ function generateReferencesSection(sources: DeepResearchSource[]): string {
 
     if (safeUrl) {
       // [^N]: [Title](URL)
-      lines.push(`[^${footnoteIndex}]: [${source.title}](${safeUrl})`);
+      lines.push(`[^${footnoteIndex}]: [${escapeMarkdownLink(source.title)}](${safeUrl})`);
     } else {
       // URL invalid: title only
-      lines.push(`[^${footnoteIndex}]: ${source.title}`);
+      lines.push(`[^${footnoteIndex}]: ${escapeMarkdownLink(source.title)}`);
     }
   });
 
@@ -344,18 +356,7 @@ export function generateContentHash(content: string): string {
  * Get display label for AI assistant based on source platform
  */
 function getAssistantLabel(source: string): string {
-  switch (source) {
-    case 'gemini':
-      return 'Gemini';
-    case 'claude':
-      return 'Claude';
-    case 'chatgpt':
-      return 'ChatGPT';
-    case 'perplexity':
-      return 'Perplexity';
-    default:
-      return 'Assistant';
-  }
+  return PLATFORM_LABELS[source] ?? 'Assistant';
 }
 
 /**

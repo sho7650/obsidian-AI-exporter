@@ -8,6 +8,7 @@ import type { ExtensionSettings, TemplateOptions, OutputOptions } from '../lib/t
 import { validateCalloutType, validateVaultPath, validateApiKey } from '../lib/validation';
 import { DEFAULT_OBSIDIAN_PORT, MIN_PORT, MAX_PORT } from '../lib/constants';
 import { getMessage } from '../lib/i18n';
+import { sendMessage } from '../lib/messaging';
 
 /**
  * Initialize i18n for all elements with data-i18n attributes
@@ -53,7 +54,9 @@ function initializeI18n(): void {
  * Reduces repetitive getElementById + type assertion boilerplate
  */
 function getElement<T extends HTMLElement>(id: string): T {
-  return document.getElementById(id) as T;
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`[G2O Popup] Missing element: #${id}`);
+  return el as T;
 }
 
 // DOM Elements
@@ -376,15 +379,7 @@ async function handleTest(): Promise<void> {
     await saveSettings(settings);
 
     // Send test connection message to background script
-    const response = await new Promise<{ success: boolean; error?: string }>((resolve, reject) => {
-      chrome.runtime.sendMessage({ action: 'testConnection' }, result => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-          return;
-        }
-        resolve(result as { success: boolean; error?: string });
-      });
-    });
+    const response = await sendMessage({ action: 'testConnection' });
 
     if (response.success) {
       showStatus(getMessage('status_connectionSuccess'), 'success');

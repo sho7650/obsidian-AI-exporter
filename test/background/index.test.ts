@@ -11,7 +11,6 @@ const mockClient = {
   testConnection: vi.fn(),
   getFile: vi.fn(),
   putFile: vi.fn(),
-  fileExists: vi.fn(),
   listFiles: vi.fn(),
 };
 
@@ -48,14 +47,7 @@ vi.mock('../../src/lib/obsidian-api', () => ({
     testConnection = mockClient.testConnection;
     getFile = mockClient.getFile;
     putFile = mockClient.putFile;
-    fileExists = mockClient.fileExists;
     listFiles = mockClient.listFiles;
-  },
-  getErrorMessage: (error: unknown) => {
-    if (typeof error === 'object' && error !== null && 'message' in error) {
-      return (error as { message: string }).message;
-    }
-    return 'An unknown error occurred';
   },
   isObsidianApiError: (error: unknown) => {
     return typeof error === 'object' && error !== null && 'status' in error && 'message' in error;
@@ -92,14 +84,7 @@ describe('background/index', () => {
         testConnection = mockClient.testConnection;
         getFile = mockClient.getFile;
         putFile = mockClient.putFile;
-        fileExists = mockClient.fileExists;
         listFiles = mockClient.listFiles;
-      },
-      getErrorMessage: (error: unknown) => {
-        if (typeof error === 'object' && error !== null && 'message' in error) {
-          return (error as { message: string }).message;
-        }
-        return 'An unknown error occurred';
       },
       isObsidianApiError: (error: unknown) => {
         return typeof error === 'object' && error !== null && 'status' in error && 'message' in error;

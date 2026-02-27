@@ -115,6 +115,16 @@ export const VALID_OUTPUT_DESTINATIONS = ['obsidian', 'file', 'clipboard'] as co
  */
 export const VALID_SOURCES = ['gemini', 'claude', 'perplexity', 'chatgpt'] as const;
 
+/**
+ * Human-readable display labels for AI platforms
+ */
+export const PLATFORM_LABELS: Record<string, string> = {
+  gemini: 'Gemini',
+  claude: 'Claude',
+  chatgpt: 'ChatGPT',
+  perplexity: 'Perplexity',
+} as const;
+
 // ============================================================
 // Auto-Scroll Configuration (Gemini)
 // ============================================================

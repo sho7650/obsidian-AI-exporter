@@ -40,10 +40,3 @@ export function escapeYamlValue(value: string): string {
 
   return `"${escaped}"`;
 }
-
-/**
- * Escape a YAML list item value
- */
-export function escapeYamlListItem(value: string): string {
-  return escapeYamlValue(value);
-}

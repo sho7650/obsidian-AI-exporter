@@ -16,6 +16,7 @@ import {
   VALID_SOURCES,
 } from '../lib/constants';
 import type { ExtensionMessage, ObsidianNote } from '../lib/types';
+import { containsPathTraversal } from '../lib/path-utils';
 
 /**
  * Validate message sender (M-02)
@@ -53,6 +54,19 @@ export function validateMessageContent(message: ExtensionMessage): boolean {
   // Validate action against whitelist (using centralized constants)
   if (!VALID_MESSAGE_ACTIONS.includes(message.action as (typeof VALID_MESSAGE_ACTIONS)[number])) {
     return false;
+  }
+
+  // Path traversal validation for getExistingFile action
+  if (message.action === 'getExistingFile') {
+    if (typeof message.fileName !== 'string') {
+      return false;
+    }
+    if (containsPathTraversal(message.fileName)) {
+      return false;
+    }
+    if (typeof message.vaultPath === 'string' && containsPathTraversal(message.vaultPath)) {
+      return false;
+    }
   }
 
   // Detailed validation for saveToObsidian action

@@ -13,7 +13,7 @@ import type {
 } from '../../lib/types';
 import { extractErrorMessage } from '../../lib/error-utils';
 import { generateHash } from '../../lib/hash';
-import { MAX_CONVERSATION_TITLE_LENGTH } from '../../lib/constants';
+import { MAX_CONVERSATION_TITLE_LENGTH, PLATFORM_LABELS } from '../../lib/constants';
 
 /**
  * Abstract base class for conversation extractors
@@ -29,19 +29,11 @@ export abstract class BaseExtractor implements IConversationExtractor {
 
   // ========== Platform Label ==========
 
-  /** Platform display labels for log/error messages */
-  private static readonly PLATFORM_LABELS: Record<string, string> = {
-    gemini: 'Gemini',
-    claude: 'Claude',
-    chatgpt: 'ChatGPT',
-    perplexity: 'Perplexity',
-  };
-
   /**
    * Human-readable platform name for log and error messages
    */
   protected get platformLabel(): string {
-    return BaseExtractor.PLATFORM_LABELS[this.platform] ?? this.platform;
+    return PLATFORM_LABELS[this.platform] ?? this.platform;
   }
 
   // ========== Template Method ==========

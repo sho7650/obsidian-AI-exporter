@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { escapeYamlValue, escapeYamlListItem } from '../../src/lib/yaml-utils';
+import { escapeYamlValue } from '../../src/lib/yaml-utils';
 
 describe('escapeYamlValue', () => {
   it('escapes special characters', () => {
@@ -71,9 +71,3 @@ describe('escapeYamlValue', () => {
   });
 });
 
-describe('escapeYamlListItem', () => {
-  it('escapes list items same as values', () => {
-    expect(escapeYamlListItem('hello: world')).toBe('"hello: world"');
-    expect(escapeYamlListItem('simple')).toBe('simple');
-  });
-});

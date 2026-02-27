@@ -5,7 +5,7 @@
  * Separated from background/index.ts to avoid Chrome API dependency in tests.
  */
 
-import { escapeYamlValue, escapeYamlListItem } from './yaml-utils';
+import { escapeYamlValue } from './yaml-utils';
 import type { ObsidianNote, ExtensionSettings } from './types';
 
 /**
@@ -40,7 +40,7 @@ export function generateNoteContent(note: ObsidianNote, settings: ExtensionSetti
   if (templateOptions.includeTags && note.frontmatter.tags.length > 0) {
     lines.push('tags:');
     for (const tag of note.frontmatter.tags) {
-      lines.push(`  - ${escapeYamlListItem(tag)}`);
+      lines.push(`  - ${escapeYamlValue(tag)}`);
     }
   }
 

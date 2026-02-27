@@ -79,9 +79,13 @@ export interface ConnectionTestResult {
   error?: string;
 }
 
-export interface ObsidianApiError {
-  status: number;
-  message: string;
+export class ObsidianApiError extends Error {
+  readonly status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'ObsidianApiError';
+    this.status = status;
+  }
 }
 
 export class ObsidianApiClient {
@@ -254,23 +258,10 @@ export class ObsidianApiClient {
   }
 
   /**
-   * Check if file exists in vault
-   * @param path - Path relative to vault root
-   */
-  async fileExists(path: string): Promise<boolean> {
-    try {
-      const content = await this.getFile(path);
-      return content !== null;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Create an API error object
+   * Create an API error
    */
   private createError(status: number, message: string): ObsidianApiError {
-    return { status, message };
+    return new ObsidianApiError(status, message);
   }
 }
 
@@ -278,7 +269,7 @@ export class ObsidianApiClient {
  * Type guard for ObsidianApiError
  */
 export function isObsidianApiError(error: unknown): error is ObsidianApiError {
-  return typeof error === 'object' && error !== null && 'status' in error && 'message' in error;
+  return error instanceof ObsidianApiError;
 }
 
 // getErrorMessage moved to src/lib/error-utils.ts for centralization

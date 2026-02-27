@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
   ObsidianApiClient,
+  ObsidianApiError,
   isObsidianApiError,
   classifyNetworkError,
 } from '../../src/lib/obsidian-api';
@@ -146,7 +147,7 @@ describe('ObsidianApiClient', () => {
         statusText: 'Internal Server Error',
       });
 
-      await expect(client.getFile('path/to/file.md')).rejects.toEqual({
+      await expect(client.getFile('path/to/file.md')).rejects.toMatchObject({
         status: 500,
         message: 'Failed to get file: Internal Server Error',
       });
@@ -155,7 +156,7 @@ describe('ObsidianApiClient', () => {
     it('throws timeout error for network errors', async () => {
       mockFetch.mockRejectedValue(new TypeError('Failed to fetch'));
 
-      await expect(client.getFile('path/to/file.md')).rejects.toEqual({
+      await expect(client.getFile('path/to/file.md')).rejects.toMatchObject({
         status: 0,
         message: 'Request timed out. Please check your connection.',
       });
@@ -165,7 +166,7 @@ describe('ObsidianApiClient', () => {
       const abortError = new DOMException('The operation was aborted', 'AbortError');
       mockFetch.mockRejectedValue(abortError);
 
-      await expect(client.getFile('path/to/file.md')).rejects.toEqual({
+      await expect(client.getFile('path/to/file.md')).rejects.toMatchObject({
         status: 0,
         message: 'Request timed out. Please check your connection.',
       });
@@ -213,7 +214,7 @@ describe('ObsidianApiClient', () => {
         statusText: 'Forbidden',
       });
 
-      await expect(client.putFile('path/to/file.md', 'content')).rejects.toEqual({
+      await expect(client.putFile('path/to/file.md', 'content')).rejects.toMatchObject({
         status: 403,
         message: 'Failed to save file: Forbidden',
       });
@@ -222,7 +223,7 @@ describe('ObsidianApiClient', () => {
     it('throws timeout error for network errors', async () => {
       mockFetch.mockRejectedValue(new TypeError('Failed to fetch'));
 
-      await expect(client.putFile('path/to/file.md', 'content')).rejects.toEqual({
+      await expect(client.putFile('path/to/file.md', 'content')).rejects.toMatchObject({
         status: 0,
         message: 'Request timed out. Please check your connection.',
       });
@@ -232,42 +233,13 @@ describe('ObsidianApiClient', () => {
       const timeoutError = new DOMException('The operation timed out', 'TimeoutError');
       mockFetch.mockRejectedValue(timeoutError);
 
-      await expect(client.putFile('path/to/file.md', 'content')).rejects.toEqual({
+      await expect(client.putFile('path/to/file.md', 'content')).rejects.toMatchObject({
         status: 0,
         message: 'Request timed out. Please check your connection.',
       });
     });
   });
 
-  describe('fileExists', () => {
-    it('returns true when file exists', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        text: () => Promise.resolve('content'),
-      });
-
-      const exists = await client.fileExists('path/to/file.md');
-
-      expect(exists).toBe(true);
-    });
-
-    it('returns false when file does not exist', async () => {
-      mockFetch.mockResolvedValue({ ok: false, status: 404 });
-
-      const exists = await client.fileExists('non-existent.md');
-
-      expect(exists).toBe(false);
-    });
-
-    it('returns false on error', async () => {
-      mockFetch.mockRejectedValue(new Error('Network error'));
-
-      const exists = await client.fileExists('path/to/file.md');
-
-      expect(exists).toBe(false);
-    });
-  });
 
   describe('listFiles', () => {
     it('returns file list for existing directory', async () => {
@@ -318,7 +290,7 @@ describe('ObsidianApiClient', () => {
         statusText: 'Internal Server Error',
       });
 
-      await expect(client.listFiles('AI')).rejects.toEqual({
+      await expect(client.listFiles('AI')).rejects.toMatchObject({
         status: 500,
         message: 'Failed to list files: Internal Server Error',
       });
@@ -327,7 +299,7 @@ describe('ObsidianApiClient', () => {
     it('throws timeout error for network errors', async () => {
       mockFetch.mockRejectedValue(new TypeError('Failed to fetch'));
 
-      await expect(client.listFiles('AI')).rejects.toEqual({
+      await expect(client.listFiles('AI')).rejects.toMatchObject({
         status: 0,
         message: 'Request timed out. Please check your connection.',
       });
@@ -367,15 +339,25 @@ describe('ObsidianApiClient', () => {
   });
 });
 
+describe('ObsidianApiError', () => {
+  it('extends Error with name and status', () => {
+    const error = new ObsidianApiError(404, 'Not found');
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(ObsidianApiError);
+    expect(error.name).toBe('ObsidianApiError');
+    expect(error.status).toBe(404);
+    expect(error.message).toBe('Not found');
+    expect(error.stack).toBeDefined();
+  });
+});
+
 describe('isObsidianApiError', () => {
-  it('returns true for valid ObsidianApiError', () => {
-    expect(isObsidianApiError({ status: 404, message: 'Not found' })).toBe(true);
+  it('returns true for ObsidianApiError instance', () => {
+    expect(isObsidianApiError(new ObsidianApiError(404, 'Not found'))).toBe(true);
   });
 
-  it('returns true for error with extra properties', () => {
-    expect(
-      isObsidianApiError({ status: 500, message: 'Error', extra: 'data' })
-    ).toBe(true);
+  it('returns false for plain object with status and message', () => {
+    expect(isObsidianApiError({ status: 404, message: 'Not found' })).toBe(false);
   });
 
   it('returns false for null', () => {
@@ -387,44 +369,40 @@ describe('isObsidianApiError', () => {
     expect(isObsidianApiError(123)).toBe(false);
   });
 
-  it('returns false for object missing status', () => {
-    expect(isObsidianApiError({ message: 'Error' })).toBe(false);
-  });
-
-  it('returns false for object missing message', () => {
-    expect(isObsidianApiError({ status: 404 })).toBe(false);
+  it('returns false for generic Error', () => {
+    expect(isObsidianApiError(new Error('test'))).toBe(false);
   });
 });
 
 describe('getErrorMessage', () => {
   it('returns message for network error (status 0)', () => {
-    const error = { status: 0, message: 'Timeout' };
+    const error = new ObsidianApiError(0, 'Timeout');
     expect(getErrorMessage(error)).toBe(
       'Obsidian REST API is not running. Please ensure Obsidian is open and the Local REST API plugin is enabled.'
     );
   });
 
   it('returns message for auth error (status 401)', () => {
-    const error = { status: 401, message: 'Unauthorized' };
+    const error = new ObsidianApiError(401, 'Unauthorized');
     expect(getErrorMessage(error)).toBe(
       'Invalid API key. Please check your settings.'
     );
   });
 
   it('returns message for auth error (status 403)', () => {
-    const error = { status: 403, message: 'Forbidden' };
+    const error = new ObsidianApiError(403, 'Forbidden');
     expect(getErrorMessage(error)).toBe(
       'Invalid API key. Please check your settings.'
     );
   });
 
   it('returns message for not found error (status 404)', () => {
-    const error = { status: 404, message: 'Not Found' };
+    const error = new ObsidianApiError(404, 'Not Found');
     expect(getErrorMessage(error)).toBe('File not found in vault.');
   });
 
   it('returns original message for other status codes', () => {
-    const error = { status: 500, message: 'Internal Server Error' };
+    const error = new ObsidianApiError(500, 'Internal Server Error');
     expect(getErrorMessage(error)).toBe('Internal Server Error');
   });
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { extractErrorMessage, getErrorMessage } from '../../src/lib/error-utils';
+import { ObsidianApiError } from '../../src/lib/obsidian-api';
 
 describe('extractErrorMessage', () => {
   it('extracts message from Error instances', () => {
@@ -30,29 +31,29 @@ describe('extractErrorMessage', () => {
 
 describe('getErrorMessage', () => {
   it('returns specific message for connection error (status 0)', () => {
-    const error = { status: 0, message: 'Network error' };
+    const error = new ObsidianApiError(0, 'Network error');
     expect(getErrorMessage(error)).toBe(
       'Obsidian REST API is not running. Please ensure Obsidian is open and the Local REST API plugin is enabled.'
     );
   });
 
   it('returns specific message for auth error (status 401)', () => {
-    const error = { status: 401, message: 'Unauthorized' };
+    const error = new ObsidianApiError(401, 'Unauthorized');
     expect(getErrorMessage(error)).toBe('Invalid API key. Please check your settings.');
   });
 
   it('returns specific message for auth error (status 403)', () => {
-    const error = { status: 403, message: 'Forbidden' };
+    const error = new ObsidianApiError(403, 'Forbidden');
     expect(getErrorMessage(error)).toBe('Invalid API key. Please check your settings.');
   });
 
   it('returns specific message for not found error (status 404)', () => {
-    const error = { status: 404, message: 'Not Found' };
+    const error = new ObsidianApiError(404, 'Not Found');
     expect(getErrorMessage(error)).toBe('File not found in vault.');
   });
 
   it('returns original message for other status codes', () => {
-    const error = { status: 500, message: 'Internal Server Error' };
+    const error = new ObsidianApiError(500, 'Internal Server Error');
     expect(getErrorMessage(error)).toBe('Internal Server Error');
   });
 

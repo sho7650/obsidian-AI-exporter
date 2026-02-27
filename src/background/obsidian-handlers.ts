@@ -141,21 +141,27 @@ export async function handleTestConnection(
   if (isClientError(client)) {
     return { success: false, error: client.error };
   }
-  const result = await client.testConnection();
 
-  if (!result.reachable) {
-    return {
-      success: false,
-      error: result.error ?? 'Cannot reach Obsidian. Is it running?',
-    };
+  try {
+    const result = await client.testConnection();
+
+    if (!result.reachable) {
+      return {
+        success: false,
+        error: result.error ?? 'Cannot reach Obsidian. Is it running?',
+      };
+    }
+
+    if (!result.authenticated) {
+      return {
+        success: false,
+        error: result.error ?? 'Invalid API key. Please check your settings.',
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('[G2O Background] Test connection failed:', error);
+    return { success: false, error: getErrorMessage(error) };
   }
-
-  if (!result.authenticated) {
-    return {
-      success: false,
-      error: result.error ?? 'Invalid API key. Please check your settings.',
-    };
-  }
-
-  return { success: true };
 }

@@ -105,7 +105,8 @@ export function updateFrontmatter(
   for (const line of lines) {
     let replaced = false;
     for (const [key, value] of Object.entries(updates)) {
-      const pattern = new RegExp(`^${key}\\s*:`);
+      const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(`^${escapedKey}\\s*:`);
       if (pattern.test(line)) {
         // Use raw number for numeric values, escape strings
         const formattedValue =
