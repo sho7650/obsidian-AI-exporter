@@ -1,6 +1,6 @@
 <!--
   Fixture: chatgpt/chat-simple.html
-  Captured: 2026-01-29
+  Captured: 2026-02-27
   URL Pattern: https://chatgpt.com/c/{conversation-id}
 
   Description: Basic conversation for E2E testing
@@ -13,13 +13,14 @@
   class="@container/main relative flex min-w-0 flex-1 flex-col -translate-y-[calc(env(safe-area-inset-bottom,0px)/2)] pt-[calc(env(safe-area-inset-bottom,0px)/2)]"
 >
   <div
-    data-scroll-root="true"
+    data-scroll-root=""
     class="@w-sm/main:[scrollbar-gutter:stable_both-edges] touch:[scrollbar-width:none] relative flex min-h-0 min-w-0 flex-1 flex-col [scrollbar-gutter:stable] not-print:overflow-x-clip not-print:overflow-y-auto scroll-pt-(--header-height) [--sticky-padding-top:var(--header-height)] has-data-[fixed-header=less-than-xl]:@w-xl/main:scroll-pt-0 has-data-[fixed-header=less-than-xl]:@w-xl/main:[--sticky-padding-top:0px] has-data-[fixed-header=less-than-xxl]:@w-2xl/main:scroll-pt-0 has-data-[fixed-header=less-than-xxl]:@w-2xl/main:[--sticky-padding-top:0px]"
+    style="--sticky-padding-bottom: 88px"
   >
     <header
       id="page-header"
       data-fixed-header="less-than-xl"
-      class="draggable no-draggable-children sticky top-0 p-2 touch:p-2.5 flex items-center justify-between z-20 h-header-height bg-token-main-surface-primary pointer-events-none select-none [view-transition-name:var(--vt-page-header)] *:pointer-events-auto transition-none motion-safe:transition-none data-[fixed-header=less-than-xxl]:@w-2xl/main:bg-transparent data-[fixed-header=less-than-xxl]:@w-2xl/main:shadow-none! data-[fixed-header=less-than-xl]:@w-xl/main:bg-transparent data-[fixed-header=less-than-xl]:@w-xl/main:shadow-none! [box-shadow:var(--sharp-edge-top-shadow-placeholder)]"
+      class="draggable no-draggable-children sticky top-0 p-2 touch:p-2.5 flex items-center justify-between z-20 h-header-height bg-token-main-surface-primary pointer-events-none select-none [view-transition-name:var(--vt-page-header)] *:pointer-events-auto transition-none motion-safe:transition-none data-[fixed-header=less-than-xxl]:@w-2xl/main:bg-transparent data-[fixed-header=less-than-xxl]:@w-2xl/main:shadow-none! data-[fixed-header=less-than-xl]:@w-xl/main:bg-transparent data-[fixed-header=less-than-xl]:@w-xl/main:shadow-none! [box-shadow:var(--sharp-edge-top-shadow)] @w-xl/main:bg-token-main-surface-primary @w-xl/main:[box-shadow:var(--sharp-edge-top-shadow)]!"
     >
       <div
         class="pointer-events-none absolute start-0 flex flex-col items-center gap-2 lg:start-1/2 ltr:-translate-x-1/2 rtl:translate-x-1/2"
@@ -30,7 +31,7 @@
           >
             <button
               type="button"
-              class="button-glimmer-cta relative flex items-center gap-1 rounded-full bg-transparent ps-2.5 text-current focus:outline-none py-2 pe-0"
+              class="button-glimmer-cta relative flex items-center gap-1 rounded-full bg-transparent ps-2.5 whitespace-nowrap text-current focus:outline-none py-2 pe-0"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -40,14 +41,14 @@
                 class="icon-sm"
               >
                 <use
-                  href="/cdn/assets/sprites-core-mr1omm3f.svg#2e54eb"
+                  href="/cdn/assets/sprites-core-m5oiq452.svg#2e54eb"
                   fill="currentColor"
                 ></use></svg
               >Free offer</button
             ><button
               type="button"
-              class="ms-0 flex h-4 w-4 items-center justify-center rounded-full text-[black] hover:bg-[#E4E4F6] dark:text-[white] dark:hover:bg-[#414071] transform transition-all duration-200 ease-out pointer-events-auto visible translate-x-0 opacity-100"
               aria-label="Dismiss upgrade reminder"
+              class="ms-0 flex h-4 w-4 items-center justify-center rounded-full text-[black] hover:bg-[#E4E4F6] dark:text-[white] dark:hover:bg-[#414071] transform transition-all duration-200 ease-out pointer-events-auto visible translate-x-0 opacity-100"
               tabindex="0"
             >
               <svg
@@ -57,7 +58,7 @@
                 aria-hidden="true"
                 color="text-token-text-primary"
               >
-                <use href="/cdn/assets/sprites-core-mr1omm3f.svg#5ed5de" fill="currentColor"></use>
+                <use href="/cdn/assets/sprites-core-m5oiq452.svg#5ed5de" fill="currentColor"></use>
               </svg>
             </button>
           </div>
@@ -67,7 +68,7 @@
         <button
           aria-label="Model selector, current model is 5.2"
           type="button"
-          id="radix-_r_h4_"
+          id="radix-_r_7f_"
           aria-haspopup="menu"
           aria-expanded="false"
           data-state="closed"
@@ -83,7 +84,7 @@
             aria-hidden="true"
             class="icon-sm text-token-text-tertiary"
           >
-            <use href="/cdn/assets/sprites-core-mr1omm3f.svg#ba3792" fill="currentColor"></use>
+            <use href="/cdn/assets/sprites-core-m5oiq452.svg#ba3792" fill="currentColor"></use>
           </svg>
         </button>
         <div class="block lg:hidden">
@@ -92,7 +93,7 @@
           >
             <button
               type="button"
-              class="button-glimmer-cta relative flex items-center gap-1 rounded-full bg-transparent ps-2.5 text-current focus:outline-none py-2 pe-0"
+              class="button-glimmer-cta relative flex items-center gap-1 rounded-full bg-transparent ps-2.5 whitespace-nowrap text-current focus:outline-none py-2 pe-0"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -102,14 +103,14 @@
                 class="icon-sm"
               >
                 <use
-                  href="/cdn/assets/sprites-core-mr1omm3f.svg#2e54eb"
+                  href="/cdn/assets/sprites-core-m5oiq452.svg#2e54eb"
                   fill="currentColor"
                 ></use></svg
               >Free offer</button
             ><button
               type="button"
-              class="ms-0 flex h-4 w-4 items-center justify-center rounded-full text-[black] hover:bg-[#E4E4F6] dark:text-[white] dark:hover:bg-[#414071] transform transition-all duration-200 ease-out pointer-events-auto visible translate-x-0 opacity-100"
               aria-label="Dismiss upgrade reminder"
+              class="ms-0 flex h-4 w-4 items-center justify-center rounded-full text-[black] hover:bg-[#E4E4F6] dark:text-[white] dark:hover:bg-[#414071] transform transition-all duration-200 ease-out pointer-events-auto visible translate-x-0 opacity-100"
               tabindex="0"
             >
               <svg
@@ -119,7 +120,7 @@
                 aria-hidden="true"
                 color="text-token-text-primary"
               >
-                <use href="/cdn/assets/sprites-core-mr1omm3f.svg#5ed5de" fill="currentColor"></use>
+                <use href="/cdn/assets/sprites-core-m5oiq452.svg#5ed5de" fill="currentColor"></use>
               </svg>
             </button>
           </div>
@@ -130,7 +131,7 @@
         <div class="flex items-center justify-end gap-2 overflow-x-hidden">
           <div class="flex items-center" id="conversation-header-actions">
             <button
-              class="btn relative btn-ghost text-token-text-primary hover:bg-token-surface-hover keyboard-focused:bg-token-surface-hover rounded-lg max-sm:hidden"
+              class="btn relative group-focus-within/dialog:focus-visible:[outline-width:1.5px] group-focus-within/dialog:focus-visible:[outline-offset:2.5px] group-focus-within/dialog:focus-visible:[outline-style:solid] group-focus-within/dialog:focus-visible:[outline-color:var(--text-primary)] btn-ghost text-token-text-primary hover:bg-token-surface-hover keyboard-focused:bg-token-surface-hover rounded-lg max-sm:hidden"
               aria-label="Share"
               data-testid="share-chat-button"
               style="view-transition-name: var(--vt_share_chat_wide_button)"
@@ -144,7 +145,7 @@
                   class="-ms-0.5 icon"
                 >
                   <use
-                    href="/cdn/assets/sprites-core-mr1omm3f.svg#630ca2"
+                    href="/cdn/assets/sprites-core-m5oiq452.svg#630ca2"
                     fill="currentColor"
                   ></use></svg
                 >Share
@@ -154,7 +155,7 @@
               <div
                 class="relative overflow-hidden"
                 type="button"
-                id="radix-_r_h6_"
+                id="radix-_r_7h_"
                 aria-haspopup="menu"
                 aria-expanded="false"
                 data-state="closed"
@@ -172,7 +173,7 @@
                     class="icon"
                   >
                     <use
-                      href="/cdn/assets/sprites-core-mr1omm3f.svg#f6d0e2"
+                      href="/cdn/assets/sprites-core-m5oiq452.svg#f6d0e2"
                       fill="currentColor"
                     ></use>
                   </svg>
@@ -212,8 +213,8 @@
                   class="text-base my-auto mx-auto pt-3 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"
                 >
                   <div
-                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col"
                     tabindex="-1"
+                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col"
                   >
                     <div class="flex max-w-full flex-col grow">
                       <div
@@ -256,7 +257,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#ce3544"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#ce3544"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
@@ -275,7 +276,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#6d87e1"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#6d87e1"
                                 fill="currentColor"
                               ></use></svg
                           ></span>
@@ -284,9 +285,10 @@
                     </div>
                   </div>
                 </div>
+                <span class="sr-only"><br /></span>
               </article>
               <article
-                class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]"
+                class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]"
                 tabindex="-1"
                 dir="auto"
                 data-turn-id="5c07c153-09fa-4de0-9242-7d90adc1ee44"
@@ -299,16 +301,16 @@
                   class="text-base my-auto mx-auto [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"
                 >
                   <div
-                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn"
                     tabindex="-1"
+                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn"
                   >
                     <div class="flex max-w-full flex-col grow">
                       <div
                         data-message-author-role="assistant"
                         data-message-id="d6c3824e-9c23-4bfe-b8fb-9127dfc0ee9a"
                         dir="auto"
-                        class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1"
                         data-message-model-slug="gpt-5-2"
+                        class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1"
                       >
                         <div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]">
                           <div
@@ -340,7 +342,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#ce3544"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#ce3544"
                                 fill="currentColor"
                               ></use></svg
                           ></span>
@@ -393,7 +395,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#51753c"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#51753c"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
@@ -413,7 +415,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#2126ae"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#2126ae"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
@@ -432,14 +434,14 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#630ca2"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#630ca2"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
                         ><span class="" data-state="closed"
                           ><button
                             type="button"
-                            id="radix-_r_hm_"
+                            id="radix-_r_be_"
                             aria-haspopup="menu"
                             aria-expanded="false"
                             data-state="closed"
@@ -455,7 +457,7 @@
                                 class="icon"
                               >
                                 <use
-                                  href="/cdn/assets/sprites-core-mr1omm3f.svg#ec66f0"
+                                  href="/cdn/assets/sprites-core-m5oiq452.svg#ec66f0"
                                   fill="currentColor"
                                 ></use>
                               </svg>
@@ -464,7 +466,7 @@
                           class="text-token-text-secondary hover:bg-token-bg-secondary touch:w-10 flex h-8 w-8 items-center justify-center rounded-lg"
                           aria-label="More actions"
                           type="button"
-                          id="radix-_r_hp_"
+                          id="radix-_r_8v_"
                           aria-haspopup="menu"
                           aria-expanded="false"
                           data-state="closed"
@@ -477,7 +479,7 @@
                             class="icon"
                           >
                             <use
-                              href="/cdn/assets/sprites-core-mr1omm3f.svg#f6d0e2"
+                              href="/cdn/assets/sprites-core-m5oiq452.svg#f6d0e2"
                               fill="currentColor"
                             ></use>
                           </svg>
@@ -486,6 +488,7 @@
                     </div>
                   </div>
                 </div>
+                <span class="sr-only"><br /></span>
               </article>
               <article
                 class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-(--header-height)"
@@ -501,8 +504,8 @@
                   class="text-base my-auto mx-auto pt-12 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"
                 >
                   <div
-                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col"
                     tabindex="-1"
+                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col"
                   >
                     <div class="flex max-w-full flex-col grow">
                       <div
@@ -543,7 +546,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#ce3544"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#ce3544"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
@@ -562,7 +565,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#6d87e1"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#6d87e1"
                                 fill="currentColor"
                               ></use></svg
                           ></span>
@@ -571,9 +574,10 @@
                     </div>
                   </div>
                 </div>
+                <span class="sr-only"><br /></span>
               </article>
               <article
-                class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]"
+                class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]"
                 tabindex="-1"
                 dir="auto"
                 data-turn-id="000c2552-861d-4a46-917c-beb81415a068"
@@ -586,16 +590,16 @@
                   class="text-base my-auto mx-auto [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"
                 >
                   <div
-                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn"
                     tabindex="-1"
+                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn"
                   >
                     <div class="flex max-w-full flex-col grow">
                       <div
                         data-message-author-role="assistant"
                         data-message-id="000c2552-861d-4a46-917c-beb81415a068"
                         dir="auto"
-                        class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1"
                         data-message-model-slug="gpt-5-2"
+                        class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1"
                       >
                         <div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]">
                           <div
@@ -627,7 +631,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#ce3544"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#ce3544"
                                 fill="currentColor"
                               ></use></svg
                           ></span>
@@ -680,7 +684,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#51753c"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#51753c"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
@@ -700,7 +704,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#2126ae"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#2126ae"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
@@ -719,14 +723,14 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#630ca2"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#630ca2"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
                         ><span class="" data-state="closed"
                           ><button
                             type="button"
-                            id="radix-_r_i2_"
+                            id="radix-_r_bh_"
                             aria-haspopup="menu"
                             aria-expanded="false"
                             data-state="closed"
@@ -742,7 +746,7 @@
                                 class="icon"
                               >
                                 <use
-                                  href="/cdn/assets/sprites-core-mr1omm3f.svg#ec66f0"
+                                  href="/cdn/assets/sprites-core-m5oiq452.svg#ec66f0"
                                   fill="currentColor"
                                 ></use>
                               </svg>
@@ -751,7 +755,7 @@
                           class="text-token-text-secondary hover:bg-token-bg-secondary touch:w-10 flex h-8 w-8 items-center justify-center rounded-lg"
                           aria-label="More actions"
                           type="button"
-                          id="radix-_r_i5_"
+                          id="radix-_r_9b_"
                           aria-haspopup="menu"
                           aria-expanded="false"
                           data-state="closed"
@@ -764,7 +768,7 @@
                             class="icon"
                           >
                             <use
-                              href="/cdn/assets/sprites-core-mr1omm3f.svg#f6d0e2"
+                              href="/cdn/assets/sprites-core-m5oiq452.svg#f6d0e2"
                               fill="currentColor"
                             ></use>
                           </svg>
@@ -773,6 +777,7 @@
                     </div>
                   </div>
                 </div>
+                <span class="sr-only"><br /></span>
               </article>
               <article
                 class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-(--header-height)"
@@ -788,8 +793,8 @@
                   class="text-base my-auto mx-auto pt-12 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"
                 >
                   <div
-                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col"
                     tabindex="-1"
+                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col"
                   >
                     <div class="flex max-w-full flex-col grow">
                       <div
@@ -834,7 +839,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#ce3544"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#ce3544"
                                 fill="currentColor"
                               ></use></svg
                           ></span>
@@ -843,9 +848,10 @@
                     </div>
                   </div>
                 </div>
+                <span class="sr-only"><br /></span>
               </article>
               <article
-                class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]"
+                class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]"
                 tabindex="-1"
                 dir="auto"
                 data-turn-id="d622e639-c3f1-4ca0-9515-95608a736cf4"
@@ -858,16 +864,16 @@
                   class="text-base my-auto mx-auto [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"
                 >
                   <div
-                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn"
                     tabindex="-1"
+                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn"
                   >
                     <div class="flex max-w-full flex-col grow">
                       <div
                         data-message-author-role="assistant"
                         data-message-id="03ca1a20-dc8e-49a9-a943-f48dfa599055"
                         dir="auto"
-                        class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1"
                         data-message-model-slug="research"
+                        class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1"
                       >
                         <div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]">
                           <div
@@ -906,7 +912,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#ce3544"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#ce3544"
                                 fill="currentColor"
                               ></use></svg
                           ></span>
@@ -959,7 +965,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#51753c"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#51753c"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
@@ -979,7 +985,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#2126ae"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#2126ae"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
@@ -998,14 +1004,14 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#630ca2"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#630ca2"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
                         ><span class="" data-state="closed"
                           ><button
                             type="button"
-                            id="radix-_r_id_"
+                            id="radix-_r_bk_"
                             aria-haspopup="menu"
                             aria-expanded="false"
                             data-state="closed"
@@ -1021,7 +1027,7 @@
                                 class="icon"
                               >
                                 <use
-                                  href="/cdn/assets/sprites-core-mr1omm3f.svg#ec66f0"
+                                  href="/cdn/assets/sprites-core-m5oiq452.svg#ec66f0"
                                   fill="currentColor"
                                 ></use>
                               </svg>
@@ -1030,7 +1036,7 @@
                           class="text-token-text-secondary hover:bg-token-bg-secondary touch:w-10 flex h-8 w-8 items-center justify-center rounded-lg"
                           aria-label="More actions"
                           type="button"
-                          id="radix-_r_ig_"
+                          id="radix-_r_9m_"
                           aria-haspopup="menu"
                           aria-expanded="false"
                           data-state="closed"
@@ -1043,7 +1049,7 @@
                             class="icon"
                           >
                             <use
-                              href="/cdn/assets/sprites-core-mr1omm3f.svg#f6d0e2"
+                              href="/cdn/assets/sprites-core-m5oiq452.svg#f6d0e2"
                               fill="currentColor"
                             ></use>
                           </svg>
@@ -1052,6 +1058,7 @@
                     </div>
                   </div>
                 </div>
+                <span class="sr-only"><br /></span>
               </article>
               <article
                 class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-(--header-height)"
@@ -1067,8 +1074,8 @@
                   class="text-base my-auto mx-auto pt-12 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"
                 >
                   <div
-                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col"
                     tabindex="-1"
+                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col"
                   >
                     <div class="flex max-w-full flex-col grow">
                       <div
@@ -1111,7 +1118,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#ce3544"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#ce3544"
                                 fill="currentColor"
                               ></use></svg
                           ></span>
@@ -1120,9 +1127,10 @@
                     </div>
                   </div>
                 </div>
+                <span class="sr-only"><br /></span>
               </article>
               <article
-                class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]"
+                class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]"
                 tabindex="-1"
                 dir="auto"
                 data-turn-id="0e7af98a-04ed-433f-a575-f0654453d7e9"
@@ -1135,16 +1143,16 @@
                   class="text-base my-auto mx-auto [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"
                 >
                   <div
-                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn"
                     tabindex="-1"
+                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn"
                   >
                     <div class="flex max-w-full flex-col grow">
                       <div
                         data-message-author-role="assistant"
                         data-message-id="0e7af98a-04ed-433f-a575-f0654453d7e9"
                         dir="auto"
-                        class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1"
                         data-message-model-slug="research"
+                        class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1"
                       >
                         <div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]">
                           <div
@@ -1191,7 +1199,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#ce3544"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#ce3544"
                                 fill="currentColor"
                               ></use></svg
                           ></span>
@@ -1244,7 +1252,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#51753c"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#51753c"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
@@ -1264,7 +1272,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#2126ae"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#2126ae"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
@@ -1283,14 +1291,14 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#630ca2"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#630ca2"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
                         ><span class="" data-state="closed"
                           ><button
                             type="button"
-                            id="radix-_r_io_"
+                            id="radix-_r_bn_"
                             aria-haspopup="menu"
                             aria-expanded="false"
                             data-state="closed"
@@ -1306,7 +1314,7 @@
                                 class="icon"
                               >
                                 <use
-                                  href="/cdn/assets/sprites-core-mr1omm3f.svg#ec66f0"
+                                  href="/cdn/assets/sprites-core-m5oiq452.svg#ec66f0"
                                   fill="currentColor"
                                 ></use>
                               </svg>
@@ -1315,7 +1323,7 @@
                           class="text-token-text-secondary hover:bg-token-bg-secondary touch:w-10 flex h-8 w-8 items-center justify-center rounded-lg"
                           aria-label="More actions"
                           type="button"
-                          id="radix-_r_ir_"
+                          id="radix-_r_a1_"
                           aria-haspopup="menu"
                           aria-expanded="false"
                           data-state="closed"
@@ -1328,7 +1336,7 @@
                             class="icon"
                           >
                             <use
-                              href="/cdn/assets/sprites-core-mr1omm3f.svg#f6d0e2"
+                              href="/cdn/assets/sprites-core-m5oiq452.svg#f6d0e2"
                               fill="currentColor"
                             ></use>
                           </svg>
@@ -1337,23 +1345,24 @@
                     </div>
                   </div>
                 </div>
+                <span class="sr-only"><br /></span>
               </article>
               <article
-                class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]"
+                class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]"
                 tabindex="-1"
                 dir="auto"
                 data-turn-id="e9b10b50-9f02-4633-a390-7d4832f4ff5e"
                 data-testid="conversation-turn-9"
-                data-scroll-anchor="true"
+                data-scroll-anchor="false"
                 data-turn="assistant"
               >
                 <h6 class="sr-only">ChatGPT said:</h6>
                 <div
-                  class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"
+                  class="text-base my-auto mx-auto [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"
                 >
                   <div
-                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn"
                     tabindex="-1"
+                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn"
                   >
                     <div class="flex max-w-full flex-col grow">
                       <div
@@ -1376,7 +1385,7 @@
                                   class="icon text-token-text-tertiary"
                                 >
                                   <use
-                                    href="/cdn/assets/sprites-core-mr1omm3f.svg#630ca2"
+                                    href="/cdn/assets/sprites-core-m5oiq452.svg#630ca2"
                                     fill="currentColor"
                                   ></use>
                                 </svg>
@@ -2466,7 +2475,7 @@
                                   class="icon text-token-text-tertiary"
                                 >
                                   <use
-                                    href="/cdn/assets/sprites-core-mr1omm3f.svg#630ca2"
+                                    href="/cdn/assets/sprites-core-m5oiq452.svg#630ca2"
                                     fill="currentColor"
                                   ></use>
                                 </svg>
@@ -2497,7 +2506,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#ce3544"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#ce3544"
                                 fill="currentColor"
                               ></use></svg
                           ></span>
@@ -2550,7 +2559,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#51753c"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#51753c"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
@@ -2570,7 +2579,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#2126ae"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#2126ae"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
@@ -2589,7 +2598,7 @@
                               class="icon"
                             >
                               <use
-                                href="/cdn/assets/sprites-core-mr1omm3f.svg#630ca2"
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#630ca2"
                                 fill="currentColor"
                               ></use></svg
                           ></span></button
@@ -2597,7 +2606,7 @@
                           class="text-token-text-secondary hover:bg-token-bg-secondary touch:w-10 flex h-8 w-8 items-center justify-center rounded-lg"
                           aria-label="More actions"
                           type="button"
-                          id="radix-_r_k2_"
+                          id="radix-_r_b8_"
                           aria-haspopup="menu"
                           aria-expanded="false"
                           data-state="closed"
@@ -2610,13 +2619,1538 @@
                             class="icon"
                           >
                             <use
-                              href="/cdn/assets/sprites-core-mr1omm3f.svg#f6d0e2"
+                              href="/cdn/assets/sprites-core-m5oiq452.svg#f6d0e2"
                               fill="currentColor"
                             ></use>
                           </svg>
                         </button>
                       </div>
                     </div>
+                  </div>
+                </div>
+                <span class="sr-only"><br /></span>
+              </article>
+              <article
+                class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-(--header-height)"
+                tabindex="-1"
+                dir="auto"
+                data-turn-id="095743cb-6ca3-408e-a7bb-3d7dd483700f"
+                data-testid="conversation-turn-10"
+                data-scroll-anchor="false"
+                data-turn="user"
+              >
+                <h5 class="sr-only">You said:</h5>
+                <div
+                  class="text-base my-auto mx-auto pt-12 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"
+                  style="scroll-margin-top: -40px"
+                >
+                  <div
+                    tabindex="-1"
+                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col"
+                  >
+                    <div class="flex max-w-full flex-col grow">
+                      <div
+                        data-message-author-role="user"
+                        data-message-id="095743cb-6ca3-408e-a7bb-3d7dd483700f"
+                        dir="auto"
+                        class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1"
+                      >
+                        <div
+                          class="flex w-full flex-col gap-1 empty:hidden items-end rtl:items-start"
+                        >
+                          <div
+                            class="user-message-bubble-color corner-superellipse/1.1 relative rounded-[18px] px-4 py-1.5 data-[multiline]:py-3 max-w-[var(--user-chat-width,70%)]"
+                          >
+                            <div class="whitespace-pre-wrap">
+                              数式を表現できますか。できるならいくつか数式を表示して。
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="z-0 flex justify-end">
+                      <div
+                        class="touch:-me-2 touch:-ms-3.5 -ms-2.5 -me-1 flex flex-wrap items-center gap-y-4 p-1 select-none focus-within:transition-none hover:transition-none touch:pointer-events-auto touch:opacity-100 duration-300 group-hover/turn-messages:delay-300 pointer-events-none opacity-0 motion-safe:transition-opacity group-hover/turn-messages:pointer-events-auto group-hover/turn-messages:opacity-100 group-focus-within/turn-messages:pointer-events-auto group-focus-within/turn-messages:opacity-100 has-data-[state=open]:pointer-events-auto has-data-[state=open]:opacity-100"
+                        style="mask-position: 0% 0%"
+                      >
+                        <button
+                          class="text-token-text-secondary hover:bg-token-bg-secondary rounded-lg"
+                          aria-label="Copy"
+                          aria-pressed="false"
+                          data-testid="copy-turn-action-button"
+                          data-state="closed"
+                        >
+                          <span class="flex items-center justify-center touch:w-10 h-8 w-8"
+                            ><svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="20"
+                              height="20"
+                              aria-hidden="true"
+                              class="icon"
+                            >
+                              <use
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#ce3544"
+                                fill="currentColor"
+                              ></use></svg
+                          ></span></button
+                        ><button
+                          class="text-token-text-secondary hover:bg-token-bg-secondary rounded-lg"
+                          aria-label="Edit message"
+                          aria-pressed="false"
+                          data-state="closed"
+                        >
+                          <span class="flex items-center justify-center touch:w-10 h-8 w-8"
+                            ><svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="20"
+                              height="20"
+                              aria-hidden="true"
+                              class="icon"
+                            >
+                              <use
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#6d87e1"
+                                fill="currentColor"
+                              ></use></svg
+                          ></span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <span class="sr-only"><br /></span>
+              </article>
+              <article
+                class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]"
+                tabindex="-1"
+                dir="auto"
+                data-turn-id="request-697b1066-3e40-8322-8670-d2c03bdf20db-0"
+                data-testid="conversation-turn-11"
+                data-scroll-anchor="true"
+                data-turn="assistant"
+                style="min-height: calc(-248px + 100dvh)"
+              >
+                <h6 class="sr-only">ChatGPT said:</h6>
+                <div
+                  class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"
+                >
+                  <div
+                    tabindex="-1"
+                    class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn"
+                  >
+                    <div class="flex max-w-full flex-col grow">
+                      <div
+                        data-message-author-role="assistant"
+                        data-message-id="98f8721a-b004-4b08-86b2-e70e973de347"
+                        dir="auto"
+                        data-message-model-slug="gpt-5-2"
+                        class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1"
+                      >
+                        <div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]">
+                          <div
+                            class="markdown prose dark:prose-invert w-full wrap-break-word dark markdown-new-styling"
+                          >
+                            <p data-start="0" data-end="24">
+                              はい、数式を表現できます。いくつか例を示します。
+                            </p>
+                            <p data-start="26" data-end="36">
+                              <strong data-start="26" data-end="36">基本的な数式</strong>
+                            </p>
+                            <ul data-start="37" data-end="127">
+                              <li data-start="37" data-end="66">
+                                <p data-start="39" data-end="66">
+                                  一次方程式：<br data-start="45" data-end="48" />
+                                  <span class="katex"
+                                    ><span class="katex-mathml"
+                                      ><math xmlns="http://www.w3.org/1998/Math/MathML"
+                                        ><semantics
+                                          ><mrow
+                                            ><mi>a</mi><mi>x</mi><mo>+</mo><mi>b</mi><mo>=</mo
+                                            ><mn>0</mn></mrow
+                                          ><annotation encoding="application/x-tex"
+                                            >ax + b = 0</annotation
+                                          ></semantics
+                                        ></math
+                                      ></span
+                                    ><span class="katex-html" aria-hidden="true"
+                                      ><span class="base"
+                                        ><span
+                                          class="strut"
+                                          style="height: 0.6667em; vertical-align: -0.0833em"
+                                        ></span
+                                        ><span class="mord mathnormal">a</span
+                                        ><span class="mord mathnormal">x</span
+                                        ><span class="mspace" style="margin-right: 0.2222em"></span
+                                        ><span class="mbin">+</span
+                                        ><span
+                                          class="mspace"
+                                          style="margin-right: 0.2222em"
+                                        ></span></span
+                                      ><span class="base"
+                                        ><span class="strut" style="height: 0.6944em"></span
+                                        ><span class="mord mathnormal">b</span
+                                        ><span class="mspace" style="margin-right: 0.2778em"></span
+                                        ><span class="mrel">=</span
+                                        ><span
+                                          class="mspace"
+                                          style="margin-right: 0.2778em"
+                                        ></span></span
+                                      ><span class="base"
+                                        ><span class="strut" style="height: 0.6444em"></span
+                                        ><span class="mord">0</span></span
+                                      ></span
+                                    ></span
+                                  >
+                                </p>
+                              </li>
+                              <li data-start="67" data-end="127">
+                                <p data-start="69" data-end="127">
+                                  二次方程式の解：<br data-start="77" data-end="80" />
+                                  <span class="katex"
+                                    ><span class="katex-mathml"
+                                      ><math xmlns="http://www.w3.org/1998/Math/MathML"
+                                        ><semantics
+                                          ><mrow
+                                            ><mi>x</mi><mo>=</mo
+                                            ><mstyle displaystyle="true" scriptlevel="0"
+                                              ><mfrac
+                                                ><mrow
+                                                  ><mo>−</mo><mi>b</mi><mo>±</mo
+                                                  ><msqrt
+                                                    ><mrow
+                                                      ><msup><mi>b</mi><mn>2</mn></msup
+                                                      ><mo>−</mo><mn>4</mn><mi>a</mi
+                                                      ><mi>c</mi></mrow
+                                                    ></msqrt
+                                                  ></mrow
+                                                ><mrow><mn>2</mn><mi>a</mi></mrow></mfrac
+                                              ></mstyle
+                                            ></mrow
+                                          ><annotation encoding="application/x-tex"
+                                            >x = \dfrac{-b \pm \sqrt{b^2 - 4ac}}{2a}</annotation
+                                          ></semantics
+                                        ></math
+                                      ></span
+                                    ><span class="katex-html" aria-hidden="true"
+                                      ><span class="base"
+                                        ><span class="strut" style="height: 0.4306em"></span
+                                        ><span class="mord mathnormal">x</span
+                                        ><span class="mspace" style="margin-right: 0.2778em"></span
+                                        ><span class="mrel">=</span
+                                        ><span
+                                          class="mspace"
+                                          style="margin-right: 0.2778em"
+                                        ></span></span
+                                      ><span class="base"
+                                        ><span
+                                          class="strut"
+                                          style="height: 2.2764em; vertical-align: -0.686em"
+                                        ></span
+                                        ><span class="mord"
+                                          ><span class="mopen nulldelimiter"></span
+                                          ><span class="mfrac"
+                                            ><span class="vlist-t vlist-t2"
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 1.5904em"
+                                                  ><span style="top: -2.314em"
+                                                    ><span class="pstrut" style="height: 3em"></span
+                                                    ><span class="mord"
+                                                      ><span class="mord">2</span
+                                                      ><span class="mord mathnormal">a</span></span
+                                                    ></span
+                                                  ><span style="top: -3.23em"
+                                                    ><span class="pstrut" style="height: 3em"></span
+                                                    ><span
+                                                      class="frac-line"
+                                                      style="border-bottom-width: 0.04em"
+                                                    ></span></span
+                                                  ><span style="top: -3.677em"
+                                                    ><span class="pstrut" style="height: 3em"></span
+                                                    ><span class="mord"
+                                                      ><span class="mord">−</span
+                                                      ><span class="mord mathnormal">b</span
+                                                      ><span
+                                                        class="mspace"
+                                                        style="margin-right: 0.2222em"
+                                                      ></span
+                                                      ><span class="mbin">±</span
+                                                      ><span
+                                                        class="mspace"
+                                                        style="margin-right: 0.2222em"
+                                                      ></span
+                                                      ><span class="mord sqrt"
+                                                        ><span class="vlist-t vlist-t2"
+                                                          ><span class="vlist-r"
+                                                            ><span
+                                                              class="vlist"
+                                                              style="height: 0.9134em"
+                                                              ><span
+                                                                class="svg-align"
+                                                                style="top: -3em"
+                                                                ><span
+                                                                  class="pstrut"
+                                                                  style="height: 3em"
+                                                                ></span
+                                                                ><span
+                                                                  class="mord"
+                                                                  style="padding-left: 0.833em"
+                                                                  ><span class="mord"
+                                                                    ><span class="mord mathnormal"
+                                                                      >b</span
+                                                                    ><span class="msupsub"
+                                                                      ><span class="vlist-t"
+                                                                        ><span class="vlist-r"
+                                                                          ><span
+                                                                            class="vlist"
+                                                                            style="height: 0.7401em"
+                                                                            ><span
+                                                                              style="
+                                                                                top: -2.989em;
+                                                                                margin-right: 0.05em;
+                                                                              "
+                                                                              ><span
+                                                                                class="pstrut"
+                                                                                style="
+                                                                                  height: 2.7em;
+                                                                                "
+                                                                              ></span
+                                                                              ><span
+                                                                                class="sizing reset-size6 size3 mtight"
+                                                                                ><span
+                                                                                  class="mord mtight"
+                                                                                  >2</span
+                                                                                ></span
+                                                                              ></span
+                                                                            ></span
+                                                                          ></span
+                                                                        ></span
+                                                                      ></span
+                                                                    ></span
+                                                                  ><span
+                                                                    class="mspace"
+                                                                    style="margin-right: 0.2222em"
+                                                                  ></span
+                                                                  ><span class="mbin">−</span
+                                                                  ><span
+                                                                    class="mspace"
+                                                                    style="margin-right: 0.2222em"
+                                                                  ></span
+                                                                  ><span class="mord">4</span
+                                                                  ><span class="mord mathnormal"
+                                                                    >a</span
+                                                                  ><span class="mord mathnormal"
+                                                                    >c</span
+                                                                  ></span
+                                                                ></span
+                                                              ><span style="top: -2.8734em"
+                                                                ><span
+                                                                  class="pstrut"
+                                                                  style="height: 3em"
+                                                                ></span
+                                                                ><span
+                                                                  class="hide-tail"
+                                                                  style="
+                                                                    min-width: 0.853em;
+                                                                    height: 1.08em;
+                                                                  "
+                                                                  ><svg
+                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                    width="400em"
+                                                                    height="1.08em"
+                                                                    viewBox="0 0 400000 1080"
+                                                                    preserveAspectRatio="xMinYMin slice"
+                                                                  >
+                                                                    <path
+                                                                      d="M95,702
+c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14
+c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54
+c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10
+s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429
+c69,-144,104.5,-217.7,106.5,-221
+l0 -0
+c5.3,-9.3,12,-14,20,-14
+H400000v40H845.2724
+s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7
+c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z
+M834 80h400000v40h-400000z"
+                                                                    ></path></svg></span></span></span
+                                                            ><span class="vlist-s">​</span></span
+                                                          ><span class="vlist-r"
+                                                            ><span
+                                                              class="vlist"
+                                                              style="height: 0.1266em"
+                                                              ><span></span></span></span></span></span></span></span></span
+                                                ><span class="vlist-s">​</span></span
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 0.686em"
+                                                  ><span></span></span></span></span></span
+                                          ><span
+                                            class="mclose nulldelimiter"
+                                          ></span></span></span></span
+                                  ></span>
+                                </p>
+                              </li>
+                            </ul>
+                            <p data-start="129" data-end="138">
+                              <strong data-start="129" data-end="138">微分・積分</strong>
+                            </p>
+                            <ul data-start="139" data-end="227">
+                              <li data-start="139" data-end="184">
+                                <p data-start="141" data-end="184">
+                                  微分：<br data-start="144" data-end="147" />
+                                  <span class="katex"
+                                    ><span class="katex-mathml"
+                                      ><math xmlns="http://www.w3.org/1998/Math/MathML"
+                                        ><semantics
+                                          ><mrow
+                                            ><mstyle displaystyle="true" scriptlevel="0"
+                                              ><mfrac
+                                                ><mi>d</mi><mrow><mi>d</mi><mi>x</mi></mrow></mfrac
+                                              ></mstyle
+                                            ><msup><mi>x</mi><mi>n</mi></msup
+                                            ><mo>=</mo><mi>n</mi
+                                            ><msup
+                                              ><mi>x</mi
+                                              ><mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow></msup
+                                            ></mrow
+                                          ><annotation encoding="application/x-tex"
+                                            >\dfrac{d}{dx} x^n = n x^{n-1}</annotation
+                                          ></semantics
+                                        ></math
+                                      ></span
+                                    ><span class="katex-html" aria-hidden="true"
+                                      ><span class="base"
+                                        ><span
+                                          class="strut"
+                                          style="height: 2.0574em; vertical-align: -0.686em"
+                                        ></span
+                                        ><span class="mord"
+                                          ><span class="mopen nulldelimiter"></span
+                                          ><span class="mfrac"
+                                            ><span class="vlist-t vlist-t2"
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 1.3714em"
+                                                  ><span style="top: -2.314em"
+                                                    ><span class="pstrut" style="height: 3em"></span
+                                                    ><span class="mord"
+                                                      ><span class="mord mathnormal">d</span
+                                                      ><span class="mord mathnormal">x</span></span
+                                                    ></span
+                                                  ><span style="top: -3.23em"
+                                                    ><span class="pstrut" style="height: 3em"></span
+                                                    ><span
+                                                      class="frac-line"
+                                                      style="border-bottom-width: 0.04em"
+                                                    ></span></span
+                                                  ><span style="top: -3.677em"
+                                                    ><span class="pstrut" style="height: 3em"></span
+                                                    ><span class="mord"
+                                                      ><span class="mord mathnormal">d</span></span
+                                                    ></span
+                                                  ></span
+                                                ><span class="vlist-s">​</span></span
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 0.686em"
+                                                  ><span></span></span></span></span></span
+                                          ><span class="mclose nulldelimiter"></span></span
+                                        ><span class="mord"
+                                          ><span class="mord mathnormal">x</span
+                                          ><span class="msupsub"
+                                            ><span class="vlist-t"
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 0.6644em"
+                                                  ><span style="top: -3.063em; margin-right: 0.05em"
+                                                    ><span
+                                                      class="pstrut"
+                                                      style="height: 2.7em"
+                                                    ></span
+                                                    ><span class="sizing reset-size6 size3 mtight"
+                                                      ><span class="mord mathnormal mtight"
+                                                        >n</span
+                                                      ></span
+                                                    ></span
+                                                  ></span
+                                                ></span
+                                              ></span
+                                            ></span
+                                          ></span
+                                        ><span class="mspace" style="margin-right: 0.2778em"></span
+                                        ><span class="mrel">=</span
+                                        ><span
+                                          class="mspace"
+                                          style="margin-right: 0.2778em"
+                                        ></span></span
+                                      ><span class="base"
+                                        ><span class="strut" style="height: 0.8141em"></span
+                                        ><span class="mord mathnormal">n</span
+                                        ><span class="mord"
+                                          ><span class="mord mathnormal">x</span
+                                          ><span class="msupsub"
+                                            ><span class="vlist-t"
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 0.8141em"
+                                                  ><span style="top: -3.063em; margin-right: 0.05em"
+                                                    ><span
+                                                      class="pstrut"
+                                                      style="height: 2.7em"
+                                                    ></span
+                                                    ><span class="sizing reset-size6 size3 mtight"
+                                                      ><span class="mord mtight"
+                                                        ><span class="mord mathnormal mtight"
+                                                          >n</span
+                                                        ><span class="mbin mtight">−</span
+                                                        ><span class="mord mtight">1</span></span
+                                                      ></span
+                                                    ></span
+                                                  ></span
+                                                ></span
+                                              ></span
+                                            ></span
+                                          ></span
+                                        ></span
+                                      ></span
+                                    ></span
+                                  >
+                                </p>
+                              </li>
+                              <li data-start="185" data-end="227">
+                                <p data-start="187" data-end="227">
+                                  積分：<br data-start="190" data-end="193" />
+                                  <span class="katex"
+                                    ><span class="katex-mathml"
+                                      ><math xmlns="http://www.w3.org/1998/Math/MathML"
+                                        ><semantics
+                                          ><mrow
+                                            ><mo>∫</mo><msup><mi>e</mi><mi>x</mi></msup
+                                            ><mtext> </mtext><mi>d</mi><mi>x</mi><mo>=</mo
+                                            ><msup><mi>e</mi><mi>x</mi></msup
+                                            ><mo>+</mo><mi>C</mi></mrow
+                                          ><annotation encoding="application/x-tex"
+                                            >\int e^{x}\,dx = e^{x} + C</annotation
+                                          ></semantics
+                                        ></math
+                                      ></span
+                                    ><span class="katex-html" aria-hidden="true"
+                                      ><span class="base"
+                                        ><span
+                                          class="strut"
+                                          style="height: 1.1111em; vertical-align: -0.3061em"
+                                        ></span
+                                        ><span
+                                          class="mop op-symbol small-op"
+                                          style="
+                                            margin-right: 0.19445em;
+                                            position: relative;
+                                            top: -0.0006em;
+                                          "
+                                          >∫</span
+                                        ><span class="mspace" style="margin-right: 0.1667em"></span
+                                        ><span class="mord"
+                                          ><span class="mord mathnormal">e</span
+                                          ><span class="msupsub"
+                                            ><span class="vlist-t"
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 0.6644em"
+                                                  ><span style="top: -3.063em; margin-right: 0.05em"
+                                                    ><span
+                                                      class="pstrut"
+                                                      style="height: 2.7em"
+                                                    ></span
+                                                    ><span class="sizing reset-size6 size3 mtight"
+                                                      ><span class="mord mtight"
+                                                        ><span class="mord mathnormal mtight"
+                                                          >x</span
+                                                        ></span
+                                                      ></span
+                                                    ></span
+                                                  ></span
+                                                ></span
+                                              ></span
+                                            ></span
+                                          ></span
+                                        ><span class="mspace" style="margin-right: 0.1667em"></span
+                                        ><span class="mord mathnormal">d</span
+                                        ><span class="mord mathnormal">x</span
+                                        ><span class="mspace" style="margin-right: 0.2778em"></span
+                                        ><span class="mrel">=</span
+                                        ><span
+                                          class="mspace"
+                                          style="margin-right: 0.2778em"
+                                        ></span></span
+                                      ><span class="base"
+                                        ><span
+                                          class="strut"
+                                          style="height: 0.7477em; vertical-align: -0.0833em"
+                                        ></span
+                                        ><span class="mord"
+                                          ><span class="mord mathnormal">e</span
+                                          ><span class="msupsub"
+                                            ><span class="vlist-t"
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 0.6644em"
+                                                  ><span style="top: -3.063em; margin-right: 0.05em"
+                                                    ><span
+                                                      class="pstrut"
+                                                      style="height: 2.7em"
+                                                    ></span
+                                                    ><span class="sizing reset-size6 size3 mtight"
+                                                      ><span class="mord mtight"
+                                                        ><span class="mord mathnormal mtight"
+                                                          >x</span
+                                                        ></span
+                                                      ></span
+                                                    ></span
+                                                  ></span
+                                                ></span
+                                              ></span
+                                            ></span
+                                          ></span
+                                        ><span class="mspace" style="margin-right: 0.2222em"></span
+                                        ><span class="mbin">+</span
+                                        ><span
+                                          class="mspace"
+                                          style="margin-right: 0.2222em"
+                                        ></span></span
+                                      ><span class="base"
+                                        ><span class="strut" style="height: 0.6833em"></span
+                                        ><span
+                                          class="mord mathnormal"
+                                          style="margin-right: 0.07153em"
+                                          >C</span
+                                        ></span
+                                      ></span
+                                    ></span
+                                  >
+                                </p>
+                              </li>
+                            </ul>
+                            <p data-start="229" data-end="237">
+                              <strong data-start="229" data-end="237">線形代数</strong>
+                            </p>
+                            <ul data-start="238" data-end="342">
+                              <li data-start="238" data-end="261">
+                                <p data-start="240" data-end="261">
+                                  行列積：<br data-start="244" data-end="247" />
+                                  <span class="katex"
+                                    ><span class="katex-mathml"
+                                      ><math xmlns="http://www.w3.org/1998/Math/MathML"
+                                        ><semantics
+                                          ><mrow><mi>C</mi><mo>=</mo><mi>A</mi><mi>B</mi></mrow
+                                          ><annotation encoding="application/x-tex"
+                                            >C = AB</annotation
+                                          ></semantics
+                                        ></math
+                                      ></span
+                                    ><span class="katex-html" aria-hidden="true"
+                                      ><span class="base"
+                                        ><span class="strut" style="height: 0.6833em"></span
+                                        ><span
+                                          class="mord mathnormal"
+                                          style="margin-right: 0.07153em"
+                                          >C</span
+                                        ><span class="mspace" style="margin-right: 0.2778em"></span
+                                        ><span class="mrel">=</span
+                                        ><span
+                                          class="mspace"
+                                          style="margin-right: 0.2778em"
+                                        ></span></span
+                                      ><span class="base"
+                                        ><span class="strut" style="height: 0.6833em"></span
+                                        ><span class="mord mathnormal">A</span
+                                        ><span
+                                          class="mord mathnormal"
+                                          style="margin-right: 0.05017em"
+                                          >B</span
+                                        ></span
+                                      ></span
+                                    ></span
+                                  >
+                                </p>
+                              </li>
+                              <li data-start="262" data-end="342">
+                                <p data-start="264" data-end="342">
+                                  行列式（2×2）：<br data-start="273" data-end="276" />
+                                  <span class="katex"
+                                    ><span class="katex-mathml"
+                                      ><math xmlns="http://www.w3.org/1998/Math/MathML"
+                                        ><semantics
+                                          ><mrow
+                                            ><mi>det</mi><mo>⁡</mo
+                                            ><mrow
+                                              ><mo fence="true">(</mo
+                                              ><mtable
+                                                rowspacing="0.16em"
+                                                columnalign="center center"
+                                                columnspacing="1em"
+                                                ><mtr
+                                                  ><mtd
+                                                    ><mstyle scriptlevel="0" displaystyle="false"
+                                                      ><mi>a</mi></mstyle
+                                                    ></mtd
+                                                  ><mtd
+                                                    ><mstyle scriptlevel="0" displaystyle="false"
+                                                      ><mi>b</mi></mstyle
+                                                    ></mtd
+                                                  ></mtr
+                                                ><mtr
+                                                  ><mtd
+                                                    ><mstyle scriptlevel="0" displaystyle="false"
+                                                      ><mi>c</mi></mstyle
+                                                    ></mtd
+                                                  ><mtd
+                                                    ><mstyle scriptlevel="0" displaystyle="false"
+                                                      ><mi>d</mi></mstyle
+                                                    ></mtd
+                                                  ></mtr
+                                                ></mtable
+                                              ><mo fence="true">)</mo></mrow
+                                            ><mo>=</mo><mi>a</mi><mi>d</mi><mo>−</mo><mi>b</mi
+                                            ><mi>c</mi></mrow
+                                          ><annotation encoding="application/x-tex"
+                                            >\det\begin{pmatrix} a &amp; b \\ c &amp; d
+                                            \end{pmatrix} = ad - bc</annotation
+                                          ></semantics
+                                        ></math
+                                      ></span
+                                    ><span class="katex-html" aria-hidden="true"
+                                      ><span class="base"
+                                        ><span
+                                          class="strut"
+                                          style="height: 2.4em; vertical-align: -0.95em"
+                                        ></span
+                                        ><span class="mop">det</span
+                                        ><span class="mspace" style="margin-right: 0.1667em"></span
+                                        ><span class="minner"
+                                          ><span class="mopen delimcenter" style="top: 0em"
+                                            ><span class="delimsizing size3">(</span></span
+                                          ><span class="mord"
+                                            ><span class="mtable"
+                                              ><span class="col-align-c"
+                                                ><span class="vlist-t vlist-t2"
+                                                  ><span class="vlist-r"
+                                                    ><span class="vlist" style="height: 1.45em"
+                                                      ><span style="top: -3.61em"
+                                                        ><span
+                                                          class="pstrut"
+                                                          style="height: 3em"
+                                                        ></span
+                                                        ><span class="mord"
+                                                          ><span class="mord mathnormal"
+                                                            >a</span
+                                                          ></span
+                                                        ></span
+                                                      ><span style="top: -2.41em"
+                                                        ><span
+                                                          class="pstrut"
+                                                          style="height: 3em"
+                                                        ></span
+                                                        ><span class="mord"
+                                                          ><span class="mord mathnormal"
+                                                            >c</span
+                                                          ></span
+                                                        ></span
+                                                      ></span
+                                                    ><span class="vlist-s">​</span></span
+                                                  ><span class="vlist-r"
+                                                    ><span class="vlist" style="height: 0.95em"
+                                                      ><span></span></span></span></span></span
+                                              ><span class="arraycolsep" style="width: 0.5em"></span
+                                              ><span class="arraycolsep" style="width: 0.5em"></span
+                                              ><span class="col-align-c"
+                                                ><span class="vlist-t vlist-t2"
+                                                  ><span class="vlist-r"
+                                                    ><span class="vlist" style="height: 1.45em"
+                                                      ><span style="top: -3.61em"
+                                                        ><span
+                                                          class="pstrut"
+                                                          style="height: 3em"
+                                                        ></span
+                                                        ><span class="mord"
+                                                          ><span class="mord mathnormal"
+                                                            >b</span
+                                                          ></span
+                                                        ></span
+                                                      ><span style="top: -2.41em"
+                                                        ><span
+                                                          class="pstrut"
+                                                          style="height: 3em"
+                                                        ></span
+                                                        ><span class="mord"
+                                                          ><span class="mord mathnormal"
+                                                            >d</span
+                                                          ></span
+                                                        ></span
+                                                      ></span
+                                                    ><span class="vlist-s">​</span></span
+                                                  ><span class="vlist-r"
+                                                    ><span class="vlist" style="height: 0.95em"
+                                                      ><span></span></span></span></span></span></span></span
+                                          ><span class="mclose delimcenter" style="top: 0em"
+                                            ><span class="delimsizing size3">)</span></span
+                                          ></span
+                                        ><span class="mspace" style="margin-right: 0.2778em"></span
+                                        ><span class="mrel">=</span
+                                        ><span
+                                          class="mspace"
+                                          style="margin-right: 0.2778em"
+                                        ></span></span
+                                      ><span class="base"
+                                        ><span
+                                          class="strut"
+                                          style="height: 0.7778em; vertical-align: -0.0833em"
+                                        ></span
+                                        ><span class="mord mathnormal">a</span
+                                        ><span class="mord mathnormal">d</span
+                                        ><span class="mspace" style="margin-right: 0.2222em"></span
+                                        ><span class="mbin">−</span
+                                        ><span
+                                          class="mspace"
+                                          style="margin-right: 0.2222em"
+                                        ></span></span
+                                      ><span class="base"
+                                        ><span class="strut" style="height: 0.6944em"></span
+                                        ><span class="mord mathnormal">b</span
+                                        ><span class="mord mathnormal">c</span></span
+                                      ></span
+                                    ></span
+                                  >
+                                </p>
+                              </li>
+                            </ul>
+                            <p data-start="344" data-end="353">
+                              <strong data-start="344" data-end="353">確率・統計</strong>
+                            </p>
+                            <ul data-start="354" data-end="463">
+                              <li data-start="354" data-end="463">
+                                <p data-start="356" data-end="463">
+                                  正規分布の確率密度関数：<br data-start="368" data-end="371" />
+                                  <span class="katex"
+                                    ><span class="katex-mathml"
+                                      ><math xmlns="http://www.w3.org/1998/Math/MathML"
+                                        ><semantics
+                                          ><mrow
+                                            ><mi>f</mi><mo stretchy="false">(</mo><mi>x</mi
+                                            ><mo stretchy="false">)</mo><mo>=</mo
+                                            ><mstyle displaystyle="true" scriptlevel="0"
+                                              ><mfrac
+                                                ><mn>1</mn
+                                                ><msqrt
+                                                  ><mrow
+                                                    ><mn>2</mn><mi>π</mi
+                                                    ><msup><mi>σ</mi><mn>2</mn></msup></mrow
+                                                  ></msqrt
+                                                ></mfrac
+                                              ></mstyle
+                                            ><mi>exp</mi><mo>⁡</mo><mtext> ⁣</mtext
+                                            ><mrow
+                                              ><mo fence="true">(</mo><mo>−</mo
+                                              ><mstyle displaystyle="true" scriptlevel="0"
+                                                ><mfrac
+                                                  ><mrow
+                                                    ><mo stretchy="false">(</mo><mi>x</mi><mo>−</mo
+                                                    ><mi>μ</mi
+                                                    ><msup
+                                                      ><mo stretchy="false">)</mo><mn>2</mn></msup
+                                                    ></mrow
+                                                  ><mrow
+                                                    ><mn>2</mn
+                                                    ><msup><mi>σ</mi><mn>2</mn></msup></mrow
+                                                  ></mfrac
+                                                ></mstyle
+                                              ><mo fence="true">)</mo></mrow
+                                            ></mrow
+                                          ><annotation encoding="application/x-tex"
+                                            >f(x)=\dfrac{1}{\sqrt{2\pi\sigma^2}}
+                                            \exp\!\left(-\dfrac{(x-\mu)^2}{2\sigma^2}\right)</annotation
+                                          ></semantics
+                                        ></math
+                                      ></span
+                                    ><span class="katex-html" aria-hidden="true"
+                                      ><span class="base"
+                                        ><span
+                                          class="strut"
+                                          style="height: 1em; vertical-align: -0.25em"
+                                        ></span
+                                        ><span
+                                          class="mord mathnormal"
+                                          style="margin-right: 0.10764em"
+                                          >f</span
+                                        ><span class="mopen">(</span
+                                        ><span class="mord mathnormal">x</span
+                                        ><span class="mclose">)</span
+                                        ><span class="mspace" style="margin-right: 0.2778em"></span
+                                        ><span class="mrel">=</span
+                                        ><span
+                                          class="mspace"
+                                          style="margin-right: 0.2778em"
+                                        ></span></span
+                                      ><span class="base"
+                                        ><span
+                                          class="strut"
+                                          style="height: 2.4411em; vertical-align: -0.95em"
+                                        ></span
+                                        ><span class="mord"
+                                          ><span class="mopen nulldelimiter"></span
+                                          ><span class="mfrac"
+                                            ><span class="vlist-t vlist-t2"
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 1.3214em"
+                                                  ><span style="top: -2.1549em"
+                                                    ><span class="pstrut" style="height: 3em"></span
+                                                    ><span class="mord"
+                                                      ><span class="mord sqrt"
+                                                        ><span class="vlist-t vlist-t2"
+                                                          ><span class="vlist-r"
+                                                            ><span
+                                                              class="vlist"
+                                                              style="height: 0.9551em"
+                                                              ><span
+                                                                class="svg-align"
+                                                                style="top: -3em"
+                                                                ><span
+                                                                  class="pstrut"
+                                                                  style="height: 3em"
+                                                                ></span
+                                                                ><span
+                                                                  class="mord"
+                                                                  style="padding-left: 0.833em"
+                                                                  ><span class="mord">2</span
+                                                                  ><span
+                                                                    class="mord mathnormal"
+                                                                    style="margin-right: 0.03588em"
+                                                                    >π</span
+                                                                  ><span class="mord"
+                                                                    ><span
+                                                                      class="mord mathnormal"
+                                                                      style="
+                                                                        margin-right: 0.03588em;
+                                                                      "
+                                                                      >σ</span
+                                                                    ><span class="msupsub"
+                                                                      ><span class="vlist-t"
+                                                                        ><span class="vlist-r"
+                                                                          ><span
+                                                                            class="vlist"
+                                                                            style="height: 0.7401em"
+                                                                            ><span
+                                                                              style="
+                                                                                top: -2.989em;
+                                                                                margin-right: 0.05em;
+                                                                              "
+                                                                              ><span
+                                                                                class="pstrut"
+                                                                                style="
+                                                                                  height: 2.7em;
+                                                                                "
+                                                                              ></span
+                                                                              ><span
+                                                                                class="sizing reset-size6 size3 mtight"
+                                                                                ><span
+                                                                                  class="mord mtight"
+                                                                                  >2</span
+                                                                                ></span
+                                                                              ></span
+                                                                            ></span
+                                                                          ></span
+                                                                        ></span
+                                                                      ></span
+                                                                    ></span
+                                                                  ></span
+                                                                ></span
+                                                              ><span style="top: -2.9151em"
+                                                                ><span
+                                                                  class="pstrut"
+                                                                  style="height: 3em"
+                                                                ></span
+                                                                ><span
+                                                                  class="hide-tail"
+                                                                  style="
+                                                                    min-width: 0.853em;
+                                                                    height: 1.08em;
+                                                                  "
+                                                                  ><svg
+                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                    width="400em"
+                                                                    height="1.08em"
+                                                                    viewBox="0 0 400000 1080"
+                                                                    preserveAspectRatio="xMinYMin slice"
+                                                                  >
+                                                                    <path
+                                                                      d="M95,702
+c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14
+c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54
+c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10
+s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429
+c69,-144,104.5,-217.7,106.5,-221
+l0 -0
+c5.3,-9.3,12,-14,20,-14
+H400000v40H845.2724
+s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7
+c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z
+M834 80h400000v40h-400000z"
+                                                                    ></path></svg></span></span></span
+                                                            ><span class="vlist-s">​</span></span
+                                                          ><span class="vlist-r"
+                                                            ><span
+                                                              class="vlist"
+                                                              style="height: 0.0849em"
+                                                              ><span></span></span></span></span></span></span></span
+                                                  ><span style="top: -3.23em"
+                                                    ><span class="pstrut" style="height: 3em"></span
+                                                    ><span
+                                                      class="frac-line"
+                                                      style="border-bottom-width: 0.04em"
+                                                    ></span></span
+                                                  ><span style="top: -3.677em"
+                                                    ><span class="pstrut" style="height: 3em"></span
+                                                    ><span class="mord"
+                                                      ><span class="mord">1</span></span
+                                                    ></span
+                                                  ></span
+                                                ><span class="vlist-s">​</span></span
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 0.93em"
+                                                  ><span></span></span></span></span></span
+                                          ><span class="mclose nulldelimiter"></span></span
+                                        ><span class="mspace" style="margin-right: 0.1667em"></span
+                                        ><span class="mop">exp</span
+                                        ><span class="mspace" style="margin-right: -0.1667em"></span
+                                        ><span class="mspace" style="margin-right: 0.1667em"></span
+                                        ><span class="minner"
+                                          ><span class="mopen delimcenter" style="top: 0em"
+                                            ><span class="delimsizing size3">(</span></span
+                                          ><span class="mord">−</span
+                                          ><span class="mord"
+                                            ><span class="mopen nulldelimiter"></span
+                                            ><span class="mfrac"
+                                              ><span class="vlist-t vlist-t2"
+                                                ><span class="vlist-r"
+                                                  ><span class="vlist" style="height: 1.4911em"
+                                                    ><span style="top: -2.314em"
+                                                      ><span
+                                                        class="pstrut"
+                                                        style="height: 3em"
+                                                      ></span
+                                                      ><span class="mord"
+                                                        ><span class="mord">2</span
+                                                        ><span class="mord"
+                                                          ><span
+                                                            class="mord mathnormal"
+                                                            style="margin-right: 0.03588em"
+                                                            >σ</span
+                                                          ><span class="msupsub"
+                                                            ><span class="vlist-t"
+                                                              ><span class="vlist-r"
+                                                                ><span
+                                                                  class="vlist"
+                                                                  style="height: 0.7401em"
+                                                                  ><span
+                                                                    style="
+                                                                      top: -2.989em;
+                                                                      margin-right: 0.05em;
+                                                                    "
+                                                                    ><span
+                                                                      class="pstrut"
+                                                                      style="height: 2.7em"
+                                                                    ></span
+                                                                    ><span
+                                                                      class="sizing reset-size6 size3 mtight"
+                                                                      ><span class="mord mtight"
+                                                                        >2</span
+                                                                      ></span
+                                                                    ></span
+                                                                  ></span
+                                                                ></span
+                                                              ></span
+                                                            ></span
+                                                          ></span
+                                                        ></span
+                                                      ></span
+                                                    ><span style="top: -3.23em"
+                                                      ><span
+                                                        class="pstrut"
+                                                        style="height: 3em"
+                                                      ></span
+                                                      ><span
+                                                        class="frac-line"
+                                                        style="border-bottom-width: 0.04em"
+                                                      ></span></span
+                                                    ><span style="top: -3.677em"
+                                                      ><span
+                                                        class="pstrut"
+                                                        style="height: 3em"
+                                                      ></span
+                                                      ><span class="mord"
+                                                        ><span class="mopen">(</span
+                                                        ><span class="mord mathnormal">x</span
+                                                        ><span
+                                                          class="mspace"
+                                                          style="margin-right: 0.2222em"
+                                                        ></span
+                                                        ><span class="mbin">−</span
+                                                        ><span
+                                                          class="mspace"
+                                                          style="margin-right: 0.2222em"
+                                                        ></span
+                                                        ><span class="mord mathnormal">μ</span
+                                                        ><span class="mclose"
+                                                          ><span class="mclose">)</span
+                                                          ><span class="msupsub"
+                                                            ><span class="vlist-t"
+                                                              ><span class="vlist-r"
+                                                                ><span
+                                                                  class="vlist"
+                                                                  style="height: 0.8141em"
+                                                                  ><span
+                                                                    style="
+                                                                      top: -3.063em;
+                                                                      margin-right: 0.05em;
+                                                                    "
+                                                                    ><span
+                                                                      class="pstrut"
+                                                                      style="height: 2.7em"
+                                                                    ></span
+                                                                    ><span
+                                                                      class="sizing reset-size6 size3 mtight"
+                                                                      ><span class="mord mtight"
+                                                                        >2</span
+                                                                      ></span
+                                                                    ></span
+                                                                  ></span
+                                                                ></span
+                                                              ></span
+                                                            ></span
+                                                          ></span
+                                                        ></span
+                                                      ></span
+                                                    ></span
+                                                  ><span class="vlist-s">​</span></span
+                                                ><span class="vlist-r"
+                                                  ><span class="vlist" style="height: 0.686em"
+                                                    ><span></span></span></span></span></span
+                                            ><span class="mclose nulldelimiter"></span></span
+                                          ><span class="mclose delimcenter" style="top: 0em"
+                                            ><span class="delimsizing size3">)</span></span
+                                          ></span
+                                        ></span
+                                      ></span
+                                    ></span
+                                  >
+                                </p>
+                              </li>
+                            </ul>
+                            <p data-start="465" data-end="471">
+                              <strong data-start="465" data-end="471">級数</strong>
+                            </p>
+                            <ul data-start="472" data-end="543">
+                              <li data-start="472" data-end="543">
+                                <p data-start="474" data-end="543">
+                                  等比数列の和：<br data-start="481" data-end="484" />
+                                  <span class="katex"
+                                    ><span class="katex-mathml"
+                                      ><math xmlns="http://www.w3.org/1998/Math/MathML"
+                                        ><semantics
+                                          ><mrow
+                                            ><msubsup
+                                              ><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow
+                                              ><mi>n</mi></msubsup
+                                            ><mi>a</mi><msup><mi>r</mi><mi>k</mi></msup
+                                            ><mo>=</mo><mi>a</mi><mtext> </mtext
+                                            ><mstyle displaystyle="true" scriptlevel="0"
+                                              ><mfrac
+                                                ><mrow
+                                                  ><mn>1</mn><mo>−</mo
+                                                  ><msup
+                                                    ><mi>r</mi
+                                                    ><mrow
+                                                      ><mtext> </mtext><mi>n</mi><mo>+</mo
+                                                      ><mn>1</mn></mrow
+                                                    ></msup
+                                                  ></mrow
+                                                ><mrow><mn>1</mn><mo>−</mo><mi>r</mi></mrow></mfrac
+                                              ></mstyle
+                                            ></mrow
+                                          ><annotation encoding="application/x-tex"
+                                            >\sum_{k=0}^{n} ar^{k} =
+                                            a\,\dfrac{1-r^{\,n+1}}{1-r}</annotation
+                                          ></semantics
+                                        ></math
+                                      ></span
+                                    ><span class="katex-html" aria-hidden="true"
+                                      ><span class="base"
+                                        ><span
+                                          class="strut"
+                                          style="height: 1.1488em; vertical-align: -0.2997em"
+                                        ></span
+                                        ><span class="mop"
+                                          ><span
+                                            class="mop op-symbol small-op"
+                                            style="position: relative; top: 0em"
+                                            >∑</span
+                                          ><span class="msupsub"
+                                            ><span class="vlist-t vlist-t2"
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 0.8043em"
+                                                  ><span
+                                                    style="
+                                                      top: -2.4003em;
+                                                      margin-left: 0em;
+                                                      margin-right: 0.05em;
+                                                    "
+                                                    ><span
+                                                      class="pstrut"
+                                                      style="height: 2.7em"
+                                                    ></span
+                                                    ><span class="sizing reset-size6 size3 mtight"
+                                                      ><span class="mord mtight"
+                                                        ><span
+                                                          class="mord mathnormal mtight"
+                                                          style="margin-right: 0.03148em"
+                                                          >k</span
+                                                        ><span class="mrel mtight">=</span
+                                                        ><span class="mord mtight">0</span></span
+                                                      ></span
+                                                    ></span
+                                                  ><span
+                                                    style="top: -3.2029em; margin-right: 0.05em"
+                                                    ><span
+                                                      class="pstrut"
+                                                      style="height: 2.7em"
+                                                    ></span
+                                                    ><span class="sizing reset-size6 size3 mtight"
+                                                      ><span class="mord mtight"
+                                                        ><span class="mord mathnormal mtight"
+                                                          >n</span
+                                                        ></span
+                                                      ></span
+                                                    ></span
+                                                  ></span
+                                                ><span class="vlist-s">​</span></span
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 0.2997em"
+                                                  ><span></span></span></span></span></span></span
+                                        ><span class="mspace" style="margin-right: 0.1667em"></span
+                                        ><span class="mord mathnormal">a</span
+                                        ><span class="mord"
+                                          ><span
+                                            class="mord mathnormal"
+                                            style="margin-right: 0.02778em"
+                                            >r</span
+                                          ><span class="msupsub"
+                                            ><span class="vlist-t"
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 0.8491em"
+                                                  ><span style="top: -3.063em; margin-right: 0.05em"
+                                                    ><span
+                                                      class="pstrut"
+                                                      style="height: 2.7em"
+                                                    ></span
+                                                    ><span class="sizing reset-size6 size3 mtight"
+                                                      ><span class="mord mtight"
+                                                        ><span
+                                                          class="mord mathnormal mtight"
+                                                          style="margin-right: 0.03148em"
+                                                          >k</span
+                                                        ></span
+                                                      ></span
+                                                    ></span
+                                                  ></span
+                                                ></span
+                                              ></span
+                                            ></span
+                                          ></span
+                                        ><span class="mspace" style="margin-right: 0.2778em"></span
+                                        ><span class="mrel">=</span
+                                        ><span
+                                          class="mspace"
+                                          style="margin-right: 0.2778em"
+                                        ></span></span
+                                      ><span class="base"
+                                        ><span
+                                          class="strut"
+                                          style="height: 2.2604em; vertical-align: -0.7693em"
+                                        ></span
+                                        ><span class="mord mathnormal">a</span
+                                        ><span class="mspace" style="margin-right: 0.1667em"></span
+                                        ><span class="mord"
+                                          ><span class="mopen nulldelimiter"></span
+                                          ><span class="mfrac"
+                                            ><span class="vlist-t vlist-t2"
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 1.4911em"
+                                                  ><span style="top: -2.314em"
+                                                    ><span class="pstrut" style="height: 3em"></span
+                                                    ><span class="mord"
+                                                      ><span class="mord">1</span
+                                                      ><span
+                                                        class="mspace"
+                                                        style="margin-right: 0.2222em"
+                                                      ></span
+                                                      ><span class="mbin">−</span
+                                                      ><span
+                                                        class="mspace"
+                                                        style="margin-right: 0.2222em"
+                                                      ></span
+                                                      ><span
+                                                        class="mord mathnormal"
+                                                        style="margin-right: 0.02778em"
+                                                        >r</span
+                                                      ></span
+                                                    ></span
+                                                  ><span style="top: -3.23em"
+                                                    ><span class="pstrut" style="height: 3em"></span
+                                                    ><span
+                                                      class="frac-line"
+                                                      style="border-bottom-width: 0.04em"
+                                                    ></span></span
+                                                  ><span style="top: -3.677em"
+                                                    ><span class="pstrut" style="height: 3em"></span
+                                                    ><span class="mord"
+                                                      ><span class="mord">1</span
+                                                      ><span
+                                                        class="mspace"
+                                                        style="margin-right: 0.2222em"
+                                                      ></span
+                                                      ><span class="mbin">−</span
+                                                      ><span
+                                                        class="mspace"
+                                                        style="margin-right: 0.2222em"
+                                                      ></span
+                                                      ><span class="mord"
+                                                        ><span
+                                                          class="mord mathnormal"
+                                                          style="margin-right: 0.02778em"
+                                                          >r</span
+                                                        ><span class="msupsub"
+                                                          ><span class="vlist-t"
+                                                            ><span class="vlist-r"
+                                                              ><span
+                                                                class="vlist"
+                                                                style="height: 0.8141em"
+                                                                ><span
+                                                                  style="
+                                                                    top: -3.063em;
+                                                                    margin-right: 0.05em;
+                                                                  "
+                                                                  ><span
+                                                                    class="pstrut"
+                                                                    style="height: 2.7em"
+                                                                  ></span
+                                                                  ><span
+                                                                    class="sizing reset-size6 size3 mtight"
+                                                                    ><span class="mord mtight"
+                                                                      ><span
+                                                                        class="mspace mtight"
+                                                                        style="
+                                                                          margin-right: 0.1952em;
+                                                                        "
+                                                                      ></span
+                                                                      ><span
+                                                                        class="mord mathnormal mtight"
+                                                                        >n</span
+                                                                      ><span class="mbin mtight"
+                                                                        >+</span
+                                                                      ><span class="mord mtight"
+                                                                        >1</span
+                                                                      ></span
+                                                                    ></span
+                                                                  ></span
+                                                                ></span
+                                                              ></span
+                                                            ></span
+                                                          ></span
+                                                        ></span
+                                                      ></span
+                                                    ></span
+                                                  ></span
+                                                ><span class="vlist-s">​</span></span
+                                              ><span class="vlist-r"
+                                                ><span class="vlist" style="height: 0.7693em"
+                                                  ><span></span></span></span></span></span
+                                          ><span
+                                            class="mclose nulldelimiter"
+                                          ></span></span></span></span
+                                  ></span>
+                                </p>
+                              </li>
+                            </ul>
+                            <p
+                              data-start="545"
+                              data-end="581"
+                              data-is-last-node=""
+                              data-is-only-node=""
+                            >
+                              必要であれば、特定分野（物理・機械学習・暗号など）の数式も表示できます。
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="z-0 flex min-h-[46px] justify-start">
+                      <div
+                        class="touch:-me-2 touch:-ms-3.5 -ms-2.5 -me-1 flex flex-wrap items-center gap-y-4 p-1 select-none touch:w-[calc(100%+--spacing(3.5))] -mt-1 w-[calc(100%+--spacing(2.5))] duration-[1.5s] focus-within:transition-none hover:transition-none touch:pointer-events-auto pointer-events-none [mask-image:linear-gradient(to_right,black_33%,transparent_66%)] [mask-size:300%_100%] [mask-position:100%_0%] motion-safe:transition-[mask-position] group-hover/turn-messages:pointer-events-auto group-hover/turn-messages:[mask-position:0_0] group-focus-within/turn-messages:pointer-events-auto group-focus-within/turn-messages:[mask-position:0_0] has-data-[state=open]:pointer-events-auto has-data-[state=open]:[mask-position:0_0]"
+                        style="mask-position: 0% 0%"
+                      >
+                        <button
+                          class="text-token-text-secondary hover:bg-token-bg-secondary rounded-lg"
+                          aria-label="Copy"
+                          aria-pressed="false"
+                          data-testid="copy-turn-action-button"
+                          data-state="closed"
+                        >
+                          <span class="flex items-center justify-center touch:w-10 h-8 w-8"
+                            ><svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="20"
+                              height="20"
+                              aria-hidden="true"
+                              class="icon"
+                            >
+                              <use
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#ce3544"
+                                fill="currentColor"
+                              ></use></svg
+                          ></span>
+                        </button>
+                        <div data-quillbot-humanize-button="true" style="display: inline-flex">
+                          <button
+                            class="text-token-text-secondary hover:bg-token-bg-secondary rounded-lg"
+                            aria-label="Humanize with QuillBot"
+                            aria-pressed="false"
+                            data-testid="quillbot-humanize-button"
+                            data-state="closed"
+                            data-test-id=""
+                            type="button"
+                          >
+                            <span class="flex items-center justify-center touch:w-10 h-8 w-8">
+                              <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  d="M15 18.25C15 18.6642 14.6642 19 14.25 19C13.8358 19 13.5 18.6642 13.5 18.25V17.5C13.5 16.9588 13.959 16.5154 14.5 16.5C15.161 16.4817 16.5 16.5 16.5 16.5V14.5C16.5 13.9477 16.9034 13.5 17.4557 13.5H18.4974C18.4134 13.1719 18.2181 12.7905 18.0223 12.4082C17.7615 11.8988 17.5 11.388 17.5 11C17.5 8 15.4817 5.5 12 5.5C8.3559 5.5 6.5 8.02266 6.5 10.4286C6.5 11.5271 6.91592 12.1868 7.56539 13.0244C7.62766 13.1047 7.69449 13.1889 7.76457 13.2772C8.39544 14.0719 9.28975 15.1984 9.48879 16.8169C9.55427 17.3494 9.55102 17.9419 9.53754 18.3599C9.5259 18.721 9.22468 19 8.86348 19H8.75224C8.34783 19 8.02892 18.6532 8.0402 18.2489C8.04243 18.1691 8.04409 18.0857 8.04489 18C8.04794 17.6722 8.0384 17.3122 8 17C7.85516 15.8222 7.22715 15.0229 6.58288 14.2029C5.80333 13.2108 5 12.1884 5 10.4286C5 7.21429 7.50757 4 12 4C16.1624 4 19 7.5 19 11C19 11.1861 19.2216 11.751 19.4561 12.3489C19.7198 13.0212 20 13.7354 20 14C20 14.5 19.6844 15 19 15H18V16.5C18 17.5714 17.5 18 16.5 18C15.746 17.9896 15 18 15 18V18.25Z"
+                                  fill="currentColor"
+                                ></path>
+                                <path
+                                  fillrule="evenodd"
+                                  cliprule="evenodd"
+                                  d="M9.5 11C9.65633 11 9.80708 10.9761 9.94878 10.9317L11.2514 12.6685C11.0926 12.9065 11 13.1924 11 13.5C11 14.3284 11.6716 15 12.5 15C13.3284 15 14 14.3284 14 13.5C14 13.0955 13.8399 12.7285 13.5797 12.4587L14.3147 10.9887C14.3754 10.9961 14.4373 11 14.5 11C15.3284 11 16 10.3284 16 9.5C16 8.67157 15.3284 8 14.5 8C13.8469 8 13.2913 8.4174 13.0854 9H10.9146C10.7087 8.4174 10.1531 8 9.5 8C8.67157 8 8 8.67157 8 9.5C8 10.3284 8.67157 11 9.5 11ZM9.5 10C9.77614 10 10 9.77614 10 9.5C10 9.22386 9.77614 9 9.5 9C9.22386 9 9 9.22386 9 9.5C9 9.77614 9.22386 10 9.5 10ZM12.0512 12.0683L10.7486 10.3315C10.8169 10.2292 10.8729 10.118 10.9146 10H13.0854C13.1576 10.2044 13.2729 10.3885 13.4203 10.5413L12.6853 12.0113C12.6246 12.0039 12.5627 12 12.5 12C12.3437 12 12.1929 12.0239 12.0512 12.0683ZM14.5 10C14.7761 10 15 9.77614 15 9.5C15 9.22386 14.7761 9 14.5 9C14.2239 9 14 9.22386 14 9.5C14 9.77614 14.2239 10 14.5 10ZM13 13.5C13 13.7761 12.7761 14 12.5 14C12.2239 14 12 13.7761 12 13.5C12 13.2239 12.2239 13 12.5 13C12.7761 13 13 13.2239 13 13.5Z"
+                                  fill="currentColor"
+                                ></path>
+                              </svg>
+                            </span>
+                          </button>
+                        </div>
+                        <button
+                          class="text-token-text-secondary hover:bg-token-bg-secondary rounded-lg"
+                          aria-label="Good response"
+                          aria-pressed="false"
+                          data-testid="good-response-turn-action-button"
+                          data-state="closed"
+                        >
+                          <span class="flex items-center justify-center touch:w-10 h-8 w-8"
+                            ><svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="20"
+                              height="20"
+                              aria-hidden="true"
+                              class="icon"
+                            >
+                              <use
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#51753c"
+                                fill="currentColor"
+                              ></use></svg
+                          ></span></button
+                        ><button
+                          class="text-token-text-secondary hover:bg-token-bg-secondary rounded-lg"
+                          aria-label="Bad response"
+                          aria-pressed="false"
+                          data-testid="bad-response-turn-action-button"
+                          data-state="closed"
+                        >
+                          <span class="flex items-center justify-center touch:w-10 h-8 w-8"
+                            ><svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="20"
+                              height="20"
+                              aria-hidden="true"
+                              class="icon"
+                            >
+                              <use
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#2126ae"
+                                fill="currentColor"
+                              ></use></svg
+                          ></span></button
+                        ><button
+                          class="text-token-text-secondary hover:bg-token-bg-secondary rounded-lg"
+                          aria-label="Share"
+                          aria-pressed="false"
+                          data-state="closed"
+                        >
+                          <span class="flex items-center justify-center touch:w-10 h-8 w-8"
+                            ><svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="20"
+                              height="20"
+                              aria-hidden="true"
+                              class="icon"
+                            >
+                              <use
+                                href="/cdn/assets/sprites-core-m5oiq452.svg#630ca2"
+                                fill="currentColor"
+                              ></use></svg
+                          ></span></button
+                        ><span class="" data-state="closed"
+                          ><button
+                            type="button"
+                            id="radix-_r_bu_"
+                            aria-haspopup="menu"
+                            aria-expanded="false"
+                            data-state="closed"
+                            class="cursor-pointer text-token-text-secondary hover:bg-token-bg-secondary touch:px-2.5 h-[30px] rounded-md px-1.5"
+                            aria-label="Switch model"
+                          >
+                            <div class="flex items-center">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                aria-hidden="true"
+                                class="icon"
+                              >
+                                <use
+                                  href="/cdn/assets/sprites-core-m5oiq452.svg#ec66f0"
+                                  fill="currentColor"
+                                ></use>
+                              </svg>
+                            </div></button></span
+                        ><button
+                          class="text-token-text-secondary hover:bg-token-bg-secondary touch:w-10 flex h-8 w-8 items-center justify-center rounded-lg"
+                          aria-label="More actions"
+                          type="button"
+                          id="radix-_r_c1_"
+                          aria-haspopup="menu"
+                          aria-expanded="false"
+                          data-state="closed"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            aria-hidden="true"
+                            class="icon"
+                          >
+                            <use
+                              href="/cdn/assets/sprites-core-m5oiq452.svg#f6d0e2"
+                              fill="currentColor"
+                            ></use>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="mt-3 w-full empty:hidden"><div class="text-center"></div></div>
                   </div>
                 </div>
               </article>
@@ -2631,26 +4165,7 @@
             id="thread-bottom-container"
             class="sticky bottom-0 group/thread-bottom-container relative isolate z-10 w-full basis-auto has-data-has-thread-error:pt-2 has-data-has-thread-error:[box-shadow:var(--sharp-edge-bottom-shadow)] md:border-transparent md:pt-0 dark:border-white/20 md:dark:border-transparent print:hidden content-fade single-line flex flex-col"
           >
-            <div class="relative h-0">
-              <div style="opacity: 1">
-                <button
-                  class="cursor-pointer absolute z-30 rounded-full bg-clip-padding border text-token-text-secondary border-token-border-default end-1/2 translate-x-1/2 bg-token-main-surface-primary w-8 h-8 flex items-center justify-center print:hidden bottom-[calc(100%+6*var(--spacing))]"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    aria-hidden="true"
-                    class="icon text-token-text-primary"
-                  >
-                    <use
-                      href="/cdn/assets/sprites-core-mr1omm3f.svg#ac89a7"
-                      fill="currentColor"
-                    ></use>
-                  </svg>
-                </button>
-              </div>
-            </div>
+            <div class="relative h-0"></div>
             <div id="thread-bottom">
               <div
                 class="text-base mx-auto [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"
@@ -2662,17 +4177,6 @@
                   <div
                     class="pointer-events-auto relative z-1 flex h-(--composer-container-height,100%) max-w-full flex-(--composer-container-flex,1) flex-col"
                   >
-                    <button
-                      type="button"
-                      name="context-connector-pasted-link-popover-trigger"
-                      class="invisible absolute self-center"
-                      aria-hidden="true"
-                      tabindex="-1"
-                      aria-haspopup="dialog"
-                      aria-expanded="false"
-                      aria-controls="radix-_r_h8_"
-                      data-state="closed"
-                    ></button>
                     <div class="absolute start-0 end-0 bottom-full z-20"></div>
                     <form
                       class="group/composer w-full"
@@ -2700,7 +4204,7 @@
                       </div>
                       <div class="">
                         <div
-                          class="bg-token-bg-primary corner-superellipse/1.1 cursor-text overflow-clip bg-clip-padding p-2.5 contain-inline-size motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-in-out dark:bg-[#303030] grid grid-cols-[auto_1fr_auto] [grid-template-areas:'header_header_header'_'leading_primary_trailing'_'._footer_.'] group-data-expanded/composer:[grid-template-areas:'header_header_header'_'primary_primary_primary'_'leading_footer_trailing'] shadow-short"
+                          class="bg-token-bg-primary corner-superellipse/1.1 cursor-text overflow-clip bg-clip-padding p-2.5 contain-inline-size motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-in-out dark:bg-[#303030] grid grid-cols-[auto_1fr_auto] [grid-template-areas:'header_header_header'_'leading_primary_trailing'_'._footer_.'] group-data-expanded/composer:[grid-template-areas:'header_header_header'_'primary_primary_primary'_'leading_footer_trailing'] shadow-short-high-contrast"
                           data-composer-surface="true"
                           style="
                             border-radius: 28px;
@@ -2724,10 +4228,10 @@
                                     spellcheck="false"
                                     class="qb-highlighter__wrapper"
                                     style="
-                                      width: 586px !important;
+                                      width: 580px !important;
                                       height: 40px !important;
                                       transform: matrix(1, 0, 0, 1, 0, -0.5) !important;
-                                      transform-origin: 293px 20px !important;
+                                      transform-origin: 290px 20px !important;
                                       zoom: 1 !important;
                                       margin-top: 16px !important;
                                     "
@@ -2736,7 +4240,7 @@
                                       style="
                                         top: 0px !important;
                                         left: 0px !important;
-                                        width: 586px !important;
+                                        width: 580px !important;
                                         height: 40px !important;
                                       "
                                     ></qb-div></qb-div></qb-highlighter
@@ -2970,6 +4474,7 @@
                                     text-emphasis: inherit;
                                     text-emphasis-position: inherit;
                                     text-indent: inherit;
+                                    text-justify: inherit;
                                     text-overflow: inherit;
                                     text-shadow: inherit;
                                     text-transform: inherit;
@@ -3047,7 +4552,7 @@
                                 class="ProseMirror"
                                 id="prompt-textarea"
                                 data-virtualkeyboard="true"
-                                data-qb-tmp-id="lt-991774"
+                                data-qb-tmp-id="lt-452349"
                                 spellcheck="false"
                                 data-gramm="false"
                               >
@@ -3080,7 +4585,7 @@
                                   class="icon"
                                 >
                                   <use
-                                    href="/cdn/assets/sprites-core-mr1omm3f.svg#6be74c"
+                                    href="/cdn/assets/sprites-core-m5oiq452.svg#6be74c"
                                     fill="currentColor"
                                   ></use>
                                 </svg></button
@@ -3091,86 +4596,85 @@
                             style="transform: none; transform-origin: 50% 50% 0px"
                           >
                             <div class="ms-auto flex items-center gap-1.5">
-                              <span class="inline-flex"
-                                ><div data-quillbot-improve-prompt-button="true">
-                                  <div data-quillbot-improve-prompt-button="true">
-                                    <span class="" data-state="closed"
-                                      ><button
-                                        aria-label="Improve prompt with QuillBot"
-                                        type="button"
-                                        class="composer-btn"
-                                        style="
-                                          filter: grayscale(100%);
-                                          opacity: 0.5;
-                                          transition: all 0.3s ease-in-out;
-                                        "
-                                      >
-                                        <span style="display: inline-block; position: relative"
+                              <div data-quillbot-improve-prompt-button="true">
+                                <div data-quillbot-improve-prompt-button="true">
+                                  <span class="" data-state="closed"
+                                    ><button
+                                      aria-label="Improve prompt with QuillBot"
+                                      type="button"
+                                      class="composer-btn"
+                                      style="
+                                        filter: grayscale(100%);
+                                        opacity: 0.5;
+                                        transition: all 0.3s ease-in-out;
+                                      "
+                                    >
+                                      <span style="display: inline-block; position: relative"
+                                        ><svg
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          width="20"
+                                          height="20"
+                                          viewBox="0 0 16 16"
+                                          fill="currentColor"
+                                          class="icon"
+                                        >
+                                          <path
+                                            fill-rule="evenodd"
+                                            clip-rule="evenodd"
+                                            d="M12.4282 4.85417L12.0283 3.9682L11.1419 3.56852C10.9419 3.47526 10.9419 3.20214 11.1419 3.10888L12.0283 2.70919L12.4282 1.81657C12.5215 1.61673 12.7948 1.61673 12.8881 1.81657L13.288 2.70254L14.1811 3.10222C14.381 3.19548 14.381 3.46859 14.1811 3.56185L13.2946 3.96154L12.8947 4.85417C12.8014 5.05401 12.5215 5.05401 12.4282 4.85417ZM4.0304 3.9682L4.43029 4.85417C4.5236 5.05401 4.80353 5.05401 4.89684 4.85417L5.29673 3.96154L6.18316 3.56185C6.38311 3.46859 6.38311 3.19548 6.18316 3.10222L5.29006 2.70254L4.89017 1.81657C4.79686 1.61673 4.5236 1.61673 4.43029 1.81657L4.0304 2.70919L3.14396 3.10888C2.94402 3.20214 2.94402 3.47526 3.14396 3.56852L4.0304 3.9682ZM1.66435 11.782V13.6672C1.66435 13.8537 1.731 14.0136 1.85763 14.1402C1.98427 14.2667 2.14423 14.3334 2.33084 14.3334H4.21035C4.29699 14.3334 4.38364 14.32 4.47028 14.2801C4.55026 14.2468 4.63024 14.2001 4.69689 14.1335L10.6153 8.21818C10.7486 8.08495 10.8486 7.9384 10.9086 7.77852C10.9686 7.61865 11.0019 7.45212 11.0019 7.28559C11.0019 7.10573 10.9686 6.93253 10.9086 6.766C10.8486 6.59946 10.7486 6.45291 10.6153 6.333L9.69557 5.40041C9.56227 5.26718 9.40898 5.16726 9.24236 5.10065C9.07574 5.03403 8.90245 5.00072 8.72916 5.00072C8.55587 5.00072 8.38258 5.03403 8.22263 5.10065C8.06267 5.16726 7.92271 5.26052 7.79607 5.38042L1.8643 11.2957C1.79765 11.3624 1.751 11.4356 1.71767 11.5222C1.68435 11.6022 1.66435 11.6888 1.66435 11.782ZM3.93042 13.0011H2.99733V12.0685L7.51615 7.53871L8.46923 8.4913L3.93709 13.0011H3.93042ZM12.0283 11.3024L12.4282 12.1884C12.5215 12.3882 12.8014 12.3882 12.8947 12.1884L13.2946 11.2957L14.1811 10.8961C14.381 10.8028 14.381 10.5297 14.1811 10.4364L13.288 10.0367L12.8881 9.15078C12.7948 8.95094 12.5215 8.95094 12.4282 9.15078L12.0283 10.0434L11.1419 10.4431C10.9419 10.5363 10.9419 10.8095 11.1419 10.9027L12.0283 11.3024Z"
+                                            fill="currentColor"
+                                          ></path></svg
+                                        ><span
+                                          style="
+                                            position: absolute;
+                                            bottom: -4px;
+                                            right: -4px;
+                                            display: inline-flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            width: 14px;
+                                            height: 14px;
+                                            border-radius: 50%;
+                                            background-color: #8590a2;
+                                          "
                                           ><svg
-                                            xmlns="http://www.w3.org/2000/svg"
                                             width="20"
                                             height="20"
-                                            viewBox="0 0 16 16"
-                                            fill="currentColor"
-                                            class="icon"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
                                           >
-                                            <path
-                                              fill-rule="evenodd"
-                                              clip-rule="evenodd"
-                                              d="M12.4282 4.85417L12.0283 3.9682L11.1419 3.56852C10.9419 3.47526 10.9419 3.20214 11.1419 3.10888L12.0283 2.70919L12.4282 1.81657C12.5215 1.61673 12.7948 1.61673 12.8881 1.81657L13.288 2.70254L14.1811 3.10222C14.381 3.19548 14.381 3.46859 14.1811 3.56185L13.2946 3.96154L12.8947 4.85417C12.8014 5.05401 12.5215 5.05401 12.4282 4.85417ZM4.0304 3.9682L4.43029 4.85417C4.5236 5.05401 4.80353 5.05401 4.89684 4.85417L5.29673 3.96154L6.18316 3.56185C6.38311 3.46859 6.38311 3.19548 6.18316 3.10222L5.29006 2.70254L4.89017 1.81657C4.79686 1.61673 4.5236 1.61673 4.43029 1.81657L4.0304 2.70919L3.14396 3.10888C2.94402 3.20214 2.94402 3.47526 3.14396 3.56852L4.0304 3.9682ZM1.66435 11.782V13.6672C1.66435 13.8537 1.731 14.0136 1.85763 14.1402C1.98427 14.2667 2.14423 14.3334 2.33084 14.3334H4.21035C4.29699 14.3334 4.38364 14.32 4.47028 14.2801C4.55026 14.2468 4.63024 14.2001 4.69689 14.1335L10.6153 8.21818C10.7486 8.08495 10.8486 7.9384 10.9086 7.77852C10.9686 7.61865 11.0019 7.45212 11.0019 7.28559C11.0019 7.10573 10.9686 6.93253 10.9086 6.766C10.8486 6.59946 10.7486 6.45291 10.6153 6.333L9.69557 5.40041C9.56227 5.26718 9.40898 5.16726 9.24236 5.10065C9.07574 5.03403 8.90245 5.00072 8.72916 5.00072C8.55587 5.00072 8.38258 5.03403 8.22263 5.10065C8.06267 5.16726 7.92271 5.26052 7.79607 5.38042L1.8643 11.2957C1.79765 11.3624 1.751 11.4356 1.71767 11.5222C1.68435 11.6022 1.66435 11.6888 1.66435 11.782ZM3.93042 13.0011H2.99733V12.0685L7.51615 7.53871L8.46923 8.4913L3.93709 13.0011H3.93042ZM12.0283 11.3024L12.4282 12.1884C12.5215 12.3882 12.8014 12.3882 12.8947 12.1884L13.2946 11.2957L14.1811 10.8961C14.381 10.8028 14.381 10.5297 14.1811 10.4364L13.288 10.0367L12.8881 9.15078C12.7948 8.95094 12.5215 8.95094 12.4282 9.15078L12.0283 10.0434L11.1419 10.4431C10.9419 10.5363 10.9419 10.8095 11.1419 10.9027L12.0283 11.3024Z"
-                                              fill="currentColor"
-                                            ></path></svg
-                                          ><span
-                                            style="
-                                              position: absolute;
-                                              bottom: -4px;
-                                              right: -4px;
-                                              display: inline-flex;
-                                              align-items: center;
-                                              justify-content: center;
-                                              width: 14px;
-                                              height: 14px;
-                                              border-radius: 50%;
-                                              background-color: #8590a2;
-                                            "
-                                            ><svg
-                                              width="20"
-                                              height="20"
-                                              viewBox="0 0 24 24"
-                                              fill="none"
-                                              xmlns="http://www.w3.org/2000/svg"
-                                            >
-                                              <g transform="translate(3.5, 4)">
-                                                <path
-                                                  clip-rule="evenodd"
-                                                  d="M9.69605 1.78864C9.18767 2.33711 8.33515 3.76792 8.00665 4.94436C7.86587 4.84897 7.70162 4.59461 7.81112 4.10177C7.81112 4.09382 7.90497 3.56919 8.14743 2.99687C8.34376 2.52923 8.44864 2.40396 8.48852 2.35633C8.49948 2.34324 8.50553 2.33602 8.50721 2.32916L8.52286 2.31327H8.54632L8.73403 2.47224C8.74967 2.48019 8.7575 2.45635 8.7575 2.45635L8.62453 2.11454V2.09864C8.74967 1.90787 9.0156 1.55812 9.47706 1.30375C10.0245 1.00169 10.5408 0.993745 10.7676 1.00169H10.7754V1.01759C10.6894 1.43888 10.572 1.78864 10.4704 2.05095C10.4666 2.05949 10.4613 2.072 10.4545 2.08816C10.404 2.20736 10.2693 2.52539 10.0558 2.91738C9.9598 3.09305 9.86378 3.24209 9.78491 3.36451C9.76742 3.39165 9.75077 3.41749 9.73516 3.44201H9.72734L9.29717 3.48176C9.28934 3.48971 9.29717 3.51355 9.29717 3.51355L9.52398 3.63279V3.65663L9.50834 3.68843C9.49636 3.69756 9.46891 3.75009 9.42752 3.82929C9.25267 4.16384 8.8291 4.97429 8.27258 5H14.9423C15.1258 5 15.2754 5.14786 15.2754 5.3291V12.7292C15.2754 12.9105 15.1258 13.0584 14.9423 13.0584H2.60848C2.42504 13.0584 2.27539 12.9105 2.27539 12.7292V5.3291C2.27539 5.14547 2.42262 5 2.60848 5H8.1709C8.45247 3.83946 9.06253 2.73456 9.77426 1.83633L9.80555 1.82043C9.80495 1.81859 9.80434 1.81666 9.80372 1.81466C9.79624 1.79069 9.78568 1.75684 9.73516 1.75684C9.72734 1.75684 9.69605 1.77274 9.69605 1.77274V1.78864ZM5.27563 10.137C4.68186 10.137 4.20153 9.66235 4.20153 9.07565C4.20153 8.48905 4.68186 8.01443 5.27563 8.01443C5.86941 8.01443 6.34973 8.48905 6.34973 9.07565C6.34973 9.65999 5.86941 10.137 5.27563 10.137ZM12.2013 10.137C11.6075 10.137 11.1272 9.66235 11.1272 9.07565C11.1272 8.48905 11.6075 8.01443 12.2013 8.01443C12.7951 8.01443 13.2754 8.48905 13.2754 9.07565C13.2754 9.65999 12.7951 10.137 12.2013 10.137ZM10.862 13.506H6.3078V14.2348H10.862V13.506Z"
-                                                  fill="white"
-                                                  fill-rule="evenodd"
-                                                ></path>
-                                              </g></svg></span
-                                        ></span></button
-                                    ></span>
-                                  </div>
+                                            <g transform="translate(3.5, 4)">
+                                              <path
+                                                clip-rule="evenodd"
+                                                d="M9.69605 1.78864C9.18767 2.33711 8.33515 3.76792 8.00665 4.94436C7.86587 4.84897 7.70162 4.59461 7.81112 4.10177C7.81112 4.09382 7.90497 3.56919 8.14743 2.99687C8.34376 2.52923 8.44864 2.40396 8.48852 2.35633C8.49948 2.34324 8.50553 2.33602 8.50721 2.32916L8.52286 2.31327H8.54632L8.73403 2.47224C8.74967 2.48019 8.7575 2.45635 8.7575 2.45635L8.62453 2.11454V2.09864C8.74967 1.90787 9.0156 1.55812 9.47706 1.30375C10.0245 1.00169 10.5408 0.993745 10.7676 1.00169H10.7754V1.01759C10.6894 1.43888 10.572 1.78864 10.4704 2.05095C10.4666 2.05949 10.4613 2.072 10.4545 2.08816C10.404 2.20736 10.2693 2.52539 10.0558 2.91738C9.9598 3.09305 9.86378 3.24209 9.78491 3.36451C9.76742 3.39165 9.75077 3.41749 9.73516 3.44201H9.72734L9.29717 3.48176C9.28934 3.48971 9.29717 3.51355 9.29717 3.51355L9.52398 3.63279V3.65663L9.50834 3.68843C9.49636 3.69756 9.46891 3.75009 9.42752 3.82929C9.25267 4.16384 8.8291 4.97429 8.27258 5H14.9423C15.1258 5 15.2754 5.14786 15.2754 5.3291V12.7292C15.2754 12.9105 15.1258 13.0584 14.9423 13.0584H2.60848C2.42504 13.0584 2.27539 12.9105 2.27539 12.7292V5.3291C2.27539 5.14547 2.42262 5 2.60848 5H8.1709C8.45247 3.83946 9.06253 2.73456 9.77426 1.83633L9.80555 1.82043C9.80495 1.81859 9.80434 1.81666 9.80372 1.81466C9.79624 1.79069 9.78568 1.75684 9.73516 1.75684C9.72734 1.75684 9.69605 1.77274 9.69605 1.77274V1.78864ZM5.27563 10.137C4.68186 10.137 4.20153 9.66235 4.20153 9.07565C4.20153 8.48905 4.68186 8.01443 5.27563 8.01443C5.86941 8.01443 6.34973 8.48905 6.34973 9.07565C6.34973 9.65999 5.86941 10.137 5.27563 10.137ZM12.2013 10.137C11.6075 10.137 11.1272 9.66235 11.1272 9.07565C11.1272 8.48905 11.6075 8.01443 12.2013 8.01443C12.7951 8.01443 13.2754 8.48905 13.2754 9.07565C13.2754 9.65999 12.7951 10.137 12.2013 10.137ZM10.862 13.506H6.3078V14.2348H10.862V13.506Z"
+                                                fill="white"
+                                                fill-rule="evenodd"
+                                              ></path>
+                                            </g></svg></span
+                                      ></span></button
+                                  ></span>
                                 </div>
-                                <span class="" data-state="closed"
-                                  ><button
-                                    aria-label="Dictate button"
-                                    type="button"
-                                    class="composer-btn"
+                              </div>
+                              <span class="" data-state="closed"
+                                ><button
+                                  aria-label="Dictate button"
+                                  type="button"
+                                  class="composer-btn"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="20"
+                                    height="20"
+                                    aria-label=""
+                                    class="icon"
+                                    font-size="inherit"
                                   >
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      width="20"
-                                      height="20"
-                                      aria-label=""
-                                      class="icon"
-                                      font-size="inherit"
-                                    >
-                                      <use
-                                        href="/cdn/assets/sprites-core-mr1omm3f.svg#29f921"
-                                        fill="currentColor"
-                                      ></use>
-                                    </svg></button></span
+                                    <use
+                                      href="/cdn/assets/sprites-core-m5oiq452.svg#29f921"
+                                      fill="currentColor"
+                                    ></use>
+                                  </svg></button
                               ></span>
                               <div>
                                 <span class="" data-state="closed"
@@ -3192,7 +4696,7 @@
                                           class="h-5 w-5"
                                         >
                                           <use
-                                            href="/cdn/assets/sprites-core-mr1omm3f.svg#f8aa74"
+                                            href="/cdn/assets/sprites-core-m5oiq452.svg#f8aa74"
                                             fill="currentColor"
                                           ></use>
                                         </svg>
@@ -3207,7 +4711,7 @@
                     </form>
                   </div>
                   <input
-                    class="sr-only"
+                    class="sr-only select-none"
                     tabindex="-1"
                     aria-hidden="true"
                     id="upload-photos"
@@ -3215,7 +4719,7 @@
                     multiple=""
                     type="file"
                   /><input
-                    class="sr-only"
+                    class="sr-only select-none"
                     tabindex="-1"
                     aria-hidden="true"
                     id="upload-camera"
@@ -3231,7 +4735,9 @@
               class="-mt-4 text-token-text-secondary relative w-full overflow-hidden text-center text-xs [view-transition-name:var(--vt-disclaimer)] md:px-[60px]"
               style="height: auto; opacity: 1; transform: none"
             >
-              <div class="flex min-h-8 w-full items-center justify-center p-2">
+              <div
+                class="select-none active:select-auto data-has-range-start:select-auto flex min-h-8 w-full items-center justify-center p-2"
+              >
                 <div class="pointer-events-auto">
                   <div>
                     ChatGPT can make mistakes. Check important info. See

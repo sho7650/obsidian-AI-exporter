@@ -11,7 +11,7 @@ modified: "2025-01-01T00:00:00.000Z"
 tags:
   - ai-conversation
   - gemini
-message_count: 4
+message_count: 6
 ---
 
 > [!QUESTION] User
@@ -25,7 +25,50 @@ message_count: 4
 > ありがとうございます。次は「いいえ」と回答してください。
 
 > [!NOTE] Gemini
-> いいえ"
+> いいえ
+
+> [!QUESTION] User
+> いくつか数式をLaTeX形式で表示して。
+
+> [!NOTE] Gemini
+> 承知いたしました。いくつか代表的な数式を LaTeX 形式で表示します。
+> 
+> ## 物理学・数学の主要な数式
+> 
+> -   **アインシュタインの質能等価性:**
+>     
+>     $$
+>     E = mc^2
+>     $$
+>     
+> -   **二次方程式の解の公式:**
+>     
+>     $$
+>     x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}
+>     $$
+>     
+> -   **オイラーの等式:**
+>     
+>     $$
+>     e^{i\\pi} + 1 = 0
+>     $$
+>     
+> -   **フーリエ変換:**
+>     
+>     $$
+>     \\hat{f}(\\xi) = \\int_{-\\infty}^{\\infty} f(x) e^{-2\\pi i x \\xi} dx
+>     $$
+>     
+> -   **シュレーディンガー方程式（時間依存）:**
+>     
+>     $$
+>     i\\hbar \\frac{\\partial}{\\partial t} \\Psi(\\mathbf{r}, t) = \\hat{H} \\Psi(\\mathbf{r}, t)
+>     $$
+>     
+> 
+> * * *
+> 
+> 他にご希望の特定の分野（統計学、行列、微積分など）の数式はありますか？"
 `;
 
 exports[`Gemini E2E Extraction > Deep Research Report > should generate Deep Research markdown with footnotes 1`] = `
@@ -226,7 +269,7 @@ AI 生成の HTML における品質評価（DEFT 等のフレームワークに
 
 | 引用コンポーネント | HTML 要素 / 属性 | 技術的役割 |
 | --- | --- | --- |
-| インライン参照 | <sup><a href="...">[n]</a></sup> | 文中での参照位置の明示。 |
+| インライン参照 | \\<sup\\>\\<a href="..."\\>[n]\\</a\\>\\</sup\\> | 文中での参照位置の明示。 |
 | ソース・ポップオーバー | div.tooltip または section | ホバー時に表示される詳細情報のコンテナ。 |
 | 参考文献リスト | ol, li | レポート末尾に自動生成される出典一覧。 |
 | 信頼性バッジ | span.badge | ソースのドメイン権威性や HTTPS 対応状況の可視化 REF。 |

@@ -40,6 +40,57 @@ function escapeMarkdownLink(text: string): string {
 }
 
 /**
+ * Escape angle brackets in a single line of Markdown text.
+ * Preserves blockquote markers and inline code segments.
+ */
+function escapeAngleBracketsInLine(line: string): string {
+  // 1. Extract blockquote prefix (preserve as-is)
+  const bqMatch = line.match(/^(\s*>\s*)+/);
+  const prefix = bqMatch ? bqMatch[0] : '';
+  const rest = line.slice(prefix.length);
+
+  // 2. Split by inline code segments (capture group → odd indices are code)
+  const parts = rest.split(/(`[^`]+`)/);
+
+  // 3. Escape < and > only in non-code segments
+  const escaped = parts
+    .map((part, i) => {
+      if (i % 2 === 1) return part; // inline code — preserve
+      return part.replace(/</g, '\\<').replace(/>/g, '\\>');
+    })
+    .join('');
+
+  return prefix + escaped;
+}
+
+/**
+ * Escape angle brackets in Markdown text for safe Obsidian rendering.
+ * Preserves brackets inside fenced code blocks, inline code, and
+ * blockquote markers.
+ *
+ * CommonMark §2.4: \< and \> are valid backslash escapes.
+ */
+export function escapeAngleBrackets(text: string): string {
+  const lines = text.split('\n');
+  let inFencedBlock = false;
+
+  const result = lines.map(line => {
+    // Detect fenced code delimiter (may be inside a blockquote)
+    const stripped = line.replace(/^(\s*>\s*)*/, '');
+    if (/^`{3,}/.test(stripped)) {
+      inFencedBlock = !inFencedBlock;
+      return line;
+    }
+
+    if (inFencedBlock) return line;
+
+    return escapeAngleBracketsInLine(line);
+  });
+
+  return result.join('\n');
+}
+
+/**
  * Sanitize URL to remove dangerous schemes
  */
 function sanitizeUrl(url: string): string {
@@ -328,7 +379,7 @@ export function htmlToMarkdown(html: string): string {
   // Clean up HTML before conversion
   const cleaned = html.replace(/<br\s*\/?>/gi, '\n').replace(/&nbsp;/g, ' ');
 
-  return turndown.turndown(cleaned);
+  return escapeAngleBrackets(turndown.turndown(cleaned));
 }
 
 /**
@@ -368,8 +419,9 @@ function formatMessage(
   options: TemplateOptions,
   source: string
 ): string {
-  // Convert HTML to Markdown for assistant messages
-  const markdown = role === 'assistant' ? htmlToMarkdown(content) : content;
+  // Convert HTML to Markdown for assistant messages; escape angle brackets for user messages
+  const markdown =
+    role === 'assistant' ? htmlToMarkdown(content) : escapeAngleBrackets(content);
   const assistantLabel = getAssistantLabel(source);
 
   switch (options.messageFormat) {

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   htmlToMarkdown,
+  escapeAngleBrackets,
   generateFileName,
   generateContentHash,
   conversationToNote,
@@ -158,6 +159,103 @@ describe('htmlToMarkdown', () => {
 
     it('handles plain text', () => {
       expect(htmlToMarkdown('Just text')).toBe('Just text');
+    });
+  });
+
+  describe('angle bracket escaping (REQ-083)', () => {
+    it('escapes angle brackets in plain text HTML', () => {
+      // Turndown decodes &lt; to < — our escaping must catch it
+      const result = htmlToMarkdown('<p>Error in &lt;module&gt;</p>');
+      expect(result).toBe('Error in \\<module\\>');
+    });
+
+    it('does not escape angle brackets inside code blocks', () => {
+      const html = '<pre><code class="language-python">File "test.py", in &lt;module&gt;</code></pre>';
+      const result = htmlToMarkdown(html);
+      expect(result).toContain('<module>');
+      expect(result).not.toContain('\\<module\\>');
+    });
+
+    it('does not escape angle brackets inside inline code', () => {
+      const result = htmlToMarkdown('Use <code>&lt;span&gt;</code> for this');
+      expect(result).toBe('Use `<span>` for this');
+    });
+  });
+});
+
+describe('escapeAngleBrackets', () => {
+  describe('basic escaping', () => {
+    it('escapes bare angle brackets', () => {
+      expect(escapeAngleBrackets('<module>')).toBe('\\<module\\>');
+    });
+
+    it('escapes nested angle brackets', () => {
+      expect(escapeAngleBrackets('<Generic<T>>')).toBe('\\<Generic\\<T\\>\\>');
+    });
+
+    it('escapes multiple angle brackets per line', () => {
+      expect(escapeAngleBrackets('<a> and <b>')).toBe('\\<a\\> and \\<b\\>');
+    });
+
+    it('returns plain text unchanged', () => {
+      expect(escapeAngleBrackets('plain text')).toBe('plain text');
+    });
+
+    it('returns empty string unchanged', () => {
+      expect(escapeAngleBrackets('')).toBe('');
+    });
+  });
+
+  describe('fenced code block preservation', () => {
+    it('preserves angle brackets in fenced code blocks', () => {
+      const input = '```\n<div>test</div>\n```';
+      expect(escapeAngleBrackets(input)).toBe('```\n<div>test</div>\n```');
+    });
+
+    it('preserves angle brackets in fenced code blocks with language', () => {
+      const input = '```typescript\nconst x: Array<string> = [];\n```';
+      expect(escapeAngleBrackets(input)).toBe(input);
+    });
+
+    it('preserves fenced code blocks inside blockquotes', () => {
+      const input = '> ```\n> <code>\n> ```';
+      expect(escapeAngleBrackets(input)).toBe(input);
+    });
+  });
+
+  describe('inline code preservation', () => {
+    it('preserves angle brackets in inline code', () => {
+      expect(escapeAngleBrackets('Use `<span>` for this')).toBe('Use `<span>` for this');
+    });
+
+    it('escapes outside inline code but preserves inside', () => {
+      expect(escapeAngleBrackets('The `<div>` element and <module>')).toBe(
+        'The `<div>` element and \\<module\\>'
+      );
+    });
+  });
+
+  describe('blockquote marker preservation', () => {
+    it('preserves blockquote markers', () => {
+      expect(escapeAngleBrackets('> text with <tag>')).toBe('> text with \\<tag\\>');
+    });
+
+    it('preserves nested blockquote markers', () => {
+      expect(escapeAngleBrackets('> > nested <tag>')).toBe('> > nested \\<tag\\>');
+    });
+  });
+
+  describe('mixed content', () => {
+    it('handles text before and after fenced code block', () => {
+      const input = 'Before <module>\n```\n<div>\n```\nAfter <span>';
+      const expected = 'Before \\<module\\>\n```\n<div>\n```\nAfter \\<span\\>';
+      expect(escapeAngleBrackets(input)).toBe(expected);
+    });
+
+    it('handles inline code mixed with bare angles', () => {
+      const input = '`<a>` then <b> then `<c>`';
+      const expected = '`<a>` then \\<b\\> then `<c>`';
+      expect(escapeAngleBrackets(input)).toBe(expected);
     });
   });
 });
@@ -320,6 +418,52 @@ describe('conversationToNote', () => {
     expect(note.body).toContain('First answer');
     expect(note.body).toContain('Second question');
     expect(note.body).toContain('Second answer');
+  });
+
+  // ========== Angle bracket escaping in conversationToNote (REQ-083) ==========
+  it('escapes angle brackets in assistant messages', () => {
+    const data: ConversationData = {
+      ...mockData,
+      messages: [
+        { id: 'a1', role: 'assistant', content: '<p>Error in &lt;module&gt;</p>', index: 0 },
+      ],
+    };
+    const note = conversationToNote(data, defaultOptions);
+    expect(note.body).toContain('\\<module\\>');
+  });
+
+  it('escapes angle brackets in user messages', () => {
+    const data: ConversationData = {
+      ...mockData,
+      messages: [
+        { id: 'u1', role: 'user', content: 'What is <Generic<T>>?', index: 0 },
+      ],
+    };
+    const note = conversationToNote(data, defaultOptions);
+    expect(note.body).toContain('\\<Generic\\<T\\>\\>');
+  });
+
+  it('does not escape code blocks in assistant messages', () => {
+    const data: ConversationData = {
+      ...mockData,
+      messages: [
+        { id: 'a1', role: 'assistant', content: '<pre><code>&lt;div&gt;test&lt;/div&gt;</code></pre>', index: 0 },
+      ],
+    };
+    const note = conversationToNote(data, defaultOptions);
+    expect(note.body).toContain('<div>');
+    expect(note.body).not.toContain('\\<div\\>');
+  });
+
+  it('does not escape inline code in assistant messages', () => {
+    const data: ConversationData = {
+      ...mockData,
+      messages: [
+        { id: 'a1', role: 'assistant', content: 'Use <code>&lt;span&gt;</code> for this', index: 0 },
+      ],
+    };
+    const note = conversationToNote(data, defaultOptions);
+    expect(note.body).toContain('`<span>`');
   });
 
   // ========== Coverage Gap: getAssistantLabel default (DES-005 3.6) ==========

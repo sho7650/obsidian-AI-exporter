@@ -11,7 +11,7 @@ modified: "2025-01-01T00:00:00.000Z"
 tags:
   - ai-conversation
   - chatgpt
-message_count: 9
+message_count: 11
 ---
 
 > [!QUESTION] User
@@ -94,7 +94,46 @@ message_count: 9
 > 
 > これらの機能により、ChatGPTは**文章生成・翻訳・コード生成・画像生成**など幅広い用途に活用できます[help.openai.com](https://help.openai.com/en/articles/9260256-chatgpt-capabilities-overview#:~:text=,concepts)[help.openai.com](https://help.openai.com/en/articles/9260256-chatgpt-capabilities-overview#:~:text=You%20can%20also%20ask%20ChatGPT,Learn%20more%20about%20image%20generation)。
 > 
-> **参考資料:** OpenAI公式ヘルプセンターおよびGPT-4リサーチレポート[help.openai.com](https://help.openai.com/en/articles/9260256-chatgpt-capabilities-overview#:~:text=,concepts)[openai.com](https://openai.com/index/gpt-4-research/#:~:text=In%20a%20casual%20conversation%2C%20the,5)[help.openai.com](https://help.openai.com/en/articles/9260256-chatgpt-capabilities-overview#:~:text=You%20can%20also%20ask%20ChatGPT,Learn%20more%20about%20image%20generation)[openai.com](https://openai.com/index/gpt-4-research/#:~:text=GPT%E2%80%914%20can%20accept%20a%20prompt,opens%20in%20a%20new%20window)。"
+> **参考資料:** OpenAI公式ヘルプセンターおよびGPT-4リサーチレポート[help.openai.com](https://help.openai.com/en/articles/9260256-chatgpt-capabilities-overview#:~:text=,concepts)[openai.com](https://openai.com/index/gpt-4-research/#:~:text=In%20a%20casual%20conversation%2C%20the,5)[help.openai.com](https://help.openai.com/en/articles/9260256-chatgpt-capabilities-overview#:~:text=You%20can%20also%20ask%20ChatGPT,Learn%20more%20about%20image%20generation)[openai.com](https://openai.com/index/gpt-4-research/#:~:text=GPT%E2%80%914%20can%20accept%20a%20prompt,opens%20in%20a%20new%20window)。
+
+> [!QUESTION] User
+> 数式を表現できますか。できるならいくつか数式を表示して。
+
+> [!NOTE] ChatGPT
+> はい、数式を表現できます。いくつか例を示します。
+> 
+> **基本的な数式**
+> 
+> -   一次方程式： ax+b\\=0
+>     
+> -   二次方程式の解： x\\=2a−b±b2−4ac​​
+>     
+> 
+> **微分・積分**
+> 
+> -   微分： dxd​xn\\=nxn−1
+>     
+> -   積分： ∫exdx\\=ex+C
+>     
+> 
+> **線形代数**
+> 
+> -   行列積： C\\=AB
+>     
+> -   行列式（2×2）： det(ac​bd​)\\=ad−bc
+>     
+> 
+> **確率・統計**
+> 
+> -   正規分布の確率密度関数： f(x)\\=2πσ2​1​exp(−2σ2(x−μ)2​)
+>     
+> 
+> **級数**
+> 
+> -   等比数列の和： ∑k\\=0n​ark\\=a1−r1−rn+1​
+>     
+> 
+> 必要であれば、特定分野（物理・機械学習・暗号など）の数式も表示できます。"
 `;
 
 exports[`ChatGPT E2E Extraction > Chat with Code Blocks > should generate markdown with code blocks 1`] = `

@@ -3,7 +3,7 @@
 exports[`Perplexity E2E Extraction > Chat - Simple Conversation > should generate correct markdown output 1`] = `
 "---
 id: perplexity_e2e-perplexity-chat-001
-title: perplexityのhtml構造をテストするための質問です。「はい」とだけ答えて。
+title: erplexityのhtml構造をテストするための質問です。「はい」とだけ答えて。
 source: perplexity
 url: "https://www.perplexity.ai/search/e2e-perplexity-chat-001"
 created: "2025-01-01T00:00:00.000Z"
@@ -11,20 +11,38 @@ modified: "2025-01-01T00:00:00.000Z"
 tags:
   - ai-conversation
   - perplexity
-message_count: 4
+message_count: 6
 ---
 
 > [!QUESTION] User
-> perplexityのhtml構造をテストするための質問です。「はい」とだけ答えて。
+> erplexityのhtml構造をテストするための質問です。「はい」とだけ答えて。
 
 > [!NOTE] Perplexity
-> はい。[perplexity](https://www.perplexity.ai)​
+> はい。[perplexity](https://docs.perplexity.ai/docs/agent-api/presets)​
 
 > [!QUESTION] User
 > 次は「いいえ」だけ答えて
 
 > [!NOTE] Perplexity
-> いいえ。[reposub](https://reposub.jp/blogs/ai/perplexity_japanese)​"
+> いいえ。
+
+> [!QUESTION] User
+> LaTeX 形式でいくつか数式を表示して
+
+> [!NOTE] Perplexity
+> いくつか代表的な数式を LaTeX 形式で書きます。
+> 
+> 一次方程式の解の例 2x+3\\=7
+> 
+> 二次方程式の一般形と解の公式 ax2+bx+c\\=0 x\\=2a−b±b2−4ac
+> 
+> 三角関数の恒等式 sin2θ+cos2θ\\=1
+> 
+> 指数・対数の関係 elnx\\=x
+> 
+> 微分の基本公式 dxdxn\\=nxn−1
+> 
+> 積分の例 ∫01x2dx\\=31"
 `;
 
 exports[`Perplexity E2E Extraction > Deep Research > should generate correct markdown output 1`] = `
@@ -45,96 +63,5 @@ message_count: 2
 > Perplexity の提供する機能についてまとめてください。
 
 > [!NOTE] Perplexity
-> ## Perplexity の提供する機能概要
-> 
-> Perplexity は、リアルタイム Web 検索と高度な AI を組み合わせた AI 駆動型検索エンジンです。以下、主要な機能をまとめました。
-> 
-> ## コア機能
-> 
-> **AI 駆動型リアルタイム検索**
-> 
-> Perplexity は Web をリアルタイムで検索し、複数の信頼できる情報源から情報を集約します。回答にはすべて引用元があり、ユーザーは元のソースを容易に確認できます。高度な言語モデル（GPT-5、Claude 4.0 Sonnet など）を活用して、質問の文脈と細微なニュアンスを理解し、明確で会話的な回答を提供します。[perplexity](https://www.perplexity.ai/help-center/en/articles/10352895-how-does-perplexity-work)​
-> 
-> **会話形式の対話**
-> 
-> Perplexity は専門家と会話するような方式で応答します。ユーザーはフォローアップ質問を行うことができ、AI は前の質問の文脈を記憶して、シームレスな会話を実現します。[perplexity](https://www.perplexity.ai/help-center/en/articles/10352895-how-does-perplexity-work)​
-> 
-> **メモリ機能**
-> 
-> 最近導入されたメモリ機能により、Perplexity は会話全体で重要な詳細を記憶し、今後の回答をより個人化・効率化します。[perplexity](https://www.perplexity.ai/hub/blog/introducing-ai-assistants-with-memory)​
-> 
-> ## 検索モード
-> 
-> | 検索モード | 説明 | 対応プラン |
-> | --- | --- | --- |
-> | 通常検索 | 基本的な検索モード | すべてのプラン |
-> | Pro Search | 複数のソースから徹底的なリサーチを行い、詳細で整理された回答を提供perplexity​ | Free（限定）、Pro 以上 |
-> | Deep Research（研究モード） | 数十回の自動検索を実行し、数百のソースを読み込み、2～4分で包括的なレポートを生成perplexity​ | Free（月1回）、Pro 以上 |
-> | Best モード | クエリに応じて最適なモデルを自動選択perplexity​ | すべてのプラン |
-> 
-> ## AI モデル選択
-> 
-> Pro 以上のユーザーは複数の先端 AI モデルから選択できます。[perplexity](https://www.perplexity.ai/help-center/en/articles/10352901-what-is-perplexity-pro)​
-> 
-> | モデル | 特性 |
-> | --- | --- |
-> | Sonar | Llama 3.1 70B ベース。高速 Web 検索と要約に特化。高度な推論オプション有perplexity​ |
-> | GPT-5.2 | OpenAI の最新モデル。推論、コーディング、創造性に優れ、幻覚の削減perplexity​ |
-> | Claude Sonnet 4.5 | Anthropic のモデル。効率的なコーディングと技術的推論に長けるperplexity​ |
-> | Gemini 3 Pro | Google のモデル。マルチモーダル理解とコード生成に優れるperplexity​ |
-> | Grok 4.1 | xAI のモデル。テキストと画像に対応perplexity​ |
-> 
-> ## ファイル・コンテンツ管理
-> 
-> **Create files and apps（プロジェクト作成）**
-> 
-> Pro ユーザーは自然言語プロンプトでレポート、スプレッドシート、ダッシュボード、Web アプリケーションを作成できます。AI が研究、分析、情報の集約を自動で処理します。[perplexity](https://www.perplexity.ai/help-center/en/articles/10352895-how-does-perplexity-work)​
-> 
-> **ファイルアップロード・分析**
-> 
-> PDF、CSV、音声、ビデオ、画像など複数形式のファイルをアップロードし、AI で分析可能です。Pro ユーザーは最大 50 ファイルをスペースにアップロード可能。[perplexity](https://www.perplexity.ai/help-center/en/articles/10352901-what-is-perplexity-pro)​
-> 
-> **ページ機能**
-> 
-> 研究をビジュアルに充実させたコンテンツに変換し、スタイリッシュな情報ページを作成できます。[perplexity](https://www.perplexity.ai/hub/blog/perplexity-pages)​
-> 
-> ## 画像・ビデオ生成
-> 
-> Pro 以上のユーザーは最新の画像・ビデオ生成モデルを使用でき、研究タスクや創造的なプロジェクトを支援します。Enterprise Max では毎月 15 本の 8 秒動画生成が可能。[perplexity+1](https://www.perplexity.ai/help-center/en/articles/11187416-which-perplexity-subscription-plan-is-right-for-you)
-> 
-> ## 内部知識検索
-> 
-> Enterprise ユーザーは Web 検索と組織内ファイルの並行検索が可能です。個別のソースを選択して「Web」「組織ファイル」「Web + 組織ファイル」「なし」から検索方法を選べます。[perplexity](https://www.perplexity.ai/help-center/en/collections/8935118-perplexity-product-features)​
-> 
-> ## その他の機能
-> 
-> **タスク機能**
-> 
-> Pro、Max、Enterprise Pro/Max ユーザーは定期的なアラートをスケジュール設定でき、特定のトピックについて継続的に監視できます。[perplexity](https://www.perplexity.ai/help-center/en/collections/8935118-perplexity-product-features)​
-> 
-> **Comet ブラウザアシスタント**
-> 
-> Perplexity 独自のブラウザで、ブラウザ内でタスクを実行でき、Web を探索しながら質問に答える機能を提供。[perplexity](https://www.perplexity.ai/hub/getting-started)​
-> 
-> **Instant Buy**
-> 
-> 米国ユーザーは Perplexity から直接製品を検索・購入できるシームレスなチェックアウト機能。[perplexity](https://www.perplexity.ai/help-center/en/collections/8935108-perplexity-pro-and-max)​
-> 
-> **Pro Perks プログラム**
-> 
-> Pro ユーザーは旅行、健康・ウェルネス、金融など複数カテゴリーの提携ブランドから独占的なオファーと割引を受け取ります。[perplexity](https://www.perplexity.ai/hub/blog/more-value-in-every-answer-new-benefits-for-every-level-of-perplexity-user)​
-> 
-> ## API とプログラマティックアクセス
-> 
-> **Sonar API**
-> 
-> 開発者向けに軽量で低コストな API を提供し、引用機能とカスタムソース機能を含みます。[perplexity](https://www.perplexity.ai/hub/blog/introducing-the-sonar-pro-api)​
-> 
-> ## 訂正機能とスペース
-> 
-> **スペース**
-> 
-> チーム協力のための専用スペースを作成でき、カスタム知識ハブと内部ファイル検索が可能です。[perplexity](https://www.perplexity.ai/help-center/en/articles/11187416-which-perplexity-subscription-plan-is-right-for-you)​
-> 
-> Perplexity はこれらの機能を通じて、従来の検索エンジンとの差別化を図り、研究、コンテンツ作成、情報分析の効率化を実現しています。"
+> Perplexity AI の提供機能をレポートにまとめました。検索モード（Best / Pro Search / Research / Create Files and Apps）、コア機能（モデルセレクター、Model Council、メモリ、ファイル分析）、メディア生成、Spaces、Tasks、MCP 連携、Comet ブラウザ、Computer、そしてサブスクリプションプラン別の比較まで網羅しています。詳細はレポートをご確認ください。"
 `;
