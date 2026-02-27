@@ -420,8 +420,7 @@ function formatMessage(
   source: string
 ): string {
   // Convert HTML to Markdown for assistant messages; escape angle brackets for user messages
-  const markdown =
-    role === 'assistant' ? htmlToMarkdown(content) : escapeAngleBrackets(content);
+  const markdown = role === 'assistant' ? htmlToMarkdown(content) : escapeAngleBrackets(content);
   const assistantLabel = getAssistantLabel(source);
 
   switch (options.messageFormat) {
