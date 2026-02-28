@@ -119,6 +119,8 @@ const JOINED_SELECTORS = {
  */
 export class ClaudeExtractor extends BaseExtractor {
   readonly platform = 'claude';
+  /** Include tool-use / intermediate content (web search, code interpreter, etc.) */
+  enableToolContent = false;
 
   // ========== Platform Detection ==========
 
@@ -228,11 +230,36 @@ export class ClaudeExtractor extends BaseExtractor {
 
     this.sortByDomPosition(allElements);
 
-    return this.buildMessagesFromElements(
+    // Pre-extract tool content keyed by element index
+    const toolContentMap = new Map<number, string>();
+    if (this.enableToolContent) {
+      allElements.forEach((item, index) => {
+        if (item.type === 'assistant') {
+          const tc = this.extractToolContentFromElement(item.element);
+          if (tc) toolContentMap.set(index, tc);
+        }
+      });
+    }
+
+    const messages = this.buildMessagesFromElements(
       allElements,
       el => this.extractUserContent(el),
       el => this.extractAssistantContent(el)
     );
+
+    // Attach tool content to corresponding assistant messages
+    if (toolContentMap.size > 0) {
+      for (const msg of messages) {
+        if (msg.role === 'assistant') {
+          // msg.id = "assistant-N" where N is the allElements index
+          const idx = parseInt(msg.id.split('-')[1], 10);
+          const tc = toolContentMap.get(idx);
+          if (tc) msg.toolContent = tc;
+        }
+      }
+    }
+
+    return messages;
   }
 
   /**
@@ -254,19 +281,13 @@ export class ClaudeExtractor extends BaseExtractor {
    * @see NFR-001-2 in design document
    */
   private extractAssistantContent(element: Element): string {
-    // Extended Thinking: scope to .row-start-2 to skip thinking in .row-start-1
+    // Grid layout: Extended Thinking or Tool-Use (.row-start-1 + .row-start-2)
     const responseSection = element.querySelector('.row-start-2');
     if (responseSection) {
-      const markdownEl = this.queryWithFallback<HTMLElement>(
-        SELECTORS.markdownContent,
-        responseSection
-      );
-      if (markdownEl) {
-        return sanitizeHtml(markdownEl.innerHTML);
-      }
+      return this.extractMarkdownFromSection(responseSection);
     }
 
-    // Non-Extended-Thinking fallback: existing behavior
+    // Non-grid fallback: existing behavior
     const markdownEl = this.queryWithFallback<HTMLElement>(SELECTORS.markdownContent, element);
     if (markdownEl) {
       return sanitizeHtml(markdownEl.innerHTML);
@@ -274,6 +295,103 @@ export class ClaudeExtractor extends BaseExtractor {
 
     // Fallback: use the element's innerHTML
     return sanitizeHtml(element.innerHTML);
+  }
+
+  /**
+   * Extract tool content from a full .font-claude-response element
+   *
+   * Returns tool content string if .row-start-1 contains tool-use content,
+   * null otherwise (no grid, no tool section, or Extended Thinking).
+   */
+  private extractToolContentFromElement(element: Element): string | null {
+    const responseSection = element.querySelector('.row-start-2');
+    if (!responseSection) return null; // Non-grid → no tool content
+
+    const toolSection = element.querySelector('.row-start-1');
+    if (!toolSection) return null;
+
+    const isExtendedThinking =
+      toolSection.querySelector('[class*="group/thinking"]') !== null;
+    if (isExtendedThinking) return null;
+
+    const toolContent = this.extractToolContent(toolSection);
+    return toolContent || null;
+  }
+
+  /**
+   * Extract tool content from .row-start-1 section
+   *
+   * Extracts:
+   * 1. Summary button text (e.g., "Searched the web") as bold
+   * 2. Search queries (group/row buttons with query text and result count)
+   * 3. Search result items (identified by favicon images)
+   * 4. .standard-markdown content (code interpreter, file analysis)
+   */
+  private extractToolContent(toolSection: Element): string {
+    const parts: string[] = [];
+
+    // 1. Summary button text (group/status button > span.truncate)
+    const summaryButton = toolSection.querySelector('button span.truncate');
+    if (summaryButton?.textContent) {
+      parts.push('**' + this.sanitizeText(summaryButton.textContent) + '**');
+    }
+
+    // 2. Search queries (group/row buttons contain query text and result count)
+    const queryButtons = toolSection.querySelectorAll('[class*="group/row"]');
+    queryButtons.forEach(btn => {
+      const queryEl = btn.querySelector('.truncate');
+      const countEl = btn.querySelector('p');
+      if (queryEl?.textContent?.trim()) {
+        let text = this.sanitizeText(queryEl.textContent);
+        if (countEl?.textContent?.trim()) {
+          text += ' (' + this.sanitizeText(countEl.textContent) + ')';
+        }
+        parts.push(text);
+      }
+    });
+
+    // 3. Search result items (identified by favicon images)
+    const favicons = toolSection.querySelectorAll('img[alt="favicon"]');
+    if (favicons.length > 0) {
+      const items: string[] = [];
+      favicons.forEach(img => {
+        // Navigate: img → container div → result row div
+        const row = img.parentElement?.parentElement;
+        if (!row || row.children.length < 2) return;
+        // Children: [0]=favicon container, [1]=title, [2]=domain (optional)
+        const title = row.children[1]?.textContent?.trim();
+        const domain =
+          row.children.length > 2 ? row.children[2]?.textContent?.trim() : undefined;
+        if (title) {
+          items.push(domain ? '- ' + title + ' (' + domain + ')' : '- ' + title);
+        }
+      });
+      if (items.length > 0) {
+        parts.push(items.join('\n'));
+      }
+    }
+
+    // 4. .standard-markdown content (code interpreter, file analysis)
+    const markdownEls = toolSection.querySelectorAll('.standard-markdown');
+    markdownEls.forEach(el => {
+      const html = sanitizeHtml(el.innerHTML);
+      if (html.trim()) {
+        parts.push(html);
+      }
+    });
+
+    return parts.join('\n\n');
+  }
+
+  /**
+   * Extract markdown content from a grid section (.row-start-1 or .row-start-2)
+   */
+  private extractMarkdownFromSection(section: Element): string {
+    const markdownEl = this.queryWithFallback<HTMLElement>(SELECTORS.markdownContent, section);
+    if (markdownEl) {
+      return sanitizeHtml(markdownEl.innerHTML);
+    }
+    return sanitizeHtml(section.innerHTML);
   }
 
   // ========== Deep Research Extraction ==========

@@ -223,5 +223,12 @@
   },
   "output_clipboard": {
     "message": "クリップボード"
+  },
+
+  "settings_enableToolContent": {
+    "message": "ツール/検索結果を含める"
+  },
+  "settings_toolContentHelp": {
+    "message": "Claude の Web 検索やツール結果も保存する"
   }
 }

@@ -364,6 +364,9 @@ function applyExtractorSettings(
   if (extractor instanceof GeminiExtractor) {
     extractor.enableAutoScroll = settings.enableAutoScroll ?? false;
   }
+  if (extractor instanceof ClaudeExtractor) {
+    extractor.enableToolContent = settings.enableToolContent ?? false;
+  }
 }
 
 /**

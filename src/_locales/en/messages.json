@@ -316,6 +316,15 @@
     "message": "Only add new messages to existing notes",
     "description": "Help text for append mode toggle"
   },
+  "settings_enableToolContent": {
+    "message": "Include tool/search results",
+    "description": "Label for tool content toggle"
+  },
+  "settings_toolContentHelp": {
+    "message": "Save web search and tool results from Claude",
+    "description": "Help text for tool content toggle"
+  },
+
   "toast_appended": {
     "message": "$COUNT$ new message(s) appended",
     "description": "Toast when messages are appended",

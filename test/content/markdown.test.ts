@@ -715,3 +715,172 @@ describe('conversationToNote with Deep Research links', () => {
     expect(note.body).toContain('[^1]: [Source](https://example.com)');
   });
 });
+
+// ============================================================
+// Tool Content Callout Rendering Tests (REQ-084 Step 5)
+// ============================================================
+
+describe('conversationToNote with toolContent', () => {
+  const defaultOptions: TemplateOptions = {
+    includeId: true,
+    includeTitle: true,
+    includeSource: true,
+    includeTags: true,
+    includeDates: true,
+    includeMessageCount: true,
+    messageFormat: 'callout',
+    userCalloutType: 'QUESTION',
+    assistantCalloutType: 'NOTE',
+  };
+
+  const baseData: ConversationData = {
+    id: 'tc-test',
+    title: 'Tool Content Test',
+    url: 'https://claude.ai/chat/tc-test',
+    source: 'claude',
+    messages: [],
+    extractedAt: new Date('2025-01-10T00:00:00Z'),
+    metadata: {
+      messageCount: 2,
+      userMessageCount: 1,
+      assistantMessageCount: 1,
+      hasCodeBlocks: false,
+    },
+  };
+
+  it('callout format: renders [!ABSTRACT]- callout before [!NOTE] callout', () => {
+    const data: ConversationData = {
+      ...baseData,
+      messages: [
+        { id: 'u0', role: 'user', content: 'Search for Rust', index: 0 },
+        {
+          id: 'a1',
+          role: 'assistant',
+          content: '<p>Here are the results.</p>',
+          toolContent: '**Searched the web**\nRust latest version 2026 (10 results)\n- Rust Versions | Rust Changelogs (releases.rs)',
+          index: 1,
+        },
+      ],
+    };
+
+    const note = conversationToNote(data, defaultOptions);
+
+    // Tool content rendered as [!ABSTRACT]- callout
+    expect(note.body).toContain('> [!ABSTRACT]- Searched the web');
+    expect(note.body).toContain('> Rust latest version 2026 (10 results)');
+    expect(note.body).toContain('> - Rust Versions | Rust Changelogs (releases.rs)');
+    // Assistant response rendered as [!NOTE] callout
+    expect(note.body).toContain('[!NOTE] Claude');
+    expect(note.body).toContain('Here are the results.');
+    // [!ABSTRACT]- appears before [!NOTE]
+    const abstractIdx = note.body.indexOf('[!ABSTRACT]-');
+    const noteIdx = note.body.indexOf('[!NOTE] Claude');
+    expect(abstractIdx).toBeLessThan(noteIdx);
+  });
+
+  it('callout format: summary extracted as title from bold first line', () => {
+    const data: ConversationData = {
+      ...baseData,
+      messages: [
+        { id: 'u0', role: 'user', content: 'Test', index: 0 },
+        {
+          id: 'a1',
+          role: 'assistant',
+          content: '<p>Response</p>',
+          toolContent: '**Analyzed code**\nFile analysis complete',
+          index: 1,
+        },
+      ],
+    };
+
+    const note = conversationToNote(data, defaultOptions);
+
+    expect(note.body).toContain('> [!ABSTRACT]- Analyzed code');
+    expect(note.body).toContain('> File analysis complete');
+  });
+
+  it('callout format: no body renders title-only callout', () => {
+    const data: ConversationData = {
+      ...baseData,
+      messages: [
+        { id: 'u0', role: 'user', content: 'Test', index: 0 },
+        {
+          id: 'a1',
+          role: 'assistant',
+          content: '<p>Response</p>',
+          toolContent: '**Searched the web**',
+          index: 1,
+        },
+      ],
+    };
+
+    const note = conversationToNote(data, defaultOptions);
+
+    expect(note.body).toContain('> [!ABSTRACT]- Searched the web');
+    // Should not have extra empty body lines
+    expect(note.body).not.toMatch(/> \[!ABSTRACT\]- Searched the web\n>/);
+  });
+
+  it('blockquote format: renders bold title + blockquoted body', () => {
+    const options = { ...defaultOptions, messageFormat: 'blockquote' as const };
+    const data: ConversationData = {
+      ...baseData,
+      messages: [
+        { id: 'u0', role: 'user', content: 'Test', index: 0 },
+        {
+          id: 'a1',
+          role: 'assistant',
+          content: '<p>Response</p>',
+          toolContent: '**Searched the web**\nQuery results here',
+          index: 1,
+        },
+      ],
+    };
+
+    const note = conversationToNote(data, options);
+
+    expect(note.body).toContain('**Searched the web**');
+    expect(note.body).toContain('> Query results here');
+  });
+
+  it('plain format: renders bold title + plain body', () => {
+    const options = { ...defaultOptions, messageFormat: 'plain' as const };
+    const data: ConversationData = {
+      ...baseData,
+      messages: [
+        { id: 'u0', role: 'user', content: 'Test', index: 0 },
+        {
+          id: 'a1',
+          role: 'assistant',
+          content: '<p>Response</p>',
+          toolContent: '**Searched the web**\nQuery results here',
+          index: 1,
+        },
+      ],
+    };
+
+    const note = conversationToNote(data, options);
+
+    expect(note.body).toContain('**Searched the web**');
+    expect(note.body).toContain('Query results here');
+    // Should not have blockquote markers in plain mode
+    expect(note.body).not.toContain('> Query results here');
+    expect(note.body).not.toContain('[!ABSTRACT]');
+  });
+
+  it('no toolContent: assistant message renders normally', () => {
+    const data: ConversationData = {
+      ...baseData,
+      messages: [
+        { id: 'u0', role: 'user', content: 'Hello', index: 0 },
+        { id: 'a1', role: 'assistant', content: '<p>Hi there!</p>', index: 1 },
+      ],
+    };
+
+    const note = conversationToNote(data, defaultOptions);
+
+    expect(note.body).not.toContain('[!ABSTRACT]');
+    expect(note.body).toContain('[!NOTE] Claude');
+    expect(note.body).toContain('Hi there!');
+  });
+});

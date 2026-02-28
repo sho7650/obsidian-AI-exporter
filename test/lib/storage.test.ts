@@ -86,6 +86,11 @@ describe('storage', () => {
       expect(settings.templateOptions.includeId).toBe(true); // default preserved
     });
 
+    it('returns default enableToolContent false when empty', async () => {
+      const settings = await getSettings();
+      expect(settings.enableToolContent).toBe(false);
+    });
+
     it('returns default settings on error', async () => {
       vi.mocked(chrome.storage.local.get).mockRejectedValue(
         new Error('Storage error')
@@ -148,6 +153,16 @@ describe('storage', () => {
       await expect(saveSettings({ obsidianApiKey: 'key' })).rejects.toThrow(
         'Save failed'
       );
+    });
+
+    it('round-trips enableToolContent true', async () => {
+      vi.mocked(chrome.storage.sync.get).mockResolvedValue({ settings: {} });
+
+      await saveSettings({ enableToolContent: true });
+
+      expect(chrome.storage.sync.set).toHaveBeenCalled();
+      const callArgs = vi.mocked(chrome.storage.sync.set).mock.calls[0][0];
+      expect(callArgs.settings.enableToolContent).toBe(true);
     });
 
     it('merges outputOptions with current settings', async () => {

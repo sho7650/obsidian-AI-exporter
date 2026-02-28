@@ -457,6 +457,51 @@ function formatMessage(
 }
 
 /**
+ * Format tool-use content as a collapsible callout or equivalent format
+ *
+ * Renders tool content (web search, code interpreter) as a separate block
+ * before the assistant response message.
+ *
+ * @param toolContent Raw tool content string (may contain bold summary, queries, results)
+ * @param options Template options for format selection
+ */
+function formatToolContent(toolContent: string, options: TemplateOptions): string {
+  const lines = toolContent.split('\n').filter(l => l.trim());
+
+  // Extract first bold line as callout title (e.g., "**Searched the web**" → "Searched the web")
+  let title = 'Tool Activity';
+  let bodyLines = lines;
+  if (lines[0]?.startsWith('**') && lines[0]?.endsWith('**')) {
+    title = lines[0].slice(2, -2);
+    bodyLines = lines.slice(1);
+  }
+
+  switch (options.messageFormat) {
+    case 'callout': {
+      // Collapsible callout: [!ABSTRACT]- collapsed by default
+      if (bodyLines.length === 0) {
+        return `> [!ABSTRACT]- ${title}`;
+      }
+      const formatted = bodyLines.map(line => `> ${line}`);
+      return `> [!ABSTRACT]- ${title}\n${formatted.join('\n')}`;
+    }
+
+    case 'blockquote': {
+      const header = `**${title}**`;
+      const quoted = bodyLines.map(line => `> ${line}`);
+      return quoted.length > 0 ? `${header}\n${quoted.join('\n')}` : header;
+    }
+
+    case 'plain':
+    default: {
+      return bodyLines.length > 0
+        ? `**${title}**\n${bodyLines.join('\n')}`
+        : `**${title}**`;
+    }
+  }
+}
+
+/**
  * Convert conversation data to Obsidian note
  */
 export function conversationToNote(data: ConversationData, options: TemplateOptions): ObsidianNote {
@@ -493,6 +538,10 @@ export function conversationToNote(data: ConversationData, options: TemplateOpti
     const bodyParts: string[] = [];
 
     for (const message of data.messages) {
+      // Render tool content as separate collapsible callout before assistant message
+      if (message.toolContent) {
+        bodyParts.push(formatToolContent(message.toolContent, options));
+      }
       const formatted = formatMessage(message.content, message.role, options, data.source);
       bodyParts.push(formatted);
     }

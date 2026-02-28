@@ -81,6 +81,7 @@ const elements = {
   includeMessageCount: getElement<HTMLInputElement>('includeMessageCount'),
   enableAutoScroll: getElement<HTMLInputElement>('enableAutoScroll'),
   enableAppendMode: getElement<HTMLInputElement>('enableAppendMode'),
+  enableToolContent: getElement<HTMLInputElement>('enableToolContent'),
   testBtn: getElement<HTMLButtonElement>('testBtn'),
   saveBtn: getElement<HTMLButtonElement>('saveBtn'),
   status: getElement<HTMLDivElement>('status'),
@@ -115,6 +116,7 @@ function populateForm(settings: ExtensionSettings): void {
   // Extraction options
   elements.enableAutoScroll.checked = settings.enableAutoScroll ?? false;
   elements.enableAppendMode.checked = settings.enableAppendMode ?? false;
+  elements.enableToolContent.checked = settings.enableToolContent ?? false;
 
   // Update Obsidian settings section visibility
   updateObsidianSettingsVisibility();
@@ -284,6 +286,7 @@ function collectSettings(): ExtensionSettings {
     outputOptions,
     enableAutoScroll: elements.enableAutoScroll.checked,
     enableAppendMode: elements.enableAppendMode.checked,
+    enableToolContent: elements.enableToolContent.checked,
   };
 }
 

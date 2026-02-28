@@ -126,6 +126,7 @@ describe('popup/index patterns', () => {
         <input id="includeSource" type="checkbox">
         <input id="includeDates" type="checkbox">
         <input id="includeMessageCount" type="checkbox">
+        <input id="enableToolContent" type="checkbox">
       `;
     });
 
@@ -180,6 +181,14 @@ describe('popup/index patterns', () => {
       expect(assistantCallout.value).toBe('NOTE');
     });
 
+    it('populates enableToolContent checkbox', () => {
+      const enableToolContent = document.getElementById('enableToolContent') as HTMLInputElement;
+      const settings = { enableToolContent: true };
+
+      enableToolContent.checked = settings.enableToolContent ?? false;
+      expect(enableToolContent.checked).toBe(true);
+    });
+
     it('populates checkbox fields', () => {
       const includeId = document.getElementById('includeId') as HTMLInputElement;
       const includeTags = document.getElementById('includeTags') as HTMLInputElement;
@@ -213,6 +222,7 @@ describe('popup/index patterns', () => {
         <input id="includeSource" type="checkbox" checked>
         <input id="includeDates" type="checkbox" checked>
         <input id="includeMessageCount" type="checkbox" checked>
+        <input id="enableToolContent" type="checkbox" checked>
       `;
     });
 
@@ -262,6 +272,16 @@ describe('popup/index patterns', () => {
       expect(settings.obsidianPort).toBe(27123);
       expect(settings.vaultPath).toBe('AI/Gemini');
       expect(settings.templateOptions.messageFormat).toBe('callout');
+    });
+
+    it('collectSettings includes enableToolContent', () => {
+      const enableToolContent = document.getElementById('enableToolContent') as HTMLInputElement;
+      expect(enableToolContent.checked).toBe(true);
+
+      const settings = {
+        enableToolContent: enableToolContent.checked,
+      };
+      expect(settings.enableToolContent).toBe(true);
     });
 
     it('trims whitespace from text inputs', () => {

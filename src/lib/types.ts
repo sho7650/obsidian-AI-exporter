@@ -19,6 +19,8 @@ export interface ConversationMessage {
   content: string;
   /** Original HTML content (for assistant messages, used in HTML→Markdown conversion) */
   htmlContent?: string;
+  /** Tool-use content (web search, code interpreter) — rendered as separate callout */
+  toolContent?: string;
   /** Message timestamp (reserved for future use - not currently extracted) */
   timestamp?: Date;
   /** Zero-based message order in conversation */
@@ -172,6 +174,8 @@ export interface SyncSettings {
   enableAutoScroll: boolean;
   /** Enable append mode to only add new messages to existing notes */
   enableAppendMode: boolean;
+  /** Include tool-use / intermediate content (e.g., web search results) */
+  enableToolContent: boolean;
 }
 
 /**

@@ -677,6 +677,158 @@ function escapeHtmlForClaude(text: string): string {
 }
 
 
+/**
+ * Search result item for tool-use test fixtures
+ */
+interface SearchResultItem {
+  title: string;
+  domain: string;
+}
+
+/**
+ * Options for creating a tool-use grid block
+ */
+interface ToolUseGridOptions {
+  /** Summary button text (e.g., "Searched the web") */
+  summaryText: string;
+  /** Search query text (e.g., "Rust latest version 2026") */
+  searchQuery?: string;
+  /** Number of search results (e.g., 10) */
+  searchResultCount?: number;
+  /** Search result items with title and domain */
+  searchResults?: SearchResultItem[];
+  /** Intermediate text blocks in .standard-markdown within .row-start-1 */
+  toolSteps?: string[];
+  /** Response text in .row-start-2 */
+  responseText: string;
+}
+
+/**
+ * Create a tool-use assistant response inside .font-claude-response
+ *
+ * Matches the real Claude DOM structure verified via DevTools:
+ * .row-start-1 = tool activity (summary button, search query, search results, intermediate text)
+ * .row-start-2 = summary/response text
+ *
+ * @see docs/design/DES-006-tool-use-content.md
+ */
+export function createClaudeToolUseBlock(options: ToolUseGridOptions): string {
+  const toolStepsHtml = (options.toolSteps ?? [])
+    .map(step => `
+              <div class="standard-markdown grid-cols-1 grid">
+                <p class="font-claude-response-body text-sm">${step}</p>
+              </div>`)
+    .join('\n');
+
+  // Search query button (group/row)
+  const searchQueryHtml = options.searchQuery ? `
+              <div class="flex flex-col shrink-0">
+                <div class="transition-colors rounded-lg duration-150">
+                  <div class="flex flex-row items-center py-1">
+                    <div class="flex-1 min-w-0">
+                      <button class="group/row flex flex-row items-center rounded-lg px-2.5 w-full justify-between text-text-300 !cursor-default">
+                        <div class="flex flex-row items-center gap-2 min-w-0 flex-1">
+                          <div class="text-sm text-text-500 text-left truncate w-0 flex-grow">${escapeHtmlForClaude(options.searchQuery)}</div>
+                        </div>
+                        <div class="flex flex-row items-center gap-1.5 shrink-0">
+                          <p class="pl-1 text-text-500 font-small shrink-0 whitespace-nowrap">${options.searchResultCount ?? 0} results</p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>` + (options.searchResults ? `
+                  <div class="flex flex-row">
+                    <div class="flex-1 min-w-0">
+                      <div class="border-[0.5px] border-border-300 rounded-lg p-1 mx-2.5 mt-1 mb-2 max-h-[150px] overflow-y-auto bg-bg-000/50">
+                        <div class="flex flex-col gap-1">${options.searchResults.map(r => `
+                          <div class="flex flex-row gap-3 items-center px-2 py-1.5 w-full rounded-md cursor-pointer transition-colors hover:bg-bg-200">
+                            <div class="flex-shrink-0"><img alt="favicon" loading="lazy" width="12" height="12" src="" /></div>
+                            <div class="w-0 flex-grow font-small text-text-300 truncate">${escapeHtmlForClaude(r.title)}</div>
+                            <div class="text-xs text-text-400 shrink-0">${escapeHtmlForClaude(r.domain)}</div>
+                          </div>`).join('')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>` : '') + `
+                </div>
+              </div>` : '';
+
+  return `
+    <div data-test-render-count="2" class="group" style="height: auto;">
+      <div class="font-claude-response" data-is-streaming="false">
+        <div><div class="grid grid-rows-[auto_auto] min-w-0">
+          <div class="row-start-1 col-start-1 min-w-0">
+            <div class="min-w-0 pl-2 py-1.5">
+              <button class="group/status"><span class="truncate text-sm font-base">${escapeHtmlForClaude(options.summaryText)}</span></button>
+              ${searchQueryHtml}
+              ${toolStepsHtml}
+            </div>
+          </div>
+          <div class="row-start-2 col-start-1 relative grid isolate min-w-0">
+            <div class="standard-markdown">${options.responseText}</div>
+          </div>
+        </div></div>
+      </div>
+    </div>`;
+}
+
+/**
+ * Create a Claude page with tool-use blocks in the conversation
+ *
+ * Each message can optionally include tool-use grid structure.
+ * Tool-use is specified on assistant messages via the `toolUse` property.
+ *
+ * @param conversationId UUID for URL
+ * @param messages Conversation messages (assistant messages may include toolUse)
+ */
+export function createClaudePageWithToolUse(
+  conversationId: string,
+  messages: Array<ClaudeConversationMessage & { toolUse?: Omit<ToolUseGridOptions, 'responseText'> }>
+): void {
+  setClaudeLocation(conversationId);
+
+  const blocks: string[] = [];
+
+  messages.forEach((msg) => {
+    if (msg.role === 'user') {
+      blocks.push(`
+        <div data-test-render-count="2" class="group" style="height: auto;">
+          <div class="bg-bg-300 rounded-xl pl-2.5 py-2.5">
+            <div data-testid="user-message">
+              <p class="whitespace-pre-wrap break-words">${escapeHtmlForClaude(msg.content)}</p>
+            </div>
+            <span class="text-text-500 text-xs" data-state="closed">Dec 6, 2025</span>
+          </div>
+        </div>
+      `);
+    } else if (msg.toolUse) {
+      // Assistant message with tool-use grid structure
+      blocks.push(createClaudeToolUseBlock({
+        ...msg.toolUse,
+        responseText: msg.content,
+      }));
+    } else {
+      // Normal assistant message
+      blocks.push(`
+        <div data-test-render-count="2" class="group" style="height: auto;">
+          <div class="font-claude-response" data-is-streaming="false">
+            <div class="standard-markdown">
+              ${msg.content}
+            </div>
+          </div>
+        </div>
+      `);
+    }
+  });
+
+  loadFixture(`
+    <div class="app-container">
+      <div class="conversation-thread">
+        ${blocks.join('\n')}
+      </div>
+    </div>
+  `);
+}
+
 // ========== ChatGPT DOM Helpers ==========
 
 /**

@@ -13,6 +13,7 @@ import {
   createClaudePage,
   createClaudeDeepResearchPage,
   createEmptyClaudeDeepResearchPanel,
+  createClaudePageWithToolUse,
 } from '../fixtures/dom-helpers';
 
 describe('ClaudeExtractor', () => {
@@ -931,6 +932,259 @@ describe('ClaudeExtractor', () => {
       const title = extractor.getDeepResearchTitle();
 
       expect(title).toBe('Untitled Deep Research Report');
+    });
+  });
+
+  // ========== Tool-Use Content (REQ-084) ==========
+  describe('Tool-Use Content (enableToolContent)', () => {
+    const searchResults = [
+      { title: 'Rust Versions | Rust Changelogs', domain: 'releases.rs' },
+      { title: 'Rust | endoflife.date', domain: 'endoflife.date' },
+      { title: 'Releases · rust-lang/rust', domain: 'github.com' },
+    ];
+
+    it('OFF (default): tool-use .row-start-1 skipped, only .row-start-2 extracted', async () => {
+      createClaudePageWithToolUse(
+        '12345678-1234-1234-1234-123456789012',
+        [
+          { role: 'user', content: 'Search for Rust' },
+          {
+            role: 'assistant',
+            content: '<p>Here are the results.</p>',
+            toolUse: {
+              summaryText: 'Searched the web',
+              searchQuery: 'Rust latest version',
+              searchResultCount: 3,
+              searchResults,
+            },
+          },
+        ]
+      );
+
+      // Default: enableToolContent = false
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      expect(result.data?.messages.length).toBe(2);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('Here are the results.');
+      expect(assistantMsg?.content).not.toContain('Searched the web');
+      expect(assistantMsg?.content).not.toContain('Rust latest version');
+      expect(assistantMsg?.content).not.toContain('releases.rs');
+      expect(assistantMsg?.toolContent).toBeUndefined();
+    });
+
+    it('ON: search query and results extracted into toolContent, response in content', async () => {
+      createClaudePageWithToolUse(
+        '12345678-1234-1234-1234-123456789012',
+        [
+          { role: 'user', content: 'Search for Rust' },
+          {
+            role: 'assistant',
+            content: '<p>Here are the results.</p>',
+            toolUse: {
+              summaryText: 'Searched the web',
+              searchQuery: 'Rust latest version 2026',
+              searchResultCount: 10,
+              searchResults,
+            },
+          },
+        ]
+      );
+
+      extractor.enableToolContent = true;
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      expect(result.data?.messages.length).toBe(2);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      // toolContent has the tool-use data
+      expect(assistantMsg?.toolContent).toContain('**Searched the web**');
+      expect(assistantMsg?.toolContent).toContain('Rust latest version 2026');
+      expect(assistantMsg?.toolContent).toContain('10 results');
+      expect(assistantMsg?.toolContent).toContain('Rust Versions | Rust Changelogs');
+      expect(assistantMsg?.toolContent).toContain('releases.rs');
+      expect(assistantMsg?.toolContent).toContain('Releases · rust-lang/rust');
+      expect(assistantMsg?.toolContent).toContain('github.com');
+      // content has ONLY the response (no tool content)
+      expect(assistantMsg?.content).toContain('Here are the results.');
+      expect(assistantMsg?.content).not.toContain('**Searched the web**');
+    });
+
+    it('ON: mixed conversation (user → tool-use response → user → normal response) preserves order', async () => {
+      createClaudePageWithToolUse(
+        '12345678-1234-1234-1234-123456789012',
+        [
+          { role: 'user', content: 'First question' },
+          {
+            role: 'assistant',
+            content: '<p>First answer with search.</p>',
+            toolUse: {
+              summaryText: 'Searched the web',
+              searchQuery: 'First query',
+              searchResultCount: 5,
+              searchResults: [{ title: 'Result A', domain: 'example.com' }],
+            },
+          },
+          { role: 'user', content: 'Second question' },
+          { role: 'assistant', content: '<p>Second answer (no tool).</p>' },
+        ]
+      );
+
+      extractor.enableToolContent = true;
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      expect(result.data?.messages.length).toBe(4);
+
+      const roles = result.data?.messages.map(m => m.role);
+      expect(roles).toEqual(['user', 'assistant', 'user', 'assistant']);
+
+      // First assistant has tool content in toolContent, response in content
+      expect(result.data?.messages[1].toolContent).toContain('**Searched the web**');
+      expect(result.data?.messages[1].toolContent).toContain('Result A');
+      expect(result.data?.messages[1].content).toContain('First answer with search.');
+      expect(result.data?.messages[1].content).not.toContain('**Searched the web**');
+      // Second assistant has no tool content
+      expect(result.data?.messages[3].content).toContain('Second answer (no tool).');
+      expect(result.data?.messages[3].toolContent).toBeUndefined();
+    });
+
+    it('ON: Extended Thinking .row-start-1 still skipped (not tool-use)', async () => {
+      setClaudeLocation('12345678-1234-1234-1234-123456789012');
+      createClaudePage('12345678-1234-1234-1234-123456789012', [
+        { role: 'user', content: 'Think about this' },
+        {
+          role: 'assistant',
+          content: '<p>My response after thinking.</p>',
+          thinking: ['Internal reasoning step 1', 'Internal reasoning step 2'],
+        },
+      ]);
+
+      extractor.enableToolContent = true;
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('My response after thinking.');
+      // Extended Thinking content should NOT be extracted even when enableToolContent is ON
+      expect(assistantMsg?.content).not.toContain('Internal reasoning step 1');
+      expect(assistantMsg?.content).not.toContain('Internal reasoning step 2');
+      expect(assistantMsg?.toolContent).toBeUndefined();
+    });
+
+    it('ON: content sanitized (DOMPurify applied to .standard-markdown tool content)', async () => {
+      createClaudePageWithToolUse(
+        '12345678-1234-1234-1234-123456789012',
+        [
+          { role: 'user', content: 'Test' },
+          {
+            role: 'assistant',
+            content: '<p>Response</p>',
+            toolUse: {
+              summaryText: 'Analyzed code',
+              toolSteps: ['<script>alert("xss")</script>Safe analysis content'],
+            },
+          },
+        ]
+      );
+
+      extractor.enableToolContent = true;
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.toolContent).toContain('Safe analysis content');
+      expect(assistantMsg?.toolContent).not.toContain('<script>');
+    });
+
+    it('ON: button summary text extracted as bold into toolContent', async () => {
+      createClaudePageWithToolUse(
+        '12345678-1234-1234-1234-123456789012',
+        [
+          { role: 'user', content: 'Search something' },
+          {
+            role: 'assistant',
+            content: '<p>Results below.</p>',
+            toolUse: { summaryText: 'Gathered API documentation for Express.js' },
+          },
+        ]
+      );
+
+      extractor.enableToolContent = true;
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.toolContent).toContain('**Gathered API documentation for Express.js**');
+      expect(assistantMsg?.content).not.toContain('**Gathered API documentation for Express.js**');
+    });
+
+    it('ON: multiple .standard-markdown blocks in .row-start-1 all extracted into toolContent', async () => {
+      createClaudePageWithToolUse(
+        '12345678-1234-1234-1234-123456789012',
+        [
+          { role: 'user', content: 'Research this topic' },
+          {
+            role: 'assistant',
+            content: '<p>Final summary.</p>',
+            toolUse: {
+              summaryText: 'Analyzed files',
+              toolSteps: ['First analysis result', 'Second analysis result'],
+            },
+          },
+        ]
+      );
+
+      extractor.enableToolContent = true;
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.toolContent).toContain('First analysis result');
+      expect(assistantMsg?.toolContent).toContain('Second analysis result');
+      expect(assistantMsg?.content).toContain('Final summary.');
+      expect(assistantMsg?.content).not.toContain('First analysis result');
+    });
+
+    it('OFF: regression — normal (non-grid) responses unaffected', async () => {
+      createClaudePageWithToolUse(
+        '12345678-1234-1234-1234-123456789012',
+        [
+          { role: 'user', content: 'Hello Claude' },
+          { role: 'assistant', content: '<p>Hello! How can I help?</p>' },
+        ]
+      );
+
+      // enableToolContent stays false (default)
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      expect(result.data?.messages.length).toBe(2);
+      expect(result.data?.messages[0].role).toBe('user');
+      expect(result.data?.messages[1].role).toBe('assistant');
+      expect(result.data?.messages[1].content).toContain('Hello! How can I help?');
+    });
+
+    it('ON: search with no results list → summary + query in toolContent, response in content', async () => {
+      createClaudePageWithToolUse(
+        '12345678-1234-1234-1234-123456789012',
+        [
+          { role: 'user', content: 'Quick search' },
+          {
+            role: 'assistant',
+            content: '<p>Here is what I found.</p>',
+            toolUse: {
+              summaryText: 'Searched the web',
+              searchQuery: 'Quick topic',
+              searchResultCount: 5,
+              // No searchResults — only query, no result items
+            },
+          },
+        ]
+      );
+
+      extractor.enableToolContent = true;
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.toolContent).toContain('**Searched the web**');
+      expect(assistantMsg?.toolContent).toContain('Quick topic');
+      expect(assistantMsg?.toolContent).toContain('5 results');
+      expect(assistantMsg?.content).toContain('Here is what I found.');
+      expect(assistantMsg?.content).not.toContain('**Searched the web**');
     });
   });
 
