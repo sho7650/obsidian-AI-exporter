@@ -494,9 +494,7 @@ function formatToolContent(toolContent: string, options: TemplateOptions): strin
 
     case 'plain':
     default: {
-      return bodyLines.length > 0
-        ? `**${title}**\n${bodyLines.join('\n')}`
-        : `**${title}**`;
+      return bodyLines.length > 0 ? `**${title}**\n${bodyLines.join('\n')}` : `**${title}**`;
     }
   }
 }

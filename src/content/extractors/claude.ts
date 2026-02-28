@@ -310,8 +310,7 @@ export class ClaudeExtractor extends BaseExtractor {
     const toolSection = element.querySelector('.row-start-1');
     if (!toolSection) return null;
 
-    const isExtendedThinking =
-      toolSection.querySelector('[class*="group/thinking"]') !== null;
+    const isExtendedThinking = toolSection.querySelector('[class*="group/thinking"]') !== null;
     if (isExtendedThinking) return null;
 
     const toolContent = this.extractToolContent(toolSection);
@@ -360,8 +359,7 @@ export class ClaudeExtractor extends BaseExtractor {
         if (!row || row.children.length < 2) return;
         // Children: [0]=favicon container, [1]=title, [2]=domain (optional)
         const title = row.children[1]?.textContent?.trim();
-        const domain =
-          row.children.length > 2 ? row.children[2]?.textContent?.trim() : undefined;
+        const domain = row.children.length > 2 ? row.children[2]?.textContent?.trim() : undefined;
         if (title) {
           items.push(domain ? '- ' + title + ' (' + domain + ')' : '- ' + title);
         }
