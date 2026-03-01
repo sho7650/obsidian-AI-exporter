@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.4](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.12.3...v0.12.4) (2026-03-01)
+
+
+### Documentation
+
+* update store descriptions with LaTeX and tool content features ([#102](https://github.com/sho7650/obsidian-AI-exporter/issues/102)) ([f49c542](https://github.com/sho7650/obsidian-AI-exporter/commit/f49c5429e9b9d2f28b2898bed1ca75b33e22733c))
+
 ## [0.12.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.12.2...v0.12.3) (2026-03-01)
 
 
