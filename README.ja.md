@@ -14,6 +14,7 @@ Google Gemini、Claude AI、ChatGPT、Perplexity の会話を Obsidian に保存
 - **複数の出力オプション**: Obsidian への保存、ファイルダウンロード、クリップボードへコピー
 - **Deep Research 対応**: Gemini Deep Research と Claude Extended Thinking レポートを保存
 - **Artifact 対応**: Claude Artifacts をインライン引用とソース付きで抽出
+- **ツールコンテンツ対応**: Claude の Web 検索結果やツール活動を折りたたみ可能な `[!ABSTRACT]` コールアウトとして保存（オプション）
 - **追記モード**: 既存ノートには新しいメッセージのみを追加
 - **Obsidian コールアウト**: `[!QUESTION]` と `[!NOTE]` による見やすいフォーマット
 - **YAML フロントマター**: タイトル、ソース、URL、日時、タグなどのメタデータを自動生成
@@ -136,6 +137,22 @@ message_count: 4
 > [!NOTE] Gemini
 > JWT 認証を実装するには...
 ```
+
+### ツールコンテンツ形式（Claude）
+
+「ツール/検索結果を含める」を有効にすると、Claude の Web 検索やツール活動がアシスタント応答の前に折りたたみコールアウトとして表示されます:
+
+```markdown
+> [!ABSTRACT]- Searched the web
+> Rust latest version 2026 (10 results)
+> - Rust Versions | Rust Changelogs (releases.rs)
+> - Rust | endoflife.date (endoflife.date)
+
+> [!NOTE] Claude
+> Rust の最新バージョンについて...
+```
+
+`[!ABSTRACT]-` コールアウトは Obsidian でデフォルトで折りたたまれます（`-` サフィックス）。
 
 ### Deep Research 形式
 

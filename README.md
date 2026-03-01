@@ -14,6 +14,7 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 - **Multiple output options**: Save to Obsidian, download as file, or copy to clipboard
 - **Deep Research support**: Export Gemini Deep Research and Claude Extended Thinking reports
 - **Artifact support**: Extract Claude Artifacts with inline citations and sources
+- **Tool content support**: Optionally include Claude's web search results and tool activity as collapsible `[!ABSTRACT]` callouts
 - **Append mode**: Only new messages are added to existing notes
 - **Obsidian callouts**: Formatted output with `[!QUESTION]` and `[!NOTE]` callouts
 - **YAML frontmatter**: Metadata including title, source, URL, dates, and tags
@@ -136,6 +137,22 @@ message_count: 4
 > [!NOTE] Gemini
 > To implement JWT authentication, you'll need to...
 ```
+
+### Tool Content Format (Claude)
+
+When "Include tool/search results" is enabled, Claude's web search and tool activity are rendered as collapsible callouts before the assistant response:
+
+```markdown
+> [!ABSTRACT]- Searched the web
+> Rust latest version 2026 (10 results)
+> - Rust Versions | Rust Changelogs (releases.rs)
+> - Rust | endoflife.date (endoflife.date)
+
+> [!NOTE] Claude
+> Here are the latest Rust version details...
+```
+
+The `[!ABSTRACT]-` callout is collapsed by default in Obsidian (the `-` suffix).
 
 ### Deep Research Format
 
