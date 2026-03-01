@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PerplexityExtractor } from '../../src/content/extractors/perplexity';
+import { htmlToMarkdown } from '../../src/content/markdown';
+import { sanitizeHtml } from '../../src/lib/sanitize';
 import {
   loadFixture,
   clearFixture,
@@ -415,6 +417,41 @@ describe('PerplexityExtractor', () => {
       // Only user message should exist, assistant skipped due to empty content
       expect(messages).toHaveLength(1);
       expect(messages[0].role).toBe('user');
+    });
+  });
+
+  // ========== Issue #96: Math equations in code blocks ==========
+  describe('Math equations rendering (issue #96)', () => {
+    it('reproduces: LaTeX in fenced code blocks instead of $$ (display math)', () => {
+      // Issue #96: Perplexity outputs LaTeX inside <pre><code> instead of KaTeX
+      // Markdown conversion happens in conversationToNote(), not extractMessages()
+      // So we test via htmlToMarkdown() which is the actual conversion path
+      const html = `
+        <p>Then the unconditional expected prize is</p>
+        <pre><code>E[\\text{prize}] = 0.21 \\times 0.66</code></pre>
+        <p>and the EV of the ticket is</p>
+        <pre><code>EV = E[\\text{prize}] - 1
+= 0.21 \\times 0.66 - 1</code></pre>
+      `;
+
+      const markdown = htmlToMarkdown(sanitizeHtml(html));
+
+      // CURRENT BEHAVIOR (bug): LaTeX ends up inside ``` code blocks
+      expect(markdown).toContain('```');
+      expect(markdown).toContain('E[\\text{prize}]');
+      expect(markdown).not.toContain('$$');
+    });
+
+    it('reproduces: LaTeX in inline code instead of $ (inline math)', () => {
+      // Issue #96: Perplexity outputs inline LaTeX inside <code> tags
+      const html = `<p>Let <code>P(\\text{win}) = 0.21</code> and <code>P(\\text{lose}) = 0.79</code></p>`;
+
+      const markdown = htmlToMarkdown(sanitizeHtml(html));
+
+      // CURRENT BEHAVIOR (bug): LaTeX ends up inside ` backticks
+      expect(markdown).toContain('`');
+      expect(markdown).toContain('P(\\text{win})');
+      expect(markdown).not.toContain('$P(\\text{win})');
     });
   });
 });
