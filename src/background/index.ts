@@ -51,10 +51,20 @@ chrome.runtime.onMessage.addListener(
     }
 
     handleMessage(message)
-      .then(sendResponse)
+      .then(response => {
+        try {
+          sendResponse(response);
+        } catch {
+          /* sender disconnected */
+        }
+      })
       .catch(error => {
         console.error('[G2O Background] Error handling message:', error);
-        sendResponse({ success: false, error: getErrorMessage(error) });
+        try {
+          sendResponse({ success: false, error: getErrorMessage(error) });
+        } catch {
+          /* sender disconnected */
+        }
       });
     return true; // Indicates async response
   }
