@@ -13,6 +13,8 @@ This extension extracts conversations from Google Gemini (gemini.google.com), Cl
 • Clean Markdown formatting with YAML frontmatter
 • Obsidian callout syntax for Q&A blocks (shows correct AI name)
 • Deep Research support (Gemini) and Extended Thinking/Artifacts (Claude)
+• LaTeX math formula preservation ($$...$$ and $...$) across all platforms
+• Web search results saved as collapsible callouts (Claude)
 • Append mode - only new messages are added to existing notes
 • Auto-scroll for long Gemini conversations
 • Platform organization with {platform} template variable
