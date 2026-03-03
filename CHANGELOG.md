@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.5](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.12.4...v0.12.5) (2026-03-03)
+
+
+### Code Refactoring
+
+* split markdown.ts, extract scroll manager, add polymorphic extractor settings ([#104](https://github.com/sho7650/obsidian-AI-exporter/issues/104)) ([442c322](https://github.com/sho7650/obsidian-AI-exporter/commit/442c32236f7066ed15260dbf32911c9ec123c5d4))
+
 ## [0.12.4](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.12.3...v0.12.4) (2026-03-01)
 
 
