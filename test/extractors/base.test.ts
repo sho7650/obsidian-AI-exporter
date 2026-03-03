@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BaseExtractor } from '../../src/content/extractors/base';
 import type {
   ExtractionResult,
+  ExtensionSettings,
   ConversationMessage,
   ConversationData,
 } from '../../src/lib/types';
@@ -582,6 +583,21 @@ describe('BaseExtractor', () => {
       expect(messages[0].id).toBe('user-0');
       expect(messages[1].id).toBe('assistant-1');
       expect(messages[2].id).toBe('user-2');
+    });
+  });
+
+  describe('applySettings', () => {
+    it('is a no-op by default (does not throw)', () => {
+      const settings = { enableAutoScroll: true, enableToolContent: true } as ExtensionSettings;
+      expect(() => extractor.applySettings(settings)).not.toThrow();
+    });
+
+    it('does not modify base extractor state', () => {
+      const settings = { enableAutoScroll: true, enableToolContent: true } as ExtensionSettings;
+      extractor.applySettings(settings);
+      // Base extractor has no settings properties to check,
+      // just confirm it remains functional
+      expect(extractor.platform).toBe('gemini');
     });
   });
 });

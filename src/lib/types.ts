@@ -265,4 +265,5 @@ export interface IConversationExtractor {
   getTitle(): string;
   extractMessages(): ConversationMessage[];
   validate(result: ExtractionResult): ValidationResult;
+  applySettings(settings: ExtensionSettings): void;
 }

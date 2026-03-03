@@ -13,6 +13,7 @@ import type {
   ConversationMessage,
   DeepResearchSource,
   DeepResearchLinks,
+  ExtensionSettings,
   ExtractionResult,
 } from '../../lib/types';
 import { MAX_DEEP_RESEARCH_TITLE_LENGTH } from '../../lib/constants';
@@ -121,6 +122,13 @@ export class ClaudeExtractor extends BaseExtractor {
   readonly platform = 'claude';
   /** Include tool-use / intermediate content (web search, code interpreter, etc.) */
   enableToolContent = false;
+
+  /**
+   * Apply user settings: enable/disable tool content extraction
+   */
+  applySettings(settings: ExtensionSettings): void {
+    this.enableToolContent = settings.enableToolContent ?? false;
+  }
 
   // ========== Platform Detection ==========
 

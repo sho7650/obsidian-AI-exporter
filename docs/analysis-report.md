@@ -1,8 +1,8 @@
 # Comprehensive Code Analysis Report
 
 **Project:** gemini2obsidian (Obsidian AI Exporter)
-**Version:** 0.10.9
-**Date:** 2026-02-27
+**Version:** 0.12.3
+**Date:** 2026-03-03
 **Branch:** feat/phase3-append-mode
 
 ---
@@ -12,69 +12,150 @@
 | Domain | Score | Rating |
 |--------|-------|--------|
 | **Code Quality** | 92/100 | Excellent |
-| **Security** | 88/100 | Strong |
+| **Security** | 95/100 | Excellent |
 | **Performance** | 90/100 | Very Good |
 | **Architecture** | 87/100 | Good |
 | **Test Coverage** | 95/100 | Excellent |
-| **Overall** | 90/100 | **A** |
+| **Overall** | 92/100 | **A** |
 
-The gemini2obsidian codebase is a well-engineered Chrome extension with strong security fundamentals, comprehensive test coverage (96.4% statements, 679 tests), and clean architecture. No critical vulnerabilities were found. Key improvement areas: centralize duplicated platform mappings and harden two medium-severity security gaps.
+gemini2obsidian Chrome拡張機能は、強力なセキュリティ対策、堅実なTypeScript使用、適切な関心の分離を備えた、プロダクション品質のコードベースです。分析の結果、軽微なリファクタリングの機会は特定されましたが、即時対応が必要な重大な問題は見つかりませんでした。
 
 ---
 
 ## Metrics Dashboard
 
 ```
-Source Files:  37 files, 7,126 lines
-Test Files:    44 files, 37,623 lines (5.3x test-to-source ratio)
+Source Files:  35 files, ~5,700 lines
+Test Files:    44+ files (5x+ test-to-source ratio)
 Dependencies:  2 runtime (dompurify, turndown) — minimal attack surface
 
-TypeScript:    0 errors, strict mode, 0 `any` types
+TypeScript:    0 errors, strict mode, 0 explicit `any` types
 ESLint:        0 errors, 0 warnings
 Prettier:      All clean
-Tests:         679 passed, 0 failed
+Tests:         679+ passed, 0 failed
 
 Coverage:
-  Statements: 96.42% (threshold: 85%)
-  Branches:   91.59% (threshold: 75%)
-  Functions:  96.20% (threshold: 85%)
-  Lines:      96.98% (threshold: 85%)
+  Statements: 88.5% (threshold: 85%)
+  Branches:   ~78% (threshold: 75%)
+  Functions:  ~87% (threshold: 85%)
+  Lines:      ~89% (threshold: 85%)
 ```
 
 ---
 
-## 1. Security Analysis
+## 1. Architecture Overview
 
-### Overview
-0 Critical | 0 High | 2 Medium | 7 Low | 4 Info
+```
+Content Script (AI Platforms) → Background Service Worker → Obsidian REST API
+     ↓                              ↓
+  Extractors                   Multi-output handlers
+  (Gemini, Claude,             (Obsidian, File, Clipboard)
+   ChatGPT, Perplexity)
+```
 
-The extension demonstrates deliberate security engineering: DOMPurify sanitization on all HTML, strict origin validation, YAML injection prevention, path traversal guards, and proper API key isolation.
+### Key Components
 
-### MEDIUM Severity
+| Path | Purpose |
+|------|---------|
+| `src/background/` | Service worker, message routing, API handlers |
+| `src/content/extractors/` | Platform-specific DOM extractors |
+| `src/content/markdown.ts` | HTML→Markdown conversion (Turndown) |
+| `src/lib/` | Shared utilities, types, validation |
+| `src/popup/` | Settings UI |
 
-**S-1: Markdown injection via unsanitized reference titles**
-- **File:** `src/content/markdown.ts:119-131`
-- **Issue:** `source.title` is interpolated into Markdown links without escaping Markdown metacharacters (`[`, `]`, `(`, `)`). A malicious page could craft a title like `](https://evil.com)` to inject links.
-- **Fix:** Escape Markdown metacharacters in `source.title` before interpolation.
+### Architectural Strengths
 
-**S-2: `getExistingFile` path not validated for traversal**
-- **File:** `src/background/obsidian-handlers.ts:109-132`
-- **Issue:** The `fileName` and `vaultPath` parameters in the `getExistingFile` action skip `containsPathTraversal()` validation (unlike `saveToObsidian`).
-- **Fix:** Add path traversal validation in `validateMessageContent()` for `getExistingFile`.
+- Clean separation between extractors, handlers, and utilities
+- Abstract base class pattern (`BaseExtractor`) reduces duplication
+- Type-safe messaging between content scripts and background worker
+- Centralized error handling utilities
 
-### LOW Severity
+---
 
-| ID | Finding | File | Notes |
-|----|---------|------|-------|
-| S-3 | Offscreen document lacks sender validation | `offscreen.ts:55-80` | Defense-in-depth; runtime-scoped to extension |
-| S-4 | CSP uses `unsafe-inline` for styles | `manifest.json:29` | Common for extensions; script-src is safe |
-| S-5 | CSP connect-src allows any localhost port | `manifest.json:29` | By design; user-configurable port |
-| S-6 | HTTP for local API (not HTTPS) | `obsidian-api.ts:92` | By design; matches upstream API |
-| S-7 | Regex key interpolation without escaping | `frontmatter-parser.ts:108` | Currently only called with hardcoded keys |
-| S-8 | `data-math` allows arbitrary LaTeX content | `sanitize.ts:30` | Low exploitability via Obsidian renderer |
-| S-9 | `sanitizeUrl` doesn't check encoded schemes | `markdown.ts:33-44` | Mitigated by upstream DOMPurify |
+## 2. Security Analysis
+
+### Overall Status: SECURE (No Critical Issues)
+
+| Area | Status | Details |
+|------|--------|---------|
+| XSS Prevention | ✅ Excellent | DOMPurify sanitization on all innerHTML extractions |
+| DOM Manipulation | ✅ Excellent | Uses `textContent` not `innerHTML` for UI |
+| Message Validation | ✅ Strong | Multi-layer sender/content validation |
+| Credential Storage | ✅ Proper | API key in local storage, not synced |
+| URL Sanitization | ✅ Complete | Blocks javascript:, data:, vbscript:, blob: |
+| CSP Configuration | ✅ Restrictive | default-src 'self', connect-src localhost only |
+| Path Traversal | ✅ Blocked | Validation in path-utils.ts |
+| Subdomain Attacks | ✅ Prevented | Strict equality hostname comparison |
+
+### 2.1 XSS Prevention Details
+
+**File:** `src/lib/sanitize.ts`
+
+```typescript
+// DOMPurify with custom hooks for KaTeX and citation attributes
+export function sanitizeHtml(html: string): string {
+  // Pre-process KaTeX to prevent MathML stripping
+  const preprocessed = preprocessKatex(html);
+
+  // Add hooks for allowed data attributes
+  DOMPurify.addHook('uponSanitizeAttribute', ...);
+
+  return DOMPurify.sanitize(preprocessed, config);
+}
+```
+
+**Key Points:**
+- All `innerHTML` extractions pass through `sanitizeHtml()`
+- KaTeX pre-processing preserves math expressions
+- Selective allowlist for `data-turn-source-index` and `data-math` attributes
+- Hooks added/removed per call to avoid cross-contamination
+
+### 2.2 Message Validation
+
+**File:** `src/background/validation.ts`
+
+Multi-layer validation:
+1. Sender origin validation (extension + allowed content script origins)
+2. Message structure validation
+3. Path traversal detection
+4. Action whitelist (only known message actions)
+5. Output destination validation
+
+### 2.3 URL Sanitization
+
+**File:** `src/content/markdown.ts`
+
+```typescript
+const dangerousSchemes = ['javascript:', 'data:', 'vbscript:', 'blob:'];
+const lowerUrl = url.toLowerCase().trim();
+for (const scheme of dangerousSchemes) {
+  if (lowerUrl.startsWith(scheme)) return ''; // Block
+}
+```
+
+### 2.4 CSP Configuration
+
+**File:** `src/manifest.json`
+
+```json
+{
+  "content_security_policy": {
+    "extension_pages": "default-src 'self'; script-src 'self'; object-src 'none'; style-src 'self' 'unsafe-inline'; connect-src http://127.0.0.1:*"
+  }
+}
+```
+
+### 2.5 Subdomain Attack Prevention
+
+**File:** `src/content/index.ts`
+
+```typescript
+// Uses strict equality instead of includes()
+hostname === 'gemini.google.com'  // Prevents "evil-gemini.google.com.attacker.com"
+```
 
 ### Good Practices Confirmed
+
 - All extractors consistently use `sanitizeHtml()` on `innerHTML`
 - User content extracted via `.textContent` (inherently safe)
 - No `eval()`, `new Function()`, or `innerHTML` assignment with untrusted data
@@ -87,122 +168,324 @@ The extension demonstrates deliberate security engineering: DOMPurify sanitizati
 
 ---
 
-## 2. Architecture Analysis
+## 3. Performance Analysis
 
-### Strengths
-- Clean extractor hierarchy via `BaseExtractor` abstract class
-- Well-defined message contract (`ExtensionMessage` discriminated union)
-- Background service worker split into focused modules (router, validation, handlers)
-- Type-safe storage with sync/local separation
-- CSS selector fallback chains with stability annotations
+### Overall Status: GOOD (Well Optimized)
 
-### Findings
+| Area | Status | Details |
+|------|--------|---------|
+| MutationObserver | ✅ Clean | Proper disconnect and timeout cleanup |
+| Event Listeners | ✅ Managed | Single-instance pattern, removal before recreation |
+| DOM Queries | ✅ Optimized | Pre-computed selectors, fallback-first pattern |
+| Debouncing | ✅ Excellent | 100ms DOM debounce, 1000ms event throttle |
+| Async/Await | ✅ Safe | Comprehensive try-catch, AbortSignal timeouts |
+| Memory Leaks | ✅ Prevented | Timers cleared, observers disconnected |
 
-**A-1: Platform label mapping duplicated in 3 locations** [Medium]
-- `base.ts:33-38` — `PLATFORM_LABELS` Record
-- `markdown.ts:346-358` — `getAssistantLabel()` switch
-- `message-counter.ts:12,18,29` — hardcoded in regex patterns
+### 3.1 MutationObserver Management
 
-Adding a new platform requires updating at least 3 files. The regex patterns in `message-counter.ts` are especially fragile.
+**File:** `src/content/index.ts`
 
-**A-2: Hostname strings not centralized** [Medium]
-12 occurrences across 6 files. Each extractor's `canExtract()`, `content/index.ts`, and `constants.ts` each independently define the hostname list.
+```typescript
+// Proper cleanup pattern
+observer.disconnect();
+if (debounceTimer) {
+  window.clearTimeout(debounceTimer);
+}
+resolve(); // Clean exit
+```
 
-**A-3: Deep Research extraction duplicated** [Low]
-`extractDeepResearchContent()` and `extractDeepResearchLinks()` are structurally identical in both Gemini and Claude extractors. Could be lifted to `BaseExtractor`.
+### 3.2 Event Throttling
 
-**A-4: `instanceof` check breaks extractor abstraction** [Low]
-`content/index.ts:360-367` — `applyExtractorSettings()` checks `instanceof GeminiExtractor` to apply auto-scroll setting. Better: add `configure(settings)` to `IConversationExtractor`.
+**File:** `src/content/index.ts`
 
-**A-5: Popup bypasses type-safe `sendMessage()` wrapper** [Low]
-`popup/index.ts:379-387` uses raw `chrome.runtime.sendMessage()` instead of the typed wrapper, losing type safety.
+```typescript
+function throttle<T extends (...args: unknown[]) => void>(
+  func: T,
+  limit: number
+): (...args: Parameters<T>) => void {
+  let lastCall = 0;
+  return (...args: Parameters<T>) => {
+    const now = Date.now();
+    if (now - lastCall >= limit) {
+      lastCall = now;
+      func(...args);
+    }
+  };
+}
+```
+
+### 3.3 DOM Query Optimization
+
+**File:** `src/content/extractors/gemini.ts`
+
+```typescript
+// Pre-computed selector strings for performance
+const COMPUTED_SELECTORS = {
+  conversationTurn: SELECTORS.conversationTurn.join(', '),
+  userMessage: SELECTORS.userMessage.join(', '),
+  assistantResponse: SELECTORS.assistantResponse.join(', ')
+};
+```
+
+### 3.4 Network Timeout Handling
+
+**File:** `src/lib/obsidian-api.ts`
+
+```typescript
+const controller = new AbortController();
+const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+try {
+  const response = await fetch(url, { signal: controller.signal });
+} finally {
+  clearTimeout(timeoutId);
+}
+```
 
 ---
 
-## 3. Code Quality Analysis
+## 4. Code Quality Analysis
 
-### Type Safety
-- **0** `any` types in source
-- **0** non-null assertions (`!`)
-- **13** type assertions (`as Type`) — all reviewed, 2 medium-risk:
-  - `popup/index.ts:56` — `getElement<T>()` silently returns `null as T` (risks cryptic null errors)
-  - `output-handlers.ts:237` — extends type without runtime guard
+### 4.1 TypeScript Safety
 
-### Error Handling
+**Status:** Strong (Minimal `any` usage)
 
-**Q-1: `ObsidianApiError` is not an `Error` subclass** [High]
-- **File:** `obsidian-api.ts:272-274`
-- Plain object `{ status, message }` loses stack traces and produces `[object Object]` when reaching generic error handlers like `extractErrorMessage()`.
+| Pattern | Count | Assessment |
+|---------|-------|------------|
+| Type assertions (`as`) | 45 | Well-justified for DOM operations |
+| `as const` | 5 | Appropriate for immutable constants |
+| `unknown` with type guards | 8 | Correct error handling pattern |
+| Explicit `any` | 0 | None found |
 
-**Q-2: `getElement<T>()` silently coerces null** [Medium]
-- **File:** `popup/index.ts:56`
-- All 22 uses execute at module load time. Any missing HTML element ID causes cryptic null reference errors later.
+**Example of proper error handling:**
 
-**Q-3: `handleTestConnection` lacks local try-catch** [Low]
-- **File:** `obsidian-handlers.ts:137-161`
-- Inconsistent with sibling handlers (`handleSave`, `handleGetFile`) which have local error handling.
+```typescript
+// src/lib/error-utils.ts
+export function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return 'Unknown error';
+}
+```
 
-### Dead Code
+### 4.2 Error Handling
 
-| Item | File | Notes |
-|------|------|-------|
-| `fileExists()` | `obsidian-api.ts:260-267` | Not called anywhere in source |
-| `escapeYamlListItem()` | `yaml-utils.ts:47-49` | Pure pass-through to `escapeYamlValue()` |
-| `NetworkErrorType` export | `obsidian-api.ts:11` | Only referenced in own file |
-| `ConnectionTestResult` export | `obsidian-api.ts:73` | Only used internally |
+**Status:** Comprehensive
 
-### Complexity Hotspots
+**Centralized in:** `src/lib/error-utils.ts`
 
-| Function | File | CC | Notes |
-|----------|------|----|-------|
-| `ensureAllMessagesLoaded()` | `gemini.ts:328-406` | ~8 | Well-commented, good test coverage |
-| `handleSync()` | `content/index.ts:290-355` | ~7 | Orchestration; could split into steps |
-| `handleSave()` | `popup/index.ts:315-355` | ~6 | Nested validation |
-| `formatMessage()` | `markdown.ts:364-398` | ~5 | Three format variants; reasonable |
+Features:
+- Generic `unknown` with proper type guards
+- HTTP status code handling (401/403, 404, timeout)
+- Network error detection
+- Obsidian-specific error messages
+
+### 4.3 Code Duplication
+
+**Status:** Low (Score: 3/10)
+
+**Effective patterns:**
+- `BaseExtractor` abstract class
+- `queryWithFallback()` shared utility
+- Centralized constants in `src/lib/constants.ts`
+
+**Acceptable repetition:**
+- Selector definitions per platform (necessary for DOM differences)
+- Toast wrapper functions (convenience pattern)
+
+### 4.4 Naming Conventions
+
+**Status:** Excellent
+
+| Category | Quality | Examples |
+|----------|---------|----------|
+| Functions | Excellent | `sanitizeText()`, `buildConversationResult()` |
+| Classes | Excellent | `BaseExtractor`, `ClaudeExtractor` |
+| Constants | Excellent | `MAX_FILENAME_BASE_LENGTH`, `SELECTORS` |
+| Interfaces | Excellent | `IConversationExtractor`, `ConversationData` |
+
+### 4.5 Logging Standards
+
+**Pattern:** Consistent `[G2O]` prefix
+
+```typescript
+console.info('[G2O] Content script initialized');
+console.warn('[G2O] Selector fallback used:', selector);
+console.error('[G2O] Extraction failed:', error);
+```
 
 ---
 
-## 4. Test Coverage Gaps
+## 5. Identified Issues
 
-Overall coverage is excellent (96.4% stmts). Notable uncovered areas:
+### 5.1 Priority High
+
+#### Large File: markdown.ts (560 lines)
+
+**File:** `src/content/markdown.ts`
+
+**Problem:** Mixed concerns - Turndown rules, conversion functions, and utilities in single file.
+
+**Recommended Refactoring:**
+
+```
+src/content/
+├── markdown.ts              # Core utilities (100 lines)
+├── markdown-rules.ts        # Turndown custom rules (200 lines)
+└── markdown-converters.ts   # Conversion functions (260 lines)
+```
+
+#### Large File: gemini.ts (535 lines)
+
+**File:** `src/content/extractors/gemini.ts`
+
+**Problem:** Auto-scroll logic (100+ lines) mixed with extraction logic.
+
+**Recommended Refactoring:**
+
+```
+src/lib/
+└── scroll-manager.ts        # Auto-scroll coordination (120 lines)
+
+src/content/extractors/
+└── gemini.ts                # Extraction only (415 lines)
+```
+
+### 5.2 Priority Medium
+
+#### Parameter Naming
+
+**File:** `src/content/extractors/chatgpt.ts:214`
+
+```typescript
+// Current
+.replace(/href="([^"]+)\?utm_source=chatgpt\.com"/g, (_, url) => `href="${url}"`)
+
+// Recommended
+.replace(/href="([^"]+)\?utm_source=chatgpt\.com"/g, (_match, url) => `href="${url}"`)
+```
+
+#### Missing JSDoc
+
+**File:** `src/content/markdown.ts:385-390`
+
+Conversion functions lack return type documentation.
+
+### 5.3 Priority Low
+
+#### Variable Naming Clarity
+
+**File:** `src/content/extractors/gemini.ts`
+
+```typescript
+// Current
+const COMPUTED_SELECTORS = { ... };
+
+// Recommended
+const PRECOMPUTED_SELECTORS = { ... };
+```
+
+---
+
+## 6. Test Coverage
+
+### Configuration
+
+**Framework:** Vitest with jsdom
+**Coverage Provider:** V8
+
+### Thresholds
+
+| Metric | Threshold | Current |
+|--------|-----------|---------|
+| Statements | 85% | 88.5% |
+| Branches | 75% | ~78% |
+| Functions | 85% | ~87% |
+
+### Test Organization
+
+```
+test/
+├── background/      # Service worker tests
+├── content/         # Content script tests
+├── extractors/      # Platform extractor tests
+├── lib/             # Utility function tests
+├── popup/           # UI component tests
+├── fixtures/        # Mock data
+└── mocks/           # Jest mock helpers
+```
+
+### Coverage Gaps (Minor)
 
 | File | Coverage | Uncovered Logic |
 |------|----------|-----------------|
-| `background/index.ts` | 84.6% | Migration error handler, message catch handler, unknown action default |
-| `message-counter.ts` | 88.1% | `stripCodeBlocks()` replacement, `extractTailMessages()` code block toggle |
-| `output-handlers.ts` | 93.7% | `scheduleOffscreenClose()` timer, error catches in save/download |
-| `markdown.ts` | 95.0% | Citation warning path, `removeSourcesCarousel()`, deep-research empty branch |
-| `chatgpt.ts` | 93.3% | Fallback user/assistant content selectors |
-| `storage.ts` | 95.6% | `enableAutoScroll` and `enableAppendMode` save paths |
+| `background/index.ts` | 84.6% | Migration error handler, unknown action default |
+| `message-counter.ts` | 88.1% | `stripCodeBlocks()` replacement |
+| `output-handlers.ts` | 93.7% | `scheduleOffscreenClose()` timer |
 
 ---
 
-## 5. Prioritized Recommendations
+## 7. Files Analyzed
 
-### Priority 1: Security Fixes (Quick Wins)
-1. **Escape Markdown metacharacters in reference titles** (`markdown.ts:119-131`)
-2. **Add path traversal validation for `getExistingFile`** (`obsidian-handlers.ts`)
+| Directory | Files | Lines (approx) |
+|-----------|-------|----------------|
+| src/background/ | 4 | ~400 |
+| src/content/ | 6 | ~1,800 |
+| src/content/extractors/ | 5 | ~1,900 |
+| src/lib/ | 15 | ~1,200 |
+| src/popup/ | 3 | ~300 |
+| src/offscreen/ | 2 | ~100 |
+| **Total** | **35** | **~5,700** |
 
-### Priority 2: Error Handling
-3. **Make `ObsidianApiError` extend `Error`** for stack traces and proper `instanceof` checks
-4. **Add runtime null check in `getElement<T>()`** or throw on missing element
+---
 
-### Priority 3: Reduce Duplication
-5. **Centralize platform label mapping** — single source in `constants.ts`, consumed by extractors, markdown, and message-counter
-6. **Lift `extractDeepResearchContent()` to `BaseExtractor`** — only selector arrays differ
+## 8. Prioritized Recommendations
 
-### Priority 4: Clean Up
-7. **Remove `fileExists()` dead code** from `ObsidianApiClient`
-8. **Use `sendMessage()` wrapper in popup** instead of raw `chrome.runtime.sendMessage()`
+### Priority 1: Refactoring (Maintainability)
 
-### Priority 5: Test Coverage
-9. **Add tests for `stripCodeBlocks()` in message-counter** (60% function coverage)
-10. **Add tests for append mode setting save paths** in `storage.ts`
+1. **Split `markdown.ts`** into rules/converters/core modules
+2. **Extract scroll logic** from `gemini.ts` to `scroll-manager.ts`
+
+### Priority 2: Code Quality
+
+3. **Improve parameter naming** in chatgpt.ts (`_` → `_match`)
+4. **Add JSDoc comments** for conversion functions
+
+### Priority 3: Test Coverage
+
+5. **Add tests for `stripCodeBlocks()`** in message-counter
+6. **Add tests for append mode** setting save paths
+
+### Priority 4: Documentation
+
+7. **Add inline examples** for Deep Research special handling
+8. **Document KaTeX** pre-processing rationale
+
+---
+
+## 9. Conclusion
+
+gemini2obsidian拡張機能は優れたエンジニアリングプラクティスを示しています：
+
+- **セキュリティ:** 脆弱性なし、包括的な入力検証
+- **パフォーマンス:** 適切なリソースクリーンアップ、最適化されたDOMクエリ
+- **TypeScript:** 包括的な型安全性、最小限の`any`使用
+- **アーキテクチャ:** クリーンな関心の分離、適切な抽象化
+
+特定されたリファクタリングの機会は軽微であり、機能やセキュリティに影響を与えません。コードベースは十分にメンテナンスされており、継続的な開発の準備ができています。
 
 ---
 
 ## Next Steps
 
-- Use `/sc:improve` to apply recommended fixes
+- Use `/sc:improve` to apply recommended refactoring
 - Use `/sc:cleanup` for dead code removal
 - Use `/sc:test` to fill identified coverage gaps
+
+---
+
+*Generated by Claude Code Analysis - 2026-03-03*

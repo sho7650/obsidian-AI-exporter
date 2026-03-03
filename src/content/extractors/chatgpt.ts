@@ -211,7 +211,7 @@ export class ChatGPTExtractor extends BaseExtractor {
   private cleanCitationUrls(html: string): string {
     // Replace utm_source parameter in href attributes
     return html
-      .replace(/href="([^"]+)\?utm_source=chatgpt\.com"/g, (_, url) => `href="${url}"`)
-      .replace(/href="([^"]+)&utm_source=chatgpt\.com"/g, (_, url) => `href="${url}"`);
+      .replace(/href="([^"]+)\?utm_source=chatgpt\.com"/g, (_match, url) => `href="${url}"`)
+      .replace(/href="([^"]+)&utm_source=chatgpt\.com"/g, (_match, url) => `href="${url}"`);
   }
 }

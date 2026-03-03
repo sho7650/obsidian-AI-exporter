@@ -8,12 +8,11 @@ import { sanitizeHtml } from '../../lib/sanitize';
 import {
   MAX_DEEP_RESEARCH_TITLE_LENGTH,
   MAX_CONVERSATION_TITLE_LENGTH,
-  SCROLL_POLL_INTERVAL,
   SCROLL_TIMEOUT,
-  SCROLL_STABILITY_THRESHOLD,
-  SCROLL_REARM_DELAY,
 } from '../../lib/constants';
+import { ensureAllElementsLoaded, type ScrollResult } from '../../lib/scroll-manager';
 import type {
+  ExtensionSettings,
   ExtractionResult,
   ConversationMessage,
   DeepResearchSource,
@@ -114,26 +113,18 @@ const COMPUTED_SELECTORS = {
   sourceDomain: DEEP_RESEARCH_LINK_SELECTORS.sourceDomain.join(','),
 } as const;
 
-/**
- * Result of the auto-scroll process
- * Internal to gemini.ts — not exported
- */
-interface ScrollResult {
-  /** Whether all messages loaded before timeout */
-  fullyLoaded: boolean;
-  /** Number of .conversation-container elements found after scrolling */
-  elementCount: number;
-  /** Total scroll-poll iterations performed */
-  scrollIterations: number;
-  /** Whether scrolling was unnecessary (already at top or no container) */
-  skipped: boolean;
-}
-
 export class GeminiExtractor extends BaseExtractor {
   readonly platform = 'gemini';
 
   /** Whether auto-scroll is enabled (set from settings before extract()) */
   enableAutoScroll = false;
+
+  /**
+   * Apply user settings: enable/disable auto-scroll
+   */
+  applySettings(settings: ExtensionSettings): void {
+    this.enableAutoScroll = settings.enableAutoScroll ?? false;
+  }
 
   /** Stores scroll result from onBeforeExtract for onAfterExtract */
   private lastScrollResult: ScrollResult | null = null;
@@ -168,9 +159,32 @@ export class GeminiExtractor extends BaseExtractor {
    * Pre-extraction: run auto-scroll to load all messages
    */
   protected async onBeforeExtract(): Promise<void> {
-    this.lastScrollResult = this.enableAutoScroll
-      ? await this.ensureAllMessagesLoaded()
-      : { fullyLoaded: true, elementCount: 0, scrollIterations: 0, skipped: true };
+    if (!this.enableAutoScroll) {
+      this.lastScrollResult = {
+        fullyLoaded: true,
+        elementCount: 0,
+        scrollIterations: 0,
+        skipped: true,
+      };
+      return;
+    }
+
+    const container = this.queryWithFallback<HTMLElement>(SELECTORS.scrollContainer);
+    if (!container) {
+      console.info('[G2O] No scroll container found, skipping auto-scroll');
+      this.lastScrollResult = {
+        fullyLoaded: true,
+        elementCount: 0,
+        scrollIterations: 0,
+        skipped: true,
+      };
+      return;
+    }
+
+    this.lastScrollResult = await ensureAllElementsLoaded(
+      container,
+      COMPUTED_SELECTORS.conversationTurn
+    );
   }
 
   /**
@@ -298,111 +312,6 @@ export class GeminiExtractor extends BaseExtractor {
     }
 
     return 'Untitled Gemini Conversation';
-  }
-
-  /**
-   * Count .conversation-container elements currently in the DOM
-   */
-  private countConversationElements(): number {
-    return document.querySelectorAll(COMPUTED_SELECTORS.conversationTurn).length;
-  }
-
-  /**
-   * Wait for a specified duration
-   */
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  /**
-   * Scroll to top of chat history to trigger lazy loading of all messages.
-   *
-   * Gemini's infinite-scroller fires `onScrolledTopPastThreshold` (edge-triggered)
-   * when scrollTop crosses **below** a threshold. To re-trigger on subsequent
-   * iterations, we must first scroll **above** the threshold (re-arm) by jumping
-   * to scrollHeight, then back to 0.
-   *
-   * Verified via getEventListeners() on live Gemini page (2026-02-21):
-   *   - scroll, onInitialScroll, onScrolledTopPastThreshold
-   */
-  private async ensureAllMessagesLoaded(): Promise<ScrollResult> {
-    const container = this.queryWithFallback<HTMLElement>(SELECTORS.scrollContainer);
-
-    if (!container) {
-      console.info('[G2O] No scroll container found, skipping auto-scroll');
-      return { fullyLoaded: true, elementCount: 0, scrollIterations: 0, skipped: true };
-    }
-
-    const initialCount = this.countConversationElements();
-
-    if (container.scrollTop === 0) {
-      console.info(
-        `[G2O] scrollTop=0, scrollHeight=${container.scrollHeight}, ` +
-          `clientHeight=${container.clientHeight}, elements=${initialCount}`
-      );
-      return { fullyLoaded: true, elementCount: initialCount, scrollIterations: 0, skipped: true };
-    }
-
-    console.info(
-      `[G2O] Partial load detected — scrollTop=${container.scrollTop}, ` +
-        `elements=${initialCount}, auto-scrolling`
-    );
-
-    let previousCount = 0;
-    let stableCount = 0;
-    let iterations = 0;
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < SCROLL_TIMEOUT) {
-      // Re-arm: if already at top, scroll to bottom first so the next
-      // scroll-to-0 crosses the onScrolledTopPastThreshold edge trigger.
-      if (container.scrollTop === 0) {
-        container.scrollTop = container.scrollHeight;
-        await this.delay(SCROLL_REARM_DELAY);
-      }
-
-      // Scroll to top — crosses the threshold, triggering content loading
-      container.scrollTop = 0;
-      await this.delay(SCROLL_POLL_INTERVAL);
-
-      const currentCount = this.countConversationElements();
-      iterations++;
-
-      console.debug(
-        `[G2O] Scroll iteration ${iterations}: elements=${currentCount}, ` +
-          `scrollTop=${container.scrollTop}, scrollHeight=${container.scrollHeight}`
-      );
-
-      if (currentCount === previousCount) {
-        stableCount++;
-        if (stableCount >= SCROLL_STABILITY_THRESHOLD) {
-          console.info(
-            `[G2O] DOM stabilized after ${iterations} iterations with ${currentCount} elements`
-          );
-          return {
-            fullyLoaded: true,
-            elementCount: currentCount,
-            scrollIterations: iterations,
-            skipped: false,
-          };
-        }
-      } else {
-        console.debug(`[G2O] Element count changed: ${previousCount} -> ${currentCount}`);
-        stableCount = 0;
-        previousCount = currentCount;
-      }
-    }
-
-    const finalCount = this.countConversationElements();
-    console.warn(
-      `[G2O] Auto-scroll timed out after ${SCROLL_TIMEOUT}ms with ${finalCount} elements`
-    );
-    return {
-      fullyLoaded: false,
-      elementCount: finalCount,
-      scrollIterations: iterations,
-      skipped: false,
-    };
   }
 
   /**

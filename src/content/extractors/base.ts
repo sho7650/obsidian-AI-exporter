@@ -5,6 +5,7 @@
 import type {
   AIPlatform,
   IConversationExtractor,
+  ExtensionSettings,
   ExtractionResult,
   ValidationResult,
   ConversationMessage,
@@ -107,6 +108,16 @@ export abstract class BaseExtractor implements IConversationExtractor {
    */
   protected onAfterExtract(result: ExtractionResult): ExtractionResult {
     return result;
+  }
+
+  // ========== Settings ==========
+
+  /**
+   * Apply user settings before extraction.
+   * Override in subclasses that have platform-specific settings.
+   */
+  applySettings(_settings: ExtensionSettings): void {
+    // no-op by default
   }
 
   // ========== Deep Research Builder ==========

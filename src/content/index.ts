@@ -317,7 +317,7 @@ async function handleSync(): Promise<void> {
     }
 
     showToast('Extracting conversation...', 'info', INFO_TOAST_DURATION);
-    applyExtractorSettings(extractor, settings);
+    extractor.applySettings(settings);
     const result = await extractor.extract();
 
     // Validate extraction
@@ -357,21 +357,6 @@ async function handleSync(): Promise<void> {
     showErrorToast(extractErrorMessage(error));
   } finally {
     setButtonLoading(false);
-  }
-}
-
-/**
- * Apply user settings to extractor before extraction
- */
-function applyExtractorSettings(
-  extractor: IConversationExtractor,
-  settings: ExtensionSettings
-): void {
-  if (extractor instanceof GeminiExtractor) {
-    extractor.enableAutoScroll = settings.enableAutoScroll ?? false;
-  }
-  if (extractor instanceof ClaudeExtractor) {
-    extractor.enableToolContent = settings.enableToolContent ?? false;
   }
 }
 

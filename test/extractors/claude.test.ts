@@ -72,6 +72,25 @@ describe('ClaudeExtractor', () => {
     });
   });
 
+  describe('applySettings', () => {
+    it('sets enableToolContent to true from settings', () => {
+      extractor.applySettings({ enableToolContent: true } as import('../../src/lib/types').ExtensionSettings);
+      expect(extractor.enableToolContent).toBe(true);
+    });
+
+    it('sets enableToolContent to false from settings', () => {
+      extractor.enableToolContent = true;
+      extractor.applySettings({ enableToolContent: false } as import('../../src/lib/types').ExtensionSettings);
+      expect(extractor.enableToolContent).toBe(false);
+    });
+
+    it('defaults enableToolContent to false when undefined in settings', () => {
+      extractor.enableToolContent = true;
+      extractor.applySettings({} as import('../../src/lib/types').ExtensionSettings);
+      expect(extractor.enableToolContent).toBe(false);
+    });
+  });
+
   // ========== 6.3.2 Security Tests (5 tests) ==========
   describe('Security', () => {
     it('rejects malicious subdomains containing claude.ai', () => {

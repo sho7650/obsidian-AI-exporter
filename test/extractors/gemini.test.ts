@@ -851,6 +851,25 @@ describe('GeminiExtractor', () => {
     });
   });
 
+  describe('applySettings', () => {
+    it('sets enableAutoScroll to true from settings', () => {
+      extractor.applySettings({ enableAutoScroll: true } as import('../../src/lib/types').ExtensionSettings);
+      expect(extractor.enableAutoScroll).toBe(true);
+    });
+
+    it('sets enableAutoScroll to false from settings', () => {
+      extractor.enableAutoScroll = true;
+      extractor.applySettings({ enableAutoScroll: false } as import('../../src/lib/types').ExtensionSettings);
+      expect(extractor.enableAutoScroll).toBe(false);
+    });
+
+    it('defaults enableAutoScroll to false when undefined in settings', () => {
+      extractor.enableAutoScroll = true;
+      extractor.applySettings({} as import('../../src/lib/types').ExtensionSettings);
+      expect(extractor.enableAutoScroll).toBe(false);
+    });
+  });
+
   // ========== Auto-Scroll Tests (DES-002) ==========
   describe('ensureAllMessagesLoaded (auto-scroll)', () => {
     beforeEach(() => {
