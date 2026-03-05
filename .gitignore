@@ -36,3 +36,4 @@ coverage/
 # Environment
 .env
 .env.local
+.improvement-state/
