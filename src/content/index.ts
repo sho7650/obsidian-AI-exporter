@@ -172,16 +172,16 @@ function getExtractor(): IConversationExtractor | null {
 }
 
 // Initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    initialize().catch(error => {
-      console.error('[G2O] Content script initialization failed:', error);
-    });
-  });
-} else {
+const startInit = () => {
   initialize().catch(error => {
     console.error('[G2O] Content script initialization failed:', error);
   });
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startInit);
+} else {
+  startInit();
 }
 
 /**

@@ -12,12 +12,7 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": [
-    "storage",
-    "downloads",
-    "offscreen",
-    "clipboardWrite"
-  ],
+  "permissions": ["storage", "downloads", "offscreen", "clipboardWrite"],
   "host_permissions": [
     "https://gemini.google.com/*",
     "https://claude.ai/*",
@@ -26,7 +21,7 @@
     "http://127.0.0.1:27123/*"
   ],
   "content_security_policy": {
-    "extension_pages": "default-src 'self'; script-src 'self'; connect-src 'self' http://127.0.0.1:*; object-src 'none'; style-src 'self' 'unsafe-inline'"
+    "extension_pages": "default-src 'self'; script-src 'self'; connect-src 'self' http://127.0.0.1:*; object-src 'none'; frame-src 'none'; style-src 'self' 'unsafe-inline'"
   },
   "background": {
     "service_worker": "src/background/index.ts",
@@ -40,9 +35,7 @@
         "https://chatgpt.com/*",
         "https://www.perplexity.ai/*"
       ],
-      "js": [
-        "src/content/index.ts"
-      ],
+      "js": ["src/content/index.ts"],
       "run_at": "document_idle"
     }
   ],
