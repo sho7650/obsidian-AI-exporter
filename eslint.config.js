@@ -1,62 +1,26 @@
 import eslint from '@eslint/js';
-import tseslint from '@typescript-eslint/eslint-plugin';
-import tsparser from '@typescript-eslint/parser';
+import tseslint from 'typescript-eslint';
+import globals from 'globals';
 
-export default [
+export default tseslint.config(
   eslint.configs.recommended,
+  ...tseslint.configs.recommended,
   {
     files: ['src/**/*.ts'],
     languageOptions: {
-      parser: tsparser,
-      parserOptions: {
-        ecmaVersion: 2020,
-        sourceType: 'module'
-      },
       globals: {
+        ...globals.browser,
         chrome: 'readonly',
-        document: 'readonly',
-        window: 'readonly',
-        console: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        fetch: 'readonly',
-        Blob: 'readonly',
-        navigator: 'readonly',
-        btoa: 'readonly',
-        TextEncoder: 'readonly',
-        HTMLElement: 'readonly',
-        HTMLAnchorElement: 'readonly',
-        HTMLButtonElement: 'readonly',
-        HTMLInputElement: 'readonly',
-        HTMLSelectElement: 'readonly',
-        HTMLDivElement: 'readonly',
-        HTMLTableElement: 'readonly',
-        HTMLTextAreaElement: 'readonly',
-        Element: 'readonly',
-        NodeListOf: 'readonly',
-        Document: 'readonly',
-        Node: 'readonly',
-        URL: 'readonly',
-        MutationObserver: 'readonly',
-        AbortController: 'readonly',
-        AbortSignal: 'readonly',
-        DOMException: 'readonly',
-        DOMParser: 'readonly',
-        HeadersInit: 'readonly'
-      }
-    },
-    plugins: {
-      '@typescript-eslint': tseslint
+      },
     },
     rules: {
-      ...tseslint.configs.recommended.rules,
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
-      'no-console': ['warn', { allow: ['warn', 'error', 'info', 'debug'] }]
-    }
+      'no-console': ['warn', { allow: ['warn', 'error', 'info', 'debug'] }],
+    },
   },
   {
-    ignores: ['dist/**', 'node_modules/**', '*.config.js']
+    ignores: ['dist/**', 'node_modules/**', '*.config.js'],
   }
-];
+);
