@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
   "minimum_chrome_version": "88",
@@ -12,7 +12,12 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["storage", "downloads", "offscreen", "clipboardWrite"],
+  "permissions": [
+    "storage",
+    "downloads",
+    "offscreen",
+    "clipboardWrite"
+  ],
   "host_permissions": [
     "https://gemini.google.com/*",
     "https://claude.ai/*",
@@ -35,7 +40,9 @@
         "https://chatgpt.com/*",
         "https://www.perplexity.ai/*"
       ],
-      "js": ["src/content/index.ts"],
+      "js": [
+        "src/content/index.ts"
+      ],
       "run_at": "document_idle"
     }
   ],
