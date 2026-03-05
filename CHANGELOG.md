@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.12.5...v0.13.0) (2026-03-05)
+
+
+### Features
+
+* add autonomous improvement loop skill for Claude Code ([3cc360c](https://github.com/sho7650/obsidian-AI-exporter/commit/3cc360cc58545468b56e5e93c985ef99e89bba74))
+
 ## [0.12.5](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.12.4...v0.12.5) (2026-03-03)
 
 
