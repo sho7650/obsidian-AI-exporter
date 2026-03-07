@@ -2,26 +2,32 @@
   "rounds": 5,
   "focus": "all",
   "qa": {
-    "eslint": true,
-    "prettier": true,
-    "typecheck": true,
-    "vitest": true,
-    "playwright": false,
-    "build": true,
+    "lint": {
+      "enabled": true,
+      "tool": "ESLint"
+    },
+    "typecheck": {
+      "enabled": true,
+      "tool": "tsc"
+    },
+    "unit_test": {
+      "enabled": true,
+      "tool": "Vitest"
+    },
+    "e2e": {
+      "enabled": false,
+      "tool": "none"
+    },
     "claude_review": true,
-    "severity_filter": ["critical", "high", "medium"],
-    "parallel_teams": true
-  },
-  "fix": {
-    "max_attempts_per_test": 3,
-    "full_suite_after_each_fix": true
+    "severity_filter": [
+      "critical",
+      "high",
+      "medium"
+    ]
   },
   "refactor": {
     "enabled": true,
     "max_per_round": 3,
-    "max_consecutive_failures": 2,
-    "max_files_per_refactor": 5,
-    "min_branch_coverage_pct": 60,
     "strategies": [
       "extract-function",
       "simplify-conditional",
@@ -32,19 +38,21 @@
   },
   "safety": {
     "auto_revert_on_failure": true,
-    "savepoint_tags": true,
-    "sha_based_revert": true,
-    "cleanup_new_files_on_revert": true,
-    "test_timeout_ms": 120000,
-    "regression_detection": true,
-    "refactor_blocklist": true,
-    "manual_push_gate": true
+    "test_timeout_s": 120,
+    "max_fix_attempts_per_test": 3,
+    "max_consecutive_reverts": 2,
+    "max_consecutive_regressions": 2
   },
-  "abort": {
-    "net_regression_rounds": 2,
-    "consecutive_phase4_reverts": 2
+  "quality_gates": {
+    "max_critical_issues": 0,
+    "max_high_issues": null,
+    "min_test_pass_rate": null
   },
   "self_learning": {
     "enabled": true
+  },
+  "logging": {
+    "level": "INFO",
+    "include_commands": true
   }
 }
