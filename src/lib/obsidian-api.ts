@@ -245,8 +245,8 @@ export class ObsidianApiClient {
         throw this.createError(response.status, `Failed to list files: ${response.statusText}`);
       }
 
-      const data = (await response.json()) as { files?: string[] };
-      const files = data.files ?? [];
+      const data = (await response.json()) as Record<string, unknown>;
+      const files = Array.isArray(data?.files) ? (data.files as string[]) : [];
       // Filter out directories (entries ending with '/')
       return files.filter(f => !f.endsWith('/'));
     } catch (error) {

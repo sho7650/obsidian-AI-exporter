@@ -141,6 +141,14 @@ export interface OutputResult {
 }
 
 /**
+ * Response from offscreen clipboard write operation
+ */
+export interface ClipboardWriteResponse {
+  success: boolean;
+  error?: string;
+}
+
+/**
  * Aggregated result of multiple output operations
  */
 export interface MultiOutputResponse {

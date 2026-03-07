@@ -11,16 +11,12 @@
  */
 
 import { extractErrorMessage } from '../lib/error-utils';
+import type { ClipboardWriteResponse } from '../lib/types';
 
 interface ClipboardWriteMessage {
   action: 'clipboardWrite';
   target: 'offscreen';
   content: string;
-}
-
-interface ClipboardWriteResponse {
-  success: boolean;
-  error?: string;
 }
 
 /**

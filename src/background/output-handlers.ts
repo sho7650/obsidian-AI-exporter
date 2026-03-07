@@ -8,6 +8,7 @@ import { extractErrorMessage } from '../lib/error-utils';
 import { generateNoteContent } from '../lib/note-generator';
 import { handleSave } from './obsidian-handlers';
 import type {
+  ClipboardWriteResponse,
   ExtensionSettings,
   ObsidianNote,
   OutputDestination,
@@ -160,11 +161,11 @@ async function handleCopyToClipboard(
 
     await ensureOffscreenDocument();
 
-    const response = await chrome.runtime.sendMessage({
+    const response = (await chrome.runtime.sendMessage({
       action: 'clipboardWrite',
       target: 'offscreen',
       content,
-    });
+    })) as ClipboardWriteResponse | undefined;
 
     scheduleOffscreenClose();
 
