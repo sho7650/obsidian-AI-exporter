@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.13.2...v0.13.3) (2026-03-07)
+
+
+### Miscellaneous
+
+* regenerate improvement loop skill with simplified templates ([#111](https://github.com/sho7650/obsidian-AI-exporter/issues/111)) ([7f5755f](https://github.com/sho7650/obsidian-AI-exporter/commit/7f5755f81472e23f38bae41f4722578d6866c2f4))
+
 ## [0.13.2](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.13.1...v0.13.2) (2026-03-05)
 
 
