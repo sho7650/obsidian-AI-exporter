@@ -34,6 +34,37 @@ export function isClientError(
 }
 
 /**
+ * Try to append new messages to an existing file.
+ * Returns a SaveResponse on success, or null to fall through to overwrite.
+ */
+async function tryAppendMode(
+  client: ObsidianApiClient,
+  settings: ExtensionSettings,
+  note: ObsidianNote,
+  fullPath: string,
+  resolvedPath: string
+): Promise<SaveResponse | null> {
+  if (!settings.enableAppendMode || note.frontmatter.type === 'deep-research') {
+    return null;
+  }
+
+  try {
+    const lookup = await lookupExistingFile(client, fullPath, resolvedPath, note);
+    if (!lookup.found) return null;
+
+    const appendResult = buildAppendContent(lookup.content, note, settings);
+    if (appendResult !== null) {
+      await client.putFile(lookup.path, appendResult.content);
+      return { success: true, isNewFile: false, messagesAppended: appendResult.messagesAppended };
+    }
+    return { success: true, isNewFile: false, messagesAppended: 0 };
+  } catch (error) {
+    console.warn('[G2O Background] Append mode failed, falling back to overwrite:', error);
+    return null;
+  }
+}
+
+/**
  * Save note to Obsidian vault
  *
  * When append mode is enabled and the file already exists,
@@ -50,56 +81,23 @@ export async function handleSave(
   }
 
   try {
-    // Resolve template variables (e.g., {platform} → gemini) and construct full path
     const resolvedPath = resolvePathTemplate(settings.vaultPath, {
       platform: note.frontmatter.source,
     });
     const fullPath = resolvedPath ? `${resolvedPath}/${note.fileName}` : note.fileName;
 
-    // === APPEND MODE BRANCH ===
-    if (settings.enableAppendMode && note.frontmatter.type !== 'deep-research') {
-      try {
-        const lookup = await lookupExistingFile(client, fullPath, resolvedPath, note);
-        if (lookup.found) {
-          const appendResult = buildAppendContent(lookup.content, note, settings);
-          if (appendResult !== null) {
-            await client.putFile(lookup.path, appendResult.content);
-            return {
-              success: true,
-              isNewFile: false,
-              messagesAppended: appendResult.messagesAppended,
-            };
-          }
-          // No new messages to append
-          return { success: true, isNewFile: false, messagesAppended: 0 };
-        }
-        // File not found → fall through to create new
-      } catch (error) {
-        console.warn('[G2O Background] Append mode failed, falling back to overwrite:', error);
-        // Fall through to overwrite
-      }
-    }
+    const appendResult = await tryAppendMode(client, settings, note, fullPath, resolvedPath);
+    if (appendResult) return appendResult;
 
-    // === EXISTING OVERWRITE FLOW ===
     const existingContent = await client.getFile(fullPath);
     const isNewFile = existingContent === null;
-
-    // Generate note content
     const content = generateNoteContent(note, settings);
-
-    // Save to Obsidian
     await client.putFile(fullPath, content);
 
-    return {
-      success: true,
-      isNewFile,
-    };
+    return { success: true, isNewFile };
   } catch (error) {
     console.error('[G2O Background] Save failed:', error);
-    return {
-      success: false,
-      error: getErrorMessage(error),
-    };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
