@@ -13,7 +13,6 @@
           <img src="/icons/icon24.png" alt="" class="logo" width="24" height="24" />
           <span data-i18n="extName">Obsidian AI Exporter</span>
         </h1>
-        <p class="subtitle" data-i18n="extDescription">Export AI conversations to Obsidian</p>
       </header>
 
       <main class="settings">
@@ -61,19 +60,6 @@
           <h2 data-i18n="settings_extraction">Extraction</h2>
           <div class="toggle-list">
             <label class="toggle-row">
-              <span class="toggle-icon">🔄</span>
-              <span class="toggle-label">
-                <span data-i18n="settings_enableAutoScroll">Auto-scroll</span>
-                <span class="toggle-sublabel" data-i18n="settings_autoScrollHelp">
-                  Load all messages in long conversations
-                </span>
-              </span>
-              <span class="toggle-switch">
-                <input type="checkbox" id="enableAutoScroll" role="switch" aria-checked="false" />
-                <span class="slider" aria-hidden="true"></span>
-              </span>
-            </label>
-            <label class="toggle-row">
               <span class="toggle-icon">📎</span>
               <span class="toggle-label">
                 <span data-i18n="settings_enableAppendMode">Append Mode</span>
@@ -83,19 +69,6 @@
               </span>
               <span class="toggle-switch">
                 <input type="checkbox" id="enableAppendMode" role="switch" aria-checked="false" />
-                <span class="slider" aria-hidden="true"></span>
-              </span>
-            </label>
-            <label class="toggle-row">
-              <span class="toggle-icon">🔍</span>
-              <span class="toggle-label">
-                <span data-i18n="settings_enableToolContent">Include tool/search results</span>
-                <span class="toggle-sublabel" data-i18n="settings_toolContentHelp">
-                  Save web search and tool results from Claude
-                </span>
-              </span>
-              <span class="toggle-switch">
-                <input type="checkbox" id="enableToolContent" role="switch" aria-checked="false" />
                 <span class="slider" aria-hidden="true"></span>
               </span>
             </label>
@@ -109,6 +82,49 @@
             <span data-i18n="settings_advancedSettings">Advanced Settings</span>
           </summary>
           <div class="advanced-content">
+            <!-- Extraction (Advanced) -->
+            <section class="section">
+              <h2 data-i18n="settings_extraction">Extraction</h2>
+              <div class="toggle-list">
+                <label class="toggle-row">
+                  <span class="toggle-icon">🔄</span>
+                  <span class="toggle-label">
+                    <span data-i18n="settings_enableAutoScroll">Auto-scroll</span>
+                    <span class="toggle-sublabel" data-i18n="settings_autoScrollHelp">
+                      Load all messages in long conversations
+                    </span>
+                  </span>
+                  <span class="toggle-switch">
+                    <input
+                      type="checkbox"
+                      id="enableAutoScroll"
+                      role="switch"
+                      aria-checked="false"
+                    />
+                    <span class="slider" aria-hidden="true"></span>
+                  </span>
+                </label>
+                <label class="toggle-row">
+                  <span class="toggle-icon">🔍</span>
+                  <span class="toggle-label">
+                    <span data-i18n="settings_enableToolContent">Include tool/search results</span>
+                    <span class="toggle-sublabel" data-i18n="settings_toolContentHelp">
+                      Save web search and tool results from Claude
+                    </span>
+                  </span>
+                  <span class="toggle-switch">
+                    <input
+                      type="checkbox"
+                      id="enableToolContent"
+                      role="switch"
+                      aria-checked="false"
+                    />
+                    <span class="slider" aria-hidden="true"></span>
+                  </span>
+                </label>
+              </div>
+            </section>
+
             <!-- Obsidian API Settings -->
             <section class="section" id="obsidianSettings">
               <h2 data-i18n="settings_title">Settings</h2>
