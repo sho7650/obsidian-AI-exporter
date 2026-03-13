@@ -71,7 +71,7 @@ describe('background/index', () => {
     mockGetSettings = vi.fn(() => Promise.resolve(defaultSettings));
 
     // Capture message listener when addListener is called
-    vi.mocked(chrome.runtime.onMessage.addListener).mockImplementation((listener) => {
+    vi.mocked(chrome.runtime.onMessage.addListener).mockImplementation(listener => {
       capturedListener = listener;
     });
 
@@ -87,7 +87,9 @@ describe('background/index', () => {
         listFiles = mockClient.listFiles;
       },
       isObsidianApiError: (error: unknown) => {
-        return typeof error === 'object' && error !== null && 'status' in error && 'message' in error;
+        return (
+          typeof error === 'object' && error !== null && 'status' in error && 'message' in error
+        );
       },
     }));
 
@@ -115,7 +117,9 @@ describe('background/index', () => {
       const sendResponse = vi.fn();
       capturedListener(
         { action: 'getSettings' },
-        { url: `chrome-extension://${chrome.runtime.id}/popup.html` } as chrome.runtime.MessageSender,
+        {
+          url: `chrome-extension://${chrome.runtime.id}/popup.html`,
+        } as chrome.runtime.MessageSender,
         sendResponse
       );
 
@@ -152,11 +156,7 @@ describe('background/index', () => {
 
     it('rejects messages with no sender info', () => {
       const sendResponse = vi.fn();
-      capturedListener(
-        { action: 'getSettings' },
-        {} as chrome.runtime.MessageSender,
-        sendResponse
-      );
+      capturedListener({ action: 'getSettings' }, {} as chrome.runtime.MessageSender, sendResponse);
 
       expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'Unauthorized' });
     });
@@ -184,7 +184,10 @@ describe('background/index', () => {
         sendResponse
       );
 
-      expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'Invalid message content' });
+      expect(sendResponse).toHaveBeenCalledWith({
+        success: false,
+        error: 'Invalid message content',
+      });
     });
 
     it('accepts valid actions', async () => {
@@ -226,7 +229,10 @@ describe('background/index', () => {
           sendResponse
         );
 
-        expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'Invalid message content' });
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
       });
 
       it('rejects empty fileName', () => {
@@ -237,7 +243,10 @@ describe('background/index', () => {
           sendResponse
         );
 
-        expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'Invalid message content' });
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
       });
 
       it('rejects fileName over 200 chars', () => {
@@ -248,7 +257,58 @@ describe('background/index', () => {
           sendResponse
         );
 
-        expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'Invalid message content' });
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('rejects fileName with path traversal (DES-014 H-1)', () => {
+        const sendResponse = vi.fn();
+        capturedListener(
+          { action: 'saveToObsidian', data: { ...validNote, fileName: '../../etc/passwd' } },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('rejects fileName with encoded path traversal (DES-014 H-1)', () => {
+        const sendResponse = vi.fn();
+        capturedListener(
+          {
+            action: 'saveToObsidian',
+            data: { ...validNote, fileName: '%2e%2e%2fetc%2fpasswd' },
+          },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('rejects note with missing frontmatter (DES-014 M-8)', () => {
+        const sendResponse = vi.fn();
+        capturedListener(
+          {
+            action: 'saveToObsidian',
+            data: { fileName: 'test.md', body: 'content', contentHash: 'abc' },
+          },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
       });
 
       it('rejects body over 1MB', () => {
@@ -259,7 +319,10 @@ describe('background/index', () => {
           sendResponse
         );
 
-        expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'Invalid message content' });
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
       });
 
       it('rejects invalid source', () => {
@@ -273,7 +336,10 @@ describe('background/index', () => {
           sendResponse
         );
 
-        expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'Invalid message content' });
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
       });
 
       it('rejects more than 50 tags', () => {
@@ -281,13 +347,19 @@ describe('background/index', () => {
         capturedListener(
           {
             action: 'saveToObsidian',
-            data: { ...validNote, frontmatter: { ...validNote.frontmatter, tags: Array(51).fill('tag') } },
+            data: {
+              ...validNote,
+              frontmatter: { ...validNote.frontmatter, tags: Array(51).fill('tag') },
+            },
           },
           validSender as chrome.runtime.MessageSender,
           sendResponse
         );
 
-        expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'Invalid message content' });
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
       });
     });
   });
@@ -517,7 +589,10 @@ describe('background/index', () => {
       );
 
       await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
-      expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'API key not configured' });
+      expect(sendResponse).toHaveBeenCalledWith({
+        success: false,
+        error: 'API key not configured',
+      });
     });
 
     it('handles getFile errors gracefully', async () => {
@@ -588,7 +663,9 @@ describe('background/index', () => {
       const sendResponse = vi.fn();
       const result = capturedListener(
         { action: 'clipboardWrite', target: 'offscreen', content: 'test' },
-        { url: `chrome-extension://${chrome.runtime.id}/popup.html` } as chrome.runtime.MessageSender,
+        {
+          url: `chrome-extension://${chrome.runtime.id}/popup.html`,
+        } as chrome.runtime.MessageSender,
         sendResponse
       );
 
@@ -766,7 +843,7 @@ describe('background/index', () => {
         anySuccessful: boolean;
       };
       expect(response.results).toHaveLength(2);
-      const destinations = response.results.map((r) => r.destination);
+      const destinations = response.results.map(r => r.destination);
       expect(destinations).toContain('obsidian');
       expect(destinations).toContain('file');
       expect(response.allSuccessful).toBe(true);
@@ -793,7 +870,7 @@ describe('background/index', () => {
       expect(response.allSuccessful).toBe(false);
       expect(response.anySuccessful).toBe(true);
       // Find the obsidian result
-      const obsidianResult = response.results.find((r) => r.destination === 'obsidian');
+      const obsidianResult = response.results.find(r => r.destination === 'obsidian');
       expect(obsidianResult?.success).toBe(false);
       expect(obsidianResult?.error).toBeDefined();
     });
@@ -855,7 +932,7 @@ describe('background/index', () => {
       const response = sendResponse.mock.calls[0][0] as {
         results: Array<{ destination: string; success: boolean }>;
       };
-      const fileResult = response.results.find((r) => r.destination === 'file');
+      const fileResult = response.results.find(r => r.destination === 'file');
       expect(fileResult?.success).toBe(true);
     });
 
@@ -883,7 +960,7 @@ describe('background/index', () => {
         allSuccessful: boolean;
         anySuccessful: boolean;
       };
-      const fileResult = response.results.find((r) => r.destination === 'file');
+      const fileResult = response.results.find(r => r.destination === 'file');
       expect(fileResult?.success).toBe(false);
       expect(fileResult?.error).toBe('Download blocked');
     });
@@ -905,7 +982,7 @@ describe('background/index', () => {
       const response = sendResponse.mock.calls[0][0] as {
         results: Array<{ destination: string; success: boolean; error?: string }>;
       };
-      const fileResult = response.results.find((r) => r.destination === 'file');
+      const fileResult = response.results.find(r => r.destination === 'file');
       expect(fileResult?.success).toBe(false);
       expect(fileResult?.error).toBe('Download failed');
     });
@@ -951,7 +1028,7 @@ describe('background/index', () => {
       const response = sendResponse.mock.calls[0][0] as {
         results: Array<{ destination: string; success: boolean }>;
       };
-      const clipboardResult = response.results.find((r) => r.destination === 'clipboard');
+      const clipboardResult = response.results.find(r => r.destination === 'clipboard');
       expect(clipboardResult?.success).toBe(true);
     });
 
@@ -974,7 +1051,7 @@ describe('background/index', () => {
         allSuccessful: boolean;
         anySuccessful: boolean;
       };
-      const clipboardResult = response.results.find((r) => r.destination === 'clipboard');
+      const clipboardResult = response.results.find(r => r.destination === 'clipboard');
       expect(clipboardResult?.success).toBe(false);
       expect(clipboardResult?.error).toBe('Clipboard access denied');
       expect(response.allSuccessful).toBe(false);
@@ -1030,7 +1107,7 @@ describe('background/index', () => {
       const response = sendResponse.mock.calls[0][0] as {
         results: Array<{ destination: string; success: boolean; error?: string }>;
       };
-      const clipboardResult = response.results.find((r) => r.destination === 'clipboard');
+      const clipboardResult = response.results.find(r => r.destination === 'clipboard');
       expect(clipboardResult?.success).toBe(false);
       expect(clipboardResult?.error).toContain('Failed to create offscreen document');
     });
@@ -1057,8 +1134,8 @@ describe('background/index', () => {
 
     it('calls closeDocument after clipboard operation completes', async () => {
       // Covers: background/index.ts lines 332-345 (scheduleOffscreenClose)
-      // Use real timers with a short polling approach.
-      // The OFFSCREEN_TIMEOUT_MS is 5000ms. We use waitFor with a generous timeout.
+      // Uses real timers + vi.waitFor since scheduleOffscreenClose's setTimeout
+      // is created after dynamic module import, making fake timers incompatible.
       vi.mocked(chrome.runtime.sendMessage).mockResolvedValue({ success: true });
 
       const sendResponse = vi.fn();
@@ -1072,9 +1149,12 @@ describe('background/index', () => {
       await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
 
       // Wait for the offscreen close timer (5000ms) to fire
-      await vi.waitFor(() => {
-        expect(chrome.offscreen.closeDocument).toHaveBeenCalled();
-      }, { timeout: 7000 });
+      await vi.waitFor(
+        () => {
+          expect(chrome.offscreen.closeDocument).toHaveBeenCalled();
+        },
+        { timeout: 7000 }
+      );
     });
   });
 
@@ -1275,8 +1355,9 @@ describe('background/index', () => {
     it('returns messagesAppended: 0 when no new messages', async () => {
       mockGetSettings = vi.fn(() => Promise.resolve(appendSettings));
       // Existing file already has 4 messages
-      const fullExisting = existingContent.replace('message_count: 2', 'message_count: 4')
-        + '\n\n> [!QUESTION] User\n> New question\n\n> [!NOTE] Claude\n> New answer';
+      const fullExisting =
+        existingContent.replace('message_count: 2', 'message_count: 4') +
+        '\n\n> [!QUESTION] User\n> New question\n\n> [!NOTE] Claude\n> New answer';
       mockClient.getFile.mockResolvedValueOnce(fullExisting);
 
       const sendResponse = vi.fn();

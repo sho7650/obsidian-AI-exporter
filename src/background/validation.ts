@@ -111,28 +111,35 @@ export function validateNoteData(note: ObsidianNote): boolean {
     return false;
   }
 
+  // Path traversal prevention (DES-014 H-1)
+  if (containsPathTraversal(note.fileName)) {
+    return false;
+  }
+
   // Content size limit (DoS prevention)
   if (note.body.length > MAX_CONTENT_SIZE) {
     return false;
   }
 
-  // Frontmatter validation
-  if (note.frontmatter) {
-    if (
-      typeof note.frontmatter.title !== 'string' ||
-      note.frontmatter.title.length > MAX_FRONTMATTER_TITLE_LENGTH
-    ) {
-      return false;
-    }
-    if (
-      typeof note.frontmatter.source !== 'string' ||
-      !VALID_SOURCES.includes(note.frontmatter.source as (typeof VALID_SOURCES)[number])
-    ) {
-      return false;
-    }
-    if (!Array.isArray(note.frontmatter.tags) || note.frontmatter.tags.length > MAX_TAGS_COUNT) {
-      return false;
-    }
+  // Frontmatter validation (DES-014 M-8: fail hard when missing)
+  if (!note.frontmatter) {
+    return false;
+  }
+
+  if (
+    typeof note.frontmatter.title !== 'string' ||
+    note.frontmatter.title.length > MAX_FRONTMATTER_TITLE_LENGTH
+  ) {
+    return false;
+  }
+  if (
+    typeof note.frontmatter.source !== 'string' ||
+    !VALID_SOURCES.includes(note.frontmatter.source as (typeof VALID_SOURCES)[number])
+  ) {
+    return false;
+  }
+  if (!Array.isArray(note.frontmatter.tags) || note.frontmatter.tags.length > MAX_TAGS_COUNT) {
+    return false;
   }
 
   return true;

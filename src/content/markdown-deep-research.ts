@@ -164,10 +164,10 @@ export function convertDeepResearchContent(html: string, links?: DeepResearchLin
   let processed = html;
 
   // 1. Build source map (1-based index)
-  let sourceMap = new Map<number, DeepResearchSource>();
-  if (links && links.sources.length > 0) {
-    sourceMap = buildSourceMap(links.sources);
-  }
+  const sourceMap =
+    links && links.sources.length > 0
+      ? buildSourceMap(links.sources)
+      : new Map<number, DeepResearchSource>();
 
   // 2. Convert inline citations to placeholder spans
   processed = convertInlineCitationsToFootnoteRefs(processed, sourceMap);

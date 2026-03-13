@@ -5,7 +5,7 @@
  * This is used to look up source information during citation processing.
  */
 
-import { DeepResearchSource } from './types';
+import type { DeepResearchSource } from './types';
 
 /**
  * Build a Map from data-turn-source-index (1-based) to DeepResearchSource.

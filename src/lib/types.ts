@@ -190,12 +190,7 @@ export interface SyncSettings {
  * Extension settings stored in chrome.storage
  * Combined interface merging SecureSettings and SyncSettings
  */
-export interface ExtensionSettings extends SecureSettings, SyncSettings {
-  /** OpenAI API key for AI-powered features (reserved for future use) */
-  openaiApiKey?: string;
-  /** Enable automatic tag generation (reserved for future use) */
-  enableAutoTags?: boolean;
-}
+export interface ExtensionSettings extends SecureSettings, SyncSettings {}
 
 /**
  * Template customization options

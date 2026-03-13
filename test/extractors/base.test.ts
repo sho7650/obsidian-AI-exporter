@@ -59,8 +59,8 @@ class TestExtractor extends BaseExtractor {
 
   public testSortByDomPosition(
     elements: Array<{ element: Element; type: 'user' | 'assistant' }>
-  ): void {
-    this.sortByDomPosition(elements);
+  ): Array<{ element: Element; type: 'user' | 'assistant' }> {
+    return this.sortByDomPosition(elements);
   }
 
   public testBuildMessagesFromElements(
@@ -152,9 +152,7 @@ describe('BaseExtractor', () => {
       };
       const validation = extractor.validate(result);
       expect(validation.isValid).toBe(true);
-      expect(validation.warnings.some((w) => w.includes('Very few messages'))).toBe(
-        true
-      );
+      expect(validation.warnings.some(w => w.includes('Very few messages'))).toBe(true);
     });
 
     it('warns on unbalanced message count', () => {
@@ -180,7 +178,7 @@ describe('BaseExtractor', () => {
         },
       };
       const validation = extractor.validate(result);
-      expect(validation.warnings.some((w) => w.includes('Unbalanced'))).toBe(true);
+      expect(validation.warnings.some(w => w.includes('Unbalanced'))).toBe(true);
     });
 
     it('warns on empty content', () => {
@@ -205,7 +203,7 @@ describe('BaseExtractor', () => {
         },
       };
       const validation = extractor.validate(result);
-      expect(validation.warnings.some((w) => w.includes('empty content'))).toBe(true);
+      expect(validation.warnings.some(w => w.includes('empty content'))).toBe(true);
     });
 
     it('returns valid for good extraction', () => {
@@ -260,10 +258,7 @@ describe('BaseExtractor', () => {
   describe('queryWithFallback', () => {
     it('returns first matching element', () => {
       document.body.innerHTML = '<div class="target">Found</div>';
-      const result = extractor.testQueryWithFallback<HTMLDivElement>([
-        '.missing',
-        '.target',
-      ]);
+      const result = extractor.testQueryWithFallback<HTMLDivElement>(['.missing', '.target']);
       expect(result?.textContent).toBe('Found');
     });
 
@@ -279,10 +274,7 @@ describe('BaseExtractor', () => {
         <span class="target">Outside</span>
       `;
       const parent = document.getElementById('parent')!;
-      const result = extractor.testQueryWithFallback<HTMLSpanElement>(
-        ['.target'],
-        parent
-      );
+      const result = extractor.testQueryWithFallback<HTMLSpanElement>(['.target'], parent);
       expect(result?.textContent).toBe('Inside');
     });
 
@@ -291,10 +283,7 @@ describe('BaseExtractor', () => {
         <div class="first">First</div>
         <div class="second">Second</div>
       `;
-      const result = extractor.testQueryWithFallback<HTMLDivElement>([
-        '.first',
-        '.second',
-      ]);
+      const result = extractor.testQueryWithFallback<HTMLDivElement>(['.first', '.second']);
       expect(result?.textContent).toBe('First');
     });
   });
@@ -305,10 +294,7 @@ describe('BaseExtractor', () => {
         <div class="item">1</div>
         <div class="item">2</div>
       `;
-      const results = extractor.testQueryAllWithFallback<HTMLDivElement>([
-        '.missing',
-        '.item',
-      ]);
+      const results = extractor.testQueryAllWithFallback<HTMLDivElement>(['.missing', '.item']);
       expect(results.length).toBe(2);
     });
 
@@ -327,10 +313,7 @@ describe('BaseExtractor', () => {
         <span class="item">Outside</span>
       `;
       const parent = document.getElementById('parent')!;
-      const results = extractor.testQueryAllWithFallback<HTMLSpanElement>(
-        ['.item'],
-        parent
-      );
+      const results = extractor.testQueryAllWithFallback<HTMLSpanElement>(['.item'], parent);
       expect(results.length).toBe(2);
     });
 
@@ -340,14 +323,9 @@ describe('BaseExtractor', () => {
         <div class="first">First 2</div>
         <div class="second">Second</div>
       `;
-      const results = extractor.testQueryAllWithFallback<HTMLDivElement>([
-        '.first',
-        '.second',
-      ]);
+      const results = extractor.testQueryAllWithFallback<HTMLDivElement>(['.first', '.second']);
       expect(results.length).toBe(2);
-      expect(Array.from(results).every((el) => el.classList.contains('first'))).toBe(
-        true
-      );
+      expect(Array.from(results).every(el => el.classList.contains('first'))).toBe(true);
     });
   });
 
@@ -497,11 +475,15 @@ describe('BaseExtractor', () => {
         { element: second, type: 'assistant' },
       ];
 
-      extractor.testSortByDomPosition(elements);
+      const sorted = extractor.testSortByDomPosition(elements);
 
-      expect(elements[0].element).toBe(first);
-      expect(elements[1].element).toBe(second);
-      expect(elements[2].element).toBe(third);
+      // Original array should not be mutated (DES-014 L-4)
+      expect(elements[0].element).toBe(third);
+
+      // Sorted result should be in DOM order
+      expect(sorted[0].element).toBe(first);
+      expect(sorted[1].element).toBe(second);
+      expect(sorted[2].element).toBe(third);
     });
   });
 
@@ -521,8 +503,8 @@ describe('BaseExtractor', () => {
 
       const messages = extractor.testBuildMessagesFromElements(
         elements,
-        (el) => el.textContent || '',
-        (el) => el.innerHTML
+        el => el.textContent || '',
+        el => el.innerHTML
       );
 
       expect(messages).toHaveLength(2);
@@ -550,7 +532,7 @@ describe('BaseExtractor', () => {
       const messages = extractor.testBuildMessagesFromElements(
         elements,
         () => '',
-        (el) => el.innerHTML
+        el => el.innerHTML
       );
 
       expect(messages).toHaveLength(1);
@@ -573,8 +555,8 @@ describe('BaseExtractor', () => {
 
       const messages = extractor.testBuildMessagesFromElements(
         elements,
-        (el) => el.textContent || '',
-        (el) => el.textContent || ''
+        el => el.textContent || '',
+        el => el.textContent || ''
       );
 
       expect(messages[0].index).toBe(0);

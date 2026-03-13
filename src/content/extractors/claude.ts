@@ -236,12 +236,12 @@ export class ClaudeExtractor extends BaseExtractor {
       allElements.push({ element: el, type: 'assistant' });
     });
 
-    this.sortByDomPosition(allElements);
+    const sortedElements = this.sortByDomPosition(allElements);
 
     // Pre-extract tool content keyed by element index
     const toolContentMap = new Map<number, string>();
     if (this.enableToolContent) {
-      allElements.forEach((item, index) => {
+      sortedElements.forEach((item, index) => {
         if (item.type === 'assistant') {
           const tc = this.extractToolContentFromElement(item.element);
           if (tc) toolContentMap.set(index, tc);
@@ -250,24 +250,20 @@ export class ClaudeExtractor extends BaseExtractor {
     }
 
     const messages = this.buildMessagesFromElements(
-      allElements,
+      sortedElements,
       el => this.extractUserContent(el),
       el => this.extractAssistantContent(el)
     );
 
-    // Attach tool content to corresponding assistant messages
-    if (toolContentMap.size > 0) {
-      for (const msg of messages) {
-        if (msg.role === 'assistant') {
-          // msg.id = "assistant-N" where N is the allElements index
-          const idx = parseInt(msg.id.split('-')[1], 10);
-          const tc = toolContentMap.get(idx);
-          if (tc) msg.toolContent = tc;
-        }
-      }
-    }
+    // Attach tool content to corresponding assistant messages (DES-014 H-5: immutable)
+    if (toolContentMap.size === 0) return messages;
 
-    return messages;
+    return messages.map(msg => {
+      if (msg.role !== 'assistant') return msg;
+      const idx = parseInt(msg.id.split('-')[1], 10);
+      const tc = toolContentMap.get(idx);
+      return tc ? { ...msg, toolContent: tc } : msg;
+    });
   }
 
   /**

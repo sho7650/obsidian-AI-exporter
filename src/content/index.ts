@@ -31,24 +31,7 @@ import type {
   OutputResult,
   MultiOutputResponse,
 } from '../lib/types';
-
-/**
- * Throttle function (NEW-06)
- * Executes immediately on first call, then blocks for `limit` ms
- */
-function throttle<T extends (...args: unknown[]) => void>(
-  fn: T,
-  limit: number
-): (...args: Parameters<T>) => void {
-  let inThrottle = false;
-  return (...args: Parameters<T>) => {
-    if (!inThrottle) {
-      fn(...args);
-      inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
-    }
-  };
-}
+import { throttle } from '../lib/throttle';
 
 /** Debounce delay for MutationObserver callback (milliseconds) */
 const MUTATION_DEBOUNCE_DELAY = 100;
@@ -188,7 +171,7 @@ if (document.readyState === 'loading') {
  * Initialize the content script
  */
 async function initialize(): Promise<void> {
-  console.info('[G2O] Content script initializing on:', window.location.href);
+  console.info('[G2O] Content script initializing on:', window.location.hostname);
 
   // Check if we have a valid extractor for this page
   const extractor = getExtractor();

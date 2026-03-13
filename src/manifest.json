@@ -26,7 +26,7 @@
     "http://127.0.0.1:27123/*"
   ],
   "content_security_policy": {
-    "extension_pages": "default-src 'self'; script-src 'self'; connect-src 'self' http://127.0.0.1:*; object-src 'none'; frame-src 'none'; style-src 'self' 'unsafe-inline'"
+    "extension_pages": "default-src 'self'; script-src 'self'; connect-src 'self' http://127.0.0.1:*; object-src 'none'; frame-src 'none'; style-src 'self'"
   },
   "background": {
     "service_worker": "src/background/index.ts",

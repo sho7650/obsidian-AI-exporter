@@ -175,7 +175,7 @@ async function handleCopyToClipboard(
       return {
         destination: 'clipboard',
         success: false,
-        error: response?.error || 'Clipboard write failed',
+        error: response?.error ?? 'Clipboard write failed',
       };
     }
   } catch (error) {

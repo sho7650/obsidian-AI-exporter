@@ -192,17 +192,18 @@ export class GeminiExtractor extends BaseExtractor {
    */
   protected onAfterExtract(result: ExtractionResult): ExtractionResult {
     const sr = this.lastScrollResult;
+    this.lastScrollResult = null;
+
     if (sr && !sr.fullyLoaded && !sr.skipped) {
       const warning =
         `Auto-scroll timed out after ${SCROLL_TIMEOUT / 1000}s. ` +
         `Some earlier messages may be missing (${sr.elementCount} turns loaded).`;
-      if (result.warnings) {
-        result.warnings.push(warning);
-      } else {
-        result.warnings = [warning];
-      }
+      return {
+        ...result,
+        warnings: [...(result.warnings ?? []), warning],
+      };
     }
-    this.lastScrollResult = null;
+
     return result;
   }
 
@@ -381,10 +382,10 @@ export class GeminiExtractor extends BaseExtractor {
     userQueries.forEach(el => allElements.push({ element: el, type: 'user' }));
     modelResponses.forEach(el => allElements.push({ element: el, type: 'assistant' }));
 
-    this.sortByDomPosition(allElements);
+    const sortedElements = this.sortByDomPosition(allElements);
 
     return this.buildMessagesFromElements(
-      allElements,
+      sortedElements,
       el => this.extractUserQueryContent(el),
       el => this.extractModelResponseContent(el)
     );

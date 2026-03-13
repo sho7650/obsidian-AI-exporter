@@ -3,11 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <title>Offscreen Document</title>
+    <link rel="stylesheet" href="offscreen.css" />
   </head>
   <body>
     <!-- Textarea for clipboard operations using document.execCommand -->
     <!-- See: https://developer.chrome.com/docs/extensions/develop/migrate/to-service-workers -->
-    <textarea id="clipboard-textarea" style="position: absolute; left: -9999px"></textarea>
+    <textarea id="clipboard-textarea" class="offscreen-textarea"></textarea>
     <script src="offscreen.ts" type="module"></script>
   </body>
 </html>

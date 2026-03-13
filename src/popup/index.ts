@@ -254,7 +254,18 @@ function validateOutputOptions(outputOptions: OutputOptions): boolean {
 const VALID_MESSAGE_FORMATS = ['callout', 'plain', 'blockquote'] as const;
 
 /**
+ * Clamp port to valid range, falling back to default (DES-014 H-3)
+ */
+function clampPort(port: number): number {
+  if (!Number.isFinite(port) || port < MIN_PORT || port > MAX_PORT) {
+    return DEFAULT_OBSIDIAN_PORT;
+  }
+  return port;
+}
+
+/**
  * Collect settings from form
+ * Normalizes all values at collection time to avoid downstream mutation
  */
 function collectSettings(): ExtensionSettings {
   const formatValue = elements.messageFormat.value;
@@ -266,8 +277,8 @@ function collectSettings(): ExtensionSettings {
 
   const templateOptions: TemplateOptions = {
     messageFormat,
-    userCalloutType: elements.userCallout.value || 'QUESTION',
-    assistantCalloutType: elements.assistantCallout.value || 'NOTE',
+    userCalloutType: validateCalloutType(elements.userCallout.value || 'QUESTION', 'QUESTION'),
+    assistantCalloutType: validateCalloutType(elements.assistantCallout.value || 'NOTE', 'NOTE'),
     includeId: elements.includeId.checked,
     includeTitle: elements.includeTitle.checked,
     includeTags: elements.includeTags.checked,
@@ -280,7 +291,7 @@ function collectSettings(): ExtensionSettings {
 
   return {
     obsidianApiKey: elements.apiKey.value.trim(),
-    obsidianPort: parseInt(elements.port.value, 10) || DEFAULT_OBSIDIAN_PORT,
+    obsidianPort: clampPort(parseInt(elements.port.value, 10)),
     vaultPath: elements.vaultPath.value.trim(),
     templateOptions,
     outputOptions,
@@ -291,27 +302,44 @@ function collectSettings(): ExtensionSettings {
 }
 
 /**
- * Validate Obsidian-specific settings (API key, port, vault path)
- * @returns error message if invalid, null if valid
+ * Result of Obsidian settings validation (DES-014 H-4: pure return, no mutation)
  */
-function validateObsidianSettings(settings: ExtensionSettings): string | null {
+interface ObsidianValidationResult {
+  error: string | null;
+  normalizedApiKey: string;
+  normalizedVaultPath: string;
+}
+
+/**
+ * Validate Obsidian-specific settings (API key, port, vault path)
+ * Returns normalized values without mutating the input (DES-014 H-4)
+ */
+function validateObsidianSettings(settings: ExtensionSettings): ObsidianValidationResult {
+  let normalizedApiKey: string;
   try {
-    settings.obsidianApiKey = validateApiKey(settings.obsidianApiKey);
+    normalizedApiKey = validateApiKey(settings.obsidianApiKey);
   } catch (error) {
-    return error instanceof Error ? error.message : 'Invalid API key';
+    return {
+      error: error instanceof Error ? error.message : 'Invalid API key',
+      normalizedApiKey: settings.obsidianApiKey,
+      normalizedVaultPath: settings.vaultPath,
+    };
   }
 
-  if (settings.obsidianPort < MIN_PORT || settings.obsidianPort > MAX_PORT) {
-    return getMessage('error_invalidPort');
-  }
+  // Port is already clamped by collectSettings() via clampPort(), so no range check needed here.
 
+  let normalizedVaultPath: string;
   try {
-    settings.vaultPath = validateVaultPath(settings.vaultPath);
+    normalizedVaultPath = validateVaultPath(settings.vaultPath);
   } catch (error) {
-    return error instanceof Error ? error.message : 'Invalid vault path';
+    return {
+      error: error instanceof Error ? error.message : 'Invalid vault path',
+      normalizedApiKey,
+      normalizedVaultPath: settings.vaultPath,
+    };
   }
 
-  return null;
+  return { error: null, normalizedApiKey, normalizedVaultPath };
 }
 
 /**
@@ -332,25 +360,21 @@ async function handleSave(): Promise<void> {
     }
 
     // Validate Obsidian-specific settings only if Obsidian output is enabled
+    let settingsToSave = settings;
     if (settings.outputOptions.obsidian) {
-      const obsidianError = validateObsidianSettings(settings);
-      if (obsidianError) {
-        showStatus(obsidianError, 'error');
+      const validation = validateObsidianSettings(settings);
+      if (validation.error) {
+        showStatus(validation.error, 'error');
         return;
       }
+      settingsToSave = {
+        ...settings,
+        obsidianApiKey: validation.normalizedApiKey,
+        vaultPath: validation.normalizedVaultPath,
+      };
     }
 
-    // Validate callout types (NEW-03)
-    settings.templateOptions.userCalloutType = validateCalloutType(
-      settings.templateOptions.userCalloutType,
-      'QUESTION'
-    );
-    settings.templateOptions.assistantCalloutType = validateCalloutType(
-      settings.templateOptions.assistantCalloutType,
-      'NOTE'
-    );
-
-    await saveSettings(settings);
+    await saveSettings(settingsToSave);
     showStatus(getMessage('status_settingsSaved'), 'success');
   } catch (error) {
     showStatus(getMessage('toast_error_saveFailed', 'Unknown error'), 'error');
@@ -387,7 +411,7 @@ async function handleTest(): Promise<void> {
     if (response.success) {
       showStatus(getMessage('status_connectionSuccess'), 'success');
     } else {
-      showStatus(response.error || getMessage('toast_error_connectionFailed'), 'error');
+      showStatus(response.error ?? getMessage('toast_error_connectionFailed'), 'error');
     }
   } catch (error) {
     const message =

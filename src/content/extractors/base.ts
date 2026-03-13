@@ -198,12 +198,12 @@ export abstract class BaseExtractor implements IConversationExtractor {
 
   /**
    * Sort elements by DOM position (document order).
-   * Mutates the array in place.
+   * Returns a new sorted array without mutating the input (DES-014 L-4).
    */
   protected sortByDomPosition(
     elements: Array<{ element: Element; type: 'user' | 'assistant' }>
-  ): void {
-    elements.sort((a, b) => {
+  ): Array<{ element: Element; type: 'user' | 'assistant' }> {
+    return [...elements].sort((a, b) => {
       const position = a.element.compareDocumentPosition(b.element);
       if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
       if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;

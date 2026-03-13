@@ -1,0 +1,6 @@
+/* Offscreen document styles */
+
+.offscreen-textarea {
+  position: absolute;
+  left: -9999px;
+}
