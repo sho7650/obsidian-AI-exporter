@@ -10,6 +10,9 @@ import type {
   MultiOutputResponse,
 } from './types';
 
+/** User-friendly message for extension context invalidation */
+const CONTEXT_INVALIDATED_MESSAGE = 'Extension context invalidated. Please reload the page.';
+
 /**
  * Message response type mapping
  */
@@ -36,9 +39,24 @@ export function sendMessage<K extends keyof MessageResponseMap>(
   message: ExtensionMessage & { action: K }
 ): Promise<MessageResponseMap[K]> {
   return new Promise((resolve, reject) => {
+    // Guard against extension context invalidation (e.g. after extension reload/update)
+    // Content scripts survive extension reloads but lose access to chrome.runtime
+    if (!chrome.runtime?.sendMessage) {
+      reject(new Error(CONTEXT_INVALIDATED_MESSAGE));
+      return;
+    }
+
     chrome.runtime.sendMessage(message, response => {
+      // Guard against context invalidation during in-flight message
+      if (!chrome.runtime) {
+        reject(new Error(CONTEXT_INVALIDATED_MESSAGE));
+        return;
+      }
       if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message ?? 'Unknown error'));
+        // Replace Chrome's terse "Extension context invalidated." with actionable message
+        const errorMsg = chrome.runtime.lastError.message ?? 'Unknown error';
+        const isContextInvalidated = errorMsg.includes('Extension context invalidated');
+        reject(new Error(isContextInvalidated ? CONTEXT_INVALIDATED_MESSAGE : errorMsg));
         return;
       }
       // Type assertion is safe: background validates all messages before responding
