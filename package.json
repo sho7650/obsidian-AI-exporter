@@ -45,7 +45,8 @@
   "overrides": {
     "@crxjs/vite-plugin": {
       "rollup": "2.80.0"
-    }
+    },
+    "undici": ">=7.24.0"
   },
   "author": "",
   "license": "MIT"
