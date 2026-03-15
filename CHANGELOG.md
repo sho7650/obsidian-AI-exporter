@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.9](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.13.8...v0.13.9) (2026-03-15)
+
+
+### Bug Fixes
+
+* guard against extension context invalidation in sendMessage ([#127](https://github.com/sho7650/obsidian-AI-exporter/issues/127)) ([c758302](https://github.com/sho7650/obsidian-AI-exporter/commit/c758302abc9028b4ba7449f1f9995672c8b22c22)), closes [#123](https://github.com/sho7650/obsidian-AI-exporter/issues/123)
+
 ## [0.13.8](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.13.7...v0.13.8) (2026-03-15)
 
 
