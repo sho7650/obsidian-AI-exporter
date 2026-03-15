@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.8](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.13.7...v0.13.8) (2026-03-15)
+
+
+### Bug Fixes
+
+* bump undici to &gt;=7.24.0 via npm overrides to resolve security vulnerabilities ([#125](https://github.com/sho7650/obsidian-AI-exporter/issues/125)) ([be52b61](https://github.com/sho7650/obsidian-AI-exporter/commit/be52b611d2a4b7b85af8d652af30cdd348c5c960))
+
 ## [0.13.7](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.13.6...v0.13.7) (2026-03-13)
 
 
