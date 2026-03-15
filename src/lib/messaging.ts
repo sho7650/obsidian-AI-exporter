@@ -35,33 +35,54 @@ interface MessageResponseMap {
  *
  * The type assertion below is safe under these controlled conditions.
  */
+/**
+ * Check if the extension context is still valid.
+ * After extension reload/update, content scripts survive but chrome.runtime.id
+ * becomes undefined and API calls throw synchronously.
+ */
+function isExtensionContextValid(): boolean {
+  try {
+    return !!chrome.runtime?.id;
+  } catch {
+    return false;
+  }
+}
+
 export function sendMessage<K extends keyof MessageResponseMap>(
   message: ExtensionMessage & { action: K }
 ): Promise<MessageResponseMap[K]> {
   return new Promise((resolve, reject) => {
     // Guard against extension context invalidation (e.g. after extension reload/update)
-    // Content scripts survive extension reloads but lose access to chrome.runtime
-    if (!chrome.runtime?.sendMessage) {
+    // Content scripts survive extension reloads but lose access to chrome.runtime.
+    // chrome.runtime.id becomes undefined when context is invalidated, even though
+    // chrome.runtime.sendMessage still exists as a function reference.
+    if (!isExtensionContextValid()) {
       reject(new Error(CONTEXT_INVALIDATED_MESSAGE));
       return;
     }
 
-    chrome.runtime.sendMessage(message, response => {
-      // Guard against context invalidation during in-flight message
-      if (!chrome.runtime) {
-        reject(new Error(CONTEXT_INVALIDATED_MESSAGE));
-        return;
-      }
-      if (chrome.runtime.lastError) {
-        // Replace Chrome's terse "Extension context invalidated." with actionable message
-        const errorMsg = chrome.runtime.lastError.message ?? 'Unknown error';
-        const isContextInvalidated = errorMsg.includes('Extension context invalidated');
-        reject(new Error(isContextInvalidated ? CONTEXT_INVALIDATED_MESSAGE : errorMsg));
-        return;
-      }
-      // Type assertion is safe: background validates all messages before responding
-      // See: src/background/index.ts validateMessageContent()
-      resolve(response as MessageResponseMap[K]);
-    });
+    try {
+      chrome.runtime.sendMessage(message, response => {
+        // Guard against context invalidation during in-flight message
+        if (!isExtensionContextValid()) {
+          reject(new Error(CONTEXT_INVALIDATED_MESSAGE));
+          return;
+        }
+        if (chrome.runtime.lastError) {
+          const errorMsg = chrome.runtime.lastError.message ?? 'Unknown error';
+          const isContextError = errorMsg.includes('Extension context invalidated');
+          reject(new Error(isContextError ? CONTEXT_INVALIDATED_MESSAGE : errorMsg));
+          return;
+        }
+        // Type assertion is safe: background validates all messages before responding
+        // See: src/background/index.ts validateMessageContent()
+        resolve(response as MessageResponseMap[K]);
+      });
+    } catch (error) {
+      // chrome.runtime.sendMessage() can throw synchronously when context is invalidated
+      const message = error instanceof Error ? error.message : String(error);
+      const isContextError = message.includes('Extension context invalidated');
+      reject(new Error(isContextError ? CONTEXT_INVALIDATED_MESSAGE : message));
+    }
   });
 }

@@ -110,7 +110,7 @@ describe('sendMessage - extension context invalidation', () => {
     });
   });
 
-  it('rejects with context invalidation message when chrome.runtime is undefined', async () => {
+  it('rejects when chrome.runtime is undefined', async () => {
     Object.defineProperty(chrome, 'runtime', {
       value: undefined,
       writable: true,
@@ -122,11 +122,26 @@ describe('sendMessage - extension context invalidation', () => {
     );
   });
 
-  it('rejects with context invalidation message when chrome.runtime.sendMessage is undefined', async () => {
+  it('rejects when chrome.runtime.id is undefined (context invalidated but runtime object exists)', async () => {
+    // This is the real-world scenario: chrome.runtime still exists as an object,
+    // chrome.runtime.sendMessage still exists as a function, but chrome.runtime.id
+    // becomes undefined when the extension context is invalidated.
     Object.defineProperty(chrome, 'runtime', {
-      value: { ...originalRuntime, sendMessage: undefined },
+      value: { ...originalRuntime, id: undefined },
       writable: true,
       configurable: true,
+    });
+
+    await expect(sendMessage({ action: 'getSettings' })).rejects.toThrow(
+      'Extension context invalidated. Please reload the page.'
+    );
+  });
+
+  it('rejects when chrome.runtime.sendMessage throws synchronously', async () => {
+    // When context is invalidated, sendMessage() can throw synchronously
+    // even though the function reference still exists
+    vi.mocked(chrome.runtime.sendMessage).mockImplementation(() => {
+      throw new Error('Extension context invalidated.');
     });
 
     await expect(sendMessage({ action: 'getSettings' })).rejects.toThrow(
@@ -137,9 +152,9 @@ describe('sendMessage - extension context invalidation', () => {
   it('rejects cleanly when chrome.runtime becomes undefined during in-flight message', async () => {
     vi.mocked(chrome.runtime.sendMessage).mockImplementation(
       (_message: unknown, callback?: (response: unknown) => void) => {
-        // Simulate context invalidation mid-flight (extension reloaded while message in transit)
+        // Simulate context invalidation mid-flight
         Object.defineProperty(chrome, 'runtime', {
-          value: undefined,
+          value: { id: undefined },
           writable: true,
           configurable: true,
         });
