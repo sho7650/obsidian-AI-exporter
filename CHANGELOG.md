@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.15.2...v0.15.3) (2026-03-16)
+
+
+### Miscellaneous
+
+* regenerate improve skill and add gemini2obsidian-patterns skill ([#137](https://github.com/sho7650/obsidian-AI-exporter/issues/137)) ([0ea57a8](https://github.com/sho7650/obsidian-AI-exporter/commit/0ea57a83d5c8c01fe5e1df511bf9efa6c9c5fdec))
+
 ## [0.15.2](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.15.1...v0.15.2) (2026-03-16)
 
 
