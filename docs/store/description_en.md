@@ -18,7 +18,8 @@ This extension extracts conversations from Google Gemini (gemini.google.com), Cl
 • Append mode - only new messages are added to existing notes
 • Auto-scroll for long Gemini conversations
 • Platform organization with {platform} template variable
-• Customizable save location, message format, and frontmatter fields
+• HTTPS support for secure connections to Obsidian REST API
+• Customizable API URL, save location, message format, and frontmatter fields
 • English and Japanese UI support
 • Works entirely offline - no external servers
 

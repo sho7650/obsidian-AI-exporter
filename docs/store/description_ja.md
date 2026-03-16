@@ -18,7 +18,8 @@ Google Gemini（gemini.google.com）、Claude AI（claude.ai）、ChatGPT（chat
 • 追記モード - 既存ノートに新しいメッセージのみ追加
 • Gemini の長い会話の自動スクロール
 • {platform} テンプレート変数によるプラットフォーム別整理
-• 保存先パス、メッセージ形式、フロントマターフィールドをカスタマイズ可能
+• Obsidian REST API への HTTPS 接続をサポート
+• API URL、保存先パス、メッセージ形式、フロントマターフィールドをカスタマイズ可能
 • 英語・日本語 UI 対応
 • 完全オフライン動作 - 外部サーバー不要
 

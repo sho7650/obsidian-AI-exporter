@@ -16,7 +16,7 @@
 </head>
 <body>
   <h1>Privacy Policy</h1>
-  <p class="update-date">Last updated: January 2025</p>
+  <p class="update-date">Last updated: March 2026</p>
 
   <h2>Overview</h2>
   <p>Obsidian AI Exporter is a Chrome extension that exports AI conversations to Obsidian. This policy explains how we handle your data.</p>
@@ -41,7 +41,7 @@
   <table>
     <tr><th>Data</th><th>Storage Location</th><th>Synced?</th></tr>
     <tr><td>API Key</td><td>chrome.storage.local</td><td>No</td></tr>
-    <tr><td>Settings</td><td>chrome.storage.sync</td><td>Yes</td></tr>
+    <tr><td>Settings (API URL, vault path, etc.)</td><td>chrome.storage.sync</td><td>Yes</td></tr>
     <tr><td>Conversations</td><td>Your Obsidian vault only</td><td>N/A</td></tr>
   </table>
 
@@ -52,9 +52,9 @@
     <li><strong>claude.ai</strong>: To extract Claude conversation content (read-only)</li>
     <li><strong>chatgpt.com</strong>: To extract ChatGPT conversation content (read-only)</li>
     <li><strong>www.perplexity.ai</strong>: To extract Perplexity conversation content (read-only)</li>
-    <li><strong>127.0.0.1 (localhost)</strong>: To save files to your local Obsidian vault (when Obsidian output is enabled)</li>
+    <li><strong>Your Obsidian instance</strong>: To save files to your Obsidian vault via Local REST API (when Obsidian output is enabled). By default this is <code>127.0.0.1</code> (localhost) over HTTP. Users can optionally configure HTTPS or a LAN host address.</li>
   </ul>
-  <p>No data is ever sent to external servers or third parties.</p>
+  <p>No data is ever sent to external servers or third parties. Communication with Obsidian occurs only on your local machine or local network as configured by you.</p>
 
   <h2>Output Options</h2>
   <p>Conversations can be exported to three destinations:</p>
@@ -76,7 +76,8 @@
     <tr><td>Host: claude.ai</td><td>Inject the sync button on Claude pages</td></tr>
     <tr><td>Host: chatgpt.com</td><td>Inject the sync button on ChatGPT pages</td></tr>
     <tr><td>Host: www.perplexity.ai</td><td>Inject the sync button on Perplexity pages</td></tr>
-    <tr><td>Host: 127.0.0.1</td><td>Communicate with Obsidian's local API</td></tr>
+    <tr><td>Host: 127.0.0.1 (HTTP &amp; HTTPS)</td><td>Communicate with Obsidian's local API on localhost</td></tr>
+    <tr><td>Optional: other hosts</td><td>Requested at runtime if you configure a non-localhost API URL (e.g., LAN access). You will see a Chrome permission prompt before any connection is made.</td></tr>
   </table>
 
   <h2>Your Rights</h2>
