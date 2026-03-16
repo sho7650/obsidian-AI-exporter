@@ -4,7 +4,6 @@ description: |
   Autonomous improvement loop — repeatedly runs QA, Fix, and Refactor cycles to continuously improve code quality.
   Each round runs tests and auto-reverts refactoring commits that break tests.
   Leverages SuperClaude commands for enhanced analysis.
-  Uses MCP servers (serena, sequential-thinking, context7, playwright, tavily) for semantic analysis, documentation lookup, and multi-step reasoning.
 arguments:
   - name: rounds
     description: Maximum number of improvement rounds (early termination if 0 issues found)
@@ -32,12 +31,6 @@ This skill uses the following tools:
 - `/sc:cleanup` — Phase 3: Structured refactoring
 - `/sc:reflect` — Phase 5: Structured retrospective
 
-**MCP servers:**
-- `serena` — Phase 1/3: Semantic code understanding, dependency graph analysis
-- `sequential-thinking` — Phase 1/6: Multi-step reasoning for complex problems
-- `context7` — Phase 2: Official documentation lookup for CRXJS/Vite and related tools
-- `playwright` — Phase 1/4: Browser-based E2E test execution
-- `tavily` — Phase 6: Web research for best practices
 
 **Fallback rule:** If any MCP server or `/sc:` command is unavailable, log a warning and continue without it. MCPs and SuperClaude enhance the loop but are NOT required.
 
@@ -143,7 +136,6 @@ Action required: {what the user should do}
    ```
    Extract baseline test counts from output. Record: `BASELINE_UNIT_TEST_COUNT`, `BASELINE_UNIT_FAIL_COUNT`.
    These baselines are used throughout the loop to detect regressions.
-11. **Use available MCP servers to understand project structure** — Query semantic analysis tools for module structure, dependency graph, and key entry points.
 
 **Initialize the round counter:**
 Set `ROUND_NUM=1`. This variable tracks the current round number throughout the loop.
@@ -236,10 +228,6 @@ Use `/sc:analyze` for structural analysis:
 - Circular dependencies"
 ```
 
-**MCP-enhanced analysis**: Use available MCP servers for deeper code understanding:
-Use serena for semantic analysis: check module dependency issues, unused exports, and circular call graphs.
-Use sequential-thinking for complex architectural problems: multi-step reasoning to identify root causes at the design level.
-Use context7 to look up official documentation for CRXJS/Vite APIs before flagging potential misuse.
 
 #### Code Review (Claude)
 
@@ -512,7 +500,6 @@ Analyze all rounds in `.improvement-state/reflection-log.md`:
 - Identify recurring issue category patterns
 - Generate prioritized improvement suggestions
 
-**Use available MCP tools** for deeper analysis and best practice research.
 
 Save output to `.improvement-state/self-learning-suggestions.md`:
 
@@ -569,7 +556,6 @@ After all rounds complete (or early termination):
 | Git conflict | **ABORT** the loop (abort condition #1) |
 | Test timeout (exit code 124) | Treat as HIGH-severity issue. If 3+ timeouts in one run, ABORT |
 | 0 issues in all rounds | Report "codebase is in good shape" |
-| MCP server not connected | Log warning, continue without that MCP |
 | /sc: command not installed | Log warning, continue without SuperClaude |
 | Disk space < 500MB | **ABORT** (abort condition #7) |
 | Test count decreased | **ABORT** — potential test file deletion |
