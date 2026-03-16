@@ -55,15 +55,13 @@ function stripCodeBlocks(text: string): string {
 export function countExistingMessages(body: string): number {
   const stripped = stripCodeBlocks(body);
 
-  // Try callout format first
-  CALLOUT_PATTERN.lastIndex = 0;
+  // Try callout format first (.match with /g always searches from 0)
   const calloutMatches = stripped.match(CALLOUT_PATTERN);
   if (calloutMatches && calloutMatches.length > 0) {
     return calloutMatches.length;
   }
 
-  // Try blockquote/plain format
-  LABEL_PATTERN.lastIndex = 0;
+  // Try blockquote/plain format (.match with /g always searches from 0)
   const labelMatches = stripped.match(LABEL_PATTERN);
   if (labelMatches && labelMatches.length > 0) {
     return labelMatches.length;
