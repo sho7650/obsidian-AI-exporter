@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.2](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.15.1...v0.15.2) (2026-03-16)
+
+
+### Security
+
+* redact API key from content scripts and harden input validation ([#134](https://github.com/sho7650/obsidian-AI-exporter/issues/134)) ([641a0bd](https://github.com/sho7650/obsidian-AI-exporter/commit/641a0bdca014935dc3c308957842207c37733c0e))
+
+
+### Miscellaneous
+
+* add security type to release-please changelog sections ([#135](https://github.com/sho7650/obsidian-AI-exporter/issues/135)) ([54700cd](https://github.com/sho7650/obsidian-AI-exporter/commit/54700cd7e195515416d477c380b7d295ad9719a8))
+
 ## [0.15.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.15.0...v0.15.1) (2026-03-16)
 
 
