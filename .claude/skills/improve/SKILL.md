@@ -1,9 +1,10 @@
 ---
 name: improve
 description: |
-  Autonomous improvement loop — repeatedly runs QA, Fix, and Refactor cycles to continuously improve code quality.
-  Each round runs tests and auto-reverts refactoring commits that break tests.
+  Autonomous improvement loop for code quality. Repeatedly runs QA, Fix, and Refactor cycles with test-guarded auto-revert.
+  Use when user says "improve", "run QA loop", "fix and refactor", "code quality scan", or "autonomous improvement".
   Leverages SuperClaude commands for enhanced analysis.
+  Uses MCP servers (serena, sequential-thinking, context7, tavily, playwright) for semantic analysis, documentation lookup, and multi-step reasoning.
 arguments:
   - name: rounds
     description: Maximum number of improvement rounds (early termination if 0 issues found)
@@ -31,8 +32,22 @@ This skill uses the following tools:
 - `/sc:cleanup` — Phase 3: Structured refactoring
 - `/sc:reflect` — Phase 5: Structured retrospective
 
+**MCP servers:**
+- `serena` — Phase 1/3: Semantic code understanding, dependency graph analysis
+- `sequential-thinking` — Phase 1/6: Multi-step reasoning for complex problems
+- `context7` — Phase 2: Official documentation lookup for CRXJS + Vite and related tools
+- `playwright` — Phase 1/4: Browser-based E2E test execution
+- `tavily` — Phase 6: Web research for best practices
 
-**Fallback rule:** If any MCP server or `/sc:` command is unavailable, log a warning and continue without it. MCPs and SuperClaude enhance the loop but are NOT required.
+
+**Fallback rule:** If any MCP server, `/sc:` command, or ECC command is unavailable, log a warning and continue without it. These integrations enhance the loop but are NOT required.
+
+## Performance Notes
+
+- **Every phase must execute its commands via Bash.** Do NOT skip lint, typecheck, or test commands. Do NOT estimate results.
+- **Phase 4 (Safety Check) is never optional.** Always run the full test suite after refactoring.
+- **Loop continuation is mandatory.** After Phase 5, check the Loop Continuation Decision and go back to Phase 1 if rounds remain and issues exist. Do NOT stop after one round.
+- **Auto-revert is non-negotiable.** If tests fail after refactoring, revert immediately. Do NOT attempt to fix forward.
 
 ## Critical Safety Rules
 
@@ -41,23 +56,6 @@ This skill uses the following tools:
 - Record results of each phase in `.improvement-state/`.
 - Follow Conventional Commits commit format.
 - **NEVER weaken or delete tests to make them pass.** Fix the implementation instead.
-
-## Logging
-
-After completing each phase and at each round boundary, record results in `.improvement-state/execution.log` and `.improvement-state/run.log`.
-
-**execution.log format:**
-```
-[HH:MM:SS] [Phase N-name] result summary
-```
-
-**run.log format (per round):**
-```
-## Round N — YYYY-MM-DDTHH:MM:SS
-Result: found=X, fixed=Y
-```
-
-This logging is a **required workflow step** — the same as writing `issues-round-N.md` or `reflection-log.md`. Follow the **"Log:"** instruction at the end of each phase.
 
 ## Abort Conditions (Loop Stops Entirely)
 
@@ -115,27 +113,15 @@ Action required: {what the user should do}
    ```bash
    mkdir -p .improvement-state
    ```
-7. Initialize execution log:
-   ```bash
-   echo "=== Improvement Loop Started ===" > .improvement-state/execution.log
-   echo "Time: $(date '+%Y-%m-%dT%H:%M:%S')" >> .improvement-state/execution.log
-   echo "Parameters: rounds={{rounds}}, focus={{focus}}, dry-run={{dry-run}}" >> .improvement-state/execution.log
-   echo "" >> .improvement-state/execution.log
-   ```
-8. Initialize the run log:
-   ```bash
-   echo "# Run Log — $BRANCH" > .improvement-state/run.log
-   echo "Started: $(date '+%Y-%m-%dT%H:%M:%S')" >> .improvement-state/run.log
-   echo "Parameters: rounds={{rounds}}, focus={{focus}}, dry-run={{dry-run}}" >> .improvement-state/run.log
-   ```
-9. Load `.improvement-config.json` if it exists. Otherwise use default values.
-10. **Capture test baseline** — run unit tests to record the initial state:
+7. Load `.improvement-config.json` if it exists. Otherwise use default values.
+8. **Capture test baseline** — run unit tests to record the initial state:
    ```bash
    npx vitest run 2>&1 2>&1 | tee .improvement-state/test-baseline.log
    BASELINE_UNIT_EXIT=$?
    ```
    Extract baseline test counts from output. Record: `BASELINE_UNIT_TEST_COUNT`, `BASELINE_UNIT_FAIL_COUNT`.
    These baselines are used throughout the loop to detect regressions.
+9. **Use available MCP servers to understand project structure** — Query semantic analysis tools for module structure, dependency graph, and key entry points.
 
 **Initialize the round counter:**
 Set `ROUND_NUM=1`. This variable tracks the current round number throughout the loop.
@@ -178,9 +164,6 @@ Scope: {{focus}}
 ```bash
 git tag "savepoint-round-$ROUND_NUM"
 ```
-
-**Log:** Append to `.improvement-state/run.log`: `## Round $ROUND_NUM — {current timestamp}`
-Append to `.improvement-state/execution.log`: `[HH:MM:SS] [Round $ROUND_NUM] Started`
 
 Run QA checks. If agent teams are available (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`), run in parallel using separate agent teams. Otherwise, run sequentially.
 
@@ -228,10 +211,15 @@ Use `/sc:analyze` for structural analysis:
 - Circular dependencies"
 ```
 
+**MCP-enhanced analysis**: Use available MCP servers for deeper code understanding:
+Use serena for semantic analysis: check module dependency issues, unused exports, and circular call graphs.
+Use sequential-thinking for complex architectural problems: multi-step reasoning to identify root causes at the design level.
+Use context7 to look up official documentation for CRXJS + Vite APIs before flagging potential misuse.
+
 
 #### Code Review (Claude)
 
-If no SuperClaude `/sc:analyze` is available, perform manual code review:
+If no SuperClaude `/sc:analyze` or ECC `/code-review` is available, perform manual code review:
 - Read source files in src
 - Check for: type safety, error handling, file/function size limits, input validation, hardcoded values, circular dependencies
 - Classify findings by severity: CRITICAL, HIGH, MEDIUM, LOW
@@ -254,12 +242,6 @@ Save all QA results to `.improvement-state/issues-round-N.md`:
 - **Detail**: Description of the problem
 - **Suggestion**: Proposed fix (if any)
 ```
-
-**Log:** Append to `.improvement-state/execution.log`:
-- `[HH:MM:SS] [Phase 1] Unit tests — {passed} passed, {failed} failed (exit={code})`
-- `[HH:MM:SS] [Phase 1] Lint — {N} warnings, {M} errors`
-- `[HH:MM:SS] [Phase 1] Typecheck — {result}`
-- `[HH:MM:SS] [Phase 1] Issues found: {total} (CRITICAL={n}, HIGH={n}, MEDIUM={n}, LOW={n})`
 
 **Decision**:
 - Issue count is 0 → exit the loop and proceed to Phase 7 (Finalize).
@@ -291,6 +273,7 @@ npx eslint --fix src/ 2>&1 | tee /tmp/lint-fix-output.log
 Error: {error message}
 Analyze the root cause and suggest a fix."
 ```
+
 
 Fix procedure:
 1. **Read the source code** of both the failing test file and the implementation under test.
@@ -334,9 +317,6 @@ POSTFIX_EXIT=${PIPESTATUS[0]}
   Skip to Phase 5.
 - **Same failures as Phase 1 remain**: Proceed to Phase 3.
 
-**Log:** Append to `.improvement-state/execution.log`:
-- `[HH:MM:SS] [Phase 2] Fixed {Y}/{X} issues, committed {hash}` — or if reverted: `[HH:MM:SS] [Phase 2] REGRESSION — fix reverted`
-
 ### Phase 3: Refactor (Quality Improvement)
 
 Skip this phase if {{dry-run}} is true.
@@ -378,9 +358,6 @@ Refactoring candidate selection criteria:
 git add -A
 git commit -m "refactor: {specific description} [round $ROUND_NUM]"
 ```
-
-**Log:** Append to `.improvement-state/execution.log`:
-- `[HH:MM:SS] [Phase 3] Refactored {N} files, committed {hash}` — or `[HH:MM:SS] [Phase 3] Skipped (tests unstable)`
 
 ### Phase 4: Safety Check
 
@@ -430,9 +407,6 @@ POST_REVERT_EXIT=${PIPESTATUS[0]}
   git revert --no-edit "savepoint-round-$ROUND_NUM"..HEAD
   ```
 
-**Log:** Append to `.improvement-state/execution.log`:
-- `[HH:MM:SS] [Phase 4] Safety check — PASSED` — or `[HH:MM:SS] [Phase 4] Safety check — REVERTED ({N} commits)`
-
 **Consecutive revert check**: If `CONSECUTIVE_REVERT_COUNT >= 2`, trigger abort condition #5.
 
 ### Phase 5: Reflection (Record Results)
@@ -446,6 +420,7 @@ POST_REVERT_EXIT=${PIPESTATUS[0]}
 - Safety Check: PASSED/REVERTED/SKIPPED
 Analyze what went well, what didn't, and patterns to watch."
 ```
+
 
 Append to `.improvement-state/reflection-log.md`:
 
@@ -468,12 +443,6 @@ Append to `.improvement-state/reflection-log.md`:
 
 ---
 ```
-
-**Log:** Append to `.improvement-state/execution.log`:
-- `[HH:MM:SS] [Phase 5] Reflection — issues={X}, fixed={Y}, rate={Z}%`
-
-Append to `.improvement-state/run.log`:
-- `Result: found={X}, fixed={Y}`
 
 ### Loop Continuation Decision
 
@@ -500,6 +469,7 @@ Analyze all rounds in `.improvement-state/reflection-log.md`:
 - Identify recurring issue category patterns
 - Generate prioritized improvement suggestions
 
+**Use available MCP tools** for deeper analysis and best practice research.
 
 Save output to `.improvement-state/self-learning-suggestions.md`:
 
@@ -556,6 +526,7 @@ After all rounds complete (or early termination):
 | Git conflict | **ABORT** the loop (abort condition #1) |
 | Test timeout (exit code 124) | Treat as HIGH-severity issue. If 3+ timeouts in one run, ABORT |
 | 0 issues in all rounds | Report "codebase is in good shape" |
+| MCP server not connected | Log warning, continue without that MCP |
 | /sc: command not installed | Log warning, continue without SuperClaude |
 | Disk space < 500MB | **ABORT** (abort condition #7) |
 | Test count decreased | **ABORT** — potential test file deletion |

@@ -51,7 +51,7 @@ src/services/digest-service.ts(23,5): error TS2345: Argument of type 'string' is
 npx vitest run 2>&1
 ```
 
-Look for FAIL lines, error TS[0-9], SyntaxError, ParseError, Cannot find module, beforeAll/beforeEach errors in stack traces. Summary pattern: Tests N failed | M passed (T) or Test Files N failed | M passed (T)
+Tests  N failed | M passed (T) or Test Files  N failed | M passed (T)
 
 ### Severity Classification
 
@@ -69,10 +69,8 @@ Look for FAIL lines, error TS[0-9], SyntaxError, ParseError, Cannot find module,
 - [ ] Functions are within 50 lines
 - [ ] Files are within 300 lines
 - [ ] No circular imports/dependencies
-- [ ] No unjustified `any` type
+- [ ] No unjustified any type
 - [ ] SSRF protection for external URL fetching
-- [ ] No secrets in client-side code
-- [ ] XSS prevention
 
 ## Issue Aggregation Template
 
