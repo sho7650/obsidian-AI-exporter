@@ -14,7 +14,7 @@ describe('ObsidianApiClient', () => {
   beforeEach(() => {
     mockFetch = vi.fn();
     vi.stubGlobal('fetch', mockFetch);
-    client = new ObsidianApiClient(27123, 'test-api-key');
+    client = new ObsidianApiClient('http://127.0.0.1:27123', 'test-api-key');
   });
 
   afterEach(() => {
@@ -22,15 +22,28 @@ describe('ObsidianApiClient', () => {
   });
 
   describe('constructor', () => {
-    it('constructs with port and API key', () => {
-      const client = new ObsidianApiClient(28000, 'my-key');
-      // Verify by making a request and checking the URL
+    it('constructs with base URL and API key', () => {
+      const client = new ObsidianApiClient('http://127.0.0.1:28000', 'my-key');
+      mockFetch.mockResolvedValue({ ok: true, status: 200 });
+      void client.testConnection();
+      expect(mockFetch).toHaveBeenCalledWith('http://127.0.0.1:28000/vault/', expect.any(Object));
+    });
+
+    it('strips trailing slash from base URL', () => {
+      const client = new ObsidianApiClient('https://192.168.1.5:27123/', 'my-key');
       mockFetch.mockResolvedValue({ ok: true, status: 200 });
       void client.testConnection();
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:28000/vault/',
+        'https://192.168.1.5:27123/vault/',
         expect.any(Object)
       );
+    });
+
+    it('works with https URL', () => {
+      const client = new ObsidianApiClient('https://127.0.0.1:27123', 'my-key');
+      mockFetch.mockResolvedValue({ ok: true, status: 200 });
+      void client.testConnection();
+      expect(mockFetch).toHaveBeenCalledWith('https://127.0.0.1:27123/vault/', expect.any(Object));
     });
   });
 
@@ -240,7 +253,6 @@ describe('ObsidianApiClient', () => {
     });
   });
 
-
   describe('listFiles', () => {
     it('returns file list for existing directory', async () => {
       mockFetch.mockResolvedValue({
@@ -322,7 +334,7 @@ describe('ObsidianApiClient', () => {
       const freshMockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
       vi.stubGlobal('fetch', freshMockFetch);
 
-      const freshClient = new FreshClient(27123, 'test-key');
+      const freshClient = new FreshClient('http://127.0.0.1:27123', 'test-key');
       await freshClient.testConnection();
 
       // Verify fetch was called with an AbortSignal to /vault/ endpoint
@@ -384,16 +396,12 @@ describe('getErrorMessage', () => {
 
   it('returns message for auth error (status 401)', () => {
     const error = new ObsidianApiError(401, 'Unauthorized');
-    expect(getErrorMessage(error)).toBe(
-      'Invalid API key. Please check your settings.'
-    );
+    expect(getErrorMessage(error)).toBe('Invalid API key. Please check your settings.');
   });
 
   it('returns message for auth error (status 403)', () => {
     const error = new ObsidianApiError(403, 'Forbidden');
-    expect(getErrorMessage(error)).toBe(
-      'Invalid API key. Please check your settings.'
-    );
+    expect(getErrorMessage(error)).toBe('Invalid API key. Please check your settings.');
   });
 
   it('returns message for not found error (status 404)', () => {

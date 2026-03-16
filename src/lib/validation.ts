@@ -4,6 +4,7 @@
  */
 
 import { containsPathTraversal } from './path-utils';
+import { MIN_PORT, MAX_PORT } from './constants';
 
 /**
  * Allowed callout types
@@ -68,6 +69,41 @@ export function validateVaultPath(path: string): string {
   }
 
   return path.trim();
+}
+
+/**
+ * Validate Obsidian API URL
+ * Accepts http/https URLs with optional port (1024-65535).
+ * Returns normalized URL (origin only, no path or trailing slash).
+ */
+export function validateObsidianUrl(url: string): string {
+  const trimmed = url.trim();
+
+  if (!trimmed) {
+    throw new Error('API URL is required');
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new Error('Invalid URL format');
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('URL must use http or https scheme');
+  }
+
+  // Validate port range if explicitly specified
+  if (parsed.port) {
+    const port = parseInt(parsed.port, 10);
+    if (port < MIN_PORT || port > MAX_PORT) {
+      throw new Error(`Port must be between ${MIN_PORT} and ${MAX_PORT}`);
+    }
+  }
+
+  // Return origin only (scheme + host + port), no path
+  return parsed.origin;
 }
 
 /**

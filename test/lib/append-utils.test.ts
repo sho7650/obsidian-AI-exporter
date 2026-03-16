@@ -147,10 +147,7 @@ describe('lookupExistingFile', () => {
 
   it('handles ID scan with multiple suffix matches, uses first valid', async () => {
     mockClient.getFile.mockResolvedValueOnce(null); // direct miss
-    mockClient.listFiles.mockResolvedValue([
-      'wrong-id-abc12345.md',
-      'correct-abc12345.md',
-    ]);
+    mockClient.listFiles.mockResolvedValue(['wrong-id-abc12345.md', 'correct-abc12345.md']);
     mockClient.getFile
       .mockResolvedValueOnce('---\nid: wrong_id\n---\nBody') // first scan miss
       .mockResolvedValueOnce('---\nid: claude_abc-def-123\n---\nBody'); // second scan hit
@@ -317,13 +314,7 @@ function createTestNote(overrides?: Partial<ObsidianNote>): ObsidianNote {
   return {
     fileName: 'test-chat-abc12345.md',
     frontmatter: createTestFrontmatter(),
-    body: [
-      '> [!QUESTION] User',
-      '> Hello',
-      '',
-      '> [!NOTE] Claude',
-      '> Hi there!',
-    ].join('\n'),
+    body: ['> [!QUESTION] User', '> Hello', '', '> [!NOTE] Claude', '> Hi there!'].join('\n'),
     contentHash: 'testhash',
     ...overrides,
   };
@@ -332,7 +323,7 @@ function createTestNote(overrides?: Partial<ObsidianNote>): ObsidianNote {
 function createTestSettings(): ExtensionSettings {
   return {
     obsidianApiKey: 'test-key',
-    obsidianPort: 27123,
+    obsidianUrl: 'http://127.0.0.1:27123',
     vaultPath: 'AI/{platform}',
     templateOptions: {
       includeId: true,

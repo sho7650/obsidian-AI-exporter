@@ -29,9 +29,17 @@
     "message": "Enter your Local REST API key",
     "description": "Placeholder for API key input"
   },
-  "settings_port": {
-    "message": "Port",
-    "description": "Label for port input"
+  "settings_apiUrl": {
+    "message": "API URL",
+    "description": "Label for Obsidian API URL input"
+  },
+  "settings_apiUrlPlaceholder": {
+    "message": "http://127.0.0.1:27123",
+    "description": "Placeholder for API URL input"
+  },
+  "settings_apiUrlHelp": {
+    "message": "Obsidian Local REST API URL (default: http://127.0.0.1:27123)",
+    "description": "Help text for API URL input"
   },
   "settings_vaultPath": {
     "message": "Vault Path",
@@ -205,9 +213,9 @@
     "message": "Obsidian REST API is not running. Please ensure Obsidian is open and the Local REST API plugin is enabled.",
     "description": "Error when Obsidian is not running"
   },
-  "error_invalidPort": {
-    "message": "Port must be between 1024 and 65535",
-    "description": "Error for invalid port"
+  "error_invalidUrl": {
+    "message": "Invalid API URL. Must be http:// or https:// URL",
+    "description": "Error for invalid API URL"
   },
 
   "status_connectionSuccess": {

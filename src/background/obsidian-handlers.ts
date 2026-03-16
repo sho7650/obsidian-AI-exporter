@@ -21,7 +21,7 @@ export function createObsidianClient(
   if (!settings.obsidianApiKey) {
     return { error: 'API key not configured' };
   }
-  return new ObsidianApiClient(settings.obsidianPort, settings.obsidianApiKey);
+  return new ObsidianApiClient(settings.obsidianUrl, settings.obsidianApiKey);
 }
 
 /**

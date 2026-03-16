@@ -4,7 +4,7 @@
   "version": "0.14.0",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
-  "minimum_chrome_version": "88",
+  "minimum_chrome_version": "96",
   "icons": {
     "16": "icons/icon16.png",
     "24": "icons/icon24.png",
@@ -23,10 +23,15 @@
     "https://claude.ai/*",
     "https://chatgpt.com/*",
     "https://www.perplexity.ai/*",
-    "http://127.0.0.1:27123/*"
+    "http://127.0.0.1/*",
+    "https://127.0.0.1/*"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
   ],
   "content_security_policy": {
-    "extension_pages": "default-src 'self'; script-src 'self'; connect-src 'self' http://127.0.0.1:*; object-src 'none'; frame-src 'none'; style-src 'self'"
+    "extension_pages": "default-src 'self'; script-src 'self'; connect-src 'self' http://127.0.0.1:* https://127.0.0.1:*; object-src 'none'; frame-src 'none'; style-src 'self'"
   },
   "background": {
     "service_worker": "src/background/index.ts",

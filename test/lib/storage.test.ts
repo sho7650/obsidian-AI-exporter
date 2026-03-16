@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  getSettings,
-  saveSettings,
-  migrateSettings,
-} from '../../src/lib/storage';
+import { getSettings, saveSettings, migrateSettings } from '../../src/lib/storage';
 
 describe('storage', () => {
   beforeEach(() => {
@@ -21,12 +17,10 @@ describe('storage', () => {
       }
     );
 
-    vi.mocked(chrome.storage.local.set).mockImplementation(
-      (items: Record<string, unknown>) => {
-        Object.assign(localStore, items);
-        return Promise.resolve();
-      }
-    );
+    vi.mocked(chrome.storage.local.set).mockImplementation((items: Record<string, unknown>) => {
+      Object.assign(localStore, items);
+      return Promise.resolve();
+    });
 
     vi.mocked(chrome.storage.sync.get).mockImplementation(
       (keys: string | string[] | Record<string, unknown> | null) => {
@@ -37,12 +31,10 @@ describe('storage', () => {
       }
     );
 
-    vi.mocked(chrome.storage.sync.set).mockImplementation(
-      (items: Record<string, unknown>) => {
-        Object.assign(syncStore, items);
-        return Promise.resolve();
-      }
-    );
+    vi.mocked(chrome.storage.sync.set).mockImplementation((items: Record<string, unknown>) => {
+      Object.assign(syncStore, items);
+      return Promise.resolve();
+    });
   });
 
   describe('getSettings', () => {
@@ -50,7 +42,7 @@ describe('storage', () => {
       const settings = await getSettings();
 
       expect(settings.obsidianApiKey).toBe('');
-      expect(settings.obsidianPort).toBe(27123);
+      expect(settings.obsidianUrl).toBe('http://127.0.0.1:27123');
       expect(settings.vaultPath).toBe('AI/{platform}');
       expect(settings.templateOptions.messageFormat).toBe('callout');
     });
@@ -66,12 +58,30 @@ describe('storage', () => {
 
     it('returns stored sync settings from sync storage', async () => {
       vi.mocked(chrome.storage.sync.get).mockResolvedValue({
-        settings: { obsidianPort: 28000, vaultPath: 'Custom/Path' },
+        settings: { obsidianUrl: 'https://192.168.1.5:27123', vaultPath: 'Custom/Path' },
       });
 
       const settings = await getSettings();
-      expect(settings.obsidianPort).toBe(28000);
+      expect(settings.obsidianUrl).toBe('https://192.168.1.5:27123');
       expect(settings.vaultPath).toBe('Custom/Path');
+    });
+
+    it('migrates legacy obsidianPort to obsidianUrl', async () => {
+      vi.mocked(chrome.storage.sync.get).mockResolvedValue({
+        settings: { obsidianPort: 28000 },
+      });
+
+      const settings = await getSettings();
+      expect(settings.obsidianUrl).toBe('http://127.0.0.1:28000');
+    });
+
+    it('prefers obsidianUrl over legacy obsidianPort', async () => {
+      vi.mocked(chrome.storage.sync.get).mockResolvedValue({
+        settings: { obsidianUrl: 'https://127.0.0.1:27123', obsidianPort: 28000 },
+      });
+
+      const settings = await getSettings();
+      expect(settings.obsidianUrl).toBe('https://127.0.0.1:27123');
     });
 
     it('merges template options with defaults', async () => {
@@ -92,13 +102,11 @@ describe('storage', () => {
     });
 
     it('returns default settings on error', async () => {
-      vi.mocked(chrome.storage.local.get).mockRejectedValue(
-        new Error('Storage error')
-      );
+      vi.mocked(chrome.storage.local.get).mockRejectedValue(new Error('Storage error'));
 
       const settings = await getSettings();
       expect(settings.obsidianApiKey).toBe('');
-      expect(settings.obsidianPort).toBe(27123);
+      expect(settings.obsidianUrl).toBe('http://127.0.0.1:27123');
     });
   });
 
@@ -111,13 +119,13 @@ describe('storage', () => {
       });
     });
 
-    it('saves port and vaultPath to sync storage', async () => {
+    it('saves obsidianUrl and vaultPath to sync storage', async () => {
       vi.mocked(chrome.storage.sync.get).mockResolvedValue({ settings: {} });
 
-      await saveSettings({ obsidianPort: 28000, vaultPath: 'New/Path' });
+      await saveSettings({ obsidianUrl: 'https://127.0.0.1:27123', vaultPath: 'New/Path' });
 
       expect(chrome.storage.sync.set).toHaveBeenCalledWith({
-        settings: { obsidianPort: 28000, vaultPath: 'New/Path' },
+        settings: { obsidianUrl: 'https://127.0.0.1:27123', vaultPath: 'New/Path' },
       });
     });
 
@@ -146,13 +154,9 @@ describe('storage', () => {
     });
 
     it('throws error on save failure', async () => {
-      vi.mocked(chrome.storage.local.set).mockRejectedValue(
-        new Error('Save failed')
-      );
+      vi.mocked(chrome.storage.local.set).mockRejectedValue(new Error('Save failed'));
 
-      await expect(saveSettings({ obsidianApiKey: 'key' })).rejects.toThrow(
-        'Save failed'
-      );
+      await expect(saveSettings({ obsidianApiKey: 'key' })).rejects.toThrow('Save failed');
     });
 
     it('round-trips enableToolContent true', async () => {
@@ -187,7 +191,7 @@ describe('storage', () => {
   describe('migrateSettings', () => {
     it('migrates API key from sync to local storage', async () => {
       vi.mocked(chrome.storage.sync.get).mockResolvedValue({
-        settings: { obsidianApiKey: 'old-key', obsidianPort: 27123 },
+        settings: { obsidianApiKey: 'old-key', obsidianUrl: 'http://127.0.0.1:27123' },
       });
       vi.mocked(chrome.storage.local.get).mockResolvedValue({
         secureSettings: { obsidianApiKey: 'old-key' },
@@ -202,7 +206,7 @@ describe('storage', () => {
 
     it('removes API key from sync after successful migration', async () => {
       vi.mocked(chrome.storage.sync.get).mockResolvedValue({
-        settings: { obsidianApiKey: 'old-key', obsidianPort: 27123 },
+        settings: { obsidianApiKey: 'old-key', obsidianUrl: 'http://127.0.0.1:27123' },
       });
       vi.mocked(chrome.storage.local.get).mockResolvedValue({
         secureSettings: { obsidianApiKey: 'old-key' },
@@ -211,13 +215,13 @@ describe('storage', () => {
       await migrateSettings();
 
       expect(chrome.storage.sync.set).toHaveBeenCalledWith({
-        settings: { obsidianPort: 27123 },
+        settings: { obsidianUrl: 'http://127.0.0.1:27123' },
       });
     });
 
     it('does nothing if no API key in sync storage', async () => {
       vi.mocked(chrome.storage.sync.get).mockResolvedValue({
-        settings: { obsidianPort: 27123 },
+        settings: { obsidianUrl: 'http://127.0.0.1:27123' },
       });
 
       await migrateSettings();
@@ -229,9 +233,7 @@ describe('storage', () => {
       vi.mocked(chrome.storage.sync.get).mockResolvedValue({
         settings: { obsidianApiKey: 'old-key' },
       });
-      vi.mocked(chrome.storage.local.set).mockRejectedValue(
-        new Error('Write failed')
-      );
+      vi.mocked(chrome.storage.local.set).mockRejectedValue(new Error('Write failed'));
 
       // Should not throw
       await expect(migrateSettings()).resolves.toBeUndefined();
@@ -252,5 +254,4 @@ describe('storage', () => {
       expect(chrome.storage.sync.set).not.toHaveBeenCalled();
     });
   });
-
 });

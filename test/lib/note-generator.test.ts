@@ -34,7 +34,7 @@ function createTestSettings(
 ): ExtensionSettings {
   return {
     obsidianApiKey: 'test-key',
-    obsidianPort: 27123,
+    obsidianUrl: 'http://127.0.0.1:27123',
     vaultPath: 'AI/Gemini',
     templateOptions: {
       includeId: true,

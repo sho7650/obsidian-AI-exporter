@@ -174,7 +174,7 @@ export interface SecureSettings {
  * Non-sensitive data that can be synced across devices
  */
 export interface SyncSettings {
-  obsidianPort: number;
+  obsidianUrl: string;
   vaultPath: string;
   templateOptions: TemplateOptions;
   outputOptions: OutputOptions;

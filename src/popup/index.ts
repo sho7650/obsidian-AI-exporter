@@ -5,8 +5,13 @@
 
 import { getSettings, saveSettings } from '../lib/storage';
 import type { ExtensionSettings, TemplateOptions, OutputOptions } from '../lib/types';
-import { validateCalloutType, validateVaultPath, validateApiKey } from '../lib/validation';
-import { DEFAULT_OBSIDIAN_PORT, MIN_PORT, MAX_PORT } from '../lib/constants';
+import {
+  validateCalloutType,
+  validateVaultPath,
+  validateApiKey,
+  validateObsidianUrl,
+} from '../lib/validation';
+import { DEFAULT_OBSIDIAN_URL } from '../lib/constants';
 import { getMessage } from '../lib/i18n';
 import { sendMessage } from '../lib/messaging';
 
@@ -68,7 +73,7 @@ const elements = {
   obsidianSettings: getElement<HTMLElement>('obsidianSettings'),
   // Obsidian settings
   apiKey: getElement<HTMLInputElement>('apiKey'),
-  port: getElement<HTMLInputElement>('port'),
+  obsidianUrl: getElement<HTMLInputElement>('obsidianUrl'),
   vaultPath: getElement<HTMLInputElement>('vaultPath'),
   messageFormat: getElement<HTMLSelectElement>('messageFormat'),
   userCallout: getElement<HTMLInputElement>('userCallout'),
@@ -123,7 +128,7 @@ function populateForm(settings: ExtensionSettings): void {
 
   // Obsidian API settings
   elements.apiKey.value = settings.obsidianApiKey || '';
-  elements.port.value = String(settings.obsidianPort || DEFAULT_OBSIDIAN_PORT);
+  elements.obsidianUrl.value = settings.obsidianUrl || DEFAULT_OBSIDIAN_URL;
   elements.vaultPath.value = settings.vaultPath || '';
 
   const { templateOptions } = settings;
@@ -254,16 +259,6 @@ function validateOutputOptions(outputOptions: OutputOptions): boolean {
 const VALID_MESSAGE_FORMATS = ['callout', 'plain', 'blockquote'] as const;
 
 /**
- * Clamp port to valid range, falling back to default (DES-014 H-3)
- */
-function clampPort(port: number): number {
-  if (!Number.isFinite(port) || port < MIN_PORT || port > MAX_PORT) {
-    return DEFAULT_OBSIDIAN_PORT;
-  }
-  return port;
-}
-
-/**
  * Collect settings from form
  * Normalizes all values at collection time to avoid downstream mutation
  */
@@ -291,7 +286,7 @@ function collectSettings(): ExtensionSettings {
 
   return {
     obsidianApiKey: elements.apiKey.value.trim(),
-    obsidianPort: clampPort(parseInt(elements.port.value, 10)),
+    obsidianUrl: elements.obsidianUrl.value.trim() || DEFAULT_OBSIDIAN_URL,
     vaultPath: elements.vaultPath.value.trim(),
     templateOptions,
     outputOptions,
@@ -307,11 +302,12 @@ function collectSettings(): ExtensionSettings {
 interface ObsidianValidationResult {
   error: string | null;
   normalizedApiKey: string;
+  normalizedUrl: string;
   normalizedVaultPath: string;
 }
 
 /**
- * Validate Obsidian-specific settings (API key, port, vault path)
+ * Validate Obsidian-specific settings (API key, URL, vault path)
  * Returns normalized values without mutating the input (DES-014 H-4)
  */
 function validateObsidianSettings(settings: ExtensionSettings): ObsidianValidationResult {
@@ -322,11 +318,22 @@ function validateObsidianSettings(settings: ExtensionSettings): ObsidianValidati
     return {
       error: error instanceof Error ? error.message : 'Invalid API key',
       normalizedApiKey: settings.obsidianApiKey,
+      normalizedUrl: settings.obsidianUrl,
       normalizedVaultPath: settings.vaultPath,
     };
   }
 
-  // Port is already clamped by collectSettings() via clampPort(), so no range check needed here.
+  let normalizedUrl: string;
+  try {
+    normalizedUrl = validateObsidianUrl(settings.obsidianUrl);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'Invalid URL',
+      normalizedApiKey,
+      normalizedUrl: settings.obsidianUrl,
+      normalizedVaultPath: settings.vaultPath,
+    };
+  }
 
   let normalizedVaultPath: string;
   try {
@@ -335,11 +342,12 @@ function validateObsidianSettings(settings: ExtensionSettings): ObsidianValidati
     return {
       error: error instanceof Error ? error.message : 'Invalid vault path',
       normalizedApiKey,
+      normalizedUrl,
       normalizedVaultPath: settings.vaultPath,
     };
   }
 
-  return { error: null, normalizedApiKey, normalizedVaultPath };
+  return { error: null, normalizedApiKey, normalizedUrl, normalizedVaultPath };
 }
 
 /**
@@ -370,6 +378,7 @@ async function handleSave(): Promise<void> {
       settingsToSave = {
         ...settings,
         obsidianApiKey: validation.normalizedApiKey,
+        obsidianUrl: validation.normalizedUrl,
         vaultPath: validation.normalizedVaultPath,
       };
     }

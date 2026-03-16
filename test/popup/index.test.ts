@@ -10,6 +10,7 @@ import {
   validateCalloutType,
   validateVaultPath,
   validateApiKey,
+  validateObsidianUrl,
 } from '../../src/lib/validation';
 import { getSettings, saveSettings } from '../../src/lib/storage';
 
@@ -54,7 +55,7 @@ describe('popup/index patterns', () => {
     it('translates elements with data-i18n attribute', () => {
       document.body.innerHTML = '<span data-i18n="test_key">Default</span>';
 
-      document.querySelectorAll('[data-i18n]').forEach((element) => {
+      document.querySelectorAll('[data-i18n]').forEach(element => {
         const key = element.getAttribute('data-i18n');
         if (key) {
           const message = chrome.i18n.getMessage(key);
@@ -73,7 +74,7 @@ describe('popup/index patterns', () => {
       document.body.innerHTML =
         '<input data-i18n-placeholder="placeholder_key" placeholder="Default">';
 
-      document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
         const key = element.getAttribute('data-i18n-placeholder');
         if (key && element instanceof HTMLInputElement) {
           const message = chrome.i18n.getMessage(key);
@@ -83,9 +84,7 @@ describe('popup/index patterns', () => {
         }
       });
 
-      const input = document.querySelector(
-        '[data-i18n-placeholder]'
-      ) as HTMLInputElement;
+      const input = document.querySelector('[data-i18n-placeholder]') as HTMLInputElement;
       expect(input).not.toBeNull();
     });
 
@@ -111,7 +110,7 @@ describe('popup/index patterns', () => {
     beforeEach(() => {
       document.body.innerHTML = `
         <input id="apiKey" type="password">
-        <input id="port" type="number">
+        <input id="obsidianUrl" type="url" value="http://127.0.0.1:27123">
         <input id="vaultPath" type="text">
         <select id="messageFormat">
           <option value="callout">Callout</option>
@@ -138,12 +137,12 @@ describe('popup/index patterns', () => {
       expect(apiKey.value).toBe('test-key');
     });
 
-    it('populates port field with default', () => {
-      const port = document.getElementById('port') as HTMLInputElement;
-      const settings = { obsidianPort: 27123 };
+    it('populates obsidianUrl field with default', () => {
+      const obsidianUrl = document.getElementById('obsidianUrl') as HTMLInputElement;
+      const settings = { obsidianUrl: 'http://127.0.0.1:27123' };
 
-      port.value = String(settings.obsidianPort || 27123);
-      expect(port.value).toBe('27123');
+      obsidianUrl.value = settings.obsidianUrl || 'http://127.0.0.1:27123';
+      expect(obsidianUrl.value).toBe('http://127.0.0.1:27123');
     });
 
     it('populates vaultPath field', () => {
@@ -155,9 +154,7 @@ describe('popup/index patterns', () => {
     });
 
     it('populates messageFormat select', () => {
-      const messageFormat = document.getElementById(
-        'messageFormat'
-      ) as HTMLSelectElement;
+      const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
       const settings = { templateOptions: { messageFormat: 'blockquote' } };
 
       messageFormat.value = settings.templateOptions.messageFormat || 'callout';
@@ -166,16 +163,13 @@ describe('popup/index patterns', () => {
 
     it('populates callout type inputs', () => {
       const userCallout = document.getElementById('userCallout') as HTMLInputElement;
-      const assistantCallout = document.getElementById(
-        'assistantCallout'
-      ) as HTMLInputElement;
+      const assistantCallout = document.getElementById('assistantCallout') as HTMLInputElement;
       const settings = {
         templateOptions: { userCalloutType: 'QUESTION', assistantCalloutType: 'NOTE' },
       };
 
       userCallout.value = settings.templateOptions.userCalloutType || 'QUESTION';
-      assistantCallout.value =
-        settings.templateOptions.assistantCalloutType || 'NOTE';
+      assistantCallout.value = settings.templateOptions.assistantCalloutType || 'NOTE';
 
       expect(userCallout.value).toBe('QUESTION');
       expect(assistantCallout.value).toBe('NOTE');
@@ -209,7 +203,7 @@ describe('popup/index patterns', () => {
     beforeEach(() => {
       document.body.innerHTML = `
         <input id="apiKey" type="password" value="my-api-key">
-        <input id="port" type="number" value="27123">
+        <input id="obsidianUrl" type="url" value="http://127.0.0.1:27123">
         <input id="vaultPath" type="text" value="AI/Gemini">
         <select id="messageFormat">
           <option value="callout" selected>Callout</option>
@@ -229,28 +223,21 @@ describe('popup/index patterns', () => {
     it('collects all form values into settings object', () => {
       const elements = {
         apiKey: document.getElementById('apiKey') as HTMLInputElement,
-        port: document.getElementById('port') as HTMLInputElement,
+        obsidianUrl: document.getElementById('obsidianUrl') as HTMLInputElement,
         vaultPath: document.getElementById('vaultPath') as HTMLInputElement,
         messageFormat: document.getElementById('messageFormat') as HTMLSelectElement,
         userCallout: document.getElementById('userCallout') as HTMLInputElement,
-        assistantCallout: document.getElementById(
-          'assistantCallout'
-        ) as HTMLInputElement,
+        assistantCallout: document.getElementById('assistantCallout') as HTMLInputElement,
         includeId: document.getElementById('includeId') as HTMLInputElement,
         includeTitle: document.getElementById('includeTitle') as HTMLInputElement,
         includeTags: document.getElementById('includeTags') as HTMLInputElement,
         includeSource: document.getElementById('includeSource') as HTMLInputElement,
         includeDates: document.getElementById('includeDates') as HTMLInputElement,
-        includeMessageCount: document.getElementById(
-          'includeMessageCount'
-        ) as HTMLInputElement,
+        includeMessageCount: document.getElementById('includeMessageCount') as HTMLInputElement,
       };
 
       const templateOptions = {
-        messageFormat: elements.messageFormat.value as
-          | 'callout'
-          | 'plain'
-          | 'blockquote',
+        messageFormat: elements.messageFormat.value as 'callout' | 'plain' | 'blockquote',
         userCalloutType: elements.userCallout.value || 'QUESTION',
         assistantCalloutType: elements.assistantCallout.value || 'NOTE',
         includeId: elements.includeId.checked,
@@ -263,13 +250,13 @@ describe('popup/index patterns', () => {
 
       const settings = {
         obsidianApiKey: elements.apiKey.value.trim(),
-        obsidianPort: parseInt(elements.port.value, 10) || 27123,
+        obsidianUrl: elements.obsidianUrl.value.trim() || 'http://127.0.0.1:27123',
         vaultPath: elements.vaultPath.value.trim(),
         templateOptions,
       };
 
       expect(settings.obsidianApiKey).toBe('my-api-key');
-      expect(settings.obsidianPort).toBe(27123);
+      expect(settings.obsidianUrl).toBe('http://127.0.0.1:27123');
       expect(settings.vaultPath).toBe('AI/Gemini');
       expect(settings.templateOptions.messageFormat).toBe('callout');
     });
@@ -300,12 +287,12 @@ describe('popup/index patterns', () => {
       expect(settings.vaultPath).toBe('AI/Path');
     });
 
-    it('uses default port when invalid', () => {
-      const port = document.getElementById('port') as HTMLInputElement;
-      port.value = 'invalid';
+    it('uses default URL when empty', () => {
+      const obsidianUrl = document.getElementById('obsidianUrl') as HTMLInputElement;
+      obsidianUrl.value = '';
 
-      const portValue = parseInt(port.value, 10) || 27123;
-      expect(portValue).toBe(27123);
+      const urlValue = obsidianUrl.value.trim() || 'http://127.0.0.1:27123';
+      expect(urlValue).toBe('http://127.0.0.1:27123');
     });
   });
 
@@ -320,14 +307,10 @@ describe('popup/index patterns', () => {
       expect(() => validateApiKey('')).toThrow();
     });
 
-    it('validates port range', () => {
-      const isValidPort = (port: number) => port >= 1024 && port <= 65535;
-
-      expect(isValidPort(27123)).toBe(true);
-      expect(isValidPort(1024)).toBe(true);
-      expect(isValidPort(65535)).toBe(true);
-      expect(isValidPort(1023)).toBe(false);
-      expect(isValidPort(65536)).toBe(false);
+    it('validates URL format', () => {
+      expect(validateObsidianUrl('http://127.0.0.1:27123')).toBe('http://127.0.0.1:27123');
+      expect(validateObsidianUrl('https://192.168.1.5:27123')).toBe('https://192.168.1.5:27123');
+      expect(() => validateObsidianUrl('not-a-url')).toThrow();
     });
 
     it('validates vault path', () => {
@@ -359,14 +342,12 @@ describe('popup/index patterns', () => {
     });
 
     it('sends testConnection message', async () => {
-      const mockSendMessage = vi.fn(
-        (message: unknown, callback: (response: unknown) => void) => {
-          callback({ success: true });
-        }
-      );
+      const mockSendMessage = vi.fn((message: unknown, callback: (response: unknown) => void) => {
+        callback({ success: true });
+      });
 
-      const result = await new Promise<{ success: boolean }>((resolve) => {
-        mockSendMessage({ action: 'testConnection' }, (response) => {
+      const result = await new Promise<{ success: boolean }>(resolve => {
+        mockSendMessage({ action: 'testConnection' }, response => {
           resolve(response as { success: boolean });
         });
       });
@@ -379,19 +360,15 @@ describe('popup/index patterns', () => {
     });
 
     it('handles connection failure', async () => {
-      const mockSendMessage = vi.fn(
-        (message: unknown, callback: (response: unknown) => void) => {
-          callback({ success: false, error: 'Connection failed' });
-        }
-      );
+      const mockSendMessage = vi.fn((message: unknown, callback: (response: unknown) => void) => {
+        callback({ success: false, error: 'Connection failed' });
+      });
 
-      const result = await new Promise<{ success: boolean; error?: string }>(
-        (resolve) => {
-          mockSendMessage({ action: 'testConnection' }, (response) => {
-            resolve(response as { success: boolean; error?: string });
-          });
-        }
-      );
+      const result = await new Promise<{ success: boolean; error?: string }>(resolve => {
+        mockSendMessage({ action: 'testConnection' }, response => {
+          resolve(response as { success: boolean; error?: string });
+        });
+      });
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Connection failed');
@@ -543,13 +520,9 @@ describe('popup/index patterns', () => {
     });
 
     it('disables callout inputs when format is not callout', () => {
-      const messageFormat = document.getElementById(
-        'messageFormat'
-      ) as HTMLSelectElement;
+      const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
       const userCallout = document.getElementById('userCallout') as HTMLInputElement;
-      const assistantCallout = document.getElementById(
-        'assistantCallout'
-      ) as HTMLInputElement;
+      const assistantCallout = document.getElementById('assistantCallout') as HTMLInputElement;
 
       messageFormat.addEventListener('change', () => {
         const isCallout = messageFormat.value === 'callout';
@@ -566,13 +539,9 @@ describe('popup/index patterns', () => {
     });
 
     it('enables callout inputs when format is callout', () => {
-      const messageFormat = document.getElementById(
-        'messageFormat'
-      ) as HTMLSelectElement;
+      const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
       const userCallout = document.getElementById('userCallout') as HTMLInputElement;
-      const assistantCallout = document.getElementById(
-        'assistantCallout'
-      ) as HTMLInputElement;
+      const assistantCallout = document.getElementById('assistantCallout') as HTMLInputElement;
 
       // Start disabled
       userCallout.disabled = true;
@@ -597,7 +566,7 @@ describe('popup/index patterns', () => {
     it('calls getSettings on initialize', async () => {
       vi.mocked(getSettings).mockResolvedValue({
         obsidianApiKey: 'test-key',
-        obsidianPort: 27123,
+        obsidianUrl: 'http://127.0.0.1:27123',
         vaultPath: 'AI/Gemini',
         templateOptions: {
           messageFormat: 'callout',
@@ -623,7 +592,7 @@ describe('popup/index patterns', () => {
 
       await saveSettings({
         obsidianApiKey: 'new-key',
-        obsidianPort: 28000,
+        obsidianUrl: 'https://127.0.0.1:28000',
         vaultPath: 'New/Path',
         templateOptions: {
           messageFormat: 'plain',

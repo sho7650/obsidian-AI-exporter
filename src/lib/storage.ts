@@ -13,7 +13,7 @@ import type {
   TemplateOptions,
   OutputOptions,
 } from './types';
-import { DEFAULT_OBSIDIAN_PORT } from './constants';
+import { DEFAULT_OBSIDIAN_URL } from './constants';
 
 const DEFAULT_TEMPLATE_OPTIONS: TemplateOptions = {
   includeId: true,
@@ -38,7 +38,7 @@ const DEFAULT_SECURE_SETTINGS: SecureSettings = {
 };
 
 const DEFAULT_SYNC_SETTINGS: SyncSettings = {
-  obsidianPort: DEFAULT_OBSIDIAN_PORT,
+  obsidianUrl: DEFAULT_OBSIDIAN_URL,
   vaultPath: 'AI/{platform}',
   templateOptions: DEFAULT_TEMPLATE_OPTIONS,
   outputOptions: DEFAULT_OUTPUT_OPTIONS,
@@ -65,10 +65,17 @@ export async function getSettings(): Promise<ExtensionSettings> {
       chrome.storage.sync.get('settings'),
     ]);
 
+    // Migrate legacy obsidianPort → obsidianUrl
+    const storedUrl = syncResult.settings?.obsidianUrl;
+    const legacyPort = syncResult.settings?.obsidianPort;
+    const obsidianUrl =
+      storedUrl ??
+      (legacyPort ? `http://127.0.0.1:${legacyPort}` : DEFAULT_SYNC_SETTINGS.obsidianUrl);
+
     return {
       obsidianApiKey:
         localResult.secureSettings?.obsidianApiKey ?? DEFAULT_SECURE_SETTINGS.obsidianApiKey,
-      obsidianPort: syncResult.settings?.obsidianPort ?? DEFAULT_SYNC_SETTINGS.obsidianPort,
+      obsidianUrl,
       vaultPath: syncResult.settings?.vaultPath ?? DEFAULT_SYNC_SETTINGS.vaultPath,
       templateOptions: {
         ...DEFAULT_TEMPLATE_OPTIONS,
@@ -112,8 +119,8 @@ export async function saveSettings(settings: Partial<ExtensionSettings>): Promis
 
     // Save non-sensitive data to sync storage
     const syncData: Partial<SyncSettings> = {};
-    if (settings.obsidianPort !== undefined) {
-      syncData.obsidianPort = settings.obsidianPort;
+    if (settings.obsidianUrl !== undefined) {
+      syncData.obsidianUrl = settings.obsidianUrl;
     }
     if (settings.vaultPath !== undefined) {
       syncData.vaultPath = settings.vaultPath;

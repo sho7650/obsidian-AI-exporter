@@ -99,9 +99,7 @@ describe('content/index utilities', () => {
       document.body.appendChild(container);
 
       // Simulate the check logic
-      const existing = document.querySelector(
-        '.conversation-container, [class*="conversation"]'
-      );
+      const existing = document.querySelector('.conversation-container, [class*="conversation"]');
       expect(existing).not.toBeNull();
     });
 
@@ -118,7 +116,7 @@ describe('content/index utilities', () => {
       let resolved = false;
 
       // Create promise that resolves when container appears
-      const waitPromise = new Promise<void>((resolve) => {
+      const waitPromise = new Promise<void>(resolve => {
         const observer = new MutationObserver((_mutations, obs) => {
           const container = document.querySelector('.conversation-container');
           if (container) {
@@ -148,7 +146,7 @@ describe('content/index utilities', () => {
     it('fallback timeout pattern resolves after 10 seconds', async () => {
       let resolved = false;
 
-      const waitPromise = new Promise<void>((resolve) => {
+      const waitPromise = new Promise<void>(resolve => {
         setTimeout(() => {
           resolved = true;
           resolve();
@@ -243,7 +241,7 @@ describe('content script messaging', () => {
     it('sends getSettings action to background', async () => {
       const mockSendMessage = vi.fn().mockResolvedValue({
         obsidianApiKey: 'test-key',
-        obsidianPort: 27123,
+        obsidianUrl: 'http://127.0.0.1:27123',
         vaultPath: 'AI/Gemini',
       });
 

@@ -92,8 +92,8 @@ export class ObsidianApiClient {
   private baseUrl: string;
   private apiKey: string;
 
-  constructor(port: number, apiKey: string) {
-    this.baseUrl = `http://127.0.0.1:${port}`;
+  constructor(baseUrl: string, apiKey: string) {
+    this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.apiKey = apiKey;
   }
 

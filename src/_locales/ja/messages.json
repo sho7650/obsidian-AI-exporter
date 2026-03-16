@@ -22,8 +22,14 @@
   "settings_apiKeyPlaceholder": {
     "message": "Local REST API のキーを入力"
   },
-  "settings_port": {
-    "message": "ポート"
+  "settings_apiUrl": {
+    "message": "API URL"
+  },
+  "settings_apiUrlPlaceholder": {
+    "message": "http://127.0.0.1:27123"
+  },
+  "settings_apiUrlHelp": {
+    "message": "Obsidian Local REST API の URL（デフォルト: http://127.0.0.1:27123）"
   },
   "settings_vaultPath": {
     "message": "保存先パス"
@@ -150,8 +156,8 @@
   "error_obsidianNotRunning": {
     "message": "Obsidian REST API が起動していません。Obsidian を開き、Local REST API プラグインが有効になっていることを確認してください。"
   },
-  "error_invalidPort": {
-    "message": "ポートは 1024 から 65535 の間で指定してください"
+  "error_invalidUrl": {
+    "message": "無効な API URL です。http:// または https:// で始まる URL を入力してください"
   },
 
   "status_connectionSuccess": {

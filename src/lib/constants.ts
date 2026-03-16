@@ -38,7 +38,10 @@ export const MAX_TAGS_COUNT = 50;
 // Network Configuration
 // ============================================================
 
-/** Default Obsidian Local REST API port */
+/** Default Obsidian Local REST API URL */
+export const DEFAULT_OBSIDIAN_URL = 'http://127.0.0.1:27123';
+
+/** Default Obsidian Local REST API port (legacy, used for migration) */
 export const DEFAULT_OBSIDIAN_PORT = 27123;
 
 /** Minimum valid port number */

@@ -15,7 +15,13 @@ import type {
   NoteFrontmatter,
 } from '../../../src/lib/types';
 
-import { loadFixture, setGeminiLocation, setClaudeLocation, setChatGPTLocation, setPerplexityLocation } from '../../fixtures/dom-helpers';
+import {
+  loadFixture,
+  setGeminiLocation,
+  setClaudeLocation,
+  setChatGPTLocation,
+  setPerplexityLocation,
+} from '../../fixtures/dom-helpers';
 import { GeminiExtractor } from '../../../src/content/extractors/gemini';
 import { ClaudeExtractor } from '../../../src/content/extractors/claude';
 import { ChatGPTExtractor } from '../../../src/content/extractors/chatgpt';
@@ -88,7 +94,7 @@ export interface FrontmatterValidationOptions {
  */
 export const DEFAULT_E2E_SETTINGS: ExtensionSettings = {
   obsidianApiKey: 'test-api-key',
-  obsidianPort: 27123,
+  obsidianUrl: 'http://127.0.0.1:27123',
   vaultPath: 'AI Conversations',
   templateOptions: {
     includeId: true,
@@ -219,10 +225,7 @@ export async function runE2EPipeline(
   extractionResult.data.id = conversationId;
 
   // Step 5: Convert to ObsidianNote
-  const obsidianNote = conversationToNote(
-    extractionResult.data,
-    settings.templateOptions
-  );
+  const obsidianNote = conversationToNote(extractionResult.data, settings.templateOptions);
 
   // Step 5.5: Normalize frontmatter dates
   obsidianNote.frontmatter.created = FIXED_DATE;
@@ -269,9 +272,7 @@ export function assertSourcePlatform(
   expected: 'gemini' | 'claude' | 'chatgpt' | 'perplexity'
 ): void {
   if (data.source !== expected) {
-    throw new Error(
-      `Source mismatch: expected '${expected}', got '${data.source}'`
-    );
+    throw new Error(`Source mismatch: expected '${expected}', got '${data.source}'`);
   }
 }
 
@@ -285,20 +286,18 @@ export function assertMessageStructure(
   const { minCount, requireUser = true, requireAssistant = true } = options;
 
   if (data.messages.length < minCount) {
-    throw new Error(
-      `Insufficient messages: expected >= ${minCount}, got ${data.messages.length}`
-    );
+    throw new Error(`Insufficient messages: expected >= ${minCount}, got ${data.messages.length}`);
   }
 
   if (requireUser) {
-    const hasUser = data.messages.some((m) => m.role === 'user');
+    const hasUser = data.messages.some(m => m.role === 'user');
     if (!hasUser) {
       throw new Error('No user messages found in conversation');
     }
   }
 
   if (requireAssistant) {
-    const hasAssistant = data.messages.some((m) => m.role === 'assistant');
+    const hasAssistant = data.messages.some(m => m.role === 'assistant');
     if (!hasAssistant) {
       throw new Error('No assistant messages found in conversation');
     }
@@ -331,9 +330,7 @@ export function assertFrontmatterFields(
 
   // Deep Research requires type field
   if (isDeepResearch && !note.frontmatter.type) {
-    throw new Error(
-      'Missing required frontmatter field for deep-research: type'
-    );
+    throw new Error('Missing required frontmatter field for deep-research: type');
   }
 
   if (!note.frontmatter.tags || note.frontmatter.tags.length === 0) {
@@ -360,22 +357,15 @@ export function assertCalloutFormat(
 /**
  * Assert Deep Research format
  */
-export function assertDeepResearchFormat(
-  data: ConversationData,
-  markdown: string
-): void {
+export function assertDeepResearchFormat(data: ConversationData, markdown: string): void {
   if (data.type !== 'deep-research') {
-    throw new Error(
-      `Expected type 'deep-research', got '${data.type ?? 'undefined'}'`
-    );
+    throw new Error(`Expected type 'deep-research', got '${data.type ?? 'undefined'}'`);
   }
 
   // If sources exist, References section is required
   if (data.links?.sources && data.links.sources.length > 0) {
     if (!markdown.includes('# References')) {
-      throw new Error(
-        'Deep Research with sources missing "# References" section'
-      );
+      throw new Error('Deep Research with sources missing "# References" section');
     }
 
     if (!markdown.match(/\[\^1\]:/)) {

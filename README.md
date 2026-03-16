@@ -25,7 +25,7 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 
 ## Requirements
 
-- Google Chrome 88+ (or Chromium-based browser)
+- Google Chrome 96+ (or Chromium-based browser)
 - [Obsidian](https://obsidian.md/)
 - [Obsidian Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin
 
@@ -67,7 +67,7 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 2. Enable the plugin and copy your API key
 3. Click the extension icon in Chrome and enter:
    - **API Key**: Your Local REST API key
-   - **Port**: Default is `27123`
+   - **API URL**: Default is `http://127.0.0.1:27123` (HTTPS is also supported — see [HTTPS Setup](#https-setup-optional))
    - **Vault Path**: Folder path in your vault (e.g., `AI/{platform}` to auto-organize by source)
 
 ## Usage
@@ -214,7 +214,7 @@ Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai)
     ↓ extracts conversation / Deep Research / Artifacts
 Background Service Worker
     ↓ sends to Obsidian
-Obsidian Local REST API (127.0.0.1:27123)
+Obsidian Local REST API (default: http://127.0.0.1:27123)
 ```
 
 ### Key Components
@@ -230,6 +230,36 @@ Obsidian Local REST API (127.0.0.1:27123)
 | `src/popup/` | Settings UI |
 | `src/lib/` | Shared utilities and types |
 
+## HTTPS Setup (Optional)
+
+The extension supports HTTPS connections to the Obsidian Local REST API. This is useful when:
+- The Local REST API is configured with HTTPS (self-signed certificate)
+- You want to connect to an Obsidian instance on your local network (LAN)
+
+### macOS
+
+1. **Extract the certificate** from the running Obsidian REST API:
+   ```bash
+   openssl s_client -connect 127.0.0.1:27124 -showcerts \
+     </dev/null 2>/dev/null | openssl x509 -outform PEM > obsidian-cert.pem
+   ```
+
+2. **Import into macOS Keychain** as a trusted root certificate:
+   ```bash
+   sudo security add-trusted-cert -d -r trustRoot \
+     -k /Library/Keychains/System.keychain obsidian-cert.pem
+   ```
+
+3. **Restart Chrome completely** (Cmd+Q → relaunch). A simple tab reload is not sufficient.
+
+4. **Set the API URL** in the extension popup to your HTTPS endpoint (e.g., `https://127.0.0.1:27124`).
+
+> **Note**: If Obsidian regenerates its certificate (e.g., after a plugin update), you must re-extract and re-import the new certificate. Chrome extensions require OS-level certificate trust — browser-level "proceed anyway" exceptions do not apply to extension service workers.
+
+### Windows / Linux
+
+Import the certificate into your OS certificate store and restart Chrome. The general approach is the same — the certificate must be trusted at the OS level, not just accepted in the browser.
+
 ## Security
 
 - **Secure storage**: API key stored in `chrome.storage.local` (not synced)
@@ -243,7 +273,7 @@ Obsidian Local REST API (127.0.0.1:27123)
 
 This extension:
 - Does **not** collect or transmit your data to external servers
-- Only communicates with your local Obsidian instance (127.0.0.1)
+- Only communicates with your Obsidian instance (default: 127.0.0.1, configurable for LAN access)
 - Stores API key locally in your browser (not synced to cloud)
 
 See our [Privacy Policy](https://sho7650.github.io/obsidian-AI-exporter/privacy.html) for details.

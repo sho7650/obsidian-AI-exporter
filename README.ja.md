@@ -25,7 +25,7 @@ Google Gemini、Claude AI、ChatGPT、Perplexity の会話を Obsidian に保存
 
 ## 必要なもの
 
-- Google Chrome 88 以降（または Chromium ベースのブラウザ）
+- Google Chrome 96 以降（または Chromium ベースのブラウザ）
 - [Obsidian](https://obsidian.md/)
 - [Obsidian Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) プラグイン
 
@@ -67,7 +67,7 @@ Google Gemini、Claude AI、ChatGPT、Perplexity の会話を Obsidian に保存
 2. プラグインを有効化し、API キーをコピー
 3. Chrome で拡張機能のアイコンをクリックして以下を入力:
    - **API Key**: Local REST API の API キー
-   - **Port**: デフォルトは `27123`
+   - **API URL**: デフォルトは `http://127.0.0.1:27123`（HTTPS にも対応 — [HTTPS 設定](#https-設定オプション)を参照）
    - **Vault Path**: 保存先のフォルダパス（例: `AI/{platform}` でソース別に自動整理）
 
 ## 使い方
@@ -214,7 +214,7 @@ Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai)
     ↓ 会話 / Deep Research / Artifacts を抽出
 Background Service Worker
     ↓ Obsidian に送信
-Obsidian Local REST API (127.0.0.1:27123)
+Obsidian Local REST API (デフォルト: http://127.0.0.1:27123)
 ```
 
 ### 主要コンポーネント
@@ -230,6 +230,36 @@ Obsidian Local REST API (127.0.0.1:27123)
 | `src/popup/` | 設定 UI |
 | `src/lib/` | 共有ユーティリティと型定義 |
 
+## HTTPS 設定（オプション）
+
+Obsidian Local REST API への HTTPS 接続をサポートしています。以下のような場合に便利です:
+- Local REST API が HTTPS（自己署名証明書）で構成されている場合
+- ローカルネットワーク（LAN）上の Obsidian インスタンスに接続したい場合
+
+### macOS
+
+1. Obsidian REST API から**証明書を取得**:
+   ```bash
+   openssl s_client -connect 127.0.0.1:27124 -showcerts \
+     </dev/null 2>/dev/null | openssl x509 -outform PEM > obsidian-cert.pem
+   ```
+
+2. macOS キーチェーンに**信頼されたルート証明書として登録**:
+   ```bash
+   sudo security add-trusted-cert -d -r trustRoot \
+     -k /Library/Keychains/System.keychain obsidian-cert.pem
+   ```
+
+3. **Chrome を完全に再起動**（Cmd+Q → 再起動）。タブの再読み込みでは不十分です。
+
+4. 拡張機能のポップアップで **API URL** に HTTPS エンドポイントを設定（例: `https://127.0.0.1:27124`）。
+
+> **注意**: Obsidian が証明書を再生成した場合（プラグインアップデート後など）、新しい証明書を再取得・再登録する必要があります。Chrome 拡張機能はOS レベルの証明書信頼を要求します。ブラウザで「詳細設定 → アクセスする」から例外的にアクセスした証明書は、拡張機能の Service Worker には適用されません。
+
+### Windows / Linux
+
+OS の証明書ストアに証明書をインポートし、Chrome を再起動してください。基本的なアプローチは同じです — 証明書はブラウザレベルではなく、OS レベルで信頼される必要があります。
+
 ## セキュリティ
 
 - **安全なストレージ**: API キーは `chrome.storage.local` に保存（クラウド同期なし）
@@ -243,7 +273,7 @@ Obsidian Local REST API (127.0.0.1:27123)
 
 この拡張機能は:
 - 外部サーバーへのデータ収集・送信を**行いません**
-- ローカルの Obsidian インスタンス (127.0.0.1) とのみ通信
+- Obsidian インスタンスとのみ通信（デフォルト: 127.0.0.1、LAN アクセス用に設定変更可能）
 - API キーはブラウザにローカル保存（クラウド同期なし）
 
 詳細は[プライバシーポリシー](https://sho7650.github.io/obsidian-AI-exporter/privacy.html)をご覧ください。

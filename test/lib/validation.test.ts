@@ -3,6 +3,7 @@ import {
   validateCalloutType,
   validateVaultPath,
   validateApiKey,
+  validateObsidianUrl,
   ALLOWED_CALLOUT_TYPES,
 } from '../../src/lib/validation';
 
@@ -98,9 +99,7 @@ describe('validateApiKey', () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const nonStandardKey = 'a'.repeat(32);
     expect(validateApiKey(nonStandardKey)).toBe(nonStandardKey);
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('length is 32')
-    );
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('length is 32'));
     consoleSpy.mockRestore();
   });
 
@@ -108,9 +107,7 @@ describe('validateApiKey', () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const nonHexKey = 'g'.repeat(64);
     expect(validateApiKey(nonHexKey)).toBe(nonHexKey);
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('non-hexadecimal')
-    );
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('non-hexadecimal'));
     consoleSpy.mockRestore();
   });
 
@@ -120,5 +117,79 @@ describe('validateApiKey', () => {
     expect(validateApiKey(validHexKey)).toBe(validHexKey);
     expect(consoleSpy).not.toHaveBeenCalled();
     consoleSpy.mockRestore();
+  });
+});
+
+describe('validateObsidianUrl', () => {
+  it('accepts valid http URL', () => {
+    expect(validateObsidianUrl('http://127.0.0.1:27123')).toBe('http://127.0.0.1:27123');
+  });
+
+  it('accepts valid https URL', () => {
+    expect(validateObsidianUrl('https://127.0.0.1:27123')).toBe('https://127.0.0.1:27123');
+  });
+
+  it('accepts localhost hostname', () => {
+    expect(validateObsidianUrl('http://localhost:27123')).toBe('http://localhost:27123');
+  });
+
+  it('accepts LAN IP address', () => {
+    expect(validateObsidianUrl('http://192.168.1.100:27123')).toBe('http://192.168.1.100:27123');
+  });
+
+  it('accepts URL without explicit port', () => {
+    expect(validateObsidianUrl('http://127.0.0.1')).toBe('http://127.0.0.1');
+  });
+
+  it('strips trailing slash', () => {
+    expect(validateObsidianUrl('http://127.0.0.1:27123/')).toBe('http://127.0.0.1:27123');
+    expect(validateObsidianUrl('http://127.0.0.1:27123///')).toBe('http://127.0.0.1:27123');
+  });
+
+  it('strips path components', () => {
+    expect(validateObsidianUrl('http://127.0.0.1:27123/vault/something')).toBe(
+      'http://127.0.0.1:27123'
+    );
+  });
+
+  it('trims whitespace', () => {
+    expect(validateObsidianUrl('  http://127.0.0.1:27123  ')).toBe('http://127.0.0.1:27123');
+  });
+
+  it('throws on empty URL', () => {
+    expect(() => validateObsidianUrl('')).toThrow('required');
+    expect(() => validateObsidianUrl('   ')).toThrow('required');
+  });
+
+  it('throws on invalid URL format', () => {
+    expect(() => validateObsidianUrl('not-a-url')).toThrow('Invalid URL');
+    expect(() => validateObsidianUrl('127.0.0.1:27123')).toThrow('Invalid URL');
+  });
+
+  it('throws on non-http/https scheme', () => {
+    expect(() => validateObsidianUrl('ftp://127.0.0.1:27123')).toThrow('http or https');
+    expect(() => validateObsidianUrl('ws://127.0.0.1:27123')).toThrow('http or https');
+  });
+
+  it('throws on port below minimum', () => {
+    expect(() => validateObsidianUrl('http://127.0.0.1:1023')).toThrow('1024');
+    expect(() => validateObsidianUrl('http://127.0.0.1:999')).toThrow('1024');
+  });
+
+  it('throws on port above maximum (rejected by URL parser)', () => {
+    // Port 65536+ causes URL constructor to throw
+    expect(() => validateObsidianUrl('http://127.0.0.1:65536')).toThrow();
+    expect(() => validateObsidianUrl('http://127.0.0.1:99999')).toThrow();
+  });
+
+  it('accepts default ports (normalized by URL standard)', () => {
+    // Port 80 for HTTP and 443 for HTTPS are default — URL API strips them
+    expect(validateObsidianUrl('http://127.0.0.1:80')).toBe('http://127.0.0.1');
+    expect(validateObsidianUrl('https://127.0.0.1:443')).toBe('https://127.0.0.1');
+  });
+
+  it('accepts edge port values', () => {
+    expect(validateObsidianUrl('http://127.0.0.1:1024')).toBe('http://127.0.0.1:1024');
+    expect(validateObsidianUrl('http://127.0.0.1:65535')).toBe('http://127.0.0.1:65535');
   });
 });

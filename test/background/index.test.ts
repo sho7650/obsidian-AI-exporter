@@ -17,7 +17,7 @@ const mockClient = {
 // Default settings
 const defaultSettings = {
   obsidianApiKey: 'test-api-key',
-  obsidianPort: 27123,
+  obsidianUrl: 'http://127.0.0.1:27123',
   vaultPath: 'AI/Gemini',
   templateOptions: {
     includeId: true,
@@ -379,7 +379,7 @@ describe('background/index', () => {
       expect(sendResponse).toHaveBeenCalledWith(
         expect.objectContaining({
           obsidianApiKey: 'test-api-key',
-          obsidianPort: 27123,
+          obsidianUrl: 'http://127.0.0.1:27123',
         })
       );
     });

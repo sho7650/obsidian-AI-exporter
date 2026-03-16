@@ -146,24 +146,31 @@
                 </p>
               </div>
 
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="port" data-i18n="settings_port">Port</label>
-                  <input type="number" id="port" value="27123" min="1024" max="65535" />
-                </div>
+              <div class="form-group">
+                <label for="obsidianUrl" data-i18n="settings_apiUrl">API URL</label>
+                <input
+                  type="url"
+                  id="obsidianUrl"
+                  value="http://127.0.0.1:27123"
+                  data-i18n-placeholder="settings_apiUrlPlaceholder"
+                  placeholder="http://127.0.0.1:27123"
+                />
+                <p class="help" data-i18n="settings_apiUrlHelp">
+                  Obsidian Local REST API URL (default: http://127.0.0.1:27123)
+                </p>
+              </div>
 
-                <div class="form-group flex-grow">
-                  <label for="vaultPath" data-i18n="settings_vaultPath">Vault Path</label>
-                  <input
-                    type="text"
-                    id="vaultPath"
-                    data-i18n-placeholder="settings_vaultPathPlaceholder"
-                    placeholder="AI/{platform}"
-                  />
-                  <p class="help" data-i18n="settings_vaultPathHelp">
-                    Use {platform} to auto-organize by source (gemini, claude, chatgpt, perplexity)
-                  </p>
-                </div>
+              <div class="form-group">
+                <label for="vaultPath" data-i18n="settings_vaultPath">Vault Path</label>
+                <input
+                  type="text"
+                  id="vaultPath"
+                  data-i18n-placeholder="settings_vaultPathPlaceholder"
+                  placeholder="AI/{platform}"
+                />
+                <p class="help" data-i18n="settings_vaultPathHelp">
+                  Use {platform} to auto-organize by source (gemini, claude, chatgpt, perplexity)
+                </p>
               </div>
             </section>
 
