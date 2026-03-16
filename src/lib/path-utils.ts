@@ -10,6 +10,8 @@
  * legitimate filenames like foo..bar, so a more precise regex is used.
  */
 export function containsPathTraversal(path: string): boolean {
+  // Detect null bytes (filesystem string terminator attack)
+  if (path.includes('\0')) return true;
   // Detect ../ or ..\ only when combined with path separators:
   // ^..   : leading ..
   // /.. or \.. : .. after path separator

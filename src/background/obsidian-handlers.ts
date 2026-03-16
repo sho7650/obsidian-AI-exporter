@@ -9,6 +9,7 @@ import { getErrorMessage } from '../lib/error-utils';
 import { generateNoteContent } from '../lib/note-generator';
 import { resolvePathTemplate } from '../lib/path-utils';
 import { lookupExistingFile, buildAppendContent } from '../lib/append-utils';
+import { validateObsidianUrl } from '../lib/validation';
 import type { ExtensionSettings, ObsidianNote, SaveResponse } from '../lib/types';
 
 /**
@@ -20,6 +21,12 @@ export function createObsidianClient(
 ): ObsidianApiClient | { error: string } {
   if (!settings.obsidianApiKey) {
     return { error: 'API key not configured' };
+  }
+  // Defence-in-depth: re-validate URL from storage before sending Bearer token
+  try {
+    validateObsidianUrl(settings.obsidianUrl);
+  } catch (error) {
+    return { error: `Invalid Obsidian URL: ${getErrorMessage(error)}` };
   }
   return new ObsidianApiClient(settings.obsidianUrl, settings.obsidianApiKey);
 }

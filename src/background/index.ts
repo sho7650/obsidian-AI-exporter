@@ -8,7 +8,7 @@ import { getSettings, migrateSettings } from '../lib/storage';
 import { validateSender, validateMessageContent } from './validation';
 import { handleSave, handleGetFile, handleTestConnection } from './obsidian-handlers';
 import { handleMultiOutput } from './output-handlers';
-import type { ExtensionMessage } from '../lib/types';
+import type { ExtensionMessage, ContentScriptSettings, ExtensionSettings } from '../lib/types';
 
 // Run settings migration on service worker startup (C-01)
 // Note: top-level await not available in service workers, use .catch() for error handling
@@ -50,7 +50,7 @@ chrome.runtime.onMessage.addListener(
       return false;
     }
 
-    handleMessage(message)
+    handleMessage(message, sender)
       .then(response => {
         try {
           sendResponse(response);
@@ -71,9 +71,31 @@ chrome.runtime.onMessage.addListener(
 );
 
 /**
+ * Check if sender is a content script (tab) vs extension page (popup)
+ */
+function isContentScriptSender(sender: chrome.runtime.MessageSender): boolean {
+  return sender.tab !== undefined;
+}
+
+/**
+ * Redact sensitive settings for content scripts.
+ * Content scripts only need to know IF an API key is configured, not the key itself.
+ */
+function redactSettingsForContentScript(settings: ExtensionSettings): ContentScriptSettings {
+  const { obsidianApiKey, ...syncSettings } = settings;
+  return {
+    ...syncSettings,
+    isApiKeyConfigured: obsidianApiKey.length > 0,
+  };
+}
+
+/**
  * Route messages to appropriate handlers
  */
-async function handleMessage(message: ExtensionMessage): Promise<unknown> {
+async function handleMessage(
+  message: ExtensionMessage,
+  sender: chrome.runtime.MessageSender
+): Promise<unknown> {
   const settings = await getSettings();
 
   switch (message.action) {
@@ -90,7 +112,8 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
       return handleTestConnection(settings);
 
     case 'getSettings':
-      return settings;
+      // Security: Redact API key for content scripts (they run on third-party pages)
+      return isContentScriptSender(sender) ? redactSettingsForContentScript(settings) : settings;
 
     default:
       return { success: false, error: 'Unknown action' };

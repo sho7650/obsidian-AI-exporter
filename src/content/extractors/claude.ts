@@ -13,7 +13,7 @@ import type {
   ConversationMessage,
   DeepResearchSource,
   DeepResearchLinks,
-  ExtensionSettings,
+  SyncSettings,
   ExtractionResult,
 } from '../../lib/types';
 import { MAX_DEEP_RESEARCH_TITLE_LENGTH } from '../../lib/constants';
@@ -126,7 +126,7 @@ export class ClaudeExtractor extends BaseExtractor {
   /**
    * Apply user settings: enable/disable tool content extraction
    */
-  applySettings(settings: ExtensionSettings): void {
+  applySettings(settings: SyncSettings): void {
     this.enableToolContent = settings.enableToolContent ?? false;
   }
 

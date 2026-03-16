@@ -853,19 +853,23 @@ describe('GeminiExtractor', () => {
 
   describe('applySettings', () => {
     it('sets enableAutoScroll to true from settings', () => {
-      extractor.applySettings({ enableAutoScroll: true } as import('../../src/lib/types').ExtensionSettings);
+      extractor.applySettings({
+        enableAutoScroll: true,
+      } as import('../../src/lib/types').SyncSettings);
       expect(extractor.enableAutoScroll).toBe(true);
     });
 
     it('sets enableAutoScroll to false from settings', () => {
       extractor.enableAutoScroll = true;
-      extractor.applySettings({ enableAutoScroll: false } as import('../../src/lib/types').ExtensionSettings);
+      extractor.applySettings({
+        enableAutoScroll: false,
+      } as import('../../src/lib/types').SyncSettings);
       expect(extractor.enableAutoScroll).toBe(false);
     });
 
     it('defaults enableAutoScroll to false when undefined in settings', () => {
       extractor.enableAutoScroll = true;
-      extractor.applySettings({} as import('../../src/lib/types').ExtensionSettings);
+      extractor.applySettings({} as import('../../src/lib/types').SyncSettings);
       expect(extractor.enableAutoScroll).toBe(false);
     });
   });
@@ -1045,9 +1049,7 @@ describe('GeminiExtractor', () => {
         { role: 'user', content: 'Q1' },
         { role: 'assistant', content: '<p>A1</p>' },
       ]);
-      loadFixture(
-        createGeminiScrollableDOM(conversationHTML) + deepResearchHTML
-      );
+      loadFixture(createGeminiScrollableDOM(conversationHTML) + deepResearchHTML);
       mockScrollContainer(500);
 
       const result = await extractor.extract();

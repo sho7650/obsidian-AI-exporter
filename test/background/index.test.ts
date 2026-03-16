@@ -367,7 +367,7 @@ describe('background/index', () => {
   describe('getSettings handler', () => {
     const validSender = { url: `chrome-extension://${chrome.runtime.id}/popup.html` };
 
-    it('returns settings', async () => {
+    it('returns full settings including API key for popup sender', async () => {
       const sendResponse = vi.fn();
       capturedListener(
         { action: 'getSettings' },
@@ -382,6 +382,88 @@ describe('background/index', () => {
           obsidianUrl: 'http://127.0.0.1:27123',
         })
       );
+    });
+
+    it('redacts API key for content script (tab) senders', async () => {
+      const tabSender = {
+        tab: { url: 'https://gemini.google.com/app/123' },
+      } as chrome.runtime.MessageSender;
+
+      const sendResponse = vi.fn();
+      capturedListener({ action: 'getSettings' }, tabSender, sendResponse);
+
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+      const response = sendResponse.mock.calls[0][0];
+
+      // Should NOT contain the actual API key
+      expect(response).not.toHaveProperty('obsidianApiKey');
+      // Should contain the boolean flag instead
+      expect(response.isApiKeyConfigured).toBe(true);
+      // Should still contain non-sensitive settings
+      expect(response.obsidianUrl).toBe('http://127.0.0.1:27123');
+      expect(response.vaultPath).toBe('AI/Gemini');
+    });
+
+    it('returns isApiKeyConfigured=false when API key is empty', async () => {
+      mockGetSettings = vi.fn(() => Promise.resolve({ ...defaultSettings, obsidianApiKey: '' }));
+
+      const tabSender = {
+        tab: { url: 'https://claude.ai/chat/123' },
+      } as chrome.runtime.MessageSender;
+
+      const sendResponse = vi.fn();
+      capturedListener({ action: 'getSettings' }, tabSender, sendResponse);
+
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+      const response = sendResponse.mock.calls[0][0];
+      expect(response.isApiKeyConfigured).toBe(false);
+      expect(response).not.toHaveProperty('obsidianApiKey');
+    });
+  });
+
+  describe('obsidianUrl validation in background', () => {
+    const validSender = { url: `chrome-extension://${chrome.runtime.id}/popup.html` };
+
+    it('rejects invalid obsidianUrl from poisoned storage', async () => {
+      mockGetSettings = vi.fn(() =>
+        Promise.resolve({
+          ...defaultSettings,
+          obsidianUrl: 'javascript:alert(1)',
+        })
+      );
+
+      const sendResponse = vi.fn();
+      capturedListener(
+        { action: 'testConnection' },
+        validSender as chrome.runtime.MessageSender,
+        sendResponse
+      );
+
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+      const response = sendResponse.mock.calls[0][0];
+      expect(response.success).toBe(false);
+      expect(response.error).toContain('URL');
+    });
+
+    it('rejects ftp scheme obsidianUrl', async () => {
+      mockGetSettings = vi.fn(() =>
+        Promise.resolve({
+          ...defaultSettings,
+          obsidianUrl: 'ftp://evil.com',
+        })
+      );
+
+      const sendResponse = vi.fn();
+      capturedListener(
+        { action: 'testConnection' },
+        validSender as chrome.runtime.MessageSender,
+        sendResponse
+      );
+
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+      const response = sendResponse.mock.calls[0][0];
+      expect(response.success).toBe(false);
+      expect(response.error).toContain('URL');
     });
   });
 

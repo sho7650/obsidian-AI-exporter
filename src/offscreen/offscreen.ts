@@ -51,9 +51,14 @@ function handleClipboardWrite(content: string): boolean {
 chrome.runtime.onMessage.addListener(
   (
     message: ClipboardWriteMessage,
-    _sender: chrome.runtime.MessageSender,
+    sender: chrome.runtime.MessageSender,
     sendResponse: (response: ClipboardWriteResponse) => void
   ) => {
+    // Security: Only accept messages from the same extension
+    if (sender.id !== chrome.runtime.id) {
+      return false;
+    }
+
     // Only handle messages targeted at offscreen document
     if (message.action === 'clipboardWrite' && message.target === 'offscreen') {
       try {

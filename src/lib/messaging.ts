@@ -5,7 +5,7 @@
 
 import type {
   ExtensionMessage,
-  ExtensionSettings,
+  ContentScriptSettings,
   SaveResponse,
   MultiOutputResponse,
 } from './types';
@@ -17,7 +17,7 @@ const CONTEXT_INVALIDATED_MESSAGE = 'Extension context invalidated. Please reloa
  * Message response type mapping
  */
 interface MessageResponseMap {
-  getSettings: ExtensionSettings;
+  getSettings: ContentScriptSettings;
   testConnection: { success: boolean; error?: string };
   saveToObsidian: SaveResponse;
   saveToOutputs: MultiOutputResponse;

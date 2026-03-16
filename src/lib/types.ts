@@ -193,6 +193,17 @@ export interface SyncSettings {
 export interface ExtensionSettings extends SecureSettings, SyncSettings {}
 
 /**
+ * Settings returned to content scripts (API key redacted)
+ *
+ * Security: Content scripts run inside third-party pages and should
+ * never receive the actual API key. They only need to know whether
+ * a key is configured (boolean flag).
+ */
+export interface ContentScriptSettings extends SyncSettings {
+  isApiKeyConfigured: boolean;
+}
+
+/**
  * Template customization options
  */
 export interface TemplateOptions {
@@ -268,5 +279,5 @@ export interface IConversationExtractor {
   getTitle(): string;
   extractMessages(): ConversationMessage[];
   validate(result: ExtractionResult): ValidationResult;
-  applySettings(settings: ExtensionSettings): void;
+  applySettings(settings: SyncSettings): void;
 }

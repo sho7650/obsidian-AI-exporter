@@ -36,6 +36,12 @@ describe('containsPathTraversal', () => {
     expect(containsPathTraversal('folder..name/subfolder')).toBe(false);
   });
 
+  it('detects null bytes', () => {
+    expect(containsPathTraversal('foo\0bar')).toBe(true);
+    expect(containsPathTraversal('\0')).toBe(true);
+    expect(containsPathTraversal('AI/Gemini\0.md')).toBe(true);
+  });
+
   it('handles edge cases', () => {
     expect(containsPathTraversal('')).toBe(false);
     expect(containsPathTraversal('.')).toBe(false);
@@ -46,39 +52,33 @@ describe('containsPathTraversal', () => {
 
 describe('resolvePathTemplate', () => {
   it('resolves {platform} variable', () => {
-    expect(resolvePathTemplate('AI/{platform}', { platform: 'gemini' }))
-      .toBe('AI/gemini');
+    expect(resolvePathTemplate('AI/{platform}', { platform: 'gemini' })).toBe('AI/gemini');
   });
 
   it('resolves multiple variables', () => {
-    expect(resolvePathTemplate('{type}/{platform}', {
-      platform: 'claude',
-      type: 'conversation',
-    })).toBe('conversation/claude');
+    expect(
+      resolvePathTemplate('{type}/{platform}', {
+        platform: 'claude',
+        type: 'conversation',
+      })
+    ).toBe('conversation/claude');
   });
 
   it('preserves unknown variables', () => {
-    expect(resolvePathTemplate('AI/{unknown}', { platform: 'gemini' }))
-      .toBe('AI/{unknown}');
+    expect(resolvePathTemplate('AI/{unknown}', { platform: 'gemini' })).toBe('AI/{unknown}');
   });
 
   it('returns path unchanged when no variables present', () => {
-    expect(resolvePathTemplate('AI/Gemini', { platform: 'gemini' }))
-      .toBe('AI/Gemini');
+    expect(resolvePathTemplate('AI/Gemini', { platform: 'gemini' })).toBe('AI/Gemini');
   });
 
   it('handles empty path', () => {
-    expect(resolvePathTemplate('', { platform: 'gemini' }))
-      .toBe('');
+    expect(resolvePathTemplate('', { platform: 'gemini' })).toBe('');
   });
 
   it('resolves all supported platforms', () => {
     for (const p of ['gemini', 'claude', 'chatgpt', 'perplexity']) {
-      expect(resolvePathTemplate('AI/{platform}', { platform: p }))
-        .toBe(`AI/${p}`);
+      expect(resolvePathTemplate('AI/{platform}', { platform: p })).toBe(`AI/${p}`);
     }
   });
 });
-
-
-

@@ -63,10 +63,12 @@ describe('ClaudeExtractor', () => {
 
       it('returns false when artifact not present', () => {
         setClaudeLocation('test-123');
-        loadFixture(createClaudeConversationDOM([
-          { role: 'user', content: 'Hello' },
-          { role: 'assistant', content: '<p>Hi there!</p>' },
-        ]));
+        loadFixture(
+          createClaudeConversationDOM([
+            { role: 'user', content: 'Hello' },
+            { role: 'assistant', content: '<p>Hi there!</p>' },
+          ])
+        );
         expect(extractor.isDeepResearchVisible()).toBe(false);
       });
     });
@@ -74,19 +76,23 @@ describe('ClaudeExtractor', () => {
 
   describe('applySettings', () => {
     it('sets enableToolContent to true from settings', () => {
-      extractor.applySettings({ enableToolContent: true } as import('../../src/lib/types').ExtensionSettings);
+      extractor.applySettings({
+        enableToolContent: true,
+      } as import('../../src/lib/types').SyncSettings);
       expect(extractor.enableToolContent).toBe(true);
     });
 
     it('sets enableToolContent to false from settings', () => {
       extractor.enableToolContent = true;
-      extractor.applySettings({ enableToolContent: false } as import('../../src/lib/types').ExtensionSettings);
+      extractor.applySettings({
+        enableToolContent: false,
+      } as import('../../src/lib/types').SyncSettings);
       expect(extractor.enableToolContent).toBe(false);
     });
 
     it('defaults enableToolContent to false when undefined in settings', () => {
       extractor.enableToolContent = true;
-      extractor.applySettings({} as import('../../src/lib/types').ExtensionSettings);
+      extractor.applySettings({} as import('../../src/lib/types').SyncSettings);
       expect(extractor.enableToolContent).toBe(false);
     });
   });
@@ -174,10 +180,12 @@ describe('ClaudeExtractor', () => {
         writable: true,
         configurable: true,
       });
-      loadFixture(createClaudeConversationDOM([
-        { role: 'user', content: 'Hello' },
-        { role: 'assistant', content: '<p>Hi!</p>' },
-      ]));
+      loadFixture(
+        createClaudeConversationDOM([
+          { role: 'user', content: 'Hello' },
+          { role: 'assistant', content: '<p>Hi!</p>' },
+        ])
+      );
       const result = await extractor.extract();
       expect(result.success).toBe(true);
       expect(result.data?.id).toMatch(/^claude-\d+$/);
@@ -420,15 +428,10 @@ describe('ClaudeExtractor', () => {
 
     it('extracts inline citations using extractSourceList', () => {
       setClaudeLocation('test-123');
-      createClaudeDeepResearchPage(
-        'test-123',
-        'Report',
-        '<p>Content</p>',
-        [
-          { url: 'https://example.com/source1', title: 'Source 1' },
-          { url: 'https://example.com/source2', title: 'Source 2' },
-        ]
-      );
+      createClaudeDeepResearchPage('test-123', 'Report', '<p>Content</p>', [
+        { url: 'https://example.com/source1', title: 'Source 1' },
+        { url: 'https://example.com/source2', title: 'Source 2' },
+      ]);
       const sources = extractor.extractSourceList();
       expect(sources.length).toBeGreaterThan(0);
     });
@@ -444,12 +447,12 @@ describe('ClaudeExtractor', () => {
       setClaudeLocation('test-123');
       createClaudeDeepResearchPage('test-123', 'Unique Report Title', '<p>Content</p>');
       const result1 = await extractor.extract();
-      
+
       // Reset and extract again
       clearFixture();
       createClaudeDeepResearchPage('test-123', 'Unique Report Title', '<p>Content</p>');
       const result2 = await extractor.extract();
-      
+
       expect(result1.data?.id).toBe(result2.data?.id);
       expect(result1.data?.id).toMatch(/^deep-research-/);
     });
@@ -498,10 +501,10 @@ describe('ClaudeExtractor', () => {
 
     it('handles 100+ citations performance', () => {
       setClaudeLocation('test-123');
-      const citations = Array.from({ length: 100 }, (_, i) => 
+      const citations = Array.from({ length: 100 }, (_, i) =>
         createClaudeInlineCitation(`https://example${i}.com/page`, `Source ${i}`)
       ).join('\n');
-      
+
       loadFixture(`
         <div id="markdown-artifact" class="font-claude-response">
           <div class="standard-markdown">
@@ -510,11 +513,11 @@ describe('ClaudeExtractor', () => {
           </div>
         </div>
       `);
-      
+
       const startTime = performance.now();
       const sources = extractor.extractSourceList();
       const endTime = performance.now();
-      
+
       expect(sources.length).toBe(100);
       expect(endTime - startTime).toBeLessThan(100); // Should be under 100ms
     });
@@ -823,7 +826,7 @@ describe('ClaudeExtractor', () => {
       // Covers: claude.ts lines 475-481 (catch, non-Error)
       setClaudeLocation('12345678-1234-1234-1234-123456789012');
       const originalQSA = document.querySelectorAll.bind(document);
-      vi.spyOn(document, 'querySelectorAll').mockImplementation((selector) => {
+      vi.spyOn(document, 'querySelectorAll').mockImplementation(selector => {
         if (typeof selector === 'string' && selector.includes('whitespace-pre-wrap')) {
           throw 'string thrown as error';
         }
@@ -963,22 +966,19 @@ describe('ClaudeExtractor', () => {
     ];
 
     it('OFF (default): tool-use .row-start-1 skipped, only .row-start-2 extracted', async () => {
-      createClaudePageWithToolUse(
-        '12345678-1234-1234-1234-123456789012',
-        [
-          { role: 'user', content: 'Search for Rust' },
-          {
-            role: 'assistant',
-            content: '<p>Here are the results.</p>',
-            toolUse: {
-              summaryText: 'Searched the web',
-              searchQuery: 'Rust latest version',
-              searchResultCount: 3,
-              searchResults,
-            },
+      createClaudePageWithToolUse('12345678-1234-1234-1234-123456789012', [
+        { role: 'user', content: 'Search for Rust' },
+        {
+          role: 'assistant',
+          content: '<p>Here are the results.</p>',
+          toolUse: {
+            summaryText: 'Searched the web',
+            searchQuery: 'Rust latest version',
+            searchResultCount: 3,
+            searchResults,
           },
-        ]
-      );
+        },
+      ]);
 
       // Default: enableToolContent = false
       const result = await extractor.extract();
@@ -993,22 +993,19 @@ describe('ClaudeExtractor', () => {
     });
 
     it('ON: search query and results extracted into toolContent, response in content', async () => {
-      createClaudePageWithToolUse(
-        '12345678-1234-1234-1234-123456789012',
-        [
-          { role: 'user', content: 'Search for Rust' },
-          {
-            role: 'assistant',
-            content: '<p>Here are the results.</p>',
-            toolUse: {
-              summaryText: 'Searched the web',
-              searchQuery: 'Rust latest version 2026',
-              searchResultCount: 10,
-              searchResults,
-            },
+      createClaudePageWithToolUse('12345678-1234-1234-1234-123456789012', [
+        { role: 'user', content: 'Search for Rust' },
+        {
+          role: 'assistant',
+          content: '<p>Here are the results.</p>',
+          toolUse: {
+            summaryText: 'Searched the web',
+            searchQuery: 'Rust latest version 2026',
+            searchResultCount: 10,
+            searchResults,
           },
-        ]
-      );
+        },
+      ]);
 
       extractor.enableToolContent = true;
       const result = await extractor.extract();
@@ -1029,24 +1026,21 @@ describe('ClaudeExtractor', () => {
     });
 
     it('ON: mixed conversation (user → tool-use response → user → normal response) preserves order', async () => {
-      createClaudePageWithToolUse(
-        '12345678-1234-1234-1234-123456789012',
-        [
-          { role: 'user', content: 'First question' },
-          {
-            role: 'assistant',
-            content: '<p>First answer with search.</p>',
-            toolUse: {
-              summaryText: 'Searched the web',
-              searchQuery: 'First query',
-              searchResultCount: 5,
-              searchResults: [{ title: 'Result A', domain: 'example.com' }],
-            },
+      createClaudePageWithToolUse('12345678-1234-1234-1234-123456789012', [
+        { role: 'user', content: 'First question' },
+        {
+          role: 'assistant',
+          content: '<p>First answer with search.</p>',
+          toolUse: {
+            summaryText: 'Searched the web',
+            searchQuery: 'First query',
+            searchResultCount: 5,
+            searchResults: [{ title: 'Result A', domain: 'example.com' }],
           },
-          { role: 'user', content: 'Second question' },
-          { role: 'assistant', content: '<p>Second answer (no tool).</p>' },
-        ]
-      );
+        },
+        { role: 'user', content: 'Second question' },
+        { role: 'assistant', content: '<p>Second answer (no tool).</p>' },
+      ]);
 
       extractor.enableToolContent = true;
       const result = await extractor.extract();
@@ -1089,20 +1083,17 @@ describe('ClaudeExtractor', () => {
     });
 
     it('ON: content sanitized (DOMPurify applied to .standard-markdown tool content)', async () => {
-      createClaudePageWithToolUse(
-        '12345678-1234-1234-1234-123456789012',
-        [
-          { role: 'user', content: 'Test' },
-          {
-            role: 'assistant',
-            content: '<p>Response</p>',
-            toolUse: {
-              summaryText: 'Analyzed code',
-              toolSteps: ['<script>alert("xss")</script>Safe analysis content'],
-            },
+      createClaudePageWithToolUse('12345678-1234-1234-1234-123456789012', [
+        { role: 'user', content: 'Test' },
+        {
+          role: 'assistant',
+          content: '<p>Response</p>',
+          toolUse: {
+            summaryText: 'Analyzed code',
+            toolSteps: ['<script>alert("xss")</script>Safe analysis content'],
           },
-        ]
-      );
+        },
+      ]);
 
       extractor.enableToolContent = true;
       const result = await extractor.extract();
@@ -1113,17 +1104,14 @@ describe('ClaudeExtractor', () => {
     });
 
     it('ON: button summary text extracted as bold into toolContent', async () => {
-      createClaudePageWithToolUse(
-        '12345678-1234-1234-1234-123456789012',
-        [
-          { role: 'user', content: 'Search something' },
-          {
-            role: 'assistant',
-            content: '<p>Results below.</p>',
-            toolUse: { summaryText: 'Gathered API documentation for Express.js' },
-          },
-        ]
-      );
+      createClaudePageWithToolUse('12345678-1234-1234-1234-123456789012', [
+        { role: 'user', content: 'Search something' },
+        {
+          role: 'assistant',
+          content: '<p>Results below.</p>',
+          toolUse: { summaryText: 'Gathered API documentation for Express.js' },
+        },
+      ]);
 
       extractor.enableToolContent = true;
       const result = await extractor.extract();
@@ -1134,20 +1122,17 @@ describe('ClaudeExtractor', () => {
     });
 
     it('ON: multiple .standard-markdown blocks in .row-start-1 all extracted into toolContent', async () => {
-      createClaudePageWithToolUse(
-        '12345678-1234-1234-1234-123456789012',
-        [
-          { role: 'user', content: 'Research this topic' },
-          {
-            role: 'assistant',
-            content: '<p>Final summary.</p>',
-            toolUse: {
-              summaryText: 'Analyzed files',
-              toolSteps: ['First analysis result', 'Second analysis result'],
-            },
+      createClaudePageWithToolUse('12345678-1234-1234-1234-123456789012', [
+        { role: 'user', content: 'Research this topic' },
+        {
+          role: 'assistant',
+          content: '<p>Final summary.</p>',
+          toolUse: {
+            summaryText: 'Analyzed files',
+            toolSteps: ['First analysis result', 'Second analysis result'],
           },
-        ]
-      );
+        },
+      ]);
 
       extractor.enableToolContent = true;
       const result = await extractor.extract();
@@ -1160,13 +1145,10 @@ describe('ClaudeExtractor', () => {
     });
 
     it('OFF: regression — normal (non-grid) responses unaffected', async () => {
-      createClaudePageWithToolUse(
-        '12345678-1234-1234-1234-123456789012',
-        [
-          { role: 'user', content: 'Hello Claude' },
-          { role: 'assistant', content: '<p>Hello! How can I help?</p>' },
-        ]
-      );
+      createClaudePageWithToolUse('12345678-1234-1234-1234-123456789012', [
+        { role: 'user', content: 'Hello Claude' },
+        { role: 'assistant', content: '<p>Hello! How can I help?</p>' },
+      ]);
 
       // enableToolContent stays false (default)
       const result = await extractor.extract();
@@ -1178,22 +1160,19 @@ describe('ClaudeExtractor', () => {
     });
 
     it('ON: search with no results list → summary + query in toolContent, response in content', async () => {
-      createClaudePageWithToolUse(
-        '12345678-1234-1234-1234-123456789012',
-        [
-          { role: 'user', content: 'Quick search' },
-          {
-            role: 'assistant',
-            content: '<p>Here is what I found.</p>',
-            toolUse: {
-              summaryText: 'Searched the web',
-              searchQuery: 'Quick topic',
-              searchResultCount: 5,
-              // No searchResults — only query, no result items
-            },
+      createClaudePageWithToolUse('12345678-1234-1234-1234-123456789012', [
+        { role: 'user', content: 'Quick search' },
+        {
+          role: 'assistant',
+          content: '<p>Here is what I found.</p>',
+          toolUse: {
+            summaryText: 'Searched the web',
+            searchQuery: 'Quick topic',
+            searchResultCount: 5,
+            // No searchResults — only query, no result items
           },
-        ]
-      );
+        },
+      ]);
 
       extractor.enableToolContent = true;
       const result = await extractor.extract();
@@ -1227,14 +1206,17 @@ describe('ClaudeExtractor', () => {
 
       // Mock URL constructor to throw for the specific URL
       const OriginalURL = globalThis.URL;
-      vi.stubGlobal('URL', class extends OriginalURL {
-        constructor(input: string | URL, base?: string | URL) {
-          if (typeof input === 'string' && input.includes('example.com/valid')) {
-            throw new TypeError('Invalid URL');
+      vi.stubGlobal(
+        'URL',
+        class extends OriginalURL {
+          constructor(input: string | URL, base?: string | URL) {
+            if (typeof input === 'string' && input.includes('example.com/valid')) {
+              throw new TypeError('Invalid URL');
+            }
+            super(input, base);
           }
-          super(input, base);
         }
-      });
+      );
 
       const sources = extractor.extractSourceList();
 

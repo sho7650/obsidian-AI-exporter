@@ -25,7 +25,7 @@ import {
   INFO_TOAST_DURATION,
 } from '../lib/constants';
 import type {
-  ExtensionSettings,
+  ContentScriptSettings,
   ObsidianNote,
   OutputDestination,
   OutputResult,
@@ -194,7 +194,7 @@ async function initialize(): Promise<void> {
 /**
  * Get enabled output destinations from settings
  */
-function getEnabledOutputs(settings: ExtensionSettings): OutputDestination[] {
+function getEnabledOutputs(settings: ContentScriptSettings): OutputDestination[] {
   const outputs: OutputDestination[] = [];
   const { outputOptions } = settings;
 
@@ -210,7 +210,7 @@ function getEnabledOutputs(settings: ExtensionSettings): OutputDestination[] {
  * @returns error message if invalid, null if valid
  */
 async function validateOutputConfig(
-  settings: ExtensionSettings,
+  settings: ContentScriptSettings,
   enabledOutputs: OutputDestination[]
 ): Promise<string | null> {
   if (enabledOutputs.length === 0) {
@@ -218,7 +218,7 @@ async function validateOutputConfig(
   }
 
   if (enabledOutputs.includes('obsidian')) {
-    if (!settings.obsidianApiKey) {
+    if (!settings.isApiKeyConfigured) {
       return 'Please configure your Obsidian API key in the extension settings';
     }
 
@@ -347,7 +347,7 @@ async function handleSync(): Promise<void> {
  * Get extension settings from background script (L-01)
  * Uses type-safe messaging utility
  */
-function getSettings(): Promise<ExtensionSettings> {
+function getSettings(): Promise<ContentScriptSettings> {
   return sendMessage({ action: 'getSettings' });
 }
 

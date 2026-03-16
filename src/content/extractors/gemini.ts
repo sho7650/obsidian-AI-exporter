@@ -12,7 +12,7 @@ import {
 } from '../../lib/constants';
 import { ensureAllElementsLoaded, type ScrollResult } from '../../lib/scroll-manager';
 import type {
-  ExtensionSettings,
+  SyncSettings,
   ExtractionResult,
   ConversationMessage,
   DeepResearchSource,
@@ -122,7 +122,7 @@ export class GeminiExtractor extends BaseExtractor {
   /**
    * Apply user settings: enable/disable auto-scroll
    */
-  applySettings(settings: ExtensionSettings): void {
+  applySettings(settings: SyncSettings): void {
     this.enableAutoScroll = settings.enableAutoScroll ?? false;
   }
 

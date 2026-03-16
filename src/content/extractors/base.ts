@@ -5,7 +5,7 @@
 import type {
   AIPlatform,
   IConversationExtractor,
-  ExtensionSettings,
+  SyncSettings,
   ExtractionResult,
   ValidationResult,
   ConversationMessage,
@@ -116,7 +116,7 @@ export abstract class BaseExtractor implements IConversationExtractor {
    * Apply user settings before extraction.
    * Override in subclasses that have platform-specific settings.
    */
-  applySettings(_settings: ExtensionSettings): void {
+  applySettings(_settings: SyncSettings): void {
     // no-op by default
   }
 
