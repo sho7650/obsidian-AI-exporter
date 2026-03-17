@@ -361,6 +361,132 @@ describe('background/index', () => {
           error: 'Invalid message content',
         });
       });
+
+      it('rejects non-string tag values', () => {
+        const sendResponse = vi.fn();
+        capturedListener(
+          {
+            action: 'saveToObsidian',
+            data: {
+              ...validNote,
+              frontmatter: { ...validNote.frontmatter, tags: [123, null] },
+            },
+          },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('rejects tag strings exceeding 100 characters', () => {
+        const sendResponse = vi.fn();
+        capturedListener(
+          {
+            action: 'saveToObsidian',
+            data: {
+              ...validNote,
+              frontmatter: { ...validNote.frontmatter, tags: ['a'.repeat(101)] },
+            },
+          },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('rejects empty tag strings', () => {
+        const sendResponse = vi.fn();
+        capturedListener(
+          {
+            action: 'saveToObsidian',
+            data: {
+              ...validNote,
+              frontmatter: { ...validNote.frontmatter, tags: [''] },
+            },
+          },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('rejects javascript: URL scheme in frontmatter', () => {
+        const sendResponse = vi.fn();
+        capturedListener(
+          {
+            action: 'saveToObsidian',
+            data: {
+              ...validNote,
+              frontmatter: { ...validNote.frontmatter, url: 'javascript:alert(1)' },
+            },
+          },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('rejects data: URL scheme in frontmatter', () => {
+        const sendResponse = vi.fn();
+        capturedListener(
+          {
+            action: 'saveToObsidian',
+            data: {
+              ...validNote,
+              frontmatter: {
+                ...validNote.frontmatter,
+                url: 'data:text/html,<script>alert(1)</script>',
+              },
+            },
+          },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('accepts valid https URL in frontmatter', () => {
+        const sendResponse = vi.fn();
+        // This should NOT be rejected - it should proceed to save
+        capturedListener(
+          {
+            action: 'saveToObsidian',
+            data: {
+              ...validNote,
+              frontmatter: { ...validNote.frontmatter, url: 'https://gemini.google.com/app/123' },
+            },
+          },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+        // Should not immediately reject with validation error
+        // (it proceeds to async handling)
+        expect(sendResponse).not.toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
     });
   });
 

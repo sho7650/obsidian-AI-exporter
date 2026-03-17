@@ -411,8 +411,21 @@ async function handleTest(): Promise<void> {
       return;
     }
 
-    // Temporarily save settings for the test
-    await saveSettings(settings);
+    // Validate Obsidian settings before saving (same as handleSave)
+    const validation = validateObsidianSettings(settings);
+    if (validation.error) {
+      showStatus(validation.error, 'error');
+      elements.testBtn.disabled = false;
+      return;
+    }
+
+    // Save validated and normalized settings for the test
+    await saveSettings({
+      ...settings,
+      obsidianApiKey: validation.normalizedApiKey,
+      obsidianUrl: validation.normalizedUrl,
+      vaultPath: validation.normalizedVaultPath,
+    });
 
     // Send test connection message to background script
     const response = await sendMessage({ action: 'testConnection' });

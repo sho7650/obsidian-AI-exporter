@@ -238,13 +238,13 @@ export class ClaudeExtractor extends BaseExtractor {
 
     const sortedElements = this.sortByDomPosition(allElements);
 
-    // Pre-extract tool content keyed by element index
-    const toolContentMap = new Map<number, string>();
+    // Pre-extract tool content keyed by message ID (matches buildMessagesFromElements format)
+    const toolContentById = new Map<string, string>();
     if (this.enableToolContent) {
       sortedElements.forEach((item, index) => {
         if (item.type === 'assistant') {
           const tc = this.extractToolContentFromElement(item.element);
-          if (tc) toolContentMap.set(index, tc);
+          if (tc) toolContentById.set(`assistant-${index}`, tc);
         }
       });
     }
@@ -256,12 +256,10 @@ export class ClaudeExtractor extends BaseExtractor {
     );
 
     // Attach tool content to corresponding assistant messages (DES-014 H-5: immutable)
-    if (toolContentMap.size === 0) return messages;
+    if (toolContentById.size === 0) return messages;
 
     return messages.map(msg => {
-      if (msg.role !== 'assistant') return msg;
-      const idx = parseInt(msg.id.split('-')[1], 10);
-      const tc = toolContentMap.get(idx);
+      const tc = toolContentById.get(msg.id);
       return tc ? { ...msg, toolContent: tc } : msg;
     });
   }

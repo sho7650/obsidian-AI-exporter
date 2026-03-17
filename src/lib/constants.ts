@@ -34,6 +34,9 @@ export const MAX_FRONTMATTER_TITLE_LENGTH = 500;
 /** Maximum number of tags allowed in frontmatter */
 export const MAX_TAGS_COUNT = 50;
 
+/** Maximum length for a single tag string (characters) */
+export const MAX_TAG_LENGTH = 100;
+
 // ============================================================
 // Network Configuration
 // ============================================================
