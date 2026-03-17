@@ -42,23 +42,40 @@ function scheduleOffscreenClose(): void {
   }, OFFSCREEN_TIMEOUT_MS);
 }
 
+/** Singleton promise to prevent concurrent offscreen document creation */
+let offscreenCreationPromise: Promise<void> | null = null;
+
 /**
- * Ensure offscreen document exists for clipboard operations
+ * Ensure offscreen document exists for clipboard operations.
+ * Uses a singleton promise to prevent race conditions when
+ * multiple clipboard operations are triggered concurrently.
  */
 async function ensureOffscreenDocument(): Promise<void> {
-  const existingContexts = await chrome.runtime.getContexts({
-    contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
-  });
-
-  if (existingContexts.length > 0) {
-    return;
+  if (offscreenCreationPromise) {
+    return offscreenCreationPromise;
   }
 
-  await chrome.offscreen.createDocument({
-    url: 'src/offscreen/offscreen.html',
-    reasons: [chrome.offscreen.Reason.CLIPBOARD],
-    justification: 'Copy markdown content to clipboard',
-  });
+  offscreenCreationPromise = (async () => {
+    const existingContexts = await chrome.runtime.getContexts({
+      contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
+    });
+
+    if (existingContexts.length > 0) {
+      return;
+    }
+
+    await chrome.offscreen.createDocument({
+      url: 'src/offscreen/offscreen.html',
+      reasons: [chrome.offscreen.Reason.CLIPBOARD],
+      justification: 'Copy markdown content to clipboard',
+    });
+  })();
+
+  try {
+    await offscreenCreationPromise;
+  } finally {
+    offscreenCreationPromise = null;
+  }
 }
 
 /**

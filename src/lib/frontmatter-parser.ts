@@ -53,7 +53,7 @@ export function parseFrontmatter(content: string): ParsedFrontmatter | null {
       const existing = fields[currentKey];
       const value = stripQuotes(listMatch[1].trim());
       if (Array.isArray(existing)) {
-        existing.push(value);
+        fields[currentKey] = [...existing, value];
       } else {
         fields[currentKey] = [value];
       }
