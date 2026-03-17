@@ -2,7 +2,7 @@
  * Perplexity Extractor
  *
  * Extracts conversations from Perplexity AI (www.perplexity.ai)
- * Supports normal chat mode (Deep Research treated as normal conversation)
+ * Supports normal chat mode and Deep Research reports
  *
  * @see docs/design/DES-004-perplexity-extractor.md
  */
@@ -27,7 +27,6 @@ const SELECTORS = {
   // Assistant response content container
   markdownContent: [
     'div[id^="markdown-content-"]', // ID pattern (HIGH)
-    '.prose.dark\\:prose-invert', // Style (MEDIUM)
   ],
 
   // Prose content within response
@@ -35,7 +34,25 @@ const SELECTORS = {
     '.prose.dark\\:prose-invert', // Standard (HIGH)
     '.prose', // Fallback (LOW)
   ],
+
+  // Deep Research report card container
+  deepResearchCard: [
+    'div.bg-raised.rounded-lg', // Style (HIGH)
+    'div.border-borderMain.bg-raised', // Alternative (MEDIUM)
+  ],
+
+  // Prose content within a Deep Research report card (max-w-none distinguishes it)
+  deepResearchProse: [
+    '.prose.max-w-none', // Specific to report (HIGH)
+    '.prose.dark\\:prose-invert.max-w-none', // Full match (MEDIUM)
+  ],
 };
+
+/** Tagged element for DOM-order sorting */
+type TaggedElement =
+  | { type: 'user'; element: HTMLElement }
+  | { type: 'response'; element: HTMLElement }
+  | { type: 'report'; element: HTMLElement };
 
 /**
  * Perplexity conversation extractor
@@ -91,57 +108,97 @@ export class PerplexityExtractor extends BaseExtractor {
   /**
    * Extract all messages from conversation
    *
-   * Strategy: Collect user queries and assistant responses independently,
-   * then pair them by sequential index (query[0] ↔ response[0], etc.)
+   * Strategy: Collect all content elements (user queries, responses, Deep Research
+   * reports), sort them by DOM position, and build messages in document order.
+   * This ensures multi-turn conversations with Deep Research maintain correct ordering.
+   *
    * @see DES-004 Section 4.2
    */
   extractMessages(): ConversationMessage[] {
-    const messages: ConversationMessage[] = [];
+    const tagged = this.collectTaggedElements();
 
-    // Collect all user queries (span.select-text)
-    const queryElements = this.queryAllWithFallback<HTMLElement>(SELECTORS.userQuery);
-
-    // Collect all assistant responses (div[id^="markdown-content-"])
-    const responseElements = this.queryAllWithFallback<HTMLElement>(SELECTORS.markdownContent);
-
-    if (queryElements.length === 0 && responseElements.length === 0) {
+    if (tagged.length === 0) {
       console.warn('[G2O] No conversation content found with primary selectors');
-      return messages;
+      return [];
     }
 
-    // Pair queries and responses by sequential index
-    const pairCount = Math.max(queryElements.length, responseElements.length);
+    // Sort by DOM position to preserve visual ordering
+    tagged.sort((a, b) => {
+      const pos = a.element.compareDocumentPosition(b.element);
+      if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
+    });
 
-    for (let i = 0; i < pairCount; i++) {
-      // Add user message if query exists at this index
-      if (i < queryElements.length) {
-        const content = this.extractUserContent(queryElements[i]);
+    const messages: ConversationMessage[] = [];
+    let userIdx = 0;
+    let responseIdx = 0;
+    let reportIdx = 0;
+
+    for (const item of tagged) {
+      if (item.type === 'user') {
+        const content = this.extractUserContent(item.element);
         if (content) {
           messages.push({
-            id: `user-${i}`,
+            id: `user-${userIdx}`,
             role: 'user',
             content,
             index: messages.length,
           });
         }
-      }
-
-      // Add assistant message if response exists at this index
-      if (i < responseElements.length) {
-        const content = this.extractAssistantContent(responseElements[i]);
+        userIdx++;
+      } else if (item.type === 'report') {
+        const content = this.extractReportContent(item.element);
         if (content) {
           messages.push({
-            id: `assistant-${i}`,
+            id: `report-${reportIdx}`,
             role: 'assistant',
             content,
             htmlContent: content,
             index: messages.length,
           });
         }
+        reportIdx++;
+      } else {
+        const content = this.extractAssistantContent(item.element);
+        if (content) {
+          messages.push({
+            id: `assistant-${responseIdx}`,
+            role: 'assistant',
+            content,
+            htmlContent: content,
+            index: messages.length,
+          });
+        }
+        responseIdx++;
       }
     }
 
     return messages;
+  }
+
+  /**
+   * Collect all content elements tagged by type for DOM-order sorting
+   */
+  private collectTaggedElements(): TaggedElement[] {
+    const tagged: TaggedElement[] = [];
+
+    for (const el of this.queryAllWithFallback<HTMLElement>(SELECTORS.userQuery)) {
+      tagged.push({ type: 'user', element: el });
+    }
+
+    for (const el of this.queryAllWithFallback<HTMLElement>(SELECTORS.markdownContent)) {
+      tagged.push({ type: 'response', element: el });
+    }
+
+    for (const card of this.queryAllWithFallback<HTMLElement>(SELECTORS.deepResearchCard)) {
+      const proseEl = this.queryWithFallback<HTMLElement>(SELECTORS.deepResearchProse, card);
+      if (proseEl) {
+        tagged.push({ type: 'report', element: card });
+      }
+    }
+
+    return tagged;
   }
 
   /**
@@ -172,6 +229,25 @@ export class PerplexityExtractor extends BaseExtractor {
       return sanitizeHtml(contentElement.innerHTML);
     }
 
+    return '';
+  }
+
+  /**
+   * Extract Deep Research report content from a report card element
+   *
+   * The report card contains prose with max-w-none, and potentially
+   * an inner prose element with the actual content.
+   */
+  private extractReportContent(card: HTMLElement): string {
+    const proseEl = this.queryWithFallback<HTMLElement>(SELECTORS.deepResearchProse, card);
+    if (proseEl) {
+      const innerProse = this.queryWithFallback<HTMLElement>(SELECTORS.proseContent, proseEl);
+      const targetEl = innerProse ?? proseEl;
+      const content = sanitizeHtml(targetEl.innerHTML);
+      if (content.trim()) {
+        return content;
+      }
+    }
     return '';
   }
 }

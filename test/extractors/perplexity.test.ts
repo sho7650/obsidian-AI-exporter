@@ -11,6 +11,8 @@ import {
   setNonPerplexityLocation,
   createPerplexityInlineCitation,
   createPerplexityPage,
+  createPerplexityDeepResearchPage,
+  createPerplexityMultiTurnWithDeepResearch,
 } from '../fixtures/dom-helpers';
 
 describe('PerplexityExtractor', () => {
@@ -68,9 +70,7 @@ describe('PerplexityExtractor', () => {
 
     it('extracts slug with URL-encoded characters', () => {
       setPerplexityLocation('da-shou-ting-toraba-CG5SwgBvRti46_Hs1jFYAw');
-      expect(extractor.getConversationId()).toBe(
-        'da-shou-ting-toraba-CG5SwgBvRti46_Hs1jFYAw'
-      );
+      expect(extractor.getConversationId()).toBe('da-shou-ting-toraba-CG5SwgBvRti46_Hs1jFYAw');
     });
 
     it('returns null for non-search paths', () => {
@@ -168,9 +168,7 @@ describe('PerplexityExtractor', () => {
 
     it('handles query without response (pending)', async () => {
       setPerplexityLocation('test-slug');
-      createPerplexityPage('test-slug', [
-        { role: 'user', content: 'Pending question' },
-      ]);
+      createPerplexityPage('test-slug', [{ role: 'user', content: 'Pending question' }]);
       const result = await extractor.extract();
       expect(result.success).toBe(true);
       expect(result.data?.messages.length).toBe(1);
@@ -183,10 +181,7 @@ describe('PerplexityExtractor', () => {
   describe('Citation Handling', () => {
     it('preserves <a href> links after sanitization', async () => {
       setPerplexityLocation('test-slug');
-      const citationHtml = createPerplexityInlineCitation(
-        'https://example.com',
-        'example'
-      );
+      const citationHtml = createPerplexityInlineCitation('https://example.com', 'example');
       createPerplexityPage('test-slug', [
         { role: 'user', content: 'Test citations' },
         { role: 'assistant', content: `<p>Here is a citation ${citationHtml}</p>` },
@@ -251,10 +246,12 @@ describe('PerplexityExtractor', () => {
         writable: true,
         configurable: true,
       });
-      loadFixture(createPerplexityConversationDOM([
-        { role: 'user', content: 'Hello' },
-        { role: 'assistant', content: '<p>Hi!</p>' },
-      ]));
+      loadFixture(
+        createPerplexityConversationDOM([
+          { role: 'user', content: 'Hello' },
+          { role: 'assistant', content: '<p>Hi!</p>' },
+        ])
+      );
       const result = await extractor.extract();
       expect(result.success).toBe(true);
       expect(result.data?.id).toMatch(/^perplexity-\d+$/);
@@ -308,7 +305,7 @@ describe('PerplexityExtractor', () => {
     it('returns error with Error.message in catch block', async () => {
       setPerplexityLocation('test-slug');
       const originalQSA = document.querySelectorAll.bind(document);
-      vi.spyOn(document, 'querySelectorAll').mockImplementation((selector) => {
+      vi.spyOn(document, 'querySelectorAll').mockImplementation(selector => {
         if (typeof selector === 'string' && selector.includes('select-text')) {
           throw new Error('DOM access failed');
         }
@@ -325,7 +322,7 @@ describe('PerplexityExtractor', () => {
     it('returns stringified error for non-Error throw in catch block', async () => {
       setPerplexityLocation('test-slug');
       const originalQSA = document.querySelectorAll.bind(document);
-      vi.spyOn(document, 'querySelectorAll').mockImplementation((selector) => {
+      vi.spyOn(document, 'querySelectorAll').mockImplementation(selector => {
         if (typeof selector === 'string' && selector.includes('select-text')) {
           throw 'string error';
         }
@@ -452,6 +449,153 @@ describe('PerplexityExtractor', () => {
       expect(markdown).toContain('`');
       expect(markdown).toContain('P(\\text{win})');
       expect(markdown).not.toContain('$P(\\text{win})');
+    });
+  });
+
+  // ========== Deep Research Report Extraction ==========
+  describe('Deep Research Report', () => {
+    it('extracts report content from Deep Research page', async () => {
+      createPerplexityDeepResearchPage('deep-research-test', {
+        query: 'Analyze market trends',
+        reportTitle: 'Market Trends Analysis Report',
+        reportContent: '<h1>Market Trends</h1><p>The market is growing steadily.</p>',
+        summaryContent: '<p>Here is a summary of the report.</p>',
+      });
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+
+      // Should have: user query + report + summary = 3 messages
+      expect(result.data?.messages.length).toBe(3);
+    });
+
+    it('includes report as assistant message before summary', async () => {
+      createPerplexityDeepResearchPage('deep-research-test', {
+        query: 'Research question',
+        reportTitle: 'Deep Research Report',
+        reportContent: '<h1>Report Title</h1><p>Detailed analysis here.</p>',
+        summaryContent: '<p>Summary text.</p>',
+      });
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+
+      const messages = result.data!.messages;
+      expect(messages[0].role).toBe('user');
+      expect(messages[0].content).toBe('Research question');
+
+      // Report should be the second message (assistant)
+      expect(messages[1].role).toBe('assistant');
+      expect(messages[1].content).toContain('Report Title');
+      expect(messages[1].content).toContain('Detailed analysis');
+
+      // Summary should be the third message (assistant)
+      expect(messages[2].role).toBe('assistant');
+      expect(messages[2].content).toContain('Summary text');
+    });
+
+    it('extracts report with rich content (tables, lists, headings)', async () => {
+      createPerplexityDeepResearchPage('deep-research-rich', {
+        query: 'Complex topic',
+        reportTitle: 'Comprehensive Report',
+        reportContent: `
+          <h1>Main Title</h1>
+          <h2>Section 1</h2>
+          <p>Paragraph with <strong>bold</strong> text.</p>
+          <ul><li>Item 1</li><li>Item 2</li></ul>
+          <table><thead><tr><th>Col A</th><th>Col B</th></tr></thead>
+          <tbody><tr><td>Val 1</td><td>Val 2</td></tr></tbody></table>
+        `,
+      });
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+
+      const reportMsg = result.data?.messages.find((m, i) => m.role === 'assistant' && i === 1);
+      expect(reportMsg).toBeDefined();
+      expect(reportMsg?.content).toContain('<h1>');
+      expect(reportMsg?.content).toContain('<strong>');
+      expect(reportMsg?.content).toContain('<table>');
+    });
+
+    it('handles Deep Research page without summary', async () => {
+      createPerplexityDeepResearchPage('deep-research-no-summary', {
+        query: 'Question without summary',
+        reportTitle: 'Report Only',
+        reportContent: '<p>Report content only.</p>',
+        // No summaryContent
+      });
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+
+      // Should have: user query + report = 2 messages
+      expect(result.data?.messages.length).toBe(2);
+      expect(result.data?.messages[0].role).toBe('user');
+      expect(result.data?.messages[1].role).toBe('assistant');
+      expect(result.data?.messages[1].content).toContain('Report content only');
+    });
+
+    it('sets htmlContent on report messages', async () => {
+      createPerplexityDeepResearchPage('deep-research-html', {
+        query: 'Test HTML content',
+        reportTitle: 'HTML Test',
+        reportContent: '<p>Report with <em>emphasis</em>.</p>',
+        summaryContent: '<p>Summary here.</p>',
+      });
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+
+      const reportMsg = result.data!.messages[1];
+      expect(reportMsg.htmlContent).toBeDefined();
+      expect(reportMsg.htmlContent).toContain('<em>');
+    });
+
+    it('preserves citation links in report content', async () => {
+      const citationHtml = createPerplexityInlineCitation('https://example.com', 'source');
+      createPerplexityDeepResearchPage('deep-research-citations', {
+        query: 'Test citations',
+        reportTitle: 'Report with Citations',
+        reportContent: `<p>Key finding ${citationHtml} supports this.</p>`,
+      });
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+
+      const reportMsg = result.data!.messages[1];
+      expect(reportMsg.content).toContain('href="https://example.com"');
+    });
+
+    it('preserves DOM order in multi-turn with Deep Research', async () => {
+      // Real-world scenario: normal Q&A turn 1, then Deep Research turn 2
+      // The report should appear after the second query, not after the first
+      createPerplexityMultiTurnWithDeepResearch('multi-turn-dr', {
+        firstQuery: 'Can I get AppleCare in Japan?',
+        firstResponse: '<p>Yes, AppleCare is global.</p>',
+        secondQuery: 'Hidden limitations of AppleCare',
+        reportTitle: 'AppleCare Limitations Report',
+        reportContent: '<h1>Detailed Report</h1><p>Here are the limitations.</p>',
+        summaryContent: '<p>Summary of the report.</p>',
+      });
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+
+      const messages = result.data!.messages;
+      // Expected order: query1 → response1 → query2 → report → summary
+      expect(messages.length).toBe(5);
+      expect(messages[0].role).toBe('user');
+      expect(messages[0].content).toBe('Can I get AppleCare in Japan?');
+      expect(messages[1].role).toBe('assistant');
+      expect(messages[1].content).toContain('AppleCare is global');
+      expect(messages[2].role).toBe('user');
+      expect(messages[2].content).toBe('Hidden limitations of AppleCare');
+      expect(messages[3].role).toBe('assistant');
+      expect(messages[3].content).toContain('Detailed Report');
+      expect(messages[4].role).toBe('assistant');
+      expect(messages[4].content).toContain('Summary of the report');
     });
   });
 });

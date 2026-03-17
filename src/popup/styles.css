@@ -149,6 +149,7 @@ label {
 
 input[type='text'],
 input[type='password'],
+input[type='url'],
 input[type='number'],
 select {
   width: 100%;
@@ -161,6 +162,12 @@ select {
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
+}
+
+input[type='url'],
+#vaultPath {
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', monospace;
+  font-size: 12px;
 }
 
 input:focus,

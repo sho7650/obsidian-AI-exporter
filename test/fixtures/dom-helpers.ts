@@ -1039,6 +1039,208 @@ export function createPerplexityPage(
 }
 
 /**
+ * Message structure for Perplexity Deep Research pages
+ */
+interface PerplexityDeepResearchConfig {
+  /** User query text */
+  query: string;
+  /** Report title shown in the report card header */
+  reportTitle: string;
+  /** HTML content of the Deep Research report body */
+  reportContent: string;
+  /** Optional summary HTML shown after the report card (in markdown-content div) */
+  summaryContent?: string;
+}
+
+/**
+ * Create Perplexity Deep Research DOM structure
+ *
+ * Replicates the structure used by Perplexity AI for Deep Research pages:
+ * - User query in a styled bubble
+ * - "N steps completed" indicator
+ * - Report card with header (telescope icon + title) and prose body
+ * - Optional summary response in markdown-content div
+ */
+export function createPerplexityDeepResearchDOM(config: PerplexityDeepResearchConfig): string {
+  const summaryBlock = config.summaryContent
+    ? `
+      <div id="markdown-content-0" class="markdown-content">
+        <div class="prose dark:prose-invert inline leading-relaxed break-words min-w-0">
+          ${config.summaryContent}
+        </div>
+      </div>
+    `
+    : '';
+
+  return `
+    <div class="flex flex-col gap-y-md">
+      <!-- User query -->
+      <div class="bg-base" style="opacity: 1; transform: none;">
+        <div class="relative z-10">
+          <div class="group relative flex items-end gap-0.5">
+            <div class="relative min-w-0 flex-1 flex justify-end">
+              <div class="flex items-start gap-2">
+                <div class="group/title relative inline-flex flex-col">
+                  <div class="group/query relative whitespace-pre-line">
+                    <div class="min-w-[48px] select-none p-3 bg-subtle rounded-2xl">
+                      <span class="min-w-0 font-sans text-base text-foreground font-normal select-text break-words">${escapeHtmlForPerplexity(config.query)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Steps completed + Report card -->
+      <div class="gap-y-sm flex flex-col">
+        <div class="flex flex-col gap-sm">
+          <button type="button" class="reset">13 steps completed</button>
+        </div>
+        <div class="flex flex-col gap-3 py-4">
+          <div class="border-borderMain bg-base overflow-hidden border border-subtlest ring-subtlest divide-subtlest bg-raised rounded-lg">
+            <div class="border-subtlest flex items-center justify-between border-b px-3 py-2">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <svg role="img" class="inline-flex fill-current shrink-0 text-super shrink-0" width="16" height="16"><use xlink:href="#pplx-icon-telescope"></use></svg>
+                <span class="text-textMain truncate text-sm font-medium">${escapeHtmlForPerplexity(config.reportTitle)}</span>
+              </div>
+              <div class="flex items-center gap-1 shrink-0 ml-2 -mr-1">
+                <button>Download</button>
+                <button aria-label="Copy contents">Copy</button>
+              </div>
+            </div>
+            <div class="relative">
+              <div class="overflow-hidden px-4 py-3 prose dark:prose-invert max-w-none text-sm">
+                <div><div><div class="prose dark:prose-invert inline leading-relaxed break-words min-w-0 [word-break:break-word]">
+                  ${config.reportContent}
+                </div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary response -->
+      ${summaryBlock}
+    </div>
+  `;
+}
+
+/**
+ * Create a complete Perplexity Deep Research page with location set
+ */
+export function createPerplexityDeepResearchPage(
+  slug: string,
+  config: PerplexityDeepResearchConfig
+): void {
+  setPerplexityLocation(slug);
+  loadFixture(`
+    <div class="app-container">
+      ${createPerplexityDeepResearchDOM(config)}
+    </div>
+  `);
+}
+
+/**
+ * Create a multi-turn Perplexity page with a normal Q&A followed by a Deep Research turn
+ *
+ * Replicates the real-world scenario:
+ * 1. User query → normal assistant response (markdown-content-0)
+ * 2. User query → Deep Research report card → summary response (markdown-content-1)
+ */
+export function createPerplexityMultiTurnWithDeepResearch(
+  slug: string,
+  config: {
+    /** First turn: normal Q&A */
+    firstQuery: string;
+    firstResponse: string;
+    /** Second turn: Deep Research */
+    secondQuery: string;
+    reportTitle: string;
+    reportContent: string;
+    summaryContent: string;
+  }
+): void {
+  setPerplexityLocation(slug);
+  loadFixture(`
+    <div class="app-container">
+      <div class="flex flex-col gap-y-md">
+        <!-- Turn 1: Normal Q&A -->
+        <div class="bg-base" style="opacity: 1; transform: none;">
+          <div class="relative z-10">
+            <div class="group relative flex items-end gap-0.5">
+              <div class="relative min-w-0 flex-1 flex justify-end">
+                <div class="flex items-start gap-2">
+                  <div class="group/title relative inline-flex flex-col">
+                    <div class="group/query relative whitespace-pre-line">
+                      <div class="min-w-[48px] select-none p-3 bg-subtle rounded-2xl">
+                        <span class="min-w-0 font-sans text-base text-foreground font-normal select-text break-words">${escapeHtmlForPerplexity(config.firstQuery)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="markdown-content-0" class="markdown-content">
+          <div class="prose dark:prose-invert inline leading-relaxed break-words min-w-0">
+            ${config.firstResponse}
+          </div>
+        </div>
+
+        <!-- Turn 2: Deep Research -->
+        <div class="bg-base" style="opacity: 1; transform: none;">
+          <div class="relative z-10">
+            <div class="group relative flex items-end gap-0.5">
+              <div class="relative min-w-0 flex-1 flex justify-end">
+                <div class="flex items-start gap-2">
+                  <div class="group/title relative inline-flex flex-col">
+                    <div class="group/query relative whitespace-pre-line">
+                      <div class="min-w-[48px] select-none p-3 bg-subtle rounded-2xl">
+                        <span class="min-w-0 font-sans text-base text-foreground font-normal select-text break-words">${escapeHtmlForPerplexity(config.secondQuery)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="gap-y-sm flex flex-col">
+          <div class="flex flex-col gap-sm">
+            <button type="button" class="reset">13 steps completed</button>
+          </div>
+          <div class="flex flex-col gap-3 py-4">
+            <div class="border-borderMain bg-base overflow-hidden border border-subtlest ring-subtlest divide-subtlest bg-raised rounded-lg">
+              <div class="border-subtlest flex items-center justify-between border-b px-3 py-2">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <svg role="img" class="inline-flex fill-current shrink-0 text-super shrink-0" width="16" height="16"><use xlink:href="#pplx-icon-telescope"></use></svg>
+                  <span class="text-textMain truncate text-sm font-medium">${escapeHtmlForPerplexity(config.reportTitle)}</span>
+                </div>
+              </div>
+              <div class="relative">
+                <div class="overflow-hidden px-4 py-3 prose dark:prose-invert max-w-none text-sm">
+                  <div><div><div class="prose dark:prose-invert inline leading-relaxed break-words min-w-0 [word-break:break-word]">
+                    ${config.reportContent}
+                  </div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="markdown-content-1" class="markdown-content">
+          <div class="prose dark:prose-invert inline leading-relaxed break-words min-w-0">
+            ${config.summaryContent}
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+/**
  * Escape HTML entities for Perplexity DOM helpers
  */
 function escapeHtmlForPerplexity(text: string): string {

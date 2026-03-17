@@ -58,11 +58,144 @@ modified: "2025-01-01T00:00:00.000Z"
 tags:
   - ai-conversation
   - perplexity
-message_count: 2
+message_count: 3
 ---
 
 > [!QUESTION] User
 > Perplexity の提供する機能についてまとめてください。
+
+> [!NOTE] Perplexity
+> # Perplexity AI 提供機能まとめ
+> 
+> Perplexity AI は、リアルタイムの Web 検索と最先端の大規模言語モデルを組み合わせた AI 検索エンジンであり、質問に対して出典付きの正確な回答を提供する。以下に、主要な機能とサブスクリプションプランについて整理する。[perplexity](https://www.perplexity.ai/help-center/en/articles/10352155-what-is-perplexity)​
+> 
+> * * *
+> 
+> ## 検索モード
+> 
+> Perplexity には複数の検索モードが用意されており、用途に応じて使い分けることができる。[perplexity](https://www.perplexity.ai/help-center/en/articles/10352895-how-does-perplexity-work)​
+> 
+> | モード | 概要 | 利用条件 |
+> | --- | --- | --- |
+> | Best（デフォルト） | クエリに最適なモデルを自動選択し、迅速に回答を生成する | 無料ユーザー含む全ユーザーperplexity​ |
+> | Pro Search | 複数ソースを横断的に調査し、詳細で構造化された回答を返す。使用モデルを手動で選択可能 | 無料ユーザーは1日あたり限定数、Pro以上は拡張アクセスperplexity​ |
+> | Research（Deep Research） | 数十回の自動検索と数百のソース読解を行い、2〜4分で包括的なレポートを生成する | Pro以上で拡張利用可能perplexity​ |
+> | Create Files and Apps | レポート、スプレッドシート、ダッシュボード、Web アプリなどを自然言語プロンプトで作成できる | Pro以上（月間利用数に制限あり）perplexity​ |
+> 
+> * * *
+> 
+> ## コア機能
+> 
+> ## モデルセレクター
+> 
+> Pro 以上のサブスクリプションでは、GPT-5.2、Claude 4.6 Sonnet、Gemini 3.1 Pro など複数の先端 AI モデルから選択して回答を生成できる。Reasoning モデル（Claude 4.6 Thinking、o3-Pro など）も利用可能で、複雑な分析的クエリに対応する。[perplexity](https://www.perplexity.ai/help-center/en/articles/10352901-what-is-perplexity-pro)​
+> 
+> ## Model Council
+> 
+> 複数の AI モデルに同時にクエリを実行し、それぞれの回答を統合した一つの回答を生成するマルチモデルリサーチ機能。検索バーの「+」ボタンから利用でき、使用モデルのカスタマイズも可能。[perplexity](https://www.perplexity.ai/help-center/en/articles/13641704-what-is-model-council)​
+> 
+> ## ソース透明性と引用
+> 
+> すべての回答にはオリジナルソースへの引用番号付きリンクが含まれ、情報の検証が容易に行える。Pro プランでは回答あたりの引用数が無料プランの10倍となる。perplexity+1
+> 
+> ## コンテキストメモリ
+> 
+> フォローアップ質問の際に前のクエリの文脈を記憶し、シームレスな会話を実現する。さらに、会話間でユーザーの好みや興味を自動的に記憶する高度なパーソナライゼーション機能が搭載されている。perplexity+1
+> 
+> ## ファイルアップロードと分析
+> 
+> PDF、CSV、画像、音声、動画などのファイルをアップロードし、AI モデルを使って内容を解析・質問できる。[perplexity](https://www.perplexity.ai/help-center/en/articles/10352901-what-is-perplexity-pro)​
+> 
+> * * *
+> 
+> ## メディア生成
+> 
+> ## 画像生成
+> 
+> テキストプロンプトから画像を生成・編集する機能。GPT Image 1、Nano Banana、Seedream 4.5 などのモデルが利用可能で、設定からデフォルトモデルを変更できる。Web・モバイル・デスクトップの全プラットフォームで利用可能。[perplexity](https://www.perplexity.ai/help-center/en/articles/10354781-generating-images-with-perplexity)​
+> 
+> ## 動画生成
+> 
+> 最大8秒の動画を AI で生成する機能。Veo 3.1 モデルを使用し、音声付きの動画作成にも対応する。画像をアップロードして動画の最初のフレームとして利用することも可能。Pro、Max、Enterprise Pro/Max ユーザーが利用できる。[perplexity](https://www.perplexity.ai/help-center/en/articles/11985060-generating-videos-with-perplexity)​
+> 
+> * * *
+> 
+> ## Spaces（スペース）
+> 
+> AI を活用したリサーチ・コラボレーションハブ。プロジェクトやトピックごとにスペースを作成し、チームメンバーを招待して共同作業ができる。スペースごとに以下のカスタマイズが可能：[perplexity](https://www.perplexity.ai/hub/blog/introducing-internal-knowledge-search-and-spaces)​
+> 
+> -   内部ファイルのアップロードと検索（Internal Knowledge Search）[perplexity](https://www.perplexity.ai/help-center/en/articles/10352914-what-is-internal-knowledge-search)​
+>     
+> -   使用する AI モデルの選択
+>     
+> -   カスタムインストラクション（AI の応答スタイル・ペルソナ設定）
+>     
+> -   スペース内でのタスクのスケジュール設定[perplexity](https://www.perplexity.ai/help-center/en/articles/11521526-perplexity-tasks)​
+>     
+> 
+> * * *
+> 
+> ## Tasks（タスク）
+> 
+> 定期的なアラート、リマインダー、レポートをスケジュール設定できる機能。毎日・毎週・毎月などの頻度でタスクを設定し、結果をメールまたはプッシュ通知で受け取れる。Pro/Max ユーザーは最大10タスク、Enterprise ユーザーはさらに多くのタスクを作成可能。Create Files and Apps モードと連携して定期的なプロジェクト出力も自動化できる。[perplexity](https://www.perplexity.ai/help-center/en/articles/11521526-perplexity-tasks)​
+> 
+> * * *
+> 
+> ## MCP（Model Context Protocol）
+> 
+> 外部ツールやアプリケーションを Perplexity に接続するためのプロトコル。ローカル MCP は macOS アプリで利用可能で、Apple Notes、ファイルシステム、iTerm など様々なサービスと連携できる。リモート MCP（Linear などのサービスとの接続）も提供されている。[perplexity](https://www.perplexity.ai/help-center/en/articles/11502712-local-and-remote-mcps-for-perplexity)​
+> 
+> * * *
+> 
+> ## Comet ブラウザ
+> 
+> Perplexity が開発した Chromium ベースの AI 統合ブラウザ。主な機能：[perplexity](https://www.perplexity.ai/help-center/en/articles/11172798-getting-started-with-comet)​
+> 
+> -   Perplexity AI 検索をデフォルト検索エンジンとして統合
+>     
+> -   ブラウジング履歴を活用したパーソナルサーチ（Comet Assistant）
+>     
+> -   Web ページの要約・翻訳・検証機能
+>     
+> -   自然言語でのブラウザコマンド（タブ管理など）
+>     
+> -   広告ブロック内蔵
+>     
+> -   Chrome 拡張機能サポート[perplexity](https://www.perplexity.ai/help-center/en/articles/11172798-getting-started-with-comet)​
+>     
+> -   Enterprise 向けには MDM デプロイやブラウザポリシー制御にも対応[perplexity](https://www.perplexity.ai/help-center/en/articles/12781449-comet-for-enterprise)​
+>     
+> 
+> * * *
+> 
+> ## Computer
+> 
+> Perplexity の最新機能で、検索・ツール実行・メディア生成・ドキュメント作成・外部サービス連携を統合した汎用デジタルワーカー。Gmail、Outlook、GitHub、Linear、Slack、Notion などと認証済み連携が可能で、複数ステップのワークフローを1つのプロンプトで自動実行できる。Max サブスクリプション限定で、月間10,000クレジットが付与される。[perplexity](https://www.perplexity.ai/help-center/en/articles/13837784-what-is-computer)​
+> 
+> * * *
+> 
+> ## サブスクリプションプラン
+> 
+> | プラン | 月額料金 | 主な特徴 |
+> | --- | --- | --- |
+> | Free | $0 | 基本検索無制限、Pro Search は限定数、ファイルアップロード制限ありperplexity​ |
+> | Education Pro | $10 | Pro の全機能＋10倍の引用数、Study Mode、Academic モードperplexity​ |
+> | Pro | $20 | 拡張 Pro Search、先端モデル、画像/動画生成、Create Files and Apps、Research 拡張利用perplexity​ |
+> | Max | — | Pro の全機能＋無制限の Create Files and Apps、o3-Pro・Claude Opus 4 等の最上位モデル、Computer アクセス、早期機能アクセスperplexity+1 |
+> | Enterprise Pro | $40/席 | Pro 機能＋チーム管理、Internal Knowledge Search、データプライバシー保証、専用サポートperplexity​ |
+> | Enterprise Max | — | Enterprise Pro の全機能＋最上位モデルアクセス、拡張 Create Files and Apps・Research、動画生成15本/月perplexity​ |
+> 
+> * * *
+> 
+> ## Pro Perks
+> 
+> Pro 以上のサブスクリプションには、提携ブランドからの特典プログラム「Pro Perks」が含まれる。旅行、健康、金融などのカテゴリで Visa、Headspace、TurboTax、ŌURA など多数のブランドの割引・特典を利用できる。[perplexity](https://www.perplexity.ai/hub/blog/more-value-in-every-answer-new-benefits-for-every-level-of-perplexity-user)​
+> 
+> * * *
+> 
+> ## プレミアムデータ統合
+> 
+> Statista、PitchBook、Wiley などのプレミアムデータプロバイダーと統合し、従来は有料企業契約でのみアクセスできた金融・健康・統計・市場データを検索結果に活用できる。Free ユーザーは月3回、Pro は月5回、Enterprise Pro は月10回のプレミアムデータ検索が可能。[perplexity](https://www.perplexity.ai/hub/blog/more-value-in-every-answer-new-benefits-for-every-level-of-perplexity-user)​
 
 > [!NOTE] Perplexity
 > Perplexity AI の提供機能をレポートにまとめました。検索モード（Best / Pro Search / Research / Create Files and Apps）、コア機能（モデルセレクター、Model Council、メモリ、ファイル分析）、メディア生成、Spaces、Tasks、MCP 連携、Comet ブラウザ、Computer、そしてサブスクリプションプラン別の比較まで網羅しています。詳細はレポートをご確認ください。"
