@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.16.0...v0.16.1) (2026-03-17)
+
+
+### Bug Fixes
+
+* resolve 2 QA issues - immutability and race condition ([#145](https://github.com/sho7650/obsidian-AI-exporter/issues/145)) ([44622a0](https://github.com/sho7650/obsidian-AI-exporter/commit/44622a07d9793fdb8e13cf351e270c8cdc2d22e0))
+* resolve 2 QA issues - immutability and race condition [round 1] ([44622a0](https://github.com/sho7650/obsidian-AI-exporter/commit/44622a07d9793fdb8e13cf351e270c8cdc2d22e0))
+
 ## [0.16.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.15.5...v0.16.0) (2026-03-17)
 
 
