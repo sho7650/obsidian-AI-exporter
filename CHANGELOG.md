@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.15.5...v0.16.0) (2026-03-17)
+
+
+### Features
+
+* extract Perplexity Deep Research reports and fix popup input styling ([#143](https://github.com/sho7650/obsidian-AI-exporter/issues/143)) ([61acd7a](https://github.com/sho7650/obsidian-AI-exporter/commit/61acd7a26803ee95dbe10e4479dab73e120ac40d))
+
 ## [0.15.5](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.15.4...v0.15.5) (2026-03-17)
 
 
