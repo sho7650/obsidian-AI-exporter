@@ -67,7 +67,7 @@ async function ensureOffscreenDocument(): Promise<void> {
 async function handleSaveToObsidian(
   note: ObsidianNote,
   settings: ExtensionSettings
-): Promise<OutputResult & { messagesAppended?: number }> {
+): Promise<OutputResult> {
   try {
     const result = await handleSave(settings, note);
     return {
@@ -235,8 +235,7 @@ export async function handleMultiOutput(
   let messagesAppended: number | undefined;
   settled.forEach((result, index) => {
     if (result.status === 'fulfilled' && outputs[index] === 'obsidian') {
-      const obsidianResult = result.value as OutputResult & { messagesAppended?: number };
-      messagesAppended = obsidianResult.messagesAppended;
+      messagesAppended = result.value.messagesAppended;
     }
   });
 

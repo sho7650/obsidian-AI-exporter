@@ -11,7 +11,7 @@ import {
   validateApiKey,
   validateObsidianUrl,
 } from '../lib/validation';
-import { DEFAULT_OBSIDIAN_URL } from '../lib/constants';
+import { DEFAULT_OBSIDIAN_URL, VALID_MESSAGE_FORMATS } from '../lib/constants';
 import { getMessage } from '../lib/i18n';
 import { sendMessage } from '../lib/messaging';
 
@@ -255,8 +255,6 @@ function collectOutputOptions(): OutputOptions {
 function validateOutputOptions(outputOptions: OutputOptions): boolean {
   return outputOptions.obsidian || outputOptions.file || outputOptions.clipboard;
 }
-
-const VALID_MESSAGE_FORMATS = ['callout', 'plain', 'blockquote'] as const;
 
 /**
  * Collect settings from form

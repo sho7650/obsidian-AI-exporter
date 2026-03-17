@@ -138,6 +138,8 @@ export interface OutputResult {
   destination: OutputDestination;
   success: boolean;
   error?: string;
+  /** Number of messages appended (Obsidian append mode only) */
+  messagesAppended?: number;
 }
 
 /**

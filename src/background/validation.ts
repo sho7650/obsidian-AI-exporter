@@ -11,6 +11,7 @@ import {
   MAX_FRONTMATTER_TITLE_LENGTH,
   MAX_TAGS_COUNT,
   MAX_TAG_LENGTH,
+  MAX_VAULT_PATH_LENGTH,
   ALLOWED_ORIGINS,
   VALID_MESSAGE_ACTIONS,
   VALID_OUTPUT_DESTINATIONS,
@@ -65,8 +66,13 @@ export function validateMessageContent(message: ExtensionMessage): boolean {
     if (containsPathTraversal(message.fileName)) {
       return false;
     }
-    if (typeof message.vaultPath === 'string' && containsPathTraversal(message.vaultPath)) {
-      return false;
+    if (typeof message.vaultPath === 'string') {
+      if (containsPathTraversal(message.vaultPath)) {
+        return false;
+      }
+      if (message.vaultPath.length > MAX_VAULT_PATH_LENGTH) {
+        return false;
+      }
     }
   }
 

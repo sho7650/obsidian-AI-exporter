@@ -125,6 +125,11 @@ export const VALID_OUTPUT_DESTINATIONS = ['obsidian', 'file', 'clipboard'] as co
 export const VALID_SOURCES = ['gemini', 'claude', 'perplexity', 'chatgpt'] as const;
 
 /**
+ * Valid message format options for template rendering
+ */
+export const VALID_MESSAGE_FORMATS = ['callout', 'plain', 'blockquote'] as const;
+
+/**
  * Human-readable display labels for AI platforms
  */
 export const PLATFORM_LABELS: Record<string, string> = {

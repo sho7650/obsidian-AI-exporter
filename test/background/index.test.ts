@@ -803,6 +803,24 @@ describe('background/index', () => {
       });
     });
 
+    it('rejects vaultPath exceeding MAX_VAULT_PATH_LENGTH', () => {
+      const sendResponse = vi.fn();
+      capturedListener(
+        {
+          action: 'getExistingFile',
+          fileName: 'test.md',
+          vaultPath: 'a'.repeat(201),
+        },
+        validSender as chrome.runtime.MessageSender,
+        sendResponse
+      );
+
+      expect(sendResponse).toHaveBeenCalledWith({
+        success: false,
+        error: 'Invalid message content',
+      });
+    });
+
     it('handles getFile errors gracefully', async () => {
       mockClient.getFile.mockRejectedValue(new Error('Network timeout'));
 
