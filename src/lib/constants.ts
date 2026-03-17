@@ -37,6 +37,12 @@ export const MAX_TAGS_COUNT = 50;
 /** Maximum length for a single tag string (characters) */
 export const MAX_TAG_LENGTH = 100;
 
+/** Maximum length for vault path (filesystem constraint) */
+export const MAX_VAULT_PATH_LENGTH = 200;
+
+/** Minimum length for API key (security constraint) */
+export const MIN_API_KEY_LENGTH = 16;
+
 // ============================================================
 // Network Configuration
 // ============================================================

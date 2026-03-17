@@ -4,7 +4,7 @@
  */
 
 import { containsPathTraversal } from './path-utils';
-import { MIN_PORT, MAX_PORT } from './constants';
+import { MIN_PORT, MAX_PORT, MAX_VAULT_PATH_LENGTH, MIN_API_KEY_LENGTH } from './constants';
 
 /**
  * Allowed callout types
@@ -64,8 +64,8 @@ export function validateVaultPath(path: string): string {
   }
 
   // Length limit (filesystem constraint)
-  if (path.length > 200) {
-    throw new Error('Vault path is too long (max 200 characters)');
+  if (path.length > MAX_VAULT_PATH_LENGTH) {
+    throw new Error(`Vault path is too long (max ${MAX_VAULT_PATH_LENGTH} characters)`);
   }
 
   return path.trim();
@@ -132,8 +132,8 @@ export function validateApiKey(key: string): string {
   }
 
   // Minimum length check (for security)
-  if (trimmed.length < 16) {
-    throw new Error('API key is too short (minimum 16 characters for security)');
+  if (trimmed.length < MIN_API_KEY_LENGTH) {
+    throw new Error(`API key is too short (minimum ${MIN_API_KEY_LENGTH} characters for security)`);
   }
 
   return trimmed;
