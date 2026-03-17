@@ -28,9 +28,7 @@ interface ConversationMessage {
  * Create minimal Gemini conversation DOM structure
  * Replicates the Angular component structure used by Gemini
  */
-export function createGeminiConversationDOM(
-  messages: ConversationMessage[]
-): string {
+export function createGeminiConversationDOM(messages: ConversationMessage[]): string {
   const turns: string[] = [];
 
   for (let i = 0; i < messages.length; i += 2) {
@@ -44,7 +42,7 @@ export function createGeminiConversationDOM(
         <div class="query-content">
           ${userMsg.content
             .split('\n')
-            .map((line) => `<p class="query-text-line">${line}</p>`)
+            .map(line => `<p class="query-text-line">${line}</p>`)
             .join('\n          ')}
         </div>
       </user-query>
@@ -73,40 +71,6 @@ export function createGeminiConversationDOM(
       ${turns.join('\n')}
     </div>
   `;
-}
-
-/**
- * Create a single conversation turn DOM
- */
-export function createConversationTurn(
-  userContent: string,
-  assistantContent: string,
-  index = 0
-): string {
-  return createGeminiConversationDOM([
-    { role: 'user', content: userContent },
-    { role: 'assistant', content: assistantContent },
-  ]);
-}
-
-/**
- * Create conversation with code block
- */
-export function createConversationWithCode(
-  userQuery: string,
-  codeLanguage: string,
-  codeContent: string,
-  explanation = ''
-): string {
-  const codeBlock = `<pre><code class="language-${codeLanguage}">${escapeHtml(codeContent)}</code></pre>`;
-  const assistantContent = explanation
-    ? `<p>${explanation}</p>${codeBlock}`
-    : codeBlock;
-
-  return createGeminiConversationDOM([
-    { role: 'user', content: userQuery },
-    { role: 'assistant', content: assistantContent },
-  ]);
 }
 
 /**
@@ -174,7 +138,7 @@ export function resetLocation(): void {
  */
 export function setGeminiTitle(title: string): void {
   // Remove existing title elements
-  document.querySelectorAll('title, [data-test-title]').forEach((el) => el.remove());
+  document.querySelectorAll('title, [data-test-title]').forEach(el => el.remove());
 
   // Create title element
   const titleEl = document.createElement('title');
@@ -197,59 +161,6 @@ function escapeHtml(text: string): string {
   div.textContent = text;
   return div.innerHTML;
 }
-
-/**
- * Wait for DOM to update (useful for async operations)
- */
-export function waitForDom(ms = 0): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * Query element with assertion
- */
-export function queryRequired<T extends Element>(
-  selector: string,
-  parent: Element | Document = document
-): T {
-  const element = parent.querySelector<T>(selector);
-  if (!element) {
-    throw new Error(`Required element not found: ${selector}`);
-  }
-  return element;
-}
-
-/**
- * Create a minimal valid Gemini page structure
- */
-export function createMinimalGeminiPage(conversationId: string, title: string): void {
-  setGeminiLocation(conversationId);
-  setGeminiTitle(title);
-  loadFixture(`
-    <div class="app-container">
-      <div class="conversation-thread" data-conversation-id="${conversationId}">
-      </div>
-    </div>
-  `);
-}
-
-/**
- * Create a complete Gemini conversation page
- */
-export function createGeminiPage(
-  conversationId: string,
-  title: string,
-  messages: ConversationMessage[]
-): void {
-  setGeminiLocation(conversationId);
-  setGeminiTitle(title);
-  loadFixture(`
-    <div class="app-container">
-      ${createGeminiConversationDOM(messages)}
-    </div>
-  `);
-}
-
 
 /**
  * Create Deep Research パネル DOM 構造
@@ -279,7 +190,6 @@ export function createDeepResearchDOM(title: string, content: string): string {
     </deep-research-immersive-panel>
   `;
 }
-
 
 /**
  * Creates Deep Research DOM with inline citations and source list
@@ -341,10 +251,10 @@ export function createDeepResearchDOMWithLinks(
  */
 /**
  * Create inline citation element
- * 
+ *
  * Note: data-turn-source-index is 1-based (verified 2025-01-12)
  * Mapping: sources[N] -> data-turn-source-index = N + 1
- * 
+ *
  * @param arrayIndex 0-based index in sources array
  * @returns HTML string with 1-based data-turn-source-index
  */
@@ -373,7 +283,6 @@ export function createEmptyDeepResearchPanel(): string {
     </deep-research-immersive-panel>
   `;
 }
-
 
 // ========== Gemini Scroll Helpers ==========
 
@@ -407,10 +316,7 @@ export function createGeminiScrollableDOM(conversationHTML: string): string {
  * @param onScrollToTop - Callback fired when scrollTop is set to 0
  *                        (simulates onScrolledTopPastThreshold → content load)
  */
-export function mockScrollContainer(
-  scrollTop: number,
-  onScrollToTop?: () => void
-): void {
+export function mockScrollContainer(scrollTop: number, onScrollToTop?: () => void): void {
   const container = document.querySelector('infinite-scroller');
   if (!container) return;
 
@@ -440,7 +346,7 @@ export function mockScrollContainer(
 interface ClaudeConversationMessage {
   role: 'user' | 'assistant';
   content: string;
-  thinking?: string[];  // Extended Thinking chunks (assistant only)
+  thinking?: string[]; // Extended Thinking chunks (assistant only)
 }
 
 /**
@@ -676,7 +582,6 @@ function escapeHtmlForClaude(text: string): string {
   return div.innerHTML;
 }
 
-
 /**
  * Search result item for tool-use test fixtures
  */
@@ -712,16 +617,19 @@ interface ToolUseGridOptions {
  *
  * @see docs/design/DES-006-tool-use-content.md
  */
-export function createClaudeToolUseBlock(options: ToolUseGridOptions): string {
+function createClaudeToolUseBlock(options: ToolUseGridOptions): string {
   const toolStepsHtml = (options.toolSteps ?? [])
-    .map(step => `
+    .map(
+      step => `
               <div class="standard-markdown grid-cols-1 grid">
                 <p class="font-claude-response-body text-sm">${step}</p>
-              </div>`)
+              </div>`
+    )
     .join('\n');
 
   // Search query button (group/row)
-  const searchQueryHtml = options.searchQuery ? `
+  const searchQueryHtml = options.searchQuery
+    ? `
               <div class="flex flex-col shrink-0">
                 <div class="transition-colors rounded-lg duration-150">
                   <div class="flex flex-row items-center py-1">
@@ -735,22 +643,31 @@ export function createClaudeToolUseBlock(options: ToolUseGridOptions): string {
                         </div>
                       </button>
                     </div>
-                  </div>` + (options.searchResults ? `
+                  </div>` +
+      (options.searchResults
+        ? `
                   <div class="flex flex-row">
                     <div class="flex-1 min-w-0">
                       <div class="border-[0.5px] border-border-300 rounded-lg p-1 mx-2.5 mt-1 mb-2 max-h-[150px] overflow-y-auto bg-bg-000/50">
-                        <div class="flex flex-col gap-1">${options.searchResults.map(r => `
+                        <div class="flex flex-col gap-1">${options.searchResults
+                          .map(
+                            r => `
                           <div class="flex flex-row gap-3 items-center px-2 py-1.5 w-full rounded-md cursor-pointer transition-colors hover:bg-bg-200">
                             <div class="flex-shrink-0"><img alt="favicon" loading="lazy" width="12" height="12" src="" /></div>
                             <div class="w-0 flex-grow font-small text-text-300 truncate">${escapeHtmlForClaude(r.title)}</div>
                             <div class="text-xs text-text-400 shrink-0">${escapeHtmlForClaude(r.domain)}</div>
-                          </div>`).join('')}
+                          </div>`
+                          )
+                          .join('')}
                         </div>
                       </div>
                     </div>
-                  </div>` : '') + `
+                  </div>`
+        : '') +
+      `
                 </div>
-              </div>` : '';
+              </div>`
+    : '';
 
   return `
     <div data-test-render-count="2" class="group" style="height: auto;">
@@ -782,13 +699,15 @@ export function createClaudeToolUseBlock(options: ToolUseGridOptions): string {
  */
 export function createClaudePageWithToolUse(
   conversationId: string,
-  messages: Array<ClaudeConversationMessage & { toolUse?: Omit<ToolUseGridOptions, 'responseText'> }>
+  messages: Array<
+    ClaudeConversationMessage & { toolUse?: Omit<ToolUseGridOptions, 'responseText'> }
+  >
 ): void {
   setClaudeLocation(conversationId);
 
   const blocks: string[] = [];
 
-  messages.forEach((msg) => {
+  messages.forEach(msg => {
     if (msg.role === 'user') {
       blocks.push(`
         <div data-test-render-count="2" class="group" style="height: auto;">
@@ -802,10 +721,12 @@ export function createClaudePageWithToolUse(
       `);
     } else if (msg.toolUse) {
       // Assistant message with tool-use grid structure
-      blocks.push(createClaudeToolUseBlock({
-        ...msg.toolUse,
-        responseText: msg.content,
-      }));
+      blocks.push(
+        createClaudeToolUseBlock({
+          ...msg.toolUse,
+          responseText: msg.content,
+        })
+      );
     } else {
       // Normal assistant message
       blocks.push(`
@@ -906,10 +827,7 @@ export function createChatGPTConversationDOM(messages: ChatGPTConversationMessag
  */
 export function setChatGPTLocation(conversationId: string, prefix: 'c' | 'g' = 'c'): void {
   const gptSlug = 'g-abc123-test-gpt';
-  const pathname =
-    prefix === 'g'
-      ? `/g/${gptSlug}/c/${conversationId}`
-      : `/c/${conversationId}`;
+  const pathname = prefix === 'g' ? `/g/${gptSlug}/c/${conversationId}` : `/c/${conversationId}`;
   Object.defineProperty(window, 'location', {
     value: {
       hostname: 'chatgpt.com',
@@ -997,7 +915,6 @@ function escapeHtmlForChatGPT(text: string): string {
   return div.innerHTML;
 }
 
-
 // ========== Perplexity DOM Helpers ==========
 
 /**
@@ -1018,7 +935,7 @@ export function createPerplexityConversationDOM(messages: PerplexityConversation
   const blocks: string[] = [];
   let responseIndex = 0;
 
-  messages.forEach((msg) => {
+  messages.forEach(msg => {
     if (msg.role === 'user') {
       blocks.push(`
         <div class="group/query">

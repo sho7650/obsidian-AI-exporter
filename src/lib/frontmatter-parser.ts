@@ -10,7 +10,7 @@ import { escapeYamlValue } from './yaml-utils';
 /**
  * Parsed frontmatter result
  */
-export interface ParsedFrontmatter {
+interface ParsedFrontmatter {
   /** Raw frontmatter string including --- delimiters */
   raw: string;
   /** Parsed key-value pairs (tags stored as string[]) */

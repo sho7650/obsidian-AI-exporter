@@ -16,9 +16,7 @@ import type { ExtensionSettings, ObsidianNote, SaveResponse } from '../lib/types
  * Create an ObsidianApiClient if API key is configured.
  * Returns the client or an error object.
  */
-export function createObsidianClient(
-  settings: ExtensionSettings
-): ObsidianApiClient | { error: string } {
+function createObsidianClient(settings: ExtensionSettings): ObsidianApiClient | { error: string } {
   if (!settings.obsidianApiKey) {
     return { error: 'API key not configured' };
   }
@@ -34,9 +32,7 @@ export function createObsidianClient(
 /**
  * Type guard for client creation error
  */
-export function isClientError(
-  client: ObsidianApiClient | { error: string }
-): client is { error: string } {
+function isClientError(client: ObsidianApiClient | { error: string }): client is { error: string } {
   return 'error' in client;
 }
 

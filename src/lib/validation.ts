@@ -37,7 +37,7 @@ export const ALLOWED_CALLOUT_TYPES = [
   'CITE',
 ] as const;
 
-export type CalloutType = (typeof ALLOWED_CALLOUT_TYPES)[number];
+type CalloutType = (typeof ALLOWED_CALLOUT_TYPES)[number];
 
 /**
  * Validate callout type

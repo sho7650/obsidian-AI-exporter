@@ -8,7 +8,7 @@ import { DEFAULT_API_TIMEOUT } from './constants';
 /**
  * Network error type classification
  */
-export type NetworkErrorType = 'connection' | 'timeout' | 'abort' | 'unknown';
+type NetworkErrorType = 'connection' | 'timeout' | 'abort' | 'unknown';
 
 /**
  * Classify the type of network error
@@ -70,7 +70,7 @@ function createTimeoutSignal(ms: number): AbortSignal {
 /**
  * Connection test result with detailed status
  */
-export interface ConnectionTestResult {
+interface ConnectionTestResult {
   /** Server is reachable */
   reachable: boolean;
   /** API Key is valid (authentication succeeded) */

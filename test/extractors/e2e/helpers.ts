@@ -41,12 +41,12 @@ const FIXTURE_BASE_PATH = resolve(__dirname, '../../fixtures/html');
 /**
  * Fixed date for snapshot stabilization
  */
-export const FIXED_DATE = '2025-01-01T00:00:00.000Z';
+const FIXED_DATE = '2025-01-01T00:00:00.000Z';
 
 /**
  * E2E pipeline execution result
  */
-export interface E2EPipelineResult {
+interface E2EPipelineResult {
   /** Extraction success flag */
   success: boolean;
   /** Extracted data (only on success) */
@@ -62,7 +62,7 @@ export interface E2EPipelineResult {
 /**
  * Successful E2EPipelineResult (for Type Guard)
  */
-export interface E2EPipelineSuccessResult extends E2EPipelineResult {
+interface E2EPipelineSuccessResult extends E2EPipelineResult {
   success: true;
   conversationData: ConversationData;
   obsidianNote: ObsidianNote;
@@ -72,7 +72,7 @@ export interface E2EPipelineSuccessResult extends E2EPipelineResult {
 /**
  * Message structure validation options
  */
-export interface MessageStructureOptions {
+interface MessageStructureOptions {
   /** Minimum message count */
   minCount: number;
   /** Require user message (default: true) */
@@ -84,7 +84,7 @@ export interface MessageStructureOptions {
 /**
  * Frontmatter validation options
  */
-export interface FrontmatterValidationOptions {
+interface FrontmatterValidationOptions {
   /** Whether this is Deep Research format */
   isDeepResearch?: boolean;
 }
@@ -92,7 +92,7 @@ export interface FrontmatterValidationOptions {
 /**
  * Default E2E test settings
  */
-export const DEFAULT_E2E_SETTINGS: ExtensionSettings = {
+const DEFAULT_E2E_SETTINGS: ExtensionSettings = {
   obsidianApiKey: 'test-api-key',
   obsidianUrl: 'http://127.0.0.1:27123',
   vaultPath: 'AI Conversations',
@@ -122,7 +122,7 @@ export const DEFAULT_E2E_SETTINGS: ExtensionSettings = {
  * @returns Loaded HTML string
  * @throws Error if fixture file does not exist
  */
-export function loadFixtureFile(
+function loadFixtureFile(
   platform: 'gemini' | 'claude' | 'chatgpt' | 'perplexity',
   fixtureName: string
 ): string {
@@ -146,7 +146,7 @@ export function loadFixtureFile(
 /**
  * Set window.location for platform
  */
-export function setLocationForPlatform(
+function setLocationForPlatform(
   platform: 'gemini' | 'claude' | 'chatgpt' | 'perplexity',
   conversationId: string
 ): void {

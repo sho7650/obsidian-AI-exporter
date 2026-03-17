@@ -14,7 +14,7 @@ import { generateNoteContent } from './note-generator';
 /**
  * Result of file lookup for append mode
  */
-export interface FileLookupResult {
+interface FileLookupResult {
   found: boolean;
   path: string;
   content: string;
@@ -24,7 +24,7 @@ export interface FileLookupResult {
 /**
  * Result of building appended content
  */
-export interface AppendResult {
+interface AppendResult {
   /** Rebuilt file content (frontmatter + existing body + new messages) */
   content: string;
   /** Number of new messages appended */

@@ -107,7 +107,7 @@ export function validateMessageContent(message: ExtensionMessage): boolean {
 /**
  * Validate note data structure
  */
-export function validateNoteData(note: ObsidianNote): boolean {
+function validateNoteData(note: ObsidianNote): boolean {
   // Required field validation
   if (typeof note.fileName !== 'string' || typeof note.body !== 'string') {
     return false;
