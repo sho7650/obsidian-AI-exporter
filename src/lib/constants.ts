@@ -44,9 +44,6 @@ export const MAX_TAG_LENGTH = 100;
 /** Default Obsidian Local REST API URL */
 export const DEFAULT_OBSIDIAN_URL = 'http://127.0.0.1:27123';
 
-/** Default Obsidian Local REST API port (legacy, used for migration) */
-export const DEFAULT_OBSIDIAN_PORT = 27123;
-
 /** Minimum valid port number */
 export const MIN_PORT = 1024;
 
