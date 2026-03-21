@@ -29,7 +29,7 @@ Log in to the AI service and create or select a test conversation.
 3. Select the conversation container element
    - **Gemini**: `.conversation-thread` or `deep-research-immersive-panel`
    - **Claude**: `.conversation-thread` or `#markdown-artifact`
-   - **ChatGPT**: `article[data-testid^="conversation-turn"]` parent element
+   - **ChatGPT**: `section[data-testid^="conversation-turn"]` parent element (legacy: `article`)
 4. Right-click → Copy → Copy outerHTML
 
 ### 3. Save File

@@ -116,10 +116,12 @@ describe('ChatGPTExtractor', () => {
         writable: true,
         configurable: true,
       });
-      loadFixture(createChatGPTConversationDOM([
-        { role: 'user', content: 'Hello' },
-        { role: 'assistant', content: '<p>Hi!</p>' },
-      ]));
+      loadFixture(
+        createChatGPTConversationDOM([
+          { role: 'user', content: 'Hello' },
+          { role: 'assistant', content: '<p>Hi!</p>' },
+        ])
+      );
       const result = await extractor.extract();
       expect(result.success).toBe(true);
       expect(result.data?.id).toMatch(/^chatgpt-\d+$/);
@@ -219,16 +221,16 @@ describe('ChatGPTExtractor', () => {
     it('uses data-message-author-role for role identification', async () => {
       setChatGPTLocation('test-123');
       loadFixture(`
-        <article data-turn-id="turn-1">
+        <section data-turn-id="turn-1">
           <div data-message-author-role="user">
             <div class="whitespace-pre-wrap">User message</div>
           </div>
-        </article>
-        <article data-turn-id="turn-2">
+        </section>
+        <section data-turn-id="turn-2">
           <div data-message-author-role="assistant">
             <div class="markdown prose">Assistant message</div>
           </div>
-        </article>
+        </section>
       `);
       const messages = extractor.extractMessages();
       expect(messages.length).toBe(2);
@@ -242,19 +244,19 @@ describe('ChatGPTExtractor', () => {
     it('extracts inline citations from webpage-citation-pill', async () => {
       setChatGPTLocation('test-123');
       loadFixture(`
-        <article data-turn-id="turn-1" data-turn="user">
+        <section data-turn-id="turn-1" data-turn="user">
           <div data-message-author-role="user">
             <div class="whitespace-pre-wrap">What is example.com?</div>
           </div>
-        </article>
-        <article data-turn-id="turn-2" data-turn="assistant">
+        </section>
+        <section data-turn-id="turn-2" data-turn="assistant">
           <div data-message-author-role="assistant">
             <div class="markdown prose">
               <p>Here's info about the site</p>
               ${createChatGPTInlineCitation('https://example.com', 'example.com')}
             </div>
           </div>
-        </article>
+        </section>
       `);
       const result = await extractor.extract();
       expect(result.success).toBe(true);
@@ -264,18 +266,18 @@ describe('ChatGPTExtractor', () => {
     it('removes utm_source parameter from URLs', async () => {
       setChatGPTLocation('test-123');
       loadFixture(`
-        <article data-turn-id="turn-1" data-turn="user">
+        <section data-turn-id="turn-1" data-turn="user">
           <div data-message-author-role="user">
             <div class="whitespace-pre-wrap">Test</div>
           </div>
-        </article>
-        <article data-turn-id="turn-2" data-turn="assistant">
+        </section>
+        <section data-turn-id="turn-2" data-turn="assistant">
           <div data-message-author-role="assistant">
             <div class="markdown prose">
               <p>Link: <a href="https://example.com?utm_source=chatgpt.com">Example</a></p>
             </div>
           </div>
-        </article>
+        </section>
       `);
       const result = await extractor.extract();
       expect(result.success).toBe(true);
@@ -296,19 +298,19 @@ describe('ChatGPTExtractor', () => {
     it('handles multiple citations in single message', async () => {
       setChatGPTLocation('test-123');
       loadFixture(`
-        <article data-turn-id="turn-1" data-turn="user">
+        <section data-turn-id="turn-1" data-turn="user">
           <div data-message-author-role="user">
             <div class="whitespace-pre-wrap">Compare sites</div>
           </div>
-        </article>
-        <article data-turn-id="turn-2" data-turn="assistant">
+        </section>
+        <section data-turn-id="turn-2" data-turn="assistant">
           <div data-message-author-role="assistant">
             <div class="markdown prose">
               <p>Site 1: ${createChatGPTInlineCitation('https://site1.com', 'Site 1')}</p>
               <p>Site 2: ${createChatGPTInlineCitation('https://site2.com', 'Site 2')}</p>
             </div>
           </div>
-        </article>
+        </section>
       `);
       const result = await extractor.extract();
       expect(result.success).toBe(true);
@@ -317,19 +319,19 @@ describe('ChatGPTExtractor', () => {
 
   // ========== 6.3.7 Fallback Selectors (5 tests) ==========
   describe('Fallback Selectors', () => {
-    it('conversationTurn primary selector (article[data-turn-id])', async () => {
+    it('conversationTurn primary selector (section[data-turn-id])', async () => {
       setChatGPTLocation('test-123');
       loadFixture(`
-        <article data-turn-id="turn-1" data-turn="user">
+        <section data-turn-id="turn-1" data-turn="user">
           <div data-message-author-role="user">
             <div class="whitespace-pre-wrap">User message</div>
           </div>
-        </article>
-        <article data-turn-id="turn-2" data-turn="assistant">
+        </section>
+        <section data-turn-id="turn-2" data-turn="assistant">
           <div data-message-author-role="assistant">
             <div class="markdown prose">Response</div>
           </div>
-        </article>
+        </section>
       `);
       const result = await extractor.extract();
       expect(result.success).toBe(true);
@@ -339,29 +341,48 @@ describe('ChatGPTExtractor', () => {
     it('conversationTurn secondary selector ([data-testid])', async () => {
       setChatGPTLocation('test-123');
       loadFixture(`
-        <article data-testid="conversation-turn-1" data-turn="user">
+        <section data-testid="conversation-turn-1" data-turn="user">
           <div data-message-author-role="user">
             <div class="whitespace-pre-wrap">User message</div>
           </div>
-        </article>
-        <article data-testid="conversation-turn-2" data-turn="assistant">
+        </section>
+        <section data-testid="conversation-turn-2" data-turn="assistant">
           <div data-message-author-role="assistant">
             <div class="markdown prose">Response</div>
           </div>
-        </article>
+        </section>
       `);
       const messages = extractor.extractMessages();
       expect(messages.length).toBe(2);
     });
 
+    it('conversationTurn legacy fallback (article[data-turn-id])', async () => {
+      setChatGPTLocation('test-123');
+      loadFixture(`
+        <article data-turn-id="turn-1" data-turn="user">
+          <div data-message-author-role="user">
+            <div class="whitespace-pre-wrap">Legacy user message</div>
+          </div>
+        </article>
+        <article data-turn-id="turn-2" data-turn="assistant">
+          <div data-message-author-role="assistant">
+            <div class="markdown prose">Legacy response</div>
+          </div>
+        </article>
+      `);
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      expect(result.data?.messages.length).toBe(2);
+    });
+
     it('userMessage primary selector ([data-message-author-role])', async () => {
       setChatGPTLocation('test-123');
       loadFixture(`
-        <article data-turn-id="turn-1">
+        <section data-turn-id="turn-1">
           <div data-message-author-role="user">
             <div class="whitespace-pre-wrap">User content</div>
           </div>
-        </article>
+        </section>
       `);
       const messages = extractor.extractMessages();
       expect(messages.length).toBeGreaterThan(0);
@@ -371,11 +392,11 @@ describe('ChatGPTExtractor', () => {
     it('assistantResponse primary selector', async () => {
       setChatGPTLocation('test-123');
       loadFixture(`
-        <article data-turn-id="turn-1" data-turn="assistant">
+        <section data-turn-id="turn-1" data-turn="assistant">
           <div data-message-author-role="assistant">
             <div class="markdown prose">Assistant response</div>
           </div>
-        </article>
+        </section>
       `);
       const messages = extractor.extractMessages();
       expect(messages.length).toBeGreaterThan(0);
@@ -385,11 +406,11 @@ describe('ChatGPTExtractor', () => {
     it('markdownContent fallback chain', async () => {
       setChatGPTLocation('test-123');
       loadFixture(`
-        <article data-turn-id="turn-1" data-turn="assistant">
+        <section data-turn-id="turn-1" data-turn="assistant">
           <div data-message-author-role="assistant">
             <div class="markdown-new-styling">Alternative markdown content</div>
           </div>
-        </article>
+        </section>
       `);
       const messages = extractor.extractMessages();
       // Should still extract even with alternative selector
@@ -478,10 +499,14 @@ describe('ChatGPTExtractor', () => {
     it('handles /g/{gptSlug}/c/{uuid} URL for custom GPT mode', async () => {
       // Use a valid hex UUID format that matches the extractor's regex
       const gptModeId = 'abcd1234-5678-90ab-cdef-1234567890ab';
-      createChatGPTPage(gptModeId, [
-        { role: 'user', content: 'GPT mode test' },
-        { role: 'assistant', content: '<p>Response from custom GPT</p>' },
-      ], 'g');
+      createChatGPTPage(
+        gptModeId,
+        [
+          { role: 'user', content: 'GPT mode test' },
+          { role: 'assistant', content: '<p>Response from custom GPT</p>' },
+        ],
+        'g'
+      );
       // Verify the ID extraction works with /g/{slug}/c/{uuid} path
       expect(extractor.getConversationId()).toBe(gptModeId);
       const result = await extractor.extract();
@@ -492,11 +517,11 @@ describe('ChatGPTExtractor', () => {
     it('warns when only user messages found', async () => {
       setChatGPTLocation('test-123');
       loadFixture(`
-        <article data-turn-id="turn-1" data-turn="user">
+        <section data-turn-id="turn-1" data-turn="user">
           <div data-message-author-role="user">
             <div class="whitespace-pre-wrap">User only</div>
           </div>
-        </article>
+        </section>
       `);
       const result = await extractor.extract();
       expect(result.success).toBe(true);
@@ -506,11 +531,11 @@ describe('ChatGPTExtractor', () => {
     it('warns when only assistant messages found', async () => {
       setChatGPTLocation('test-123');
       loadFixture(`
-        <article data-turn-id="turn-1" data-turn="assistant">
+        <section data-turn-id="turn-1" data-turn="assistant">
           <div data-message-author-role="assistant">
             <div class="markdown prose">Assistant only</div>
           </div>
-        </article>
+        </section>
       `);
       const result = await extractor.extract();
       expect(result.success).toBe(true);
@@ -534,7 +559,7 @@ describe('ChatGPTExtractor', () => {
       // Covers: chatgpt.ts lines 291-297 (catch block, Error instance)
       setChatGPTLocation('test-123');
       const originalQSA = document.querySelectorAll.bind(document);
-      vi.spyOn(document, 'querySelectorAll').mockImplementation((selector) => {
+      vi.spyOn(document, 'querySelectorAll').mockImplementation(selector => {
         if (selector.includes('data-turn-id')) {
           throw new Error('DOM access failed');
         }
@@ -552,7 +577,7 @@ describe('ChatGPTExtractor', () => {
       // Covers: chatgpt.ts line 295 (error instanceof Error === false)
       setChatGPTLocation('test-123');
       const originalQSA = document.querySelectorAll.bind(document);
-      vi.spyOn(document, 'querySelectorAll').mockImplementation((selector) => {
+      vi.spyOn(document, 'querySelectorAll').mockImplementation(selector => {
         if (selector.includes('data-turn-id')) {
           throw 'string error'; // non-Error object
         }
@@ -578,9 +603,7 @@ describe('ChatGPTExtractor', () => {
       const messages = extractor.extractMessages();
 
       expect(messages).toHaveLength(0);
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('No conversation turns found')
-      );
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('No conversation turns found'));
       warnSpy.mockRestore();
     });
 
@@ -589,11 +612,11 @@ describe('ChatGPTExtractor', () => {
       setChatGPTLocation('test-123');
       loadFixture(`
         <div class="flex flex-col text-sm pb-25">
-          <article data-turn-id="turn-1" data-testid="conversation-turn-1" data-turn="user">
+          <section data-turn-id="turn-1" data-testid="conversation-turn-1" data-turn="user">
             <div>
               <div class="whitespace-pre-wrap">Fallback user content</div>
             </div>
-          </article>
+          </section>
         </div>
       `);
 
@@ -609,13 +632,13 @@ describe('ChatGPTExtractor', () => {
       setChatGPTLocation('test-123');
       loadFixture(`
         <div class="flex flex-col text-sm pb-25">
-          <article data-turn-id="turn-1" data-testid="conversation-turn-1" data-turn="assistant">
+          <section data-turn-id="turn-1" data-testid="conversation-turn-1" data-turn="assistant">
             <div data-message-author-role="assistant" data-message-id="msg-1">
               <div class="markdown prose dark:prose-invert">
                 <p>Fallback assistant content</p>
               </div>
             </div>
-          </article>
+          </section>
         </div>
       `);
 
@@ -633,16 +656,16 @@ describe('ChatGPTExtractor', () => {
       // Covers: chatgpt.ts line 183 (return '')
       setChatGPTLocation('test-123');
       loadFixture(`
-        <article data-turn-id="turn-1" data-turn="user">
+        <section data-turn-id="turn-1" data-turn="user">
           <div data-message-author-role="user">
             <div class="some-other-class">No whitespace-pre-wrap here</div>
           </div>
-        </article>
-        <article data-turn-id="turn-2" data-turn="assistant">
+        </section>
+        <section data-turn-id="turn-2" data-turn="assistant">
           <div data-message-author-role="assistant">
             <div class="markdown prose">Assistant response</div>
           </div>
-        </article>
+        </section>
       `);
       const messages = extractor.extractMessages();
       // User turn should be skipped (empty content), only assistant remains
@@ -654,16 +677,16 @@ describe('ChatGPTExtractor', () => {
       // Covers: chatgpt.ts lines 203-210, 212 (assistantResponse fallback + return '')
       setChatGPTLocation('test-123');
       loadFixture(`
-        <article data-turn-id="turn-1" data-turn="user">
+        <section data-turn-id="turn-1" data-turn="user">
           <div data-message-author-role="user">
             <div class="whitespace-pre-wrap">Test question</div>
           </div>
-        </article>
-        <article data-turn-id="turn-2" data-turn="assistant">
+        </section>
+        <section data-turn-id="turn-2" data-turn="assistant">
           <div data-message-author-role="assistant">
             <div class="no-markdown-class">No matching selectors</div>
           </div>
-        </article>
+        </section>
       `);
 
       const spy = vi.spyOn(extractor, 'queryWithFallback');
@@ -687,25 +710,26 @@ describe('ChatGPTExtractor', () => {
       // to return a string with literal & to exercise the regex callback
       setChatGPTLocation('test-123');
       loadFixture(`
-        <article data-turn-id="turn-1" data-turn="user">
+        <section data-turn-id="turn-1" data-turn="user">
           <div data-message-author-role="user">
             <div class="whitespace-pre-wrap">Test</div>
           </div>
-        </article>
-        <article data-turn-id="turn-2" data-turn="assistant">
+        </section>
+        <section data-turn-id="turn-2" data-turn="assistant">
           <div data-message-author-role="assistant">
             <div class="markdown prose">
               <p>Link: <a href="https://example.com?foo=bar">Example</a></p>
             </div>
           </div>
-        </article>
+        </section>
       `);
 
       // Override innerHTML to bypass DOM &amp; encoding
       const markdownEl = document.querySelector('.markdown.prose');
       if (markdownEl) {
         Object.defineProperty(markdownEl, 'innerHTML', {
-          get: () => '<p>Link: <a href="https://example.com?foo=bar&utm_source=chatgpt.com">Example</a></p>',
+          get: () =>
+            '<p>Link: <a href="https://example.com?foo=bar&utm_source=chatgpt.com">Example</a></p>',
           configurable: true,
         });
       }

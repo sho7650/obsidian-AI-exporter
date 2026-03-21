@@ -93,7 +93,7 @@ abstract readonly platform: 'gemini' | 'claude' | 'perplexity' | 'chatgpt';
 ### Task 2.5: extractMessages() を実装
 
 **仕様**: DES-003 Section 5.6.4
-- `article[data-turn-id]` でターン取得
+- `section[data-turn-id]` でターン取得（`article[data-turn-id]` はレガシーフォールバック）
 - `data-turn` 属性で role 判別
 - DOM 順序でソート
 
@@ -136,13 +136,13 @@ import { ChatGPTExtractor } from './extractors/chatgpt';
 **変更箇所**: L63, L73
 ```typescript
 const existing = document.querySelector(
-  '.conversation-container, [class*="conversation"], article[data-turn-id]'
+  '.conversation-container, [class*="conversation"], section[data-turn-id], article[data-turn-id]'
 );
 ```
 
 ```typescript
 const container = document.querySelector(
-  '.conversation-container, [class*="conversation"], article[data-turn-id]'
+  '.conversation-container, [class*="conversation"], section[data-turn-id], article[data-turn-id]'
 );
 ```
 

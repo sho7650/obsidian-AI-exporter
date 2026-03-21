@@ -19,22 +19,27 @@ import type { ConversationMessage } from '../../lib/types';
  */
 const SELECTORS = {
   // Conversation turn (each Q&A pair)
+  // ChatGPT changed from <article> to <section> in 2026-03
   conversationTurn: [
-    'article[data-turn-id]', // data attribute (HIGH)
-    'article[data-testid^="conversation-turn"]', // test attribute (LOW)
+    'section[data-turn-id]', // Current structure (HIGH)
+    'section[data-testid^="conversation-turn"]', // Current test attr (MEDIUM)
+    'article[data-turn-id]', // Legacy fallback (LOW)
+    'article[data-testid^="conversation-turn"]', // Legacy fallback (LOW)
   ],
 
   // User message
   userMessage: [
     '[data-message-author-role="user"] .whitespace-pre-wrap', // Structure (HIGH)
-    'article[data-turn="user"] .whitespace-pre-wrap', // Structure (HIGH)
+    'section[data-turn="user"] .whitespace-pre-wrap', // Current structure (HIGH)
+    'article[data-turn="user"] .whitespace-pre-wrap', // Legacy fallback (LOW)
     '.user-message-bubble-color .whitespace-pre-wrap', // Style (MEDIUM)
   ],
 
   // Assistant message
   assistantResponse: [
     '[data-message-author-role="assistant"] .markdown.prose', // Structure (HIGH)
-    'article[data-turn="assistant"] .markdown.prose', // Structure (HIGH)
+    'section[data-turn="assistant"] .markdown.prose', // Current structure (HIGH)
+    'article[data-turn="assistant"] .markdown.prose', // Legacy fallback (LOW)
     '.markdown.prose.dark\\:prose-invert', // Style (MEDIUM)
   ],
 
@@ -103,7 +108,7 @@ export class ChatGPTExtractor extends BaseExtractor {
   /**
    * Extract all messages from conversation
    *
-   * Uses article[data-turn-id] to find conversation turns,
+   * Uses section[data-turn-id] to find conversation turns (with article fallback),
    * then extracts User/Assistant messages in DOM order
    * @see FR-002 in design document
    */

@@ -776,7 +776,7 @@ export function createChatGPTConversationDOM(messages: ChatGPTConversationMessag
 
     if (msg.role === 'user') {
       turns.push(`
-        <article
+        <section
           data-turn-id="${turnId}"
           data-testid="conversation-turn-${index + 1}"
           data-turn="user"
@@ -787,11 +787,11 @@ export function createChatGPTConversationDOM(messages: ChatGPTConversationMessag
               ${escapeHtmlForChatGPT(msg.content)}
             </div>
           </div>
-        </article>
+        </section>
       `);
     } else {
       turns.push(`
-        <article
+        <section
           data-turn-id="${turnId}"
           data-testid="conversation-turn-${index + 1}"
           data-turn="assistant"
@@ -803,7 +803,7 @@ export function createChatGPTConversationDOM(messages: ChatGPTConversationMessag
               ${msg.content}
             </div>
           </div>
-        </article>
+        </section>
       `);
     }
   });

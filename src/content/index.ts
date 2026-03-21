@@ -46,7 +46,7 @@ const PLATFORM_ROOT_SELECTORS: Record<string, string[]> = {
 
 /** Conversation container selectors to detect when content is ready */
 const CONVERSATION_CONTAINER_SELECTOR =
-  '.conversation-container, [class*="conversation"], article[data-turn-id], div[class*="threadContentWidth"]';
+  '.conversation-container, [class*="conversation"], section[data-turn-id], article[data-turn-id], div[class*="threadContentWidth"]';
 
 /**
  * Get the optimal observation root for the current platform

@@ -29,7 +29,7 @@
 3. 会話コンテナ要素を選択
    - **Gemini**: `.conversation-thread` または `deep-research-immersive-panel`
    - **Claude**: `.conversation-thread` または `#markdown-artifact`
-   - **ChatGPT**: `article[data-testid^="conversation-turn"]` の親要素
+   - **ChatGPT**: `section[data-testid^="conversation-turn"]` の親要素（レガシー: `article`）
 4. 右クリック → Copy → Copy outerHTML
 
 ### 3. ファイル保存
