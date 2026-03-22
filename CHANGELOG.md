@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.16.2...v0.17.0) (2026-03-22)
+
+
+### Features
+
+* add live selector validation with Playwright smoke tests ([#154](https://github.com/sho7650/obsidian-AI-exporter/issues/154)) ([28363c0](https://github.com/sho7650/obsidian-AI-exporter/commit/28363c0ada68b94ab80e3f1154fc1d24b6c8e1b0))
+
 ## [0.16.2](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.16.1...v0.16.2) (2026-03-21)
 
 
