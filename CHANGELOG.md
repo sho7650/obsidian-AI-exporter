@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.2](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.17.1...v0.17.2) (2026-03-22)
+
+
+### Bug Fixes
+
+* replace broken globalTeardown with custom Playwright reporter ([#151](https://github.com/sho7650/obsidian-AI-exporter/issues/151)) ([#158](https://github.com/sho7650/obsidian-AI-exporter/issues/158)) ([4b38148](https://github.com/sho7650/obsidian-AI-exporter/commit/4b38148a87853907de49293bfa3ca7d73f93c6e5))
+
 ## [0.17.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.17.0...v0.17.1) (2026-03-22)
 
 
