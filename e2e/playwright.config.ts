@@ -9,6 +9,9 @@ export default defineConfig({
   timeout: 90_000,
   retries: 0,
   workers: 1,
-  reporter: [['list'], ['json', { outputFile: path.join(RESULTS_DIR, 'report.json') }]],
-  globalTeardown: './selectors/global-teardown.ts',
+  reporter: [
+    ['list'],
+    ['json', { outputFile: path.join(RESULTS_DIR, 'report.json') }],
+    ['./selectors/obsidian-reporter.ts'],
+  ],
 });

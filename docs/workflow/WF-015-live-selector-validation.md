@@ -403,7 +403,7 @@ launchctl load ~/Library/LaunchAgents/com.g2o.selector-check.plist
 | Bot 検知 (headless) | 中 (特に Google) | `--headed` フォールバックで確認。plist を headed に変更可 |
 | セッション期限切れ | 高 (1-2 週間) | AUTH_EXPIRED 検知 → Obsidian 通知 → `e2e:auth` 再実行 |
 | テスト URL の会話削除 | 低 | 検証用会話をブックマーク/ピン留め |
-| Obsidian REST API 未起動 | 中 | `global-teardown.ts` でエラーハンドリング + コンソールログ出力 |
+| Obsidian REST API 未起動 | 中 | `obsidian-reporter.ts` でエラーハンドリング + コンソールログ出力 |
 | `as const satisfies` の既存コード影響 | 低 | Phase 1 の build + test で検証 |
 
 ---
@@ -450,6 +450,6 @@ launchctl load ~/Library/LaunchAgents/com.g2o.selector-check.plist
 
 | ID | 課題 | 優先度 |
 |----|------|--------|
-| OPEN-01 | `globalTeardown` で `report.json` が読めない (Playwright が teardown 後に出力) | MEDIUM |
-| OPEN-02 | launchd plist 未作成 (Phase 5.4) | LOW |
+| ~~OPEN-01~~ | ~~`globalTeardown` で `report.json` が読めない~~ | **RESOLVED** (ADR-006: Custom Reporter) |
+| OPEN-02 | launchd plist 未作成 (Phase 5.4) | LOW (OPEN-01 解決済みのため着手可能) |
 | OPEN-03 | headed モードのディスプレイ依存 | LOW |

@@ -5,7 +5,8 @@
  * when WARN, FAIL, or AUTH_EXPIRED conditions are detected.
  */
 
-import type { ClassificationResult } from './classifier';
+import type { ClassificationResult, WarnDetail, SelectorResult } from './classifier';
+import type { BaselineComparison } from './baseline';
 import type { AuthStatus } from './auth-check';
 
 export interface NotificationConfig {
@@ -32,10 +33,10 @@ export interface ValidationReport {
  */
 export async function notifyObsidian(
   report: ValidationReport,
-  config: NotificationConfig,
+  config: NotificationConfig
 ): Promise<void> {
   if (report.overallStatus === 'pass') {
-    console.log('[globalTeardown] All selectors passed. No notification needed.');
+    console.log('[ObsidianReporter] All selectors passed. No notification needed.');
     return;
   }
 
@@ -45,25 +46,26 @@ export async function notifyObsidian(
   const notePath = `${config.vaultPath}/${fileName}`;
 
   try {
-    const response = await fetch(
-      `${config.obsidianUrl}/vault/${encodeURIComponent(notePath)}`,
-      {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'text/markdown',
-          Authorization: `Bearer ${config.obsidianApiKey}`,
-        },
-        body: markdown,
+    const response = await fetch(`${config.obsidianUrl}/vault/${encodeURIComponent(notePath)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'text/markdown',
+        Authorization: `Bearer ${config.obsidianApiKey}`,
       },
-    );
+      body: markdown,
+    });
 
     if (!response.ok) {
-      console.error(`[globalTeardown] Obsidian notification failed: ${response.status} ${response.statusText}`);
+      console.error(
+        `[ObsidianReporter] Obsidian notification failed: ${response.status} ${response.statusText}`
+      );
     } else {
-      console.log(`[globalTeardown] Obsidian notification sent: ${notePath}`);
+      console.log(`[ObsidianReporter] Obsidian notification sent: ${notePath}`);
     }
   } catch (error) {
-    console.error(`[globalTeardown] Obsidian notification error: ${error instanceof Error ? error.message : error}`);
+    console.error(
+      `[ObsidianReporter] Obsidian notification error: ${error instanceof Error ? error.message : error}`
+    );
   }
 }
 
@@ -93,7 +95,7 @@ function generateMarkdown(report: ValidationReport): string {
     } else {
       const c = p.classification;
       lines.push(
-        `| ${p.platform} | ✅ | ${c.pass.length} | ${c.warn.length} | ${c.fail.length} | ${c.baselineIssues.length} |`,
+        `| ${p.platform} | ✅ | ${c.pass.length} | ${c.warn.length} | ${c.fail.length} | ${c.baselineIssues.length} |`
       );
     }
   }
@@ -102,7 +104,9 @@ function generateMarkdown(report: ValidationReport): string {
 
   for (const p of report.platforms) {
     if (p.authStatus !== 'authenticated') {
-      lines.push(`## ${p.platform} — ${p.authStatus === 'auth_expired' ? '🔑 Authentication Expired' : '🔌 Unreachable'}`);
+      lines.push(
+        `## ${p.platform} — ${p.authStatus === 'auth_expired' ? '🔑 Authentication Expired' : '🔌 Unreachable'}`
+      );
       lines.push('');
       lines.push('Run `npm run e2e:auth` to re-authenticate.');
       lines.push('');
@@ -120,12 +124,18 @@ function generateMarkdown(report: ValidationReport): string {
     if (c.warn.length > 0) {
       lines.push('### ⚠️ Warnings (primary failed, fallback OK)');
       lines.push('');
-      lines.push('| Name | Failed Primary | Working Fallback | Fallback Matches |');
-      lines.push('|------|----------------|------------------|------------------|');
-      for (const w of c.warn) {
-        lines.push(
-          `| ${w.failedPrimary.group}:${w.failedPrimary.name} | \`${w.failedPrimary.selector}\` | \`${w.workingFallback.selector}\` | ${w.workingFallback.matchCount} |`,
-        );
+      // Filter real WarnDetail objects (reporter uses null placeholders for count-only data)
+      const detailedWarns = c.warn.filter((w): w is WarnDetail => w != null);
+      if (detailedWarns.length > 0) {
+        lines.push('| Name | Failed Primary | Working Fallback | Fallback Matches |');
+        lines.push('|------|----------------|------------------|------------------|');
+        for (const w of detailedWarns) {
+          lines.push(
+            `| ${w.failedPrimary.group}:${w.failedPrimary.name} | \`${w.failedPrimary.selector}\` | \`${w.workingFallback.selector}\` | ${w.workingFallback.matchCount} |`
+          );
+        }
+      } else {
+        lines.push(`${c.warn.length} selector(s) with primary failure but working fallback.`);
       }
       lines.push('');
     }
@@ -133,10 +143,15 @@ function generateMarkdown(report: ValidationReport): string {
     if (c.fail.length > 0) {
       lines.push('### ❌ Failures (all selectors broken)');
       lines.push('');
-      lines.push('| Name | Primary Selector |');
-      lines.push('|------|------------------|');
-      for (const f of c.fail) {
-        lines.push(`| ${f.group}:${f.name} | \`${f.selector}\` |`);
+      const detailedFails = c.fail.filter((f): f is SelectorResult => f != null);
+      if (detailedFails.length > 0) {
+        lines.push('| Name | Primary Selector |');
+        lines.push('|------|------------------|');
+        for (const f of detailedFails) {
+          lines.push(`| ${f.group}:${f.name} | \`${f.selector}\` |`);
+        }
+      } else {
+        lines.push(`${c.fail.length} selector(s) with all variants broken.`);
       }
       lines.push('');
     }
@@ -144,10 +159,15 @@ function generateMarkdown(report: ValidationReport): string {
     if (c.baselineIssues.length > 0) {
       lines.push('### 📉 Baseline Degradation');
       lines.push('');
-      lines.push('| Selector | Baseline | Current | Status |');
-      lines.push('|----------|----------|---------|--------|');
-      for (const b of c.baselineIssues) {
-        lines.push(`| ${b.name} | ${b.baselineCount} | ${b.currentCount} | ${b.status} |`);
+      const detailedBaseline = c.baselineIssues.filter((b): b is BaselineComparison => b != null);
+      if (detailedBaseline.length > 0) {
+        lines.push('| Selector | Baseline | Current | Status |');
+        lines.push('|----------|----------|---------|--------|');
+        for (const b of detailedBaseline) {
+          lines.push(`| ${b.name} | ${b.baselineCount} | ${b.currentCount} | ${b.status} |`);
+        }
+      } else {
+        lines.push(`${c.baselineIssues.length} selector(s) with baseline degradation.`);
       }
       lines.push('');
     }

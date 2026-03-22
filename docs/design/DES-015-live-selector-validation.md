@@ -181,7 +181,8 @@ e2e/
 │   └── profiles/              # gitignored: 認証済みプロファイル保存先
 ├── selectors/
 │   ├── smoke-test.spec.ts     # セレクタ検証テスト (プラットフォームごとに独立)
-│   ├── global-teardown.ts     # テスト完了後の結果集約 + 通知
+│   ├── obsidian-reporter.ts   # Custom Reporter: 結果集約 + Obsidian 通知 (ADR-006)
+│   ├── report-builder.ts      # ValidationReport 構築の純粋関数
 │   ├── auth-check.ts          # 認証状態プリフライトチェック
 │   ├── baseline.ts            # ベースライン管理
 │   ├── classifier.ts          # 結果分類ロジック
@@ -918,17 +919,21 @@ async function globalTeardown(): Promise<void> {
 export default globalTeardown;
 ```
 
-**パイプライン概要**:
+**パイプライン概要** (ADR-006 で改訂: globalTeardown → Custom Reporter):
 
 ```
-テスト実行完了
+テスト実行中
   ↓
-Playwright が e2e/results/report.json を出力
+ObsidianReporter.onTestEnd() が各テスト完了時に呼ばれる
+  ├─ test.parent.title からプラットフォーム名を抽出
+  ├─ result.annotations からカウントを取得
+  └─ プラットフォームマップに蓄積
   ↓
-globalTeardown が起動
-  ├─ report.json を読み取り
-  ├─ タイムスタンプ付きコピーを保存 (report-YYYY-MM-DD.json)
-  ├─ プラットフォームごとのアノテーションを集約 → ValidationReport 構築
+全テスト完了
+  ↓
+ObsidianReporter.onEnd() が呼ばれる
+  ├─ 蓄積データから ValidationReport を構築
+  ├─ タイムスタンプ付き JSON を保存 (report-YYYY-MM-DD.json)
   ├─ overallStatus 判定 (fail > auth_expired > warn > pass)
   └─ notifyObsidian() で Obsidian にノート作成 (pass 以外の場合)
 ```
@@ -1526,6 +1531,6 @@ Phase 5: スケジュール実行
 
 | ID | 課題 | 優先度 | 対応方針 |
 |----|------|--------|---------|
-| **OPEN-01** | `globalTeardown` で `report.json` が読めない | MEDIUM | Playwright は JSON レポートを globalTeardown **後** に書き出すため、teardown 時点ではファイルが存在しない。reporter アーキテクチャの見直しが必要 (custom reporter または post-test script) |
-| **OPEN-02** | launchd plist 未作成 | LOW | 手動実行 (`npm run e2e:selectors`) で機能確認済み。日次自動化は OPEN-01 解決後 |
+| ~~OPEN-01~~ | ~~`globalTeardown` で `report.json` が読めない~~ | **RESOLVED** | Custom Playwright Reporter (`obsidian-reporter.ts`) で解決。`onTestEnd()` でアノテーションを直接収集し `onEnd()` で通知。`report.json` への依存を排除。ADR-006 参照 |
+| **OPEN-02** | launchd plist 未作成 | LOW | 手動実行 (`npm run e2e:selectors`) で機能確認済み。OPEN-01 解決済みのため着手可能 |
 | **OPEN-03** | headed モードのディスプレイ依存 | LOW | launchd での自動実行にはディスプレイが必要。macOS ではログイン中なら問題なし |

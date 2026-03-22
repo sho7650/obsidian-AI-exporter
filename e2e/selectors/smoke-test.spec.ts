@@ -121,7 +121,7 @@ async function runPlatformValidation(
     // Classify
     const classified = classifyResults(allResults, baselineComparisons);
 
-    // Record in annotations for globalTeardown to read
+    // Record in annotations for ObsidianReporter to read
     test
       .info()
       .annotations.push(
