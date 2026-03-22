@@ -383,7 +383,7 @@ export abstract class BaseExtractor implements IConversationExtractor {
    * @param selectors - CSS selectors to find the first message element
    * @param fallbackTitle - Title to return if no element is found
    */
-  protected getFirstMessageTitle(selectors: string[], fallbackTitle: string): string {
+  protected getFirstMessageTitle(selectors: readonly string[], fallbackTitle: string): string {
     const el = this.queryWithFallback<HTMLElement>(selectors);
     if (el?.textContent) {
       return this.sanitizeText(el.textContent).substring(0, MAX_CONVERSATION_TITLE_LENGTH);
@@ -418,7 +418,7 @@ export abstract class BaseExtractor implements IConversationExtractor {
    * @returns First matching element or null if none found or selectors empty
    */
   protected queryWithFallback<T extends Element>(
-    selectors: string[],
+    selectors: readonly string[],
     parent: Element | Document = document
   ): T | null {
     // Guard clause: return null for empty or invalid selector arrays
@@ -444,7 +444,7 @@ export abstract class BaseExtractor implements IConversationExtractor {
    * @returns All matching elements from first successful selector, or empty array
    */
   protected queryAllWithFallback<T extends Element>(
-    selectors: string[],
+    selectors: readonly string[],
     parent: Element | Document = document
   ): T[] {
     // Guard clause: return empty array for empty or invalid selector arrays

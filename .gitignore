@@ -37,3 +37,10 @@ coverage/
 .env
 .env.local
 .improvement-state/
+
+# E2E selector validation
+e2e/auth/profiles/
+e2e/auth/state.json
+e2e/.env.local
+e2e/results/
+e2e/baselines/

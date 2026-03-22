@@ -11,42 +11,7 @@ import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import type { ConversationMessage } from '../../lib/types';
 
-/**
- * CSS Selectors for Perplexity chat extraction
- *
- * Selectors are ordered by stability (HIGH → LOW)
- * @see DES-004-perplexity-extractor.md Section 4.1
- */
-const SELECTORS = {
-  // User query text
-  userQuery: [
-    'span.select-text', // Semantic (HIGH)
-    'div.bg-offset.rounded-2xl span.select-text', // Style (MEDIUM)
-  ],
-
-  // Assistant response content container
-  markdownContent: [
-    'div[id^="markdown-content-"]', // ID pattern (HIGH)
-  ],
-
-  // Prose content within response
-  proseContent: [
-    '.prose.dark\\:prose-invert', // Standard (HIGH)
-    '.prose', // Fallback (LOW)
-  ],
-
-  // Deep Research report card container
-  deepResearchCard: [
-    'div.bg-raised.rounded-lg', // Style (HIGH)
-    'div.border-borderMain.bg-raised', // Alternative (MEDIUM)
-  ],
-
-  // Prose content within a Deep Research report card (max-w-none distinguishes it)
-  deepResearchProse: [
-    '.prose.max-w-none', // Specific to report (HIGH)
-    '.prose.dark\\:prose-invert.max-w-none', // Full match (MEDIUM)
-  ],
-};
+import { SELECTORS } from './selectors/perplexity';
 
 /** Tagged element for DOM-order sorting */
 type TaggedElement =

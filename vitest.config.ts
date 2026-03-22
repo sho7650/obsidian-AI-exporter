@@ -5,7 +5,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],
-    include: ['test/**/*.test.ts'],
+    include: ['test/**/*.test.ts', 'e2e/**/*.test.ts'],
     // E2E test timeout extension
     testTimeout: 30000,
     coverage: {
@@ -14,11 +14,11 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: [
         'src/**/*.d.ts',
-        'src/lib/types.ts',    // Type definitions only
-        'src/popup/index.ts',  // Has side effects on import, tested via patterns
+        'src/lib/types.ts', // Type definitions only
+        'src/popup/index.ts', // Has side effects on import, tested via patterns
         'src/content/index.ts', // Has side effects on import, tested via patterns
         'src/offscreen/offscreen.ts', // Chrome-specific runtime, cannot test in jsdom
-        'test/**/*.ts',        // Test infrastructure should not count toward coverage
+        'test/**/*.ts', // Test infrastructure should not count toward coverage
       ],
       // Final thresholds - achieved 88.5% statements
       thresholds: {
