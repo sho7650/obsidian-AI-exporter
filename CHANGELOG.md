@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.2](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.18.1...v0.18.2) (2026-03-23)
+
+
+### Code Refactoring
+
+* remove unused exports and dead TabInfo interface ([#164](https://github.com/sho7650/obsidian-AI-exporter/issues/164)) ([f9527cf](https://github.com/sho7650/obsidian-AI-exporter/commit/f9527cf6798a63e03114b4942d9417934c38e7fd))
+
 ## [0.18.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.18.0...v0.18.1) (2026-03-23)
 
 
