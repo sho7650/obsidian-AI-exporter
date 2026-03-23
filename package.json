@@ -18,7 +18,11 @@
     "prepare": "husky",
     "e2e:auth": "npx tsx e2e/auth/setup-profile.ts",
     "e2e:selectors": "npx playwright test --config e2e/playwright.config.ts",
-    "e2e:selectors:headed": "npx playwright test --config e2e/playwright.config.ts --headed"
+    "e2e:selectors:headed": "npx playwright test --config e2e/playwright.config.ts --headed",
+    "e2e:daemon": "npx tsx e2e/daemon/daemon.ts",
+    "e2e:daemon:start": "npx tsx e2e/daemon/daemon.ts start",
+    "e2e:daemon:stop": "npx tsx e2e/daemon/daemon.ts stop",
+    "e2e:daemon:status": "npx tsx e2e/daemon/daemon.ts status"
   },
   "dependencies": {
     "dompurify": "^3.3.2",

@@ -55,6 +55,7 @@ export async function checkAuthStatus(
       return 'authenticated';
     }
 
+    console.warn(`[G2O Auth] ${platform}: auth_expired — expected ${pattern}, got: ${currentUrl}`);
     return 'auth_expired';
   } catch {
     return 'unreachable';

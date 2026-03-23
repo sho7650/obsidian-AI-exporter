@@ -75,6 +75,18 @@ npm run lint     # ESLint on src/
 npm run format   # Prettier formatting
 ```
 
+### E2E Selector Validation
+
+```bash
+npm run e2e:auth              # Manual login for all platforms
+npm run e2e:selectors         # Run selector validation
+npm run e2e:daemon start      # Start CDP daemon (headless Chrome + keep-alive)
+npm run e2e:daemon stop       # Stop CDP daemon
+npm run e2e:daemon status     # Check daemon health + open tabs
+```
+
+Re-authentication workflow: `e2e:daemon stop` → `e2e:auth` → `e2e:daemon start`
+
 Load the extension in Chrome: `chrome://extensions` → Load unpacked → select `dist/` folder
 
 ## Architecture

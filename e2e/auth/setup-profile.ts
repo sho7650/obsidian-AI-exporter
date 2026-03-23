@@ -15,15 +15,18 @@
  */
 
 import { chromium } from 'playwright';
-import { execSync, spawn, type ChildProcess } from 'child_process';
+import { spawn, type ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
+import { findChromeExecutable } from '../shared/chrome-finder';
+import { waitForCDP } from '../shared/cdp-utils';
+import { ensurePortAvailable, ensureProfileAvailable } from '../daemon/chrome-launcher';
 
 const AUTH_DIR = import.meta.dirname;
 const PROFILE_DIR = path.join(AUTH_DIR, 'profiles');
 const STATE_PATH = path.join(AUTH_DIR, 'state.json');
-const CDP_PORT = 9222;
+const CDP_PORT = parseInt(process.env.CDP_PORT ?? '9222', 10);
 
 const TARGET_URLS = [
   'https://gemini.google.com',
@@ -32,33 +35,9 @@ const TARGET_URLS = [
   'https://www.perplexity.ai',
 ];
 
-function findChromeExecutable(): string {
-  const chromePath = process.env.CHROME_PATH;
-  if (chromePath) return chromePath;
-
-  const candidates = [
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
-  ];
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      return candidate;
-    }
-  }
-
-  try {
-    return execSync('which google-chrome', { encoding: 'utf-8' }).trim();
-  } catch {
-    throw new Error(
-      'Google Chrome not found. Install Chrome or set CHROME_PATH environment variable.',
-    );
-  }
-}
-
 function waitForLine(prompt: string): Promise<void> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     rl.question(prompt, () => {
       rl.close();
       resolve();
@@ -66,24 +45,17 @@ function waitForLine(prompt: string): Promise<void> {
   });
 }
 
-/**
- * Wait for Chrome's CDP endpoint to become available.
- */
-async function waitForCDP(port: number, timeoutMs = 15_000): Promise<void> {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    try {
-      const res = await fetch(`http://127.0.0.1:${port}/json/version`);
-      if (res.ok) return;
-    } catch {
-      // not ready yet
-    }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  throw new Error(`CDP endpoint not available on port ${port} after ${timeoutMs}ms`);
-}
-
 async function setupProfile(): Promise<void> {
+  // Pre-flight: abort if port or profile is already in use.
+  // This catches both daemon Chrome and orphan Chrome processes.
+  try {
+    await ensurePortAvailable(CDP_PORT);
+    ensureProfileAvailable(PROFILE_DIR);
+  } catch (err) {
+    console.error(`[G2O Auth] ${err instanceof Error ? err.message : err}`);
+    process.exit(1);
+  }
+
   const chromePath = findChromeExecutable();
 
   if (!fs.existsSync(PROFILE_DIR)) {
@@ -102,15 +74,19 @@ async function setupProfile(): Promise<void> {
   console.log('  5. Chrome will close\n');
 
   // Launch Chrome with CDP port for later connection
-  const chromeProcess: ChildProcess = spawn(chromePath, [
-    `--user-data-dir=${PROFILE_DIR}`,
-    `--remote-debugging-port=${CDP_PORT}`,
-    '--no-first-run',
-    '--no-default-browser-check',
-    ...TARGET_URLS,
-  ], {
-    stdio: 'ignore',
-  });
+  const chromeProcess: ChildProcess = spawn(
+    chromePath,
+    [
+      `--user-data-dir=${PROFILE_DIR}`,
+      `--remote-debugging-port=${CDP_PORT}`,
+      '--no-first-run',
+      '--no-default-browser-check',
+      ...TARGET_URLS,
+    ],
+    {
+      stdio: 'ignore',
+    }
+  );
 
   // Wait for CDP to be ready
   console.log('Waiting for Chrome to start...');
@@ -149,7 +125,7 @@ async function setupProfile(): Promise<void> {
   }
 
   // Wait for Chrome to exit
-  await new Promise<void>((resolve) => {
+  await new Promise<void>(resolve => {
     chromeProcess.on('exit', () => resolve());
     // Give Chrome a moment, then force kill if needed
     setTimeout(() => {

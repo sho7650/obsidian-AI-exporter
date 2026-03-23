@@ -44,3 +44,4 @@ e2e/auth/state.json
 e2e/.env.local
 e2e/results/
 e2e/baselines/
+e2e/daemon/chrome.pid

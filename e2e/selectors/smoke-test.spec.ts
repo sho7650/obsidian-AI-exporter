@@ -1,16 +1,16 @@
 /**
  * Live Selector Validation Smoke Test
  *
- * Uses storageState (cookies + localStorage) exported by e2e:auth
- * and Playwright's bundled Chromium — no Chrome profile directory sharing,
- * no SingletonLock, no keychain encryption issues.
+ * Connects to the CDP daemon (preferred) or falls back to Playwright
+ * with storageState injection.
  *
+ * @see docs/adr/007-cdp-daemon-persistent-sessions.md
  * @see docs/design/DES-015-live-selector-validation.md
  */
 
-import { test, expect, chromium } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import type { BrowserContext, Page } from 'playwright';
-import fs from 'fs';
+import { acquireBrowserSession, type BrowserSession } from './browser-provider';
 import path from 'path';
 import dotenv from 'dotenv';
 import {
@@ -28,8 +28,6 @@ import { hasBaseline, saveBaseline, loadBaseline, compareWithBaseline } from './
 import { classifyResults, type SelectorResult } from './classifier';
 
 dotenv.config({ path: path.join(import.meta.dirname, '..', '.env.local') });
-
-const STATE_PATH = path.join(import.meta.dirname, '..', 'auth', 'state.json');
 
 /**
  * Page-ready selectors: wait for these after navigation to confirm
@@ -141,37 +139,18 @@ async function runPlatformValidation(
   }
 }
 
-// --- Shared context using storageState ---
+// --- Shared browser session (CDP daemon or standalone fallback) ---
 
-let sharedContext: BrowserContext;
+let session: BrowserSession;
 
 test.beforeAll(async () => {
-  if (!fs.existsSync(STATE_PATH)) {
-    throw new Error(
-      `storageState not found at ${STATE_PATH}\n` + `Run 'npm run e2e:auth' first to create it.`
-    );
-  }
-
-  // Use system Chrome in headed mode for maximum reliability:
-  // - channel: 'chrome' — real Chrome binary, not detectable as automation
-  // - headless: false — Cloudflare bot detection is much less aggressive in headed mode
-  // - storageState — cookies injected from state.json, no profile directory sharing
-  const browser = await chromium.launch({
-    channel: 'chrome',
-    headless: false,
-  });
-  sharedContext = await browser.newContext({
-    storageState: STATE_PATH,
-  });
+  session = await acquireBrowserSession();
+  console.log(`[G2O E2E] Browser mode: ${session.mode}`);
 });
 
 test.afterAll(async () => {
-  if (sharedContext) {
-    const browser = sharedContext.browser();
-    await sharedContext.close();
-    if (browser) {
-      await browser.close();
-    }
+  if (session) {
+    await session.cleanup();
   }
 });
 
@@ -180,7 +159,7 @@ test.afterAll(async () => {
 test.describe('Gemini', () => {
   test('conversation selectors', async () => {
     await runPlatformValidation(
-      sharedContext,
+      session.context,
       'gemini',
       process.env.GEMINI_CONV_URL,
       'gemini_conv',
@@ -191,7 +170,7 @@ test.describe('Gemini', () => {
   });
 
   test('deep research selectors', async () => {
-    await runPlatformValidation(sharedContext, 'gemini', process.env.GEMINI_DR_URL, 'gemini_dr', {
+    await runPlatformValidation(session.context, 'gemini', process.env.GEMINI_DR_URL, 'gemini_dr', {
       DEEP_RESEARCH_SELECTORS: GEMINI_DR_SELECTORS,
       DEEP_RESEARCH_LINK_SELECTORS: GEMINI_DR_LINK_SELECTORS,
     });
@@ -201,7 +180,7 @@ test.describe('Gemini', () => {
 test.describe('Claude', () => {
   test('conversation selectors', async () => {
     await runPlatformValidation(
-      sharedContext,
+      session.context,
       'claude',
       process.env.CLAUDE_CONV_URL,
       'claude_conv',
@@ -212,7 +191,7 @@ test.describe('Claude', () => {
   });
 
   test('deep research selectors', async () => {
-    await runPlatformValidation(sharedContext, 'claude', process.env.CLAUDE_DR_URL, 'claude_dr', {
+    await runPlatformValidation(session.context, 'claude', process.env.CLAUDE_DR_URL, 'claude_dr', {
       DEEP_RESEARCH_SELECTORS: CLAUDE_DR_SELECTORS,
     });
   });
@@ -221,7 +200,7 @@ test.describe('Claude', () => {
 test.describe('ChatGPT', () => {
   test('conversation selectors', async () => {
     await runPlatformValidation(
-      sharedContext,
+      session.context,
       'chatgpt',
       process.env.CHATGPT_CONV_URL,
       'chatgpt_conv',
@@ -235,7 +214,7 @@ test.describe('ChatGPT', () => {
 test.describe('Perplexity', () => {
   test('conversation selectors', async () => {
     await runPlatformValidation(
-      sharedContext,
+      session.context,
       'perplexity',
       process.env.PERPLEXITY_CONV_URL,
       'perplexity_conv',
