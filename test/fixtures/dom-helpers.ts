@@ -1058,7 +1058,7 @@ interface PerplexityDeepResearchConfig {
  * - Report card with header (telescope icon + title) and prose body
  * - Optional summary response in markdown-content div
  */
-export function createPerplexityDeepResearchDOM(config: PerplexityDeepResearchConfig): string {
+function createPerplexityDeepResearchDOM(config: PerplexityDeepResearchConfig): string {
   const summaryBlock = config.summaryContent
     ? `
       <div id="markdown-content-0" class="markdown-content">

@@ -9,7 +9,7 @@ import type { ClassificationResult, WarnDetail, SelectorResult } from './classif
 import type { BaselineComparison } from './baseline';
 import type { AuthStatus } from './auth-check';
 
-export interface NotificationConfig {
+interface NotificationConfig {
   obsidianUrl: string;
   obsidianApiKey: string;
   vaultPath: string;
