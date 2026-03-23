@@ -1,5 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { loadConfig } from '../config';
+
+vi.mock('dotenv', () => ({
+  default: {
+    config: vi.fn(),
+  },
+}));
 
 describe('loadConfig', () => {
   const originalEnv = process.env;
@@ -58,5 +64,15 @@ describe('loadConfig', () => {
     expect(config.platformUrls).toContain('https://claude.ai');
     expect(config.platformUrls).toContain('https://chatgpt.com');
     expect(config.platformUrls).toContain('https://www.perplexity.ai');
+  });
+
+  it('loads .env.local via dotenv on startup', async () => {
+    const dotenv = await import('dotenv');
+    loadConfig();
+    expect(dotenv.default.config).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: expect.stringMatching(/e2e\/\.env\.local$/),
+      })
+    );
   });
 });

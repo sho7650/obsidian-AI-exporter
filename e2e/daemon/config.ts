@@ -5,6 +5,7 @@
  */
 
 import path from 'path';
+import dotenv from 'dotenv';
 
 export interface DaemonConfig {
   readonly cdpPort: number;
@@ -18,6 +19,7 @@ export interface DaemonConfig {
 }
 
 const E2E_DIR = path.resolve(import.meta.dirname, '..');
+const ENV_LOCAL_PATH = path.join(E2E_DIR, '.env.local');
 
 function parsePort(raw: string | undefined, fallback: number): number {
   const port = parseInt(raw ?? String(fallback), 10);
@@ -28,6 +30,9 @@ function parsePort(raw: string | undefined, fallback: number): number {
 }
 
 export function loadConfig(): DaemonConfig {
+  // Load .env.local so daemon picks up KEEP_ALIVE_INTERVAL_MIN etc.
+  dotenv.config({ path: ENV_LOCAL_PATH });
+
   const cdpPort = parsePort(process.env.CDP_PORT, 9222);
   const keepAliveMin = parseInt(process.env.KEEP_ALIVE_INTERVAL_MIN ?? '15', 10);
 
