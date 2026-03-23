@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.18.0...v0.18.1) (2026-03-23)
+
+
+### Bug Fixes
+
+* update Gemini Deep Research title selector for new DOM structure ([#162](https://github.com/sho7650/obsidian-AI-exporter/issues/162)) ([60d0cf9](https://github.com/sho7650/obsidian-AI-exporter/commit/60d0cf9856fa28cb1719a41b1f161c1f618caca0))
+
 ## [0.18.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.17.2...v0.18.0) (2026-03-23)
 
 
