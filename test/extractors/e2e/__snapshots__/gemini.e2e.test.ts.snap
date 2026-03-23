@@ -74,7 +74,7 @@ message_count: 6
 exports[`Gemini E2E Extraction > Deep Research Report > should generate Deep Research markdown with footnotes 1`] = `
 "---
 id: gemini_e2e-gemini-dr-001
-title: Deep Research HTML構造調査レポート
+title: Deep Research インターフェースの技術的設計：HTML 構造、DOM アーキテクチャ、およびエージェント指向の UI 設計に関する包括的分析
 source: gemini
 url: "https://gemini.google.com/app/e2e-gemini-dr-001"
 created: "2025-01-01T00:00:00.000Z"

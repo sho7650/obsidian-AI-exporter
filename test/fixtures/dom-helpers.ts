@@ -164,23 +164,25 @@ function escapeHtml(text: string): string {
 
 /**
  * Create Deep Research パネル DOM 構造
+ *
+ * Updated 2026-03-23: Gemini moved the report title from the toolbar
+ * (h2.title-text.gds-title-s) into the content area as the first <h1>.
+ * The toolbar now contains only close/action buttons.
  */
 export function createDeepResearchDOM(title: string, content: string): string {
   return `
     <deep-research-immersive-panel class="ng-star-inserted">
-      <toolbar>
-        <div class="toolbar has-title">
-          <div class="left-panel">
-            <h2 class="title-text gds-title-s">${title}</h2>
-          </div>
-        </div>
-      </toolbar>
+      <div class="toolbar has-title mobile-layout">
+        <div class="left-panel"></div>
+        <div class="action-buttons mobile-layout"></div>
+      </div>
       <div class="container">
         <response-container>
           <structured-content-container data-test-id="message-content">
             <message-content id="extended-response-message-content">
-              <div id="extended-response-markdown-content" 
+              <div id="extended-response-markdown-content"
                    class="markdown markdown-main-panel">
+                <h1>${title}</h1>
                 ${content}
               </div>
             </message-content>
@@ -215,19 +217,17 @@ export function createDeepResearchDOMWithLinks(
 
   return `
     <deep-research-immersive-panel class="ng-star-inserted">
-      <toolbar>
-        <div class="toolbar has-title">
-          <div class="left-panel">
-            <h2 class="title-text gds-title-s">${title}</h2>
-          </div>
-        </div>
-      </toolbar>
+      <div class="toolbar has-title mobile-layout">
+        <div class="left-panel"></div>
+        <div class="action-buttons mobile-layout"></div>
+      </div>
       <div class="container">
         <response-container>
           <structured-content-container data-test-id="message-content">
             <message-content id="extended-response-message-content">
               <div id="extended-response-markdown-content"
                    class="markdown markdown-main-panel">
+                <h1>${title}</h1>
                 ${contentWithCitations}
               </div>
             </message-content>
@@ -269,13 +269,10 @@ export function createInlineCitation(arrayIndex: number): string {
 export function createEmptyDeepResearchPanel(): string {
   return `
     <deep-research-immersive-panel class="ng-star-inserted">
-      <toolbar>
-        <div class="toolbar has-title">
-          <div class="left-panel">
-            <h2 class="title-text gds-title-s">Test Report</h2>
-          </div>
-        </div>
-      </toolbar>
+      <div class="toolbar has-title mobile-layout">
+        <div class="left-panel"></div>
+        <div class="action-buttons mobile-layout"></div>
+      </div>
       <div class="container">
         <response-container>
         </response-container>

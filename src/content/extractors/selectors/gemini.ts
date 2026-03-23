@@ -52,11 +52,11 @@ export const DEEP_RESEARCH_SELECTORS = {
   // Deep Research panel (existence check)
   panel: ['deep-research-immersive-panel'],
 
-  // Report title
+  // Report title (moved from toolbar h2 to content h1 as of 2026-03)
   title: [
-    'deep-research-immersive-panel h2.title-text.gds-title-s',
-    'deep-research-immersive-panel .title-text',
-    'toolbar h2.title-text',
+    '#extended-response-markdown-content > h1',
+    'deep-research-immersive-panel h1[data-path-to-node]',
+    'deep-research-immersive-panel h2.title-text',
   ],
 
   // Report content
