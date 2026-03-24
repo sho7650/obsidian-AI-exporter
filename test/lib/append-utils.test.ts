@@ -272,6 +272,30 @@ describe('buildAppendContent', () => {
     expect(result!.content).not.toContain('2026-01-01T00:00:00.000Z');
   });
 
+  it('uses timezone setting for modified timestamp in frontmatter', () => {
+    const settingsWithTz = {
+      ...testSettings,
+      templateOptions: { ...testSettings.templateOptions, timezone: 'Asia/Tokyo' },
+    };
+    const existing = [
+      '---',
+      'id: claude_test',
+      'message_count: 2',
+      'modified: "2026-01-01T00:00:00.000Z"',
+      '---',
+      '> [!QUESTION] User',
+      '> Hello',
+      '',
+      '> [!NOTE] Claude',
+      '> Hi there!',
+    ].join('\n');
+
+    const result = buildAppendContent(existing, testNote, settingsWithTz);
+    expect(result).not.toBeNull();
+    // Modified timestamp should have JST offset
+    expect(result!.content).toMatch(/modified: .*\+09:00/);
+  });
+
   it('preserves user-added notes in existing body', () => {
     const existing = [
       '---',

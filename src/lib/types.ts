@@ -227,6 +227,8 @@ export interface TemplateOptions {
   userCalloutType: string;
   /** Callout type for assistant messages (e.g., 'NOTE') */
   assistantCalloutType: string;
+  /** IANA timezone for created/modified dates (e.g., 'Asia/Tokyo'). Defaults to 'UTC'. */
+  timezone?: string;
   /** Custom frontmatter fields (reserved for future use) */
   customFrontmatter?: Record<string, string>;
 }

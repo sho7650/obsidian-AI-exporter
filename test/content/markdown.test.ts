@@ -62,9 +62,7 @@ describe('htmlToMarkdown', () => {
     });
 
     it('converts inline code', () => {
-      expect(htmlToMarkdown('Use <code>npm install</code>')).toBe(
-        'Use `npm install`'
-      );
+      expect(htmlToMarkdown('Use <code>npm install</code>')).toBe('Use `npm install`');
     });
   });
 
@@ -206,7 +204,8 @@ describe('htmlToMarkdown', () => {
     });
 
     it('does not escape angle brackets inside code blocks', () => {
-      const html = '<pre><code class="language-python">File "test.py", in &lt;module&gt;</code></pre>';
+      const html =
+        '<pre><code class="language-python">File "test.py", in &lt;module&gt;</code></pre>';
       const result = htmlToMarkdown(html);
       expect(result).toContain('<module>');
       expect(result).not.toContain('\\<module\\>');
@@ -298,9 +297,7 @@ describe('escapeAngleBrackets', () => {
 
 describe('generateFileName', () => {
   it('creates filename from title and ID', () => {
-    expect(generateFileName('Hello World', 'abc123def456')).toBe(
-      'hello-world-abc123de.md'
-    );
+    expect(generateFileName('Hello World', 'abc123def456')).toBe('hello-world-abc123de.md');
   });
 
   it('preserves Japanese characters', () => {
@@ -315,9 +312,7 @@ describe('generateFileName', () => {
   });
 
   it('removes special characters', () => {
-    expect(generateFileName('Test: Special!', 'abc123def456')).toBe(
-      'test-special-abc123de.md'
-    );
+    expect(generateFileName('Test: Special!', 'abc123def456')).toBe('test-special-abc123de.md');
   });
 
   it('truncates long titles to 50 characters', () => {
@@ -332,9 +327,7 @@ describe('generateFileName', () => {
   });
 
   it('handles title with only special characters', () => {
-    expect(generateFileName('!!!@@@###', 'abc123def456')).toBe(
-      'conversation-abc123de.md'
-    );
+    expect(generateFileName('!!!@@@###', 'abc123def456')).toBe('conversation-abc123de.md');
   });
 });
 
@@ -456,6 +449,27 @@ describe('conversationToNote', () => {
     expect(note.body).toContain('Second answer');
   });
 
+  // ========== Timezone support ==========
+  it('uses UTC format by default when no timezone specified', () => {
+    const note = conversationToNote(mockData, defaultOptions);
+    // extractedAt is 2025-01-10T00:00:00Z → created should be UTC ISO
+    expect(note.frontmatter.created).toBe('2025-01-10T00:00:00+00:00');
+  });
+
+  it('formats created date in specified timezone', () => {
+    const options: TemplateOptions = { ...defaultOptions, timezone: 'Asia/Tokyo' };
+    const note = conversationToNote(mockData, options);
+    // 2025-01-10T00:00:00Z → JST is +09:00
+    expect(note.frontmatter.created).toBe('2025-01-10T09:00:00+09:00');
+  });
+
+  it('formats modified date in specified timezone', () => {
+    const options: TemplateOptions = { ...defaultOptions, timezone: 'Asia/Tokyo' };
+    const note = conversationToNote(mockData, options);
+    // modified is "now" — just verify it has JST offset
+    expect(note.frontmatter.modified).toMatch(/\+09:00$/);
+  });
+
   // ========== Angle bracket escaping in conversationToNote (REQ-083) ==========
   it('escapes angle brackets in assistant messages', () => {
     const data: ConversationData = {
@@ -471,9 +485,7 @@ describe('conversationToNote', () => {
   it('escapes angle brackets in user messages', () => {
     const data: ConversationData = {
       ...mockData,
-      messages: [
-        { id: 'u1', role: 'user', content: 'What is <Generic<T>>?', index: 0 },
-      ],
+      messages: [{ id: 'u1', role: 'user', content: 'What is <Generic<T>>?', index: 0 }],
     };
     const note = conversationToNote(data, defaultOptions);
     expect(note.body).toContain('\\<Generic\\<T\\>\\>');
@@ -483,7 +495,12 @@ describe('conversationToNote', () => {
     const data: ConversationData = {
       ...mockData,
       messages: [
-        { id: 'a1', role: 'assistant', content: '<pre><code>&lt;div&gt;test&lt;/div&gt;</code></pre>', index: 0 },
+        {
+          id: 'a1',
+          role: 'assistant',
+          content: '<pre><code>&lt;div&gt;test&lt;/div&gt;</code></pre>',
+          index: 0,
+        },
       ],
     };
     const note = conversationToNote(data, defaultOptions);
@@ -495,7 +512,12 @@ describe('conversationToNote', () => {
     const data: ConversationData = {
       ...mockData,
       messages: [
-        { id: 'a1', role: 'assistant', content: 'Use <code>&lt;span&gt;</code> for this', index: 0 },
+        {
+          id: 'a1',
+          role: 'assistant',
+          content: 'Use <code>&lt;span&gt;</code> for this',
+          index: 0,
+        },
       ],
     };
     const note = conversationToNote(data, defaultOptions);
@@ -517,7 +539,12 @@ describe('conversationToNote', () => {
         { id: 'a1', role: 'assistant', content: '<p>Hi</p>', htmlContent: '<p>Hi</p>', index: 1 },
       ],
       extractedAt: new Date('2025-01-01T00:00:00.000Z'),
-      metadata: { messageCount: 2, userMessageCount: 1, assistantMessageCount: 1, hasCodeBlocks: false },
+      metadata: {
+        messageCount: 2,
+        userMessageCount: 1,
+        assistantMessageCount: 1,
+        hasCodeBlocks: false,
+      },
     };
 
     const note = conversationToNote(data, defaultOptions);
@@ -536,10 +563,21 @@ describe('conversationToNote', () => {
       type: 'deep-research',
       links: { sources: [] },
       messages: [
-        { id: 'r0', role: 'assistant', content: '<p>Report content</p>', htmlContent: '<p>Report content</p>', index: 0 },
+        {
+          id: 'r0',
+          role: 'assistant',
+          content: '<p>Report content</p>',
+          htmlContent: '<p>Report content</p>',
+          index: 0,
+        },
       ],
       extractedAt: new Date('2025-01-01T00:00:00.000Z'),
-      metadata: { messageCount: 1, userMessageCount: 0, assistantMessageCount: 1, hasCodeBlocks: false },
+      metadata: {
+        messageCount: 1,
+        userMessageCount: 0,
+        assistantMessageCount: 1,
+        hasCodeBlocks: false,
+      },
     };
 
     const note = conversationToNote(data, defaultOptions);
@@ -589,7 +627,8 @@ describe('convertDeepResearchContent', () => {
   });
 
   it('handles multiple sources with 1-based index mapping', () => {
-    const html = '<p>First<sup data-turn-source-index="1"></sup> second<sup data-turn-source-index="2"></sup></p>';
+    const html =
+      '<p>First<sup data-turn-source-index="1"></sup> second<sup data-turn-source-index="2"></sup></p>';
     const links: DeepResearchLinks = {
       sources: [
         { index: 0, url: 'https://example.com/a', title: 'Article A', domain: 'example.com' },
@@ -609,7 +648,8 @@ describe('convertDeepResearchContent', () => {
   });
 
   it('handles duplicate citations with same footnote number', () => {
-    const html = '<p>First<sup data-turn-source-index="1"></sup> second<sup data-turn-source-index="1"></sup></p>';
+    const html =
+      '<p>First<sup data-turn-source-index="1"></sup> second<sup data-turn-source-index="1"></sup></p>';
     const links: DeepResearchLinks = {
       sources: [{ index: 0, url: 'https://example.com', title: 'Source', domain: 'example.com' }],
     };
@@ -644,7 +684,12 @@ describe('convertDeepResearchContent', () => {
     const links: DeepResearchLinks = {
       sources: [
         { index: 0, url: 'javascript:alert(1)', title: 'XSS', domain: 'bad.com' },
-        { index: 1, url: 'data:text/html,<script>alert(1)</script>', title: 'Data', domain: 'bad.com' },
+        {
+          index: 1,
+          url: 'data:text/html,<script>alert(1)</script>',
+          title: 'Data',
+          domain: 'bad.com',
+        },
         { index: 2, url: 'https://safe.com', title: 'Safe', domain: 'safe.com' },
       ],
     };
@@ -757,7 +802,8 @@ describe('conversationToNote with toolContent', () => {
           id: 'a1',
           role: 'assistant',
           content: '<p>Here are the results.</p>',
-          toolContent: '**Searched the web**\nRust latest version 2026 (10 results)\n- Rust Versions | Rust Changelogs (releases.rs)',
+          toolContent:
+            '**Searched the web**\nRust latest version 2026 (10 results)\n- Rust Versions | Rust Changelogs (releases.rs)',
           index: 1,
         },
       ],

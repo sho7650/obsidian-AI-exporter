@@ -87,6 +87,8 @@ const elements = {
   enableAutoScroll: getElement<HTMLInputElement>('enableAutoScroll'),
   enableAppendMode: getElement<HTMLInputElement>('enableAppendMode'),
   enableToolContent: getElement<HTMLInputElement>('enableToolContent'),
+  timezone: getElement<HTMLSelectElement>('timezone'),
+  timezoneGroup: getElement<HTMLElement>('timezoneGroup'),
   testBtn: getElement<HTMLButtonElement>('testBtn'),
   saveBtn: getElement<HTMLButtonElement>('saveBtn'),
   status: getElement<HTMLDivElement>('status'),
@@ -143,6 +145,11 @@ function populateForm(settings: ExtensionSettings): void {
   elements.includeDates.checked = templateOptions.includeDates ?? true;
   elements.includeMessageCount.checked = templateOptions.includeMessageCount ?? true;
 
+  // Populate timezone dropdown and set value
+  populateTimezoneOptions();
+  elements.timezone.value = templateOptions.timezone ?? 'UTC';
+  updateTimezoneVisibility();
+
   // Sync aria-checked for toggle switches after setting checked state
   syncAllAriaChecked();
 }
@@ -174,6 +181,9 @@ function setupEventListeners(): void {
 
   // Output destination checkbox listeners
   elements.outputObsidian.addEventListener('change', updateObsidianSettingsVisibility);
+
+  // Show/hide timezone when includeDates changes
+  elements.includeDates.addEventListener('change', updateTimezoneVisibility);
 
   // Enable/disable callout inputs based on message format
   elements.messageFormat.addEventListener('change', () => {
@@ -239,6 +249,56 @@ function setupToggleSwitchAccessibility(): void {
 }
 
 /**
+ * Populate timezone select with IANA timezone names
+ * Groups by region for easier navigation
+ */
+function populateTimezoneOptions(): void {
+  const select = elements.timezone;
+  // Only populate once
+  if (select.options.length > 1) return;
+
+  // Intl.supportedValuesOf is available in Chrome 99+
+  // TypeScript ES2020 lib doesn't include it, so we use a type assertion
+  // Falls back to UTC-only if unavailable (Chrome 96-98)
+  let timezones: string[] = [];
+  try {
+    timezones = (Intl as unknown as { supportedValuesOf(key: string): string[] }).supportedValuesOf(
+      'timeZone'
+    );
+  } catch {
+    // Chrome < 99: leave dropdown with just UTC
+    return;
+  }
+  // Clear default UTC option, rebuild with full list
+  select.innerHTML = '';
+
+  const utcOption = document.createElement('option');
+  utcOption.value = 'UTC';
+  utcOption.textContent = 'UTC';
+  select.appendChild(utcOption);
+
+  for (const tz of timezones) {
+    if (tz === 'UTC') continue;
+    const option = document.createElement('option');
+    option.value = tz;
+    option.textContent = tz.replace(/_/g, ' ');
+    select.appendChild(option);
+  }
+}
+
+/**
+ * Show/hide timezone dropdown based on includeDates checkbox
+ */
+function updateTimezoneVisibility(): void {
+  const group = elements.timezoneGroup;
+  if (elements.includeDates.checked) {
+    group.style.display = '';
+  } else {
+    group.style.display = 'none';
+  }
+}
+
+/**
  * Collect output options from form
  */
 function collectOutputOptions(): OutputOptions {
@@ -278,6 +338,7 @@ function collectSettings(): ExtensionSettings {
     includeSource: elements.includeSource.checked,
     includeDates: elements.includeDates.checked,
     includeMessageCount: elements.includeMessageCount.checked,
+    timezone: elements.timezone.value || undefined,
   };
 
   const outputOptions = collectOutputOptions();

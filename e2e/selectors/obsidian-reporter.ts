@@ -33,7 +33,7 @@ class ObsidianReporter implements Reporter {
   }
 
   async onEnd(_result: FullResult): Promise<void> {
-    const report = buildValidationReport(this.platformMap);
+    const report = buildValidationReport(this.platformMap, process.env.TIMEZONE);
 
     // Save timestamped JSON report
     const resultsDir = path.join(import.meta.dirname, '..', 'results');

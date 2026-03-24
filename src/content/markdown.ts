@@ -17,6 +17,7 @@ import type {
   NoteFrontmatter,
   TemplateOptions,
 } from '../lib/types';
+import { formatDateWithTimezone } from '../lib/date-utils';
 
 // Re-exports (preserve existing import paths)
 export { htmlToMarkdown, escapeAngleBrackets } from './markdown-rules';
@@ -47,7 +48,8 @@ export function generateContentHash(content: string): string {
  * Convert conversation data to Obsidian note
  */
 export function conversationToNote(data: ConversationData, options: TemplateOptions): ObsidianNote {
-  const now = new Date().toISOString();
+  const timezone = options.timezone ?? 'UTC';
+  const now = formatDateWithTimezone(new Date(), timezone);
 
   // Generate frontmatter
   const frontmatter: NoteFrontmatter = {
@@ -56,7 +58,7 @@ export function conversationToNote(data: ConversationData, options: TemplateOpti
     source: data.source,
     ...(data.type && { type: data.type }),
     url: data.url,
-    created: data.extractedAt.toISOString(),
+    created: formatDateWithTimezone(data.extractedAt, timezone),
     modified: now,
     tags:
       data.type === 'deep-research'

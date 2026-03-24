@@ -109,6 +109,14 @@
     "message": "Include Message Count",
     "description": "Checkbox label for include message count"
   },
+  "settings_timezone": {
+    "message": "Timezone",
+    "description": "Label for timezone select dropdown"
+  },
+  "settings_timezoneHelp": {
+    "message": "Timezone for created/modified dates in frontmatter",
+    "description": "Help text for timezone select"
+  },
   "settings_testConnection": {
     "message": "Test Connection",
     "description": "Test connection button text"

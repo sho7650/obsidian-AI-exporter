@@ -10,6 +10,7 @@ import type { ObsidianNote, ExtensionSettings } from './types';
 import { parseFrontmatter, updateFrontmatter } from './frontmatter-parser';
 import { countExistingMessages, extractTailMessages } from './message-counter';
 import { generateNoteContent } from './note-generator';
+import { formatDateWithTimezone } from './date-utils';
 
 /**
  * Result of file lookup for append mode
@@ -123,8 +124,9 @@ export function buildAppendContent(
   if (!newMessages) return null;
 
   // 6. Update frontmatter fields
+  const timezone = settings.templateOptions.timezone ?? 'UTC';
   const updatedRaw = updateFrontmatter(parsed.raw, {
-    modified: new Date().toISOString(),
+    modified: formatDateWithTimezone(new Date(), timezone),
     message_count: newTotal,
   });
 

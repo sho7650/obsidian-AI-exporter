@@ -82,6 +82,12 @@
   "settings_includeMessageCount": {
     "message": "メッセージ数を含める"
   },
+  "settings_timezone": {
+    "message": "タイムゾーン"
+  },
+  "settings_timezoneHelp": {
+    "message": "フロントマターの日付に使用するタイムゾーン"
+  },
   "settings_testConnection": {
     "message": "接続テスト"
   },
