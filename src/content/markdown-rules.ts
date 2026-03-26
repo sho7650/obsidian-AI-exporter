@@ -98,6 +98,60 @@ turndown.addRule('codeBlocks', {
   },
 });
 
+// Custom rule for ChatGPT CodeMirror code blocks (2026-03 DOM change)
+// ChatGPT replaced <pre><code> with <pre> containing a CodeMirror editor (.cm-content)
+// Code is in <span> elements with <br> for line breaks; header has language + Copy/Run buttons
+turndown.addRule('codemirrorCodeBlocks', {
+  filter: node => {
+    return (
+      node.nodeName === 'PRE' &&
+      node.querySelector('code') === null &&
+      node.querySelector('.cm-content') !== null
+    );
+  },
+  replacement: (_content, node) => {
+    const el = node as HTMLElement;
+    const cmContent = el.querySelector('.cm-content');
+    if (!cmContent) return _content;
+
+    // Extract code: walk .cm-content children, <br> → newline
+    let code = '';
+    cmContent.childNodes.forEach(child => {
+      if (child.nodeName === 'BR') {
+        code += '\n';
+      } else {
+        code += child.textContent || '';
+      }
+    });
+
+    // Extract language from header (text before cm-editor, not inside buttons)
+    let lang = '';
+    const buttons = el.querySelectorAll('button');
+    const buttonTexts = new Set<string>();
+    buttons.forEach(btn => {
+      const text = btn.textContent?.trim();
+      if (text) buttonTexts.add(text.toLowerCase());
+    });
+
+    // Find short text elements that aren't button text or code
+    const allElements = el.querySelectorAll('div');
+    for (const div of allElements) {
+      if (cmContent.contains(div) || div.contains(cmContent)) continue;
+      if (div.querySelector('button, .cm-content, .cm-editor')) continue;
+      const text = div.textContent?.trim();
+      if (text && text.length > 0 && text.length < 30) {
+        const lower = text.toLowerCase();
+        if (!buttonTexts.has(lower)) {
+          lang = lower;
+          break;
+        }
+      }
+    }
+
+    return `\n\`\`\`${lang}\n${code.trim()}\n\`\`\`\n`;
+  },
+});
+
 // Custom rule for inline code
 turndown.addRule('inlineCode', {
   filter: node => {

@@ -64,6 +64,81 @@ describe('htmlToMarkdown', () => {
     it('converts inline code', () => {
       expect(htmlToMarkdown('Use <code>npm install</code>')).toBe('Use `npm install`');
     });
+
+    // ChatGPT CodeMirror code blocks (2026-03 DOM change)
+    // ChatGPT replaced <pre><code> with <pre> containing CodeMirror editor
+    describe('ChatGPT CodeMirror structure', () => {
+      it('converts CodeMirror code block with language', () => {
+        const html = `<pre class="overflow-visible!">
+          <div class="relative w-full">
+            <div><div class="relative"><div><div><div><div>
+              <div class="sticky">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center text-sm font-medium">Python</div>
+                  <div><button aria-label="Copy"></button><button aria-label="Run code"><div>Run</div></button></div>
+                </div>
+              </div>
+              <div><div class="relative"><div class="cm-editor"><div class="cm-scroller">
+                <div class="cm-content">
+                  <span>def</span><span> </span><span>hello</span><span>():</span><br>
+                  <span>    </span><span>print</span><span>(</span><span>"world"</span><span>)</span>
+                </div>
+              </div></div></div></div>
+            </div></div></div></div></div></div>
+          </div>
+        </pre>`;
+        const result = htmlToMarkdown(html);
+        expect(result).toContain('```python');
+        expect(result).toContain('def hello():');
+        expect(result).toContain('    print("world")');
+        expect(result).toContain('```');
+        // Header text should NOT appear in output
+        expect(result).not.toMatch(/\bRun\b/);
+        expect(result).not.toMatch(/\bCopy\b/);
+      });
+
+      it('converts CodeMirror code block without language header', () => {
+        const html = `<pre><div><div><div><div><div><div><div>
+          <div><div class="relative"><div class="cm-editor"><div class="cm-scroller">
+            <div class="cm-content">
+              <span>echo</span><span> </span><span>"hello"</span>
+            </div>
+          </div></div></div></div>
+        </div></div></div></div></div></div></div></pre>`;
+        const result = htmlToMarkdown(html);
+        expect(result).toContain('```');
+        expect(result).toContain('echo "hello"');
+      });
+
+      it('handles multi-line CodeMirror code with br elements', () => {
+        const html = `<pre><div><div><div><div><div><div><div>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center text-sm font-medium">JavaScript</div>
+            <div><button aria-label="Copy"></button></div>
+          </div>
+          <div><div class="relative"><div class="cm-editor"><div class="cm-scroller">
+            <div class="cm-content">
+              <span>const</span><span> </span><span>a</span><span> = </span><span>1</span><span>;</span><br>
+              <span>const</span><span> </span><span>b</span><span> = </span><span>2</span><span>;</span><br>
+              <span>console</span><span>.</span><span>log</span><span>(</span><span>a</span><span> + </span><span>b</span><span>);</span>
+            </div>
+          </div></div></div></div>
+        </div></div></div></div></div></div></div></pre>`;
+        const result = htmlToMarkdown(html);
+        expect(result).toContain('```javascript');
+        expect(result).toContain('const a = 1;');
+        expect(result).toContain('const b = 2;');
+        expect(result).toContain('console.log(a + b);');
+      });
+
+      it('does not interfere with standard pre+code blocks', () => {
+        // Ensure existing <pre><code> pattern still works
+        const html = '<pre><code class="language-python">x = 1</code></pre>';
+        const result = htmlToMarkdown(html);
+        expect(result).toContain('```python');
+        expect(result).toContain('x = 1');
+      });
+    });
   });
 
   describe('tables', () => {

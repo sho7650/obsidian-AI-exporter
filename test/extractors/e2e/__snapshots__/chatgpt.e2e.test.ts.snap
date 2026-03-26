@@ -176,7 +176,5 @@ message_count: 2
 > // Usage examples
 > console.log(isPrime(7));  // true
 > console.log(isPrime(10)); // false
-> \`\`\`
-> 
-> This implementation uses the 6k±1 optimization for better performance."
+> \`\`\`"
 `;

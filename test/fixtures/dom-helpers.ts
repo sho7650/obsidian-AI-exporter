@@ -747,6 +747,124 @@ export function createClaudePageWithToolUse(
   `);
 }
 
+/**
+ * Options for creating a thinking-status assistant response
+ * where .row-start-2 is empty and content is a sibling of the grid.
+ *
+ * This matches Claude's new pattern for responses with thinking status
+ * (e.g., tool results, map embeds) where the grid only holds the status
+ * line and actual content lives outside.
+ */
+interface ThinkingStatusOptions {
+  /** Status text shown in the thinking button (e.g., "ルート案をまとめる準備を整えた。") */
+  statusText: string;
+  /** HTML content to place as a sibling after the grid (standard-markdown) */
+  responseContent: string;
+  /** Optional embedded component HTML (e.g., map) placed between grid and response */
+  embeddedComponent?: string;
+}
+
+/**
+ * Create a Claude assistant response with thinking status + grid-sibling content
+ *
+ * Replicates the DOM pattern where:
+ * - .row-start-1 has a thinking status button
+ * - .row-start-2 is empty
+ * - Actual content (.standard-markdown) is a sibling of the grid wrapper
+ *
+ * @see Issue: Claude responses with embedded maps/tools have empty .row-start-2
+ */
+function createClaudeThinkingStatusResponse(options: ThinkingStatusOptions): string {
+  const embeddedHtml = options.embeddedComponent
+    ? `<div class="pl-2 pt-1 pb-2">${options.embeddedComponent}</div>`
+    : '';
+
+  return `
+    <div><div class="grid grid-rows-[auto_auto] min-w-0">
+      <div class="row-start-1 col-start-1 min-w-0">
+        <div class="min-w-0 pl-2 py-1.5">
+          <div class="flex items-center gap-2 rounded-lg">
+            <button class="group/status flex items-center gap-2 py-1 text-sm" aria-expanded="false">
+              <div class="inline-flex items-center gap-1 min-w-0">
+                <span class="truncate text-sm font-base">${escapeHtmlForClaude(options.statusText)}</span>
+              </div>
+            </button>
+          </div>
+          <div class="grid" style="grid-template-rows: 0fr;">
+            <div class="overflow-hidden min-w-0"></div>
+          </div>
+        </div>
+      </div>
+      <div class="row-start-2 col-start-1 relative grid isolate min-w-0">
+        <div class="row-start-1 col-start-1 relative z-[2] min-w-0"></div>
+      </div>
+    </div></div>
+    ${embeddedHtml}
+    <div><div class="standard-markdown grid-cols-1 grid">
+      ${options.responseContent}
+    </div></div>`;
+}
+
+/**
+ * Create a Claude page with thinking-status response pattern
+ *
+ * Creates a conversation where an assistant message uses the thinking-status
+ * pattern (empty .row-start-2, content as grid sibling).
+ */
+export function createClaudePageWithThinkingStatus(
+  conversationId: string,
+  messages: Array<
+    ClaudeConversationMessage & { thinkingStatus?: Omit<ThinkingStatusOptions, 'responseContent'> }
+  >
+): void {
+  setClaudeLocation(conversationId);
+
+  const blocks: string[] = [];
+
+  messages.forEach(msg => {
+    if (msg.role === 'user') {
+      blocks.push(`
+        <div data-test-render-count="2" class="group" style="height: auto;">
+          <div class="bg-bg-300 rounded-xl pl-2.5 py-2.5">
+            <div data-testid="user-message">
+              <p class="whitespace-pre-wrap break-words">${escapeHtmlForClaude(msg.content)}</p>
+            </div>
+          </div>
+        </div>
+      `);
+    } else if (msg.thinkingStatus) {
+      blocks.push(`
+        <div data-test-render-count="2" class="group" style="height: auto;">
+          <div class="font-claude-response" data-is-streaming="false">
+            ${createClaudeThinkingStatusResponse({
+              ...msg.thinkingStatus,
+              responseContent: msg.content,
+            })}
+          </div>
+        </div>
+      `);
+    } else {
+      blocks.push(`
+        <div data-test-render-count="2" class="group" style="height: auto;">
+          <div class="font-claude-response" data-is-streaming="false">
+            <div class="standard-markdown">
+              ${msg.content}
+            </div>
+          </div>
+        </div>
+      `);
+    }
+  });
+
+  loadFixture(`
+    <div class="app-container">
+      <div class="conversation-thread">
+        ${blocks.join('\n')}
+      </div>
+    </div>
+  `);
+}
+
 // ========== ChatGPT DOM Helpers ==========
 
 /**

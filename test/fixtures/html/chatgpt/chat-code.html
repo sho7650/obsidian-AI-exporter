@@ -1,10 +1,11 @@
 <!--
   Fixture: chatgpt/chat-code.html
-  Captured: 2026-01-28
+  Captured: 2026-03-26
   URL Pattern: https://chatgpt.com/c/{conversation-id}
 
   Description: Conversation with code blocks for E2E testing
   Messages: 1 user, 1 assistant (with code)
+  DOM Structure: CodeMirror-based code blocks (2026-03 ChatGPT DOM change)
 
   Update Trigger: Selector changes or DOM structure changes
 -->
@@ -21,27 +22,11 @@
     <div
       data-message-author-role="assistant"
       data-message-id="msg-1"
-      data-message-model-slug="gpt-4"
+      data-message-model-slug="gpt-4o"
     >
-      <div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling">
+      <div class="markdown prose dark:prose-invert w-full wrap-break-word light markdown-new-styling">
         <p>Here's a TypeScript function to check if a number is prime:</p>
-        <pre><code class="language-typescript">function isPrime(n: number): boolean {
-  if (n &lt;= 1) return false;
-  if (n &lt;= 3) return true;
-  if (n % 2 === 0 || n % 3 === 0) return false;
-
-  for (let i = 5; i * i &lt;= n; i += 6) {
-    if (n % i === 0 || n % (i + 2) === 0) {
-      return false;
-    }
-  }
-  return true;
-}
-
-// Usage examples
-console.log(isPrime(7));  // true
-console.log(isPrime(10)); // false
-</code></pre>
+        <pre class="overflow-visible! px-0!"><div class="relative w-full mt-4 mb-1"><div><div class="relative"><div class="h-full min-h-0 min-w-0"><div class="h-full min-h-0 min-w-0"><div class="border border-token-border-light rounded-3xl"><div class="h-full w-full overflow-clip rounded-3xl"><div class="sticky"><div class="flex w-full items-center justify-between py-1.5 ps-4 pe-1.5 font-sans"><div class="flex max-w-[75%] min-w-0 cursor-default items-center text-sm font-medium justify-self-start text-token-text-primary">TypeScript</div><div class="flex flex-row items-center gap-0.5 justify-self-end"><button class="flex gap-1 items-center select-none py-2 text-sm font-medium" aria-label="Copy"></button></div></div></div><div><div class="relative"><div class="cm-editor"><div class="cm-scroller"><div class="cm-content"><span>function</span><span> </span><span>isPrime</span><span>(</span><span>n</span><span>: </span><span>number</span><span>): </span><span>boolean</span><span> {</span><br><span>  </span><span>if</span><span> (</span><span>n</span><span> &lt;= </span><span>1</span><span>) </span><span>return</span><span> </span><span>false</span><span>;</span><br><span>  </span><span>if</span><span> (</span><span>n</span><span> &lt;= </span><span>3</span><span>) </span><span>return</span><span> </span><span>true</span><span>;</span><br><span>  </span><span>if</span><span> (</span><span>n</span><span> % </span><span>2</span><span> === </span><span>0</span><span> || </span><span>n</span><span> % </span><span>3</span><span> === </span><span>0</span><span>) </span><span>return</span><span> </span><span>false</span><span>;</span><br><br><span>  </span><span>for</span><span> (</span><span>let</span><span> </span><span>i</span><span> = </span><span>5</span><span>; </span><span>i</span><span> * </span><span>i</span><span> &lt;= </span><span>n</span><span>; </span><span>i</span><span> += </span><span>6</span><span>) {</span><br><span>    </span><span>if</span><span> (</span><span>n</span><span> % </span><span>i</span><span> === </span><span>0</span><span> || </span><span>n</span><span> % (</span><span>i</span><span> + </span><span>2</span><span>) === </span><span>0</span><span>) {</span><br><span>      </span><span>return</span><span> </span><span>false</span><span>;</span><br><span>    }</span><br><span>  }</span><br><span>  </span><span>return</span><span> </span><span>true</span><span>;</span><br><span>}</span><br><br><span>// Usage examples</span><br><span>console</span><span>.</span><span>log</span><span>(</span><span>isPrime</span><span>(</span><span>7</span><span>));  </span><span>// true</span><br><span>console</span><span>.</span><span>log</span><span>(</span><span>isPrime</span><span>(</span><span>10</span><span>)); </span><span>// false</span></div></div></div></div></div></div></div></div></div></div></div></div></div></pre>
         <p>This implementation uses the 6k±1 optimization for better performance.</p>
       </div>
     </div>

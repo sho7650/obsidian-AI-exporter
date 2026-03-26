@@ -194,10 +194,19 @@ export class ClaudeExtractor extends BaseExtractor {
     // Grid layout: Extended Thinking or Tool-Use (.row-start-1 + .row-start-2)
     const responseSection = element.querySelector('.row-start-2');
     if (responseSection) {
-      return this.extractMarkdownFromSection(responseSection);
+      // Check if .row-start-2 has markdown content (Extended Thinking / Tool-Use)
+      const markdownInSection = this.queryWithFallback<HTMLElement>(
+        SELECTORS.markdownContent,
+        responseSection
+      );
+      if (markdownInSection) {
+        return sanitizeHtml(markdownInSection.innerHTML);
+      }
+      // .row-start-2 has no markdown content (e.g., thinking-status responses
+      // where content is a grid sibling). Fall through to search entire element.
     }
 
-    // Non-grid fallback: existing behavior
+    // Non-grid fallback or empty .row-start-2: search the entire element
     const markdownEl = this.queryWithFallback<HTMLElement>(SELECTORS.markdownContent, element);
     if (markdownEl) {
       return sanitizeHtml(markdownEl.innerHTML);

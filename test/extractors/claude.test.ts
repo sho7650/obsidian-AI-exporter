@@ -14,6 +14,7 @@ import {
   createClaudeDeepResearchPage,
   createEmptyClaudeDeepResearchPanel,
   createClaudePageWithToolUse,
+  createClaudePageWithThinkingStatus,
 } from '../fixtures/dom-helpers';
 
 describe('ClaudeExtractor', () => {
@@ -1183,6 +1184,151 @@ describe('ClaudeExtractor', () => {
       expect(assistantMsg?.toolContent).toContain('5 results');
       expect(assistantMsg?.content).toContain('Here is what I found.');
       expect(assistantMsg?.content).not.toContain('**Searched the web**');
+    });
+  });
+
+  // ========== Thinking Status + Grid-Sibling Content (Issue: empty .row-start-2) ==========
+  describe('Thinking Status with Grid-Sibling Content', () => {
+    it('extracts content when .row-start-2 is empty and content is a grid sibling', async () => {
+      createClaudePageWithThinkingStatus('12345678-1234-1234-1234-123456789012', [
+        { role: 'user', content: 'ワイキキ周辺の情報を教えて' },
+        {
+          role: 'assistant',
+          content: '<p>目的別にまとめると、海はKahanamoku Beachがおすすめです。</p>',
+          thinkingStatus: { statusText: 'ルート案をまとめる準備を整えた。' },
+        },
+      ]);
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      expect(result.data?.messages.length).toBe(2);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('Kahanamoku Beach');
+    });
+
+    it('extracts content when embedded component (map) exists between grid and response', async () => {
+      createClaudePageWithThinkingStatus('12345678-1234-1234-1234-123456789012', [
+        { role: 'user', content: '地図つきで教えて' },
+        {
+          role: 'assistant',
+          content: '<p>ホテルから徒歩3〜5分で海に着きます。</p>',
+          thinkingStatus: {
+            statusText: 'ルート案をまとめる準備を整えた。',
+            embeddedComponent: '<div data-testid="map" style="width:100%;height:450px;">Map Content</div>',
+          },
+        },
+      ]);
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('徒歩3〜5分');
+    });
+
+    it('does not extract thinking status text as content', async () => {
+      createClaudePageWithThinkingStatus('12345678-1234-1234-1234-123456789012', [
+        { role: 'user', content: 'Test question' },
+        {
+          role: 'assistant',
+          content: '<p>Actual response content.</p>',
+          thinkingStatus: { statusText: 'Prepared a route plan.' },
+        },
+      ]);
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('Actual response content.');
+      expect(assistantMsg?.content).not.toContain('Prepared a route plan');
+    });
+
+    it('works in mixed conversation with normal and thinking-status responses', async () => {
+      createClaudePageWithThinkingStatus('12345678-1234-1234-1234-123456789012', [
+        { role: 'user', content: 'First question' },
+        { role: 'assistant', content: '<p>Normal response.</p>' },
+        { role: 'user', content: 'Show me a map' },
+        {
+          role: 'assistant',
+          content: '<p>Here is the map area info.</p>',
+          thinkingStatus: { statusText: 'Gathered location data.' },
+        },
+      ]);
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      expect(result.data?.messages.length).toBe(4);
+      expect(result.data?.messages[1].content).toContain('Normal response.');
+      expect(result.data?.messages[3].content).toContain('map area info');
+      expect(result.data?.messages[3].content).not.toContain('Gathered location data');
+    });
+
+    it('handles thinking-status with tool content enabled', async () => {
+      createClaudePageWithThinkingStatus('12345678-1234-1234-1234-123456789012', [
+        { role: 'user', content: 'Search for hotels' },
+        {
+          role: 'assistant',
+          content: '<p>Found several hotels.</p>',
+          thinkingStatus: { statusText: 'Searched nearby hotels.' },
+        },
+      ]);
+
+      extractor.enableToolContent = true;
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('Found several hotels.');
+    });
+  });
+
+  // ========== Code Blocks in Assistant Responses ==========
+  describe('Code Blocks in Assistant Responses', () => {
+    it('preserves code block HTML for markdown conversion', async () => {
+      setClaudeLocation('test-123');
+      createClaudePage('test-123', [
+        { role: 'user', content: 'Show me a Python example' },
+        {
+          role: 'assistant',
+          content: '<p>Here is an example:</p><pre><code class="language-python">def hello():\n    print("Hello, world!")</code></pre>',
+        },
+      ]);
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      // Content is sanitized HTML at extraction stage; verify code is preserved
+      expect(assistantMsg?.content).toContain('<code');
+      expect(assistantMsg?.content).toContain('def hello()');
+      expect(assistantMsg?.content).toContain('print("Hello, world!")');
+    });
+
+    it('preserves code blocks wrapped in divs (Claude structure)', async () => {
+      setClaudeLocation('test-123');
+      createClaudePage('test-123', [
+        { role: 'user', content: 'Show me JavaScript' },
+        {
+          role: 'assistant',
+          content: `<pre><div class="code-header"><span>javascript</span><button>Copy</button></div><code class="language-javascript">const x = 42;\nconsole.log(x);</code></pre>`,
+        },
+      ]);
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('const x = 42');
+    });
+
+    it('preserves multiple code blocks in a single response', async () => {
+      setClaudeLocation('test-123');
+      createClaudePage('test-123', [
+        { role: 'user', content: 'Compare Python and JavaScript' },
+        {
+          role: 'assistant',
+          content: '<p>Python:</p><pre><code class="language-python">print("hello")</code></pre><p>JavaScript:</p><pre><code class="language-javascript">console.log("hello")</code></pre>',
+        },
+      ]);
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('print("hello")');
+      expect(assistantMsg?.content).toContain('console.log("hello")');
     });
   });
 
