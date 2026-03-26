@@ -260,7 +260,7 @@ function populateTimezoneOptions(): void {
   // Intl.supportedValuesOf is available in Chrome 99+
   // TypeScript ES2020 lib doesn't include it, so we use a type assertion
   // Falls back to UTC-only if unavailable (Chrome 96-98)
-  let timezones: string[] = [];
+  let timezones: string[];
   try {
     timezones = (Intl as unknown as { supportedValuesOf(key: string): string[] }).supportedValuesOf(
       'timeZone'

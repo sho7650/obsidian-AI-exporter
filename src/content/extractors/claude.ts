@@ -348,7 +348,7 @@ export class ClaudeExtractor extends BaseExtractor {
       }
 
       // Extract domain
-      let domain = '';
+      let domain: string;
       try {
         domain = new URL(url).hostname;
       } catch {
