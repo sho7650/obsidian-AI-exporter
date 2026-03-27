@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.4](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.19.3...v0.19.4) (2026-03-27)
+
+
+### Code Refactoring
+
+* extract magic number to constant and split extractToolContent into helpers ([#176](https://github.com/sho7650/obsidian-AI-exporter/issues/176)) ([e9bc155](https://github.com/sho7650/obsidian-AI-exporter/commit/e9bc155068b4b3b3e5c8c6f407d2a70b2e46a009))
+
 ## [0.19.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.19.2...v0.19.3) (2026-03-26)
 
 
