@@ -1,12 +1,12 @@
 /**
  * Turndown HTML-to-Markdown engine with custom rules
  *
- * Leaf module — only depends on external `turndown` package.
  * Configures Turndown with custom rules for code blocks, inline code,
  * footnote references, math expressions, and tables.
  */
 
 import TurndownService from 'turndown';
+import { MAX_LANG_HINT_LENGTH } from '../lib/constants';
 
 /**
  * Escape angle brackets in a single line of Markdown text.
@@ -139,7 +139,7 @@ turndown.addRule('codemirrorCodeBlocks', {
       if (cmContent.contains(div) || div.contains(cmContent)) continue;
       if (div.querySelector('button, .cm-content, .cm-editor')) continue;
       const text = div.textContent?.trim();
-      if (text && text.length > 0 && text.length < 30) {
+      if (text && text.length > 0 && text.length < MAX_LANG_HINT_LENGTH) {
         const lower = text.toLowerCase();
         if (!buttonTexts.has(lower)) {
           lang = lower;

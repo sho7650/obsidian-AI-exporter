@@ -21,6 +21,9 @@ export const MAX_FILENAME_BASE_LENGTH = 50;
 /** Length of conversation ID suffix in filenames */
 export const FILENAME_ID_SUFFIX_LENGTH = 8;
 
+/** Maximum length for a code block language hint (characters) */
+export const MAX_LANG_HINT_LENGTH = 30;
+
 // ============================================================
 // Validation Limits
 // ============================================================

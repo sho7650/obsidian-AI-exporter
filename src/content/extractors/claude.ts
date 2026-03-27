@@ -247,14 +247,23 @@ export class ClaudeExtractor extends BaseExtractor {
    */
   private extractToolContent(toolSection: Element): string {
     const parts: string[] = [];
+    this.extractToolSummary(toolSection, parts);
+    this.extractToolQueries(toolSection, parts);
+    this.extractToolResults(toolSection, parts);
+    this.extractToolMarkdown(toolSection, parts);
+    return parts.join('\n\n');
+  }
 
-    // 1. Summary button text (group/status button > span.truncate)
+  /** Summary button text (e.g., "Searched the web") as bold */
+  private extractToolSummary(toolSection: Element, parts: string[]): void {
     const summaryButton = toolSection.querySelector('button span.truncate');
     if (summaryButton?.textContent) {
       parts.push('**' + this.sanitizeText(summaryButton.textContent) + '**');
     }
+  }
 
-    // 2. Search queries (group/row buttons contain query text and result count)
+  /** Search queries (group/row buttons with query text and result count) */
+  private extractToolQueries(toolSection: Element, parts: string[]): void {
     const queryButtons = toolSection.querySelectorAll('[class*="group/row"]');
     queryButtons.forEach(btn => {
       const queryEl = btn.querySelector('.truncate');
@@ -267,28 +276,32 @@ export class ClaudeExtractor extends BaseExtractor {
         parts.push(text);
       }
     });
+  }
 
-    // 3. Search result items (identified by favicon images)
+  /** Search result items (identified by favicon images) */
+  private extractToolResults(toolSection: Element, parts: string[]): void {
     const favicons = toolSection.querySelectorAll('img[alt="favicon"]');
-    if (favicons.length > 0) {
-      const items: string[] = [];
-      favicons.forEach(img => {
-        // Navigate: img → container div → result row div
-        const row = img.parentElement?.parentElement;
-        if (!row || row.children.length < 2) return;
-        // Children: [0]=favicon container, [1]=title, [2]=domain (optional)
-        const title = row.children[1]?.textContent?.trim();
-        const domain = row.children.length > 2 ? row.children[2]?.textContent?.trim() : undefined;
-        if (title) {
-          items.push(domain ? '- ' + title + ' (' + domain + ')' : '- ' + title);
-        }
-      });
-      if (items.length > 0) {
-        parts.push(items.join('\n'));
-      }
-    }
+    if (favicons.length === 0) return;
 
-    // 4. .standard-markdown content (code interpreter, file analysis)
+    const items: string[] = [];
+    favicons.forEach(img => {
+      // Navigate: img → container div → result row div
+      const row = img.parentElement?.parentElement;
+      if (!row || row.children.length < 2) return;
+      // Children: [0]=favicon container, [1]=title, [2]=domain (optional)
+      const title = row.children[1]?.textContent?.trim();
+      const domain = row.children.length > 2 ? row.children[2]?.textContent?.trim() : undefined;
+      if (title) {
+        items.push(domain ? '- ' + title + ' (' + domain + ')' : '- ' + title);
+      }
+    });
+    if (items.length > 0) {
+      parts.push(items.join('\n'));
+    }
+  }
+
+  /** .standard-markdown content (code interpreter, file analysis) */
+  private extractToolMarkdown(toolSection: Element, parts: string[]): void {
     const markdownEls = toolSection.querySelectorAll('.standard-markdown');
     markdownEls.forEach(el => {
       const html = sanitizeHtml(el.innerHTML);
@@ -296,8 +309,6 @@ export class ClaudeExtractor extends BaseExtractor {
         parts.push(html);
       }
     });
-
-    return parts.join('\n\n');
   }
 
   /**
