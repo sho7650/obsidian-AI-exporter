@@ -258,13 +258,10 @@ function populateTimezoneOptions(): void {
   if (select.options.length > 1) return;
 
   // Intl.supportedValuesOf is available in Chrome 99+
-  // TypeScript ES2020 lib doesn't include it, so we use a type assertion
   // Falls back to UTC-only if unavailable (Chrome 96-98)
   let timezones: string[];
   try {
-    timezones = (Intl as unknown as { supportedValuesOf(key: string): string[] }).supportedValuesOf(
-      'timeZone'
-    );
+    timezones = Intl.supportedValuesOf('timeZone');
   } catch {
     // Chrome < 99: leave dropdown with just UTC
     return;

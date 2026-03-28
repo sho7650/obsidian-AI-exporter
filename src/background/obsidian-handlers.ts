@@ -7,7 +7,7 @@
 import { ObsidianApiClient } from '../lib/obsidian-api';
 import { getErrorMessage } from '../lib/error-utils';
 import { generateNoteContent } from '../lib/note-generator';
-import { resolvePathTemplate } from '../lib/path-utils';
+import { resolvePathTemplate, containsPathTraversal } from '../lib/path-utils';
 import { lookupExistingFile, buildAppendContent } from '../lib/append-utils';
 import { validateObsidianUrl } from '../lib/validation';
 import type { ExtensionSettings, ObsidianNote, SaveResponse } from '../lib/types';
@@ -89,6 +89,10 @@ export async function handleSave(
     });
     const fullPath = resolvedPath ? `${resolvedPath}/${note.fileName}` : note.fileName;
 
+    if (containsPathTraversal(fullPath)) {
+      return { success: false, error: 'Invalid file path' };
+    }
+
     const appendResult = await tryAppendMode(client, settings, note, fullPath, resolvedPath);
     if (appendResult) return appendResult;
 
@@ -119,6 +123,11 @@ export async function handleGetFile(
 
   try {
     const path = vaultPath ? `${vaultPath}/${fileName}` : fileName;
+
+    if (containsPathTraversal(path)) {
+      return { success: false, error: 'Invalid file path' };
+    }
+
     const content = await client.getFile(path);
 
     if (content === null) {

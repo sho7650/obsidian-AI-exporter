@@ -262,7 +262,9 @@ export function showToast(
   closeBtn.textContent = '\u00d7';
   closeBtn.addEventListener('click', () => {
     toast.remove();
-    currentToast = null;
+    if (currentToast === toast) {
+      currentToast = null;
+    }
   });
 
   toast.appendChild(toastIcon);
@@ -274,10 +276,13 @@ export function showToast(
   // Auto-dismiss
   if (duration > 0) {
     setTimeout(() => {
+      if (currentToast !== toast) return;
       toast.style.animation = 'g2o-slideIn 0.3s ease reverse';
       setTimeout(() => {
         toast.remove();
-        currentToast = null;
+        if (currentToast === toast) {
+          currentToast = null;
+        }
       }, 300);
     }, duration);
   }

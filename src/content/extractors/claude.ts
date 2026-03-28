@@ -311,17 +311,6 @@ export class ClaudeExtractor extends BaseExtractor {
     });
   }
 
-  /**
-   * Extract markdown content from a grid section (.row-start-1 or .row-start-2)
-   */
-  private extractMarkdownFromSection(section: Element): string {
-    const markdownEl = this.queryWithFallback<HTMLElement>(SELECTORS.markdownContent, section);
-    if (markdownEl) {
-      return sanitizeHtml(markdownEl.innerHTML);
-    }
-    return sanitizeHtml(section.innerHTML);
-  }
-
   // ========== Deep Research Extraction ==========
 
   /**

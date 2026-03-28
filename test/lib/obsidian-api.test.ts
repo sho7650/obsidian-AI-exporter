@@ -316,6 +316,18 @@ describe('ObsidianApiClient', () => {
         message: 'Request timed out. Please check your connection.',
       });
     });
+
+    it('filters out non-string elements from files array (Q1)', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ files: ['note.md', 42, null, 'other.md', true] }),
+      });
+
+      const files = await client.listFiles('AI');
+
+      expect(files).toEqual(['note.md', 'other.md']);
+    });
   });
 
   describe('AbortSignal.timeout fallback', () => {

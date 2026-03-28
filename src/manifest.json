@@ -26,10 +26,6 @@
     "http://127.0.0.1/*",
     "https://127.0.0.1/*"
   ],
-  "optional_host_permissions": [
-    "http://*/*",
-    "https://*/*"
-  ],
   "content_security_policy": {
     "extension_pages": "default-src 'self'; script-src 'self'; connect-src 'self' http://127.0.0.1:* https://127.0.0.1:*; object-src 'none'; frame-src 'none'; style-src 'self'"
   },

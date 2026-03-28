@@ -106,13 +106,5 @@ export function extractTailMessages(fullBody: string, skipCount: number): string
 
   if (tailStartLine === -1) return '';
 
-  // Find the start of the tail, skipping leading empty lines separator
-  let start = tailStartLine;
-  // Look backwards to include the separator blank lines before the message
-  // but only the separator, not content from previous messages
-  while (start > 0 && lines[start - 1].trim() === '') {
-    start--;
-  }
-  // We want the new messages to start cleanly, so use tailStartLine
   return lines.slice(tailStartLine).join('\n');
 }

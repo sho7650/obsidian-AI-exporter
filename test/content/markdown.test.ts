@@ -599,34 +599,6 @@ describe('conversationToNote', () => {
     expect(note.body).toContain('`<span>`');
   });
 
-  // ========== Coverage Gap: getAssistantLabel default (DES-005 3.6) ==========
-  it('uses "Assistant" label for unknown source platform', () => {
-    // Covers: markdown.ts line 329 (default case in getAssistantLabel switch)
-    // NOTE: Uses type cast to bypass compile-time check. This is intentional
-    // to exercise the runtime default case.
-    const data: ConversationData = {
-      id: 'test-unknown',
-      title: 'Unknown Platform Test',
-      url: 'https://example.com/chat/123',
-      source: 'unknown_platform' as 'gemini',
-      messages: [
-        { id: 'u1', role: 'user', content: 'Hello', index: 0 },
-        { id: 'a1', role: 'assistant', content: '<p>Hi</p>', htmlContent: '<p>Hi</p>', index: 1 },
-      ],
-      extractedAt: new Date('2025-01-01T00:00:00.000Z'),
-      metadata: {
-        messageCount: 2,
-        userMessageCount: 1,
-        assistantMessageCount: 1,
-        hasCodeBlocks: false,
-      },
-    };
-
-    const note = conversationToNote(data, defaultOptions);
-
-    expect(note.body).toContain('[!NOTE] Assistant');
-  });
-
   // ========== Coverage Gap: empty sources in Deep Research (DES-005 3.6) ==========
   it('omits References section when links.sources is empty', () => {
     // Covers: markdown.ts line 176 branch (sources.length === 0)

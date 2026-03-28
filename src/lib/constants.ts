@@ -5,6 +5,8 @@
  * and maintainability.
  */
 
+import type { AIPlatform } from './types';
+
 // ============================================================
 // String Length Limits
 // ============================================================
@@ -135,7 +137,7 @@ export const VALID_MESSAGE_FORMATS = ['callout', 'plain', 'blockquote'] as const
 /**
  * Human-readable display labels for AI platforms
  */
-export const PLATFORM_LABELS: Record<string, string> = {
+export const PLATFORM_LABELS: Record<AIPlatform, string> = {
   gemini: 'Gemini',
   claude: 'Claude',
   chatgpt: 'ChatGPT',

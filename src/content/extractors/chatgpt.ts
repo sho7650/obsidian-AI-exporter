@@ -173,13 +173,24 @@ export class ChatGPTExtractor extends BaseExtractor {
   /**
    * Clean utm_source parameter from citation URLs
    *
-   * ChatGPT adds ?utm_source=chatgpt.com to citation URLs
+   * ChatGPT adds ?utm_source=chatgpt.com to citation URLs.
+   * Uses DOM-level manipulation instead of regex for safety.
    * @see DES-003-chatgpt-extractor.md Section 8.2
    */
   private cleanCitationUrls(html: string): string {
-    // Replace utm_source parameter in href attributes
-    return html
-      .replace(/href="([^"]+)\?utm_source=chatgpt\.com"/g, (_match, url) => `href="${url}"`)
-      .replace(/href="([^"]+)&utm_source=chatgpt\.com"/g, (_match, url) => `href="${url}"`);
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('a[href]').forEach(el => {
+      const anchor = el as HTMLAnchorElement;
+      try {
+        const url = new URL(anchor.href);
+        if (url.searchParams.get('utm_source') === 'chatgpt.com') {
+          url.searchParams.delete('utm_source');
+          anchor.href = url.toString();
+        }
+      } catch {
+        // malformed href — leave for DOMPurify to handle
+      }
+    });
+    return doc.body.innerHTML;
   }
 }

@@ -17,13 +17,15 @@ import { htmlToMarkdown } from './markdown-rules';
 import { buildSourceMap } from '../lib/source-map';
 import type { DeepResearchLinks, DeepResearchSource } from '../lib/types';
 
-/** Pre-compiled regex for source-footnote wrapped citations */
-const CITATION_PATTERN_WRAPPED =
-  /<source-footnote[^>]*>[\s\S]*?<sup[^>]*?data-turn-source-index="(\d+)"[^>]*?>[\s\S]*?<\/sup>[\s\S]*?<\/source-footnote>/gi;
+/** Create a fresh regex for source-footnote wrapped citations */
+function createWrappedCitationPattern(): RegExp {
+  return /<source-footnote[^>]*>[\s\S]*?<sup[^>]*?data-turn-source-index="(\d+)"[^>]*?>[\s\S]*?<\/sup>[\s\S]*?<\/source-footnote>/gi;
+}
 
-/** Pre-compiled regex for standalone sup citations (fallback) */
-const CITATION_PATTERN_STANDALONE =
-  /<sup[^>]*?data-turn-source-index="(\d+)"[^>]*?>[\s\S]*?<\/sup>/gi;
+/** Create a fresh regex for standalone sup citations (fallback) */
+function createStandaloneCitationPattern(): RegExp {
+  return /<sup[^>]*?data-turn-source-index="(\d+)"[^>]*?>[\s\S]*?<\/sup>/gi;
+}
 
 /**
  * Escape Markdown link metacharacters in text
@@ -92,12 +94,10 @@ function convertInlineCitationsToFootnoteRefs(
   const replacer = createCitationReplacer(sourceMap);
 
   // Pattern 1: source-footnote wrapped
-  CITATION_PATTERN_WRAPPED.lastIndex = 0;
-  let result = html.replace(CITATION_PATTERN_WRAPPED, replacer);
+  let result = html.replace(createWrappedCitationPattern(), replacer);
 
   // Pattern 2: standalone sup element (fallback)
-  CITATION_PATTERN_STANDALONE.lastIndex = 0;
-  result = result.replace(CITATION_PATTERN_STANDALONE, replacer);
+  result = result.replace(createStandaloneCitationPattern(), replacer);
 
   return result;
 }

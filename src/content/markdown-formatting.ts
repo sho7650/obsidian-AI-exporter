@@ -7,13 +7,13 @@
 
 import { htmlToMarkdown, escapeAngleBrackets } from './markdown-rules';
 import { PLATFORM_LABELS } from '../lib/constants';
-import type { TemplateOptions } from '../lib/types';
+import type { AIPlatform, TemplateOptions } from '../lib/types';
 
 /**
  * Get display label for AI assistant based on source platform
  */
-function getAssistantLabel(source: string): string {
-  return PLATFORM_LABELS[source] ?? 'Assistant';
+function getAssistantLabel(source: AIPlatform): string {
+  return PLATFORM_LABELS[source];
 }
 
 /**
@@ -23,7 +23,7 @@ export function formatMessage(
   content: string,
   role: 'user' | 'assistant',
   options: TemplateOptions,
-  source: string
+  source: AIPlatform
 ): string {
   // Convert HTML to Markdown for assistant messages; escape angle brackets for user messages
   const markdown = role === 'assistant' ? htmlToMarkdown(content) : escapeAngleBrackets(content);

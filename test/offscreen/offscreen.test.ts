@@ -79,7 +79,22 @@ describe('offscreen/offscreen', () => {
     expect(sendResponse).not.toHaveBeenCalled();
   });
 
-  it('accepts messages from same extension ID', () => {
+  it('rejects messages from content scripts (sender.tab defined) (SEC-03)', () => {
+    const sendResponse = vi.fn();
+    const result = capturedListener(
+      { action: 'clipboardWrite', target: 'offscreen', content: 'test' },
+      {
+        id: chrome.runtime.id,
+        tab: { id: 1, index: 0, highlighted: false, active: true, pinned: false } as chrome.tabs.Tab,
+      } as chrome.runtime.MessageSender,
+      sendResponse
+    );
+
+    expect(result).toBe(false);
+    expect(sendResponse).not.toHaveBeenCalled();
+  });
+
+  it('accepts messages from background service worker (no sender.tab) (SEC-03)', () => {
     const sendResponse = vi.fn();
     capturedListener(
       { action: 'clipboardWrite', target: 'offscreen', content: 'hello' },

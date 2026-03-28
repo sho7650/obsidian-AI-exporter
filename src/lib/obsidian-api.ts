@@ -246,7 +246,8 @@ export class ObsidianApiClient {
       }
 
       const data = (await response.json()) as Record<string, unknown>;
-      const files = Array.isArray(data?.files) ? (data.files as string[]) : [];
+      const rawFiles = Array.isArray(data?.files) ? data.files : [];
+      const files = rawFiles.filter((f): f is string => typeof f === 'string');
       // Filter out directories (entries ending with '/')
       return files.filter(f => !f.endsWith('/'));
     } catch (error) {

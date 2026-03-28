@@ -834,6 +834,30 @@ describe('background/index', () => {
       await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
       expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'Network timeout' });
     });
+
+    it('rejects assembled path with traversal (SEC-04)', async () => {
+      // vaultPath and fileName individually pass validation, but combined they could traverse
+      // This tests the defense-in-depth check on the assembled fullPath
+      mockGetSettings = vi.fn(() =>
+        Promise.resolve({
+          ...defaultSettings,
+          vaultPath: 'AI/../../../etc',
+        })
+      );
+
+      const sendResponse = vi.fn();
+      capturedListener(
+        { action: 'getExistingFile', fileName: 'passwd', vaultPath: 'AI/../../../etc' },
+        validSender as chrome.runtime.MessageSender,
+        sendResponse
+      );
+
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+      expect(sendResponse).toHaveBeenCalledWith({
+        success: false,
+        error: expect.stringContaining('Invalid'),
+      });
+    });
   });
 
   describe('testConnection additional scenarios', () => {

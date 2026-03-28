@@ -54,8 +54,9 @@ chrome.runtime.onMessage.addListener(
     sender: chrome.runtime.MessageSender,
     sendResponse: (response: ClipboardWriteResponse) => void
   ) => {
-    // Security: Only accept messages from the same extension
-    if (sender.id !== chrome.runtime.id) {
+    // Security: Only accept messages from the background service worker
+    // sender.tab is undefined for background context, defined for content scripts
+    if (sender.id !== chrome.runtime.id || sender.tab !== undefined) {
       return false;
     }
 
