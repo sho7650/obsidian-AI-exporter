@@ -12,8 +12,9 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 - **Multi-platform support**: Export from Google Gemini, Claude AI, ChatGPT, and Perplexity
 - **One-click export**: Floating "Sync" button on supported AI pages
 - **Multiple output options**: Save to Obsidian, download as file, or copy to clipboard
-- **Deep Research support**: Export Gemini Deep Research and Claude Extended Thinking reports
+- **Deep Research support**: Export Gemini Deep Research, Claude Extended Thinking, and Perplexity Deep Research reports
 - **Artifact support**: Extract Claude Artifacts with inline citations and sources
+- **Configurable timezone**: Set timezone for frontmatter dates (created/modified)
 - **Tool content support**: Optionally include Claude's web search results and tool activity as collapsible `[!ABSTRACT]` callouts
 - **Append mode**: Only new messages are added to existing notes
 - **Obsidian callouts**: Formatted output with `[!QUESTION]` and `[!NOTE]` callouts
@@ -32,8 +33,6 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 ## Installation
 
 ### From Chrome Web Store
-
-> **Note**: Currently under review. The link will be active once approved.
 
 [Install from Chrome Web Store](https://chromewebstore.google.com/detail/obsidian-ai-exporter/edemgeigfbodiehkjhjflleipabgbdeh)
 
@@ -110,6 +109,11 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 1. Open a conversation with an Artifact
 2. Click the "Sync" button
 3. The Artifact content with inline citations and sources will be extracted
+
+**Perplexity Deep Research:**
+1. Open a Perplexity conversation containing a Deep Research report
+2. Click the "Sync" button
+3. The report content will be extracted alongside normal conversation messages
 
 ## Output Format
 

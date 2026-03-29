@@ -12,8 +12,9 @@ Google Gemini、Claude AI、ChatGPT、Perplexity の会話を Obsidian に保存
 - **マルチプラットフォーム対応**: Google Gemini、Claude AI、ChatGPT、Perplexity からエクスポート
 - **ワンクリック保存**: 対応 AI ページに表示される「Sync」ボタンで即座に保存
 - **複数の出力オプション**: Obsidian への保存、ファイルダウンロード、クリップボードへコピー
-- **Deep Research 対応**: Gemini Deep Research と Claude Extended Thinking レポートを保存
+- **Deep Research 対応**: Gemini Deep Research、Claude Extended Thinking、Perplexity Deep Research レポートを保存
 - **Artifact 対応**: Claude Artifacts をインライン引用とソース付きで抽出
+- **タイムゾーン設定**: フロントマターの日時（created/modified）にタイムゾーンを指定可能
 - **ツールコンテンツ対応**: Claude の Web 検索結果やツール活動を折りたたみ可能な `[!ABSTRACT]` コールアウトとして保存（オプション）
 - **追記モード**: 既存ノートには新しいメッセージのみを追加
 - **Obsidian コールアウト**: `[!QUESTION]` と `[!NOTE]` による見やすいフォーマット
@@ -32,8 +33,6 @@ Google Gemini、Claude AI、ChatGPT、Perplexity の会話を Obsidian に保存
 ## インストール
 
 ### Chrome ウェブストアから
-
-> **注意**: 現在審査中です。承認後にリンクが有効になります。
 
 [Chrome ウェブストアからインストール](https://chromewebstore.google.com/detail/obsidian-ai-exporter/edemgeigfbodiehkjhjflleipabgbdeh)
 
@@ -110,6 +109,11 @@ Google Gemini、Claude AI、ChatGPT、Perplexity の会話を Obsidian に保存
 1. Artifact を含む会話を開く
 2. 「Sync」ボタンをクリック
 3. インライン引用とソース付きで Artifact の内容が抽出されます
+
+**Perplexity Deep Research:**
+1. Deep Research レポートを含む Perplexity の会話を開く
+2. 「Sync」ボタンをクリック
+3. レポート内容が通常の会話メッセージとともに抽出されます
 
 ## 出力フォーマット
 

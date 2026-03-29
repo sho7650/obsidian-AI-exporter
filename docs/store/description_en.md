@@ -12,7 +12,8 @@ This extension extracts conversations from Google Gemini (gemini.google.com), Cl
 • One-click export from Gemini, Claude, ChatGPT, and Perplexity conversations
 • Clean Markdown formatting with YAML frontmatter
 • Obsidian callout syntax for Q&A blocks (shows correct AI name)
-• Deep Research support (Gemini) and Extended Thinking/Artifacts (Claude)
+• Deep Research support (Gemini, Perplexity) and Extended Thinking/Artifacts (Claude)
+• Configurable timezone for frontmatter dates
 • LaTeX math formula preservation ($$...$$ and $...$) across all platforms
 • Web search results saved as collapsible callouts (Claude)
 • Append mode - only new messages are added to existing notes

@@ -12,7 +12,8 @@ Google Gemini（gemini.google.com）、Claude AI（claude.ai）、ChatGPT（chat
 • Gemini、Claude、ChatGPT、Perplexity の会話をワンクリックでエクスポート
 • YAML フロントマター付きの整形された Markdown
 • Q&A ブロックに Obsidian コールアウト構文（正しい AI 名を表示）
-• Deep Research（Gemini）と Extended Thinking / Artifacts（Claude）に対応
+• Deep Research（Gemini、Perplexity）と Extended Thinking / Artifacts（Claude）に対応
+• フロントマター日時のタイムゾーン設定
 • LaTeX 数式の保存（$$...$$・$...$）- 全プラットフォーム対応
 • Web 検索結果を折りたたみ可能なコールアウトとして保存（Claude）
 • 追記モード - 既存ノートに新しいメッセージのみ追加
