@@ -363,47 +363,45 @@ interface ObsidianValidationResult {
 }
 
 /**
+ * Run a throwing validator and return the result or error message.
+ */
+function tryValidate(
+  fn: () => string,
+  fallbackMessage: string
+): { ok: true; value: string } | { ok: false; error: string } {
+  try {
+    return { ok: true, value: fn() };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : fallbackMessage };
+  }
+}
+
+/**
  * Validate Obsidian-specific settings (API key, URL, vault path)
  * Returns normalized values without mutating the input (DES-014 H-4)
  */
 function validateObsidianSettings(settings: ExtensionSettings): ObsidianValidationResult {
-  let normalizedApiKey: string;
-  try {
-    normalizedApiKey = validateApiKey(settings.obsidianApiKey);
-  } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : 'Invalid API key',
-      normalizedApiKey: settings.obsidianApiKey,
-      normalizedUrl: settings.obsidianUrl,
-      normalizedVaultPath: settings.vaultPath,
-    };
+  const defaults = {
+    normalizedApiKey: settings.obsidianApiKey,
+    normalizedUrl: settings.obsidianUrl,
+    normalizedVaultPath: settings.vaultPath,
+  };
+
+  const apiKey = tryValidate(() => validateApiKey(settings.obsidianApiKey), 'Invalid API key');
+  if (!apiKey.ok) return { error: apiKey.error, ...defaults };
+
+  const url = tryValidate(() => validateObsidianUrl(settings.obsidianUrl), 'Invalid URL');
+  if (!url.ok) return { error: url.error, ...defaults, normalizedApiKey: apiKey.value };
+
+  const vaultPath = tryValidate(
+    () => validateVaultPath(settings.vaultPath),
+    'Invalid vault path'
+  );
+  if (!vaultPath.ok) {
+    return { error: vaultPath.error, ...defaults, normalizedApiKey: apiKey.value, normalizedUrl: url.value };
   }
 
-  let normalizedUrl: string;
-  try {
-    normalizedUrl = validateObsidianUrl(settings.obsidianUrl);
-  } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : 'Invalid URL',
-      normalizedApiKey,
-      normalizedUrl: settings.obsidianUrl,
-      normalizedVaultPath: settings.vaultPath,
-    };
-  }
-
-  let normalizedVaultPath: string;
-  try {
-    normalizedVaultPath = validateVaultPath(settings.vaultPath);
-  } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : 'Invalid vault path',
-      normalizedApiKey,
-      normalizedUrl,
-      normalizedVaultPath: settings.vaultPath,
-    };
-  }
-
-  return { error: null, normalizedApiKey, normalizedUrl, normalizedVaultPath };
+  return { error: null, normalizedApiKey: apiKey.value, normalizedUrl: url.value, normalizedVaultPath: vaultPath.value };
 }
 
 /**
