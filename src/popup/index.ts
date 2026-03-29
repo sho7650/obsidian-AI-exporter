@@ -393,15 +393,22 @@ function validateObsidianSettings(settings: ExtensionSettings): ObsidianValidati
   const url = tryValidate(() => validateObsidianUrl(settings.obsidianUrl), 'Invalid URL');
   if (!url.ok) return { error: url.error, ...defaults, normalizedApiKey: apiKey.value };
 
-  const vaultPath = tryValidate(
-    () => validateVaultPath(settings.vaultPath),
-    'Invalid vault path'
-  );
+  const vaultPath = tryValidate(() => validateVaultPath(settings.vaultPath), 'Invalid vault path');
   if (!vaultPath.ok) {
-    return { error: vaultPath.error, ...defaults, normalizedApiKey: apiKey.value, normalizedUrl: url.value };
+    return {
+      error: vaultPath.error,
+      ...defaults,
+      normalizedApiKey: apiKey.value,
+      normalizedUrl: url.value,
+    };
   }
 
-  return { error: null, normalizedApiKey: apiKey.value, normalizedUrl: url.value, normalizedVaultPath: vaultPath.value };
+  return {
+    error: null,
+    normalizedApiKey: apiKey.value,
+    normalizedUrl: url.value,
+    normalizedVaultPath: vaultPath.value,
+  };
 }
 
 /**
