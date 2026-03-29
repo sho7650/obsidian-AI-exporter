@@ -135,10 +135,6 @@ body {
   flex: 1;
 }
 
-.form-row .form-group.flex-grow {
-  flex: 2;
-}
-
 label {
   display: block;
   font-size: 13px;
