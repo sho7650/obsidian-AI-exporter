@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.8](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.19.7...v0.19.8) (2026-03-29)
+
+
+### Documentation
+
+* add Perplexity Deep Research, timezone, remove stale CWS note ([#183](https://github.com/sho7650/obsidian-AI-exporter/issues/183)) ([dd96b8f](https://github.com/sho7650/obsidian-AI-exporter/commit/dd96b8f9ffa444663eba96d9fb986f6c715083ad))
+
 ## [0.19.7](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.19.6...v0.19.7) (2026-03-29)
 
 
