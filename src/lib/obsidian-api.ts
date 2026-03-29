@@ -107,6 +107,27 @@ export class ObsidianApiClient {
   }
 
   /**
+   * Fetch with timeout and unified network error handling.
+   * Wraps fetch() with AbortSignal.timeout and converts network errors
+   * to ObsidianApiError. Used by getFile, putFile, listFiles.
+   *
+   * Not used by testConnection (which returns a result object instead of throwing).
+   */
+  private async fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
+    try {
+      return await fetch(url, {
+        ...options,
+        signal: createTimeoutSignal(DEFAULT_API_TIMEOUT),
+      });
+    } catch (error) {
+      if (isNetworkError(error)) {
+        throw this.createError(0, 'Request timed out. Please check your connection.');
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Test API connection with authentication verification
    *
    * Uses /vault/ endpoint which requires authentication.
@@ -163,29 +184,21 @@ export class ObsidianApiClient {
    * @returns File content as string, or null if file doesn't exist
    */
   async getFile(path: string): Promise<string | null> {
-    try {
-      const encodedPath = encodeURIComponent(path);
-      const response = await fetch(`${this.baseUrl}/vault/${encodedPath}`, {
-        method: 'GET',
-        headers: this.getHeaders(),
-        signal: createTimeoutSignal(DEFAULT_API_TIMEOUT),
-      });
+    const encodedPath = encodeURIComponent(path);
+    const response = await this.fetchWithTimeout(`${this.baseUrl}/vault/${encodedPath}`, {
+      method: 'GET',
+      headers: this.getHeaders(),
+    });
 
-      if (response.status === 404) {
-        return null;
-      }
-
-      if (!response.ok) {
-        throw this.createError(response.status, `Failed to get file: ${response.statusText}`);
-      }
-
-      return await response.text();
-    } catch (error) {
-      if (isNetworkError(error)) {
-        throw this.createError(0, 'Request timed out. Please check your connection.');
-      }
-      throw error;
+    if (response.status === 404) {
+      return null;
     }
+
+    if (!response.ok) {
+      throw this.createError(response.status, `Failed to get file: ${response.statusText}`);
+    }
+
+    return await response.text();
   }
 
   /**
@@ -194,26 +207,18 @@ export class ObsidianApiClient {
    * @param content - File content (markdown)
    */
   async putFile(path: string, content: string): Promise<void> {
-    try {
-      const encodedPath = encodeURIComponent(path);
-      const response = await fetch(`${this.baseUrl}/vault/${encodedPath}`, {
-        method: 'PUT',
-        headers: {
-          ...this.getHeaders(),
-          'Content-Type': 'text/markdown',
-        },
-        body: content,
-        signal: createTimeoutSignal(DEFAULT_API_TIMEOUT),
-      });
+    const encodedPath = encodeURIComponent(path);
+    const response = await this.fetchWithTimeout(`${this.baseUrl}/vault/${encodedPath}`, {
+      method: 'PUT',
+      headers: {
+        ...this.getHeaders(),
+        'Content-Type': 'text/markdown',
+      },
+      body: content,
+    });
 
-      if (!response.ok) {
-        throw this.createError(response.status, `Failed to save file: ${response.statusText}`);
-      }
-    } catch (error) {
-      if (isNetworkError(error)) {
-        throw this.createError(0, 'Request timed out. Please check your connection.');
-      }
-      throw error;
+    if (!response.ok) {
+      throw this.createError(response.status, `Failed to save file: ${response.statusText}`);
     }
   }
 
@@ -226,36 +231,28 @@ export class ObsidianApiClient {
    * @returns Array of filenames (directories filtered out)
    */
   async listFiles(directory: string): Promise<string[]> {
-    try {
-      const encodedDir = encodeURIComponent(directory);
-      const response = await fetch(`${this.baseUrl}/vault/${encodedDir}/`, {
-        method: 'GET',
-        headers: {
-          ...this.getHeaders(),
-          Accept: 'application/json',
-        },
-        signal: createTimeoutSignal(DEFAULT_API_TIMEOUT),
-      });
+    const encodedDir = encodeURIComponent(directory);
+    const response = await this.fetchWithTimeout(`${this.baseUrl}/vault/${encodedDir}/`, {
+      method: 'GET',
+      headers: {
+        ...this.getHeaders(),
+        Accept: 'application/json',
+      },
+    });
 
-      if (response.status === 404) {
-        return [];
-      }
-
-      if (!response.ok) {
-        throw this.createError(response.status, `Failed to list files: ${response.statusText}`);
-      }
-
-      const data = (await response.json()) as Record<string, unknown>;
-      const rawFiles = Array.isArray(data?.files) ? data.files : [];
-      const files = rawFiles.filter((f): f is string => typeof f === 'string');
-      // Filter out directories (entries ending with '/')
-      return files.filter(f => !f.endsWith('/'));
-    } catch (error) {
-      if (isNetworkError(error)) {
-        throw this.createError(0, 'Request timed out. Please check your connection.');
-      }
-      throw error;
+    if (response.status === 404) {
+      return [];
     }
+
+    if (!response.ok) {
+      throw this.createError(response.status, `Failed to list files: ${response.statusText}`);
+    }
+
+    const data = (await response.json()) as Record<string, unknown>;
+    const rawFiles = Array.isArray(data?.files) ? data.files : [];
+    const files = rawFiles.filter((f): f is string => typeof f === 'string');
+    // Filter out directories (entries ending with '/')
+    return files.filter(f => !f.endsWith('/'));
   }
 
   /**
