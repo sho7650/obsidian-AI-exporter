@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.6](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.19.5...v0.19.6) (2026-03-29)
+
+
+### Code Refactoring
+
+* DRY improvements for ObsidianApiClient and popup validation ([#180](https://github.com/sho7650/obsidian-AI-exporter/issues/180)) ([02db2a0](https://github.com/sho7650/obsidian-AI-exporter/commit/02db2a02c9da7d8f6ab84744269256557c2be581))
+
 ## [0.19.5](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.19.4...v0.19.5) (2026-03-28)
 
 
