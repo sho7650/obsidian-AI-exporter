@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.7](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.19.6...v0.19.7) (2026-03-29)
+
+
+### Documentation
+
+* add missing commands to CLAUDE.md (test, build:zip, format:check) ([1f9bf63](https://github.com/sho7650/obsidian-AI-exporter/commit/1f9bf638cda5257ff0e7ff5f349921587a1a066b))
+
 ## [0.19.6](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.19.5...v0.19.6) (2026-03-29)
 
 
