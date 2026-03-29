@@ -405,6 +405,28 @@ function validateObsidianSettings(settings: ExtensionSettings): ObsidianValidati
 }
 
 /**
+ * Validate and normalize Obsidian settings (API key, URL, vault path).
+ * Returns normalized settings or an error message.
+ */
+function normalizeObsidianSettings(
+  settings: ExtensionSettings
+): { ok: true; settings: ExtensionSettings } | { ok: false; error: string } {
+  const validation = validateObsidianSettings(settings);
+  if (validation.error) {
+    return { ok: false, error: validation.error };
+  }
+  return {
+    ok: true,
+    settings: {
+      ...settings,
+      obsidianApiKey: validation.normalizedApiKey,
+      obsidianUrl: validation.normalizedUrl,
+      vaultPath: validation.normalizedVaultPath,
+    },
+  };
+}
+
+/**
  * Handle save button click
  * Input validation using security utilities (NEW-03)
  */
@@ -424,17 +446,12 @@ async function handleSave(): Promise<void> {
     // Validate Obsidian-specific settings only if Obsidian output is enabled
     let settingsToSave = settings;
     if (settings.outputOptions.obsidian) {
-      const validation = validateObsidianSettings(settings);
-      if (validation.error) {
-        showStatus(validation.error, 'error');
+      const result = normalizeObsidianSettings(settings);
+      if (!result.ok) {
+        showStatus(result.error, 'error');
         return;
       }
-      settingsToSave = {
-        ...settings,
-        obsidianApiKey: validation.normalizedApiKey,
-        obsidianUrl: validation.normalizedUrl,
-        vaultPath: validation.normalizedVaultPath,
-      };
+      settingsToSave = result.settings;
     }
 
     await saveSettings(settingsToSave);
@@ -466,20 +483,15 @@ async function handleTest(): Promise<void> {
     }
 
     // Validate Obsidian settings before saving (same as handleSave)
-    const validation = validateObsidianSettings(settings);
-    if (validation.error) {
-      showStatus(validation.error, 'error');
+    const result = normalizeObsidianSettings(settings);
+    if (!result.ok) {
+      showStatus(result.error, 'error');
       elements.testBtn.disabled = false;
       return;
     }
 
     // Save validated and normalized settings for the test
-    await saveSettings({
-      ...settings,
-      obsidianApiKey: validation.normalizedApiKey,
-      obsidianUrl: validation.normalizedUrl,
-      vaultPath: validation.normalizedVaultPath,
-    });
+    await saveSettings(result.settings);
 
     // Send test connection message to background script
     const response = await sendMessage({ action: 'testConnection' });
