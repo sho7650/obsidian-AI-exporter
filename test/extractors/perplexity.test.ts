@@ -417,38 +417,46 @@ describe('PerplexityExtractor', () => {
     });
   });
 
-  // ========== Issue #96: Math equations in code blocks ==========
+  // ========== Issue #96: Math equations rendering ==========
+  // Issue #96 was originally reported against v0.12.0 when Perplexity emitted
+  // raw LaTeX inside <pre><code>/<code> blocks. Perplexity has since switched to
+  // standard KaTeX (<span class="katex"> with <annotation encoding="application/x-tex">),
+  // which preprocessKatex() in src/lib/sanitize.ts converts to data-math attributes
+  // before DOMPurify strips MathML. The Turndown rules in markdown-rules.ts then
+  // emit $..$ for inline math and $$..$$ for display math, which Obsidian renders
+  // natively. These tests pin the current end-to-end behavior so future regressions
+  // surface immediately.
   describe('Math equations rendering (issue #96)', () => {
-    it('reproduces: LaTeX in fenced code blocks instead of $$ (display math)', () => {
-      // Issue #96: Perplexity outputs LaTeX inside <pre><code> instead of KaTeX
-      // Markdown conversion happens in conversationToNote(), not extractMessages()
-      // So we test via htmlToMarkdown() which is the actual conversion path
+    it('converts inline KaTeX to $..$ delimiters', () => {
       const html = `
-        <p>Then the unconditional expected prize is</p>
-        <pre><code>E[\\text{prize}] = 0.21 \\times 0.66</code></pre>
-        <p>and the EV of the ticket is</p>
-        <pre><code>EV = E[\\text{prize}] - 1
-= 0.21 \\times 0.66 - 1</code></pre>
+        <p>The quadratic formula is
+          <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><annotation encoding="application/x-tex">x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}</annotation></semantics></math></span></span>
+          which solves
+          <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><annotation encoding="application/x-tex">ax^2 + bx + c = 0</annotation></semantics></math></span></span>.
+        </p>
       `;
 
       const markdown = htmlToMarkdown(sanitizeHtml(html));
 
-      // CURRENT BEHAVIOR (bug): LaTeX ends up inside ``` code blocks
-      expect(markdown).toContain('```');
-      expect(markdown).toContain('E[\\text{prize}]');
-      expect(markdown).not.toContain('$$');
+      expect(markdown).toContain('$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$');
+      expect(markdown).toContain('$ax^2 + bx + c = 0$');
+      // Must NOT regress to inline code or fenced blocks
+      expect(markdown).not.toMatch(/`x = \\frac/);
+      expect(markdown).not.toMatch(/```[\s\S]*x = \\frac/);
     });
 
-    it('reproduces: LaTeX in inline code instead of $ (inline math)', () => {
-      // Issue #96: Perplexity outputs inline LaTeX inside <code> tags
-      const html = `<p>Let <code>P(\\text{win}) = 0.21</code> and <code>P(\\text{lose}) = 0.79</code></p>`;
+    it('converts display KaTeX to $$..$$ blocks', () => {
+      const html = `
+        <p>Integrating gives</p>
+        <span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><annotation encoding="application/x-tex">\\int_{0}^{1} x^2\\,dx = \\frac{1}{3}</annotation></semantics></math></span></span></span>
+      `;
 
       const markdown = htmlToMarkdown(sanitizeHtml(html));
 
-      // CURRENT BEHAVIOR (bug): LaTeX ends up inside ` backticks
-      expect(markdown).toContain('`');
-      expect(markdown).toContain('P(\\text{win})');
-      expect(markdown).not.toContain('$P(\\text{win})');
+      expect(markdown).toContain('$$');
+      expect(markdown).toContain('\\int_{0}^{1} x^2\\,dx = \\frac{1}{3}');
+      // Must NOT regress to fenced code blocks
+      expect(markdown).not.toMatch(/```[\s\S]*\\int_/);
     });
   });
 
