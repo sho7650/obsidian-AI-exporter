@@ -32,6 +32,7 @@ npm-debug.log*
 # Test files
 elements-sample.html
 coverage/
+test-results/
 
 # Environment
 .env
