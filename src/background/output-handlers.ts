@@ -8,13 +8,22 @@ import { extractErrorMessage } from '../lib/error-utils';
 import { generateNoteContent } from '../lib/note-generator';
 import { handleSave } from './obsidian-handlers';
 import type {
-  ClipboardWriteResponse,
   ExtensionSettings,
   ObsidianNote,
   OutputDestination,
   OutputResult,
   MultiOutputResponse,
 } from '../lib/types';
+
+/** Runtime type guard for offscreen clipboard response */
+function isClipboardWriteResponse(value: unknown): value is { success: boolean; error?: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'success' in value &&
+    typeof (value as Record<string, unknown>).success === 'boolean'
+  );
+}
 
 /** Offscreen document close timeout (milliseconds) */
 const OFFSCREEN_TIMEOUT_MS = 5000;
@@ -178,22 +187,21 @@ async function handleCopyToClipboard(
 
     await ensureOffscreenDocument();
 
-    const response = (await chrome.runtime.sendMessage({
+    const response: unknown = await chrome.runtime.sendMessage({
       action: 'clipboardWrite',
       target: 'offscreen',
       content,
-    })) as ClipboardWriteResponse | undefined;
+    });
 
     scheduleOffscreenClose();
 
-    if (response?.success) {
+    if (isClipboardWriteResponse(response) && response.success) {
       return { destination: 'clipboard', success: true };
     } else {
-      return {
-        destination: 'clipboard',
-        success: false,
-        error: response?.error ?? 'Clipboard write failed',
-      };
+      const error = isClipboardWriteResponse(response)
+        ? (response.error ?? 'Clipboard write failed')
+        : 'Clipboard write failed';
+      return { destination: 'clipboard', success: false, error };
     }
   } catch (error) {
     return {
