@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.19.8...v0.20.0) (2026-04-07)
+
+
+### Features
+
+* **template:** add optional `## ` question headers for TOC navigation ([#189](https://github.com/sho7650/obsidian-AI-exporter/issues/189)) ([de6d382](https://github.com/sho7650/obsidian-AI-exporter/commit/de6d3824809a2285cb2acf4ba03b90d81e08e792)), closes [#187](https://github.com/sho7650/obsidian-AI-exporter/issues/187)
+
 ## [0.19.8](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.19.7...v0.19.8) (2026-03-29)
 
 
