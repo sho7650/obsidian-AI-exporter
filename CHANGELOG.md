@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.4](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.20.3...v0.20.4) (2026-04-07)
+
+
+### Documentation
+
+* document optional question headers feature in READMEs and store listings ([#196](https://github.com/sho7650/obsidian-AI-exporter/issues/196)) ([9fa7a1f](https://github.com/sho7650/obsidian-AI-exporter/commit/9fa7a1f22dd3d460eb1d10ee92bbe9461f7197c5))
+
 ## [0.20.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.20.2...v0.20.3) (2026-04-07)
 
 
