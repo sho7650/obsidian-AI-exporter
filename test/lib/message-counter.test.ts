@@ -6,39 +6,21 @@ describe('message-counter', () => {
 
   describe('countExistingMessages', () => {
     it('counts callout format messages', () => {
-      const body = [
-        '> [!QUESTION] User',
-        '> Hello',
-        '',
-        '> [!NOTE] Claude',
-        '> Hi there!',
-      ].join('\n');
+      const body = ['> [!QUESTION] User', '> Hello', '', '> [!NOTE] Claude', '> Hi there!'].join(
+        '\n'
+      );
 
       expect(countExistingMessages(body)).toBe(2);
     });
 
     it('counts blockquote format messages', () => {
-      const body = [
-        '**User:**',
-        '> Hello',
-        '',
-        '**Claude:**',
-        '> Hi there!',
-      ].join('\n');
+      const body = ['**User:**', '> Hello', '', '**Claude:**', '> Hi there!'].join('\n');
 
       expect(countExistingMessages(body)).toBe(2);
     });
 
     it('counts plain format messages', () => {
-      const body = [
-        '**User:**',
-        '',
-        'Hello',
-        '',
-        '**Gemini:**',
-        '',
-        'Hi there!',
-      ].join('\n');
+      const body = ['**User:**', '', 'Hello', '', '**Gemini:**', '', 'Hi there!'].join('\n');
 
       expect(countExistingMessages(body)).toBe(2);
     });
@@ -85,6 +67,33 @@ describe('message-counter', () => {
       expect(countExistingMessages(body)).toBe(2);
     });
 
+    it('strips fenced code blocks at column 0 before counting', () => {
+      // Real fenced code block (unlike blockquote-nested) exercises stripCodeBlocks()
+      // — CODE_BLOCK_PATTERN only matches ``` at start of line.
+      const body = [
+        '**User:**',
+        '',
+        'Show me markdown example',
+        '',
+        '**Claude:**',
+        '',
+        'Here you go:',
+        '```markdown',
+        '**User:**',
+        'This is example text, not a real message',
+        '**Assistant:**',
+        'Neither is this',
+        '```',
+        '',
+        '**User:**',
+        '',
+        'Thanks',
+      ].join('\n');
+
+      // Only 3 real messages: User, Claude, User. The ones inside ``` must be stripped.
+      expect(countExistingMessages(body)).toBe(3);
+    });
+
     it('handles ChatGPT and Perplexity labels', () => {
       const body = [
         '> [!QUESTION] User',
@@ -104,13 +113,7 @@ describe('message-counter', () => {
     });
 
     it('handles Assistant label', () => {
-      const body = [
-        '**User:**',
-        '> Hello',
-        '',
-        '**Assistant:**',
-        '> Hi there!',
-      ].join('\n');
+      const body = ['**User:**', '> Hello', '', '**Assistant:**', '> Hi there!'].join('\n');
 
       expect(countExistingMessages(body)).toBe(2);
     });
@@ -163,13 +166,7 @@ describe('message-counter', () => {
     });
 
     it('returns empty string when skipCount exceeds message count', () => {
-      const body = [
-        '> [!QUESTION] User',
-        '> Hello',
-        '',
-        '> [!NOTE] Claude',
-        '> Hi',
-      ].join('\n');
+      const body = ['> [!QUESTION] User', '> Hello', '', '> [!NOTE] Claude', '> Hi'].join('\n');
 
       expect(extractTailMessages(body, 5)).toBe('');
     });
@@ -233,6 +230,34 @@ describe('message-counter', () => {
       const tail = extractTailMessages(body, 2);
       expect(tail).toContain('Real new message');
       expect(tail).not.toContain('How to format?');
+    });
+
+    it('toggles inCodeBlock flag on column-0 fenced markers', () => {
+      // Uses real fenced code blocks at column 0 (not blockquote-wrapped) so that
+      // line.startsWith('```') triggers the inCodeBlock toggle in extractTailMessages.
+      const body = [
+        '**User:**',
+        '',
+        'Question 1',
+        '',
+        '**Claude:**',
+        '',
+        'See example:',
+        '```',
+        '**User:**',
+        'fake message in code',
+        '```',
+        '',
+        '**User:**',
+        '',
+        'Question 2',
+      ].join('\n');
+
+      const tail = extractTailMessages(body, 2);
+      // Should start at the 3rd real User message (Question 2), not the fake one in code.
+      expect(tail).toContain('Question 2');
+      expect(tail).not.toContain('Question 1');
+      expect(tail).not.toContain('fake message in code');
     });
   });
 });

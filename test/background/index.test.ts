@@ -1736,4 +1736,70 @@ describe('background/index', () => {
       expect(response.messagesAppended).toBe(2);
     });
   });
+
+  describe('handleMessage rejection path', () => {
+    const validSender = { url: `chrome-extension://${chrome.runtime.id}/popup.html` };
+
+    it('sends error response when handleMessage rejects', async () => {
+      // Force getSettings (first await in handleMessage) to throw so the
+      // outer promise rejects and the catch handler runs (L62-64).
+      mockGetSettings = vi.fn(() => Promise.reject(new Error('storage failure')));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const sendResponse = vi.fn();
+      capturedListener(
+        { action: 'getSettings' },
+        validSender as chrome.runtime.MessageSender,
+        sendResponse
+      );
+
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+      expect(sendResponse).toHaveBeenCalledWith({
+        success: false,
+        error: 'storage failure',
+      });
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[G2O Background] Error handling message:',
+        expect.any(Error)
+      );
+    });
+  });
+});
+
+describe('background/index migrateSettings failure', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetModules();
+    vi.doUnmock('../../src/lib/storage');
+    vi.doUnmock('../../src/lib/obsidian-api');
+  });
+
+  it('logs an error when migrateSettings rejects at startup', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    vi.resetModules();
+    vi.doMock('../../src/lib/obsidian-api', () => ({
+      ObsidianApiClient: class {
+        testConnection = vi.fn();
+        getFile = vi.fn();
+        putFile = vi.fn();
+        listFiles = vi.fn();
+      },
+      isObsidianApiError: () => false,
+    }));
+    vi.doMock('../../src/lib/storage', () => ({
+      getSettings: vi.fn(() => Promise.resolve({})),
+      migrateSettings: vi.fn(() => Promise.reject(new Error('migration failed'))),
+    }));
+
+    await import('../../src/background/index');
+
+    // The .catch() handler schedules a microtask — flush it.
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[G2O Background] Settings migration failed:',
+      expect.any(Error)
+    );
+  });
 });
