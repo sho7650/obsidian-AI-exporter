@@ -296,6 +296,69 @@ describe('buildAppendContent', () => {
     expect(result!.content).toMatch(/modified: .*\+09:00/);
   });
 
+  // ========== Issue #187: Question headers in append mode ==========
+  it('preserves `## ` question headers when appending new messages', () => {
+    const settingsWithHeaders: ExtensionSettings = {
+      ...testSettings,
+      templateOptions: {
+        ...testSettings.templateOptions,
+        includeQuestionHeaders: true,
+      },
+    };
+
+    // Existing file: 2 messages with their `##` header from a prior sync
+    const existing = [
+      '---',
+      'id: claude_test-id',
+      'message_count: 2',
+      'modified: "2026-01-01"',
+      '---',
+      '## Hello',
+      '',
+      '> [!QUESTION] User',
+      '> Hello',
+      '',
+      '> [!NOTE] Claude',
+      '> Hi there!',
+    ].join('\n');
+
+    // New note has 4 messages; rebuilt body should also include headers
+    const noteWithHeaders: ObsidianNote = {
+      ...testNote,
+      body: [
+        '## Hello',
+        '',
+        '> [!QUESTION] User',
+        '> Hello',
+        '',
+        '> [!NOTE] Claude',
+        '> Hi there!',
+        '',
+        '## New question',
+        '',
+        '> [!QUESTION] User',
+        '> New question',
+        '',
+        '> [!NOTE] Claude',
+        '> New answer',
+      ].join('\n'),
+    };
+
+    const result = buildAppendContent(existing, noteWithHeaders, settingsWithHeaders);
+
+    expect(result).not.toBeNull();
+    expect(result!.messagesAppended).toBe(2);
+    // Header for the new question must be carried into the appended tail
+    expect(result!.content).toContain('## New question');
+    // Existing header should not be duplicated
+    const headerCount = (result!.content.match(/^## Hello$/gm) ?? []).length;
+    expect(headerCount).toBe(1);
+    // Existing content preserved
+    expect(result!.content).toContain('> Hello');
+    expect(result!.content).toContain('> Hi there!');
+    expect(result!.content).toContain('New answer');
+  });
+
   it('preserves user-added notes in existing body', () => {
     const existing = [
       '---',

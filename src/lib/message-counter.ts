@@ -73,6 +73,10 @@ export function countExistingMessages(body: string): number {
 /**
  * Extract messages after skipCount from a formatted note body.
  * Returns formatted markdown for only the tail (new) messages.
+ *
+ * When the matched message is preceded by a freshly generated `## ` question
+ * header (issue #187), the lookback also captures that header so append-mode
+ * output keeps the TOC entry intact.
  */
 export function extractTailMessages(fullBody: string, skipCount: number): string {
   if (skipCount <= 0) return fullBody;
@@ -98,6 +102,14 @@ export function extractTailMessages(fullBody: string, skipCount: number): string
     if (MESSAGE_START_PATTERN.test(line)) {
       if (messageIndex === skipCount) {
         tailStartLine = i;
+        // Look back across blank lines for an immediately preceding `## ` header
+        // (issue #187). fullBody is freshly generated so the only `## ` lines
+        // are auto-generated question headers.
+        let lookback = i - 1;
+        while (lookback >= 0 && lines[lookback].trim() === '') lookback--;
+        if (lookback >= 0 && /^## /.test(lines[lookback])) {
+          tailStartLine = lookback;
+        }
         break;
       }
       messageIndex++;

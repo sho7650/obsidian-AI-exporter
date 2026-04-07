@@ -227,6 +227,12 @@ export interface TemplateOptions {
   userCalloutType: string;
   /** Callout type for assistant messages (e.g., 'NOTE') */
   assistantCalloutType: string;
+  /**
+   * Prepend an `##` header derived from the user message before each user
+   * callout/blockquote/plain block. Enables Obsidian TOC navigation in long
+   * conversations. Defaults to false (issue #187).
+   */
+  includeQuestionHeaders?: boolean;
   /** IANA timezone for created/modified dates (e.g., 'Asia/Tokyo'). Defaults to 'UTC'. */
   timezone?: string;
   /** Custom frontmatter fields (reserved for future use) */

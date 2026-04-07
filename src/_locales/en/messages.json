@@ -81,6 +81,14 @@
     "message": "Assistant Callout Type",
     "description": "Label for assistant callout type"
   },
+  "settings_includeQuestionHeaders": {
+    "message": "Add `## ` headers before user messages",
+    "description": "Checkbox label for issue #187 question header option"
+  },
+  "settings_includeQuestionHeadersHelp": {
+    "message": "Prepend a level-2 heading (first 60 chars of the question) for TOC navigation in long conversations.",
+    "description": "Help text for question header option"
+  },
   "settings_frontmatter": {
     "message": "Frontmatter Options",
     "description": "Section title for frontmatter options"

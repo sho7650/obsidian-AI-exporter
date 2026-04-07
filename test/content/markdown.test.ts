@@ -631,6 +631,164 @@ describe('conversationToNote', () => {
 
     expect(note.body).not.toContain('## References');
   });
+
+  // ========== Issue #187: Question headers ==========
+  describe('includeQuestionHeaders option (issue #187)', () => {
+    const baseData: ConversationData = {
+      id: 'header-test',
+      title: 'Header Test',
+      url: 'https://gemini.google.com/app/header-test',
+      source: 'gemini',
+      messages: [
+        { id: 'm1', role: 'user', content: 'How does TLS work?', index: 0 },
+        { id: 'm2', role: 'assistant', content: '<p>It uses keys.</p>', index: 1 },
+        { id: 'm3', role: 'user', content: 'What about HTTP/3?', index: 2 },
+        { id: 'm4', role: 'assistant', content: '<p>It uses QUIC.</p>', index: 3 },
+      ],
+      extractedAt: new Date('2025-01-01T00:00:00Z'),
+      metadata: {
+        messageCount: 4,
+        userMessageCount: 2,
+        assistantMessageCount: 2,
+        hasCodeBlocks: false,
+      },
+    };
+
+    it('omits headers when option is false (default)', () => {
+      const note = conversationToNote(baseData, defaultOptions);
+      expect(note.body).not.toMatch(/^## How does TLS work\?$/m);
+      expect(note.body).not.toMatch(/^## What about HTTP\/3\?$/m);
+    });
+
+    it('prepends `## ` header before each user callout when enabled', () => {
+      const note = conversationToNote(baseData, {
+        ...defaultOptions,
+        includeQuestionHeaders: true,
+      });
+
+      expect(note.body).toMatch(
+        /^## How does TLS work\?\n\n> \[!QUESTION\] User\n> How does TLS work\?/m
+      );
+      expect(note.body).toMatch(
+        /^## What about HTTP\/3\?\n\n> \[!QUESTION\] User\n> What about HTTP\/3\?/m
+      );
+    });
+
+    it('does not prepend headers before assistant messages', () => {
+      const note = conversationToNote(baseData, {
+        ...defaultOptions,
+        includeQuestionHeaders: true,
+      });
+
+      // Assistant content should never appear as an H2 heading
+      expect(note.body).not.toMatch(/^## It uses keys\./m);
+      expect(note.body).not.toMatch(/^## It uses QUIC\./m);
+    });
+
+    it('truncates long questions to 60 characters with ellipsis', () => {
+      const longText =
+        'Please explain quantum mechanics in simple terms that a ten year old child would easily understand';
+      const data: ConversationData = {
+        ...baseData,
+        messages: [{ id: 'm1', role: 'user', content: longText, index: 0 }],
+      };
+
+      const note = conversationToNote(data, {
+        ...defaultOptions,
+        includeQuestionHeaders: true,
+      });
+
+      const headerLine = note.body.split('\n').find(l => l.startsWith('## '));
+      expect(headerLine).toBeDefined();
+      expect(headerLine!.endsWith('…')).toBe(true);
+      // Visible length (excluding the leading "## ") must stay within budget
+      const visible = headerLine!.slice(3);
+      expect(visible.length).toBeLessThanOrEqual(60);
+      // Truncated text must be a complete word-prefix of the original (i.e. break
+      // happened on a space, not mid-word)
+      const textWithoutEllipsis = visible.slice(0, -1);
+      expect(longText.startsWith(textWithoutEllipsis + ' ')).toBe(true);
+    });
+
+    it('hard-truncates a single very long word', () => {
+      const longWord = 'A' + 'a'.repeat(100);
+      const data: ConversationData = {
+        ...baseData,
+        messages: [{ id: 'm1', role: 'user', content: longWord, index: 0 }],
+      };
+
+      const note = conversationToNote(data, {
+        ...defaultOptions,
+        includeQuestionHeaders: true,
+      });
+
+      const headerLine = note.body.split('\n').find(l => l.startsWith('## '));
+      expect(headerLine).toBeDefined();
+      expect(headerLine!.endsWith('…')).toBe(true);
+      const visible = headerLine!.slice(3);
+      // Total visible length stays within the 60-char budget
+      expect(visible.length).toBeLessThanOrEqual(60);
+    });
+
+    it('normalizes multi-line user content into a single header line', () => {
+      const data: ConversationData = {
+        ...baseData,
+        messages: [
+          {
+            id: 'm1',
+            role: 'user',
+            content: 'First line\n\n  Second   line\twith tabs',
+            index: 0,
+          },
+        ],
+      };
+
+      const note = conversationToNote(data, {
+        ...defaultOptions,
+        includeQuestionHeaders: true,
+      });
+
+      expect(note.body).toMatch(/^## First line Second line with tabs$/m);
+    });
+
+    it('skips header for empty user content', () => {
+      const data: ConversationData = {
+        ...baseData,
+        messages: [
+          { id: 'm1', role: 'user', content: '   \n\t  ', index: 0 },
+          { id: 'm2', role: 'assistant', content: '<p>Hi</p>', index: 1 },
+        ],
+      };
+
+      const note = conversationToNote(data, {
+        ...defaultOptions,
+        includeQuestionHeaders: true,
+      });
+
+      // No leading H2 line
+      expect(note.body).not.toMatch(/^## /m);
+    });
+
+    it('works with blockquote message format', () => {
+      const note = conversationToNote(baseData, {
+        ...defaultOptions,
+        messageFormat: 'blockquote',
+        includeQuestionHeaders: true,
+      });
+
+      expect(note.body).toMatch(/^## How does TLS work\?\n\n\*\*User:\*\*/m);
+    });
+
+    it('works with plain message format', () => {
+      const note = conversationToNote(baseData, {
+        ...defaultOptions,
+        messageFormat: 'plain',
+        includeQuestionHeaders: true,
+      });
+
+      expect(note.body).toMatch(/^## How does TLS work\?\n\n\*\*User:\*\*/m);
+    });
+  });
 });
 
 // ============================================================

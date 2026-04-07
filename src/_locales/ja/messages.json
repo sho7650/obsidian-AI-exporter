@@ -61,6 +61,12 @@
   "settings_assistantCallout": {
     "message": "アシスタントのコールアウト種類"
   },
+  "settings_includeQuestionHeaders": {
+    "message": "ユーザーメッセージの前に `## ` 見出しを追加"
+  },
+  "settings_includeQuestionHeadersHelp": {
+    "message": "長い会話で目次から飛べるように、質問の冒頭60文字を見出し2 (`## `) として各ユーザーメッセージの前に追加します。"
+  },
   "settings_frontmatter": {
     "message": "フロントマター設定"
   },

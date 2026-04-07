@@ -10,10 +10,43 @@ import { PLATFORM_LABELS } from '../lib/constants';
 import type { AIPlatform, TemplateOptions } from '../lib/types';
 
 /**
+ * Maximum visible length of an auto-generated question header (issue #187).
+ * Includes the trailing ellipsis when truncation occurs.
+ */
+const QUESTION_HEADER_MAX_LENGTH = 60;
+
+/**
  * Get display label for AI assistant based on source platform
  */
 function getAssistantLabel(source: AIPlatform): string {
   return PLATFORM_LABELS[source];
+}
+
+/**
+ * Build a `## ` header line from a user message for TOC navigation (issue #187).
+ *
+ * - Normalizes all whitespace (including newlines) to single spaces.
+ * - Truncates to {@link QUESTION_HEADER_MAX_LENGTH} characters total, preferring
+ *   word-boundary breaks past the halfway mark and appending an ellipsis.
+ * - Returns an empty string for empty/whitespace-only content so callers can
+ *   fall back to the unheaded format.
+ *
+ * Exported for unit testing.
+ */
+export function buildQuestionHeader(content: string): string {
+  const normalized = content.replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+
+  if (normalized.length <= QUESTION_HEADER_MAX_LENGTH) {
+    return `## ${normalized}`;
+  }
+
+  // Reserve one character for the ellipsis so total visible length stays within budget.
+  const sliceEnd = QUESTION_HEADER_MAX_LENGTH - 1;
+  const slice = normalized.substring(0, sliceEnd);
+  const lastSpace = slice.lastIndexOf(' ');
+  const truncated = lastSpace > sliceEnd / 2 ? slice.substring(0, lastSpace) : slice;
+  return `## ${truncated}…`;
 }
 
 /**
@@ -29,6 +62,7 @@ export function formatMessage(
   const markdown = role === 'assistant' ? htmlToMarkdown(content) : escapeAngleBrackets(content);
   const assistantLabel = getAssistantLabel(source);
 
+  let formatted: string;
   switch (options.messageFormat) {
     case 'callout': {
       const calloutType = role === 'user' ? options.userCalloutType : options.assistantCalloutType;
@@ -38,21 +72,35 @@ export function formatMessage(
       const formattedLines = lines.map((line, i) =>
         i === 0 ? `> [!${calloutType}] ${label}\n> ${line}` : `> ${line}`
       );
-      return formattedLines.join('\n');
+      formatted = formattedLines.join('\n');
+      break;
     }
 
     case 'blockquote': {
       const label = role === 'user' ? '**User:**' : `**${assistantLabel}:**`;
       const lines = markdown.split('\n').map(line => `> ${line}`);
-      return `${label}\n${lines.join('\n')}`;
+      formatted = `${label}\n${lines.join('\n')}`;
+      break;
     }
 
     case 'plain':
     default: {
       const label = role === 'user' ? '**User:**' : `**${assistantLabel}:**`;
-      return `${label}\n\n${markdown}`;
+      formatted = `${label}\n\n${markdown}`;
+      break;
     }
   }
+
+  // Optional: prepend `##` question header for user messages (issue #187).
+  // Uses the raw (pre-escape) content for a more readable TOC entry.
+  if (role === 'user' && options.includeQuestionHeaders) {
+    const header = buildQuestionHeader(content);
+    if (header) {
+      formatted = `${header}\n\n${formatted}`;
+    }
+  }
+
+  return formatted;
 }
 
 /**

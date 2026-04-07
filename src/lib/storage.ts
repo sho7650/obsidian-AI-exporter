@@ -25,6 +25,7 @@ const DEFAULT_TEMPLATE_OPTIONS: TemplateOptions = {
   messageFormat: 'callout',
   userCalloutType: 'QUESTION',
   assistantCalloutType: 'NOTE',
+  includeQuestionHeaders: false,
 };
 
 const DEFAULT_OUTPUT_OPTIONS: OutputOptions = {
