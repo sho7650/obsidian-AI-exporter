@@ -17,6 +17,7 @@ Google Gemini（gemini.google.com）、Claude AI（claude.ai）、ChatGPT（chat
 • LaTeX 数式の保存（$$...$$・$...$）- 全プラットフォーム対応
 • Web 検索結果を折りたたみ可能なコールアウトとして保存（Claude）
 • 追記モード - 既存ノートに新しいメッセージのみ追加
+• 質問見出し（`## `）オプション - 長い会話で目次ナビゲーション可能
 • Gemini の長い会話の自動スクロール
 • {platform} テンプレート変数によるプラットフォーム別整理
 • Obsidian REST API への HTTPS 接続をサポート

@@ -17,6 +17,7 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 - **Configurable timezone**: Set timezone for frontmatter dates (created/modified)
 - **Tool content support**: Optionally include Claude's web search results and tool activity as collapsible `[!ABSTRACT]` callouts
 - **Append mode**: Only new messages are added to existing notes
+- **Question headers (optional)**: Prepend a `## ` heading (first 60 chars of the question) before each user message for TOC navigation in long conversations
 - **Obsidian callouts**: Formatted output with `[!QUESTION]` and `[!NOTE]` callouts
 - **YAML frontmatter**: Metadata including title, source, URL, dates, and tags
 - **Auto-scroll**: Automatically loads all messages in long Gemini conversations

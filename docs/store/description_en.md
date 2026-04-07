@@ -17,6 +17,7 @@ This extension extracts conversations from Google Gemini (gemini.google.com), Cl
 • LaTeX math formula preservation ($$...$$ and $...$) across all platforms
 • Web search results saved as collapsible callouts (Claude)
 • Append mode - only new messages are added to existing notes
+• Optional `## ` question headers for TOC navigation in long conversations
 • Auto-scroll for long Gemini conversations
 • Platform organization with {platform} template variable
 • HTTPS support for secure connections to Obsidian REST API
