@@ -228,6 +228,7 @@ Security note: DOMPurify's `USE_PROFILES: { html: true }` already strips event h
 
 **File:** `src/content/markdown-rules.ts`
 
+{% raw %}
 ```typescript
 // Image placeholder rule — converts <img> to a placeholder
 // that will be replaced with the final vault path after upload
@@ -247,6 +248,7 @@ Security note: DOMPurify's `USE_PROFILES: { html: true }` already strips event h
   },
 }
 ```
+{% endraw %}
 
 ### 3.4 ObsidianApiClient — Binary Upload
 
@@ -284,6 +286,7 @@ async putBinaryFile(path: string, data: ArrayBuffer): Promise<void> {
 
 **File:** `src/background/image-service.ts` (NEW)
 
+{% raw %}
 ```typescript
 import type { ImageReference, ImageData, ImageUploadResult } from '../lib/types';
 
@@ -433,11 +436,13 @@ export function rewriteImagePlaceholders(
   return result;
 }
 ```
+{% endraw %}
 
 ### 3.6 Save Pipeline Integration
 
 **File:** `src/background/obsidian-handlers.ts` — modify `handleSave()`
 
+{% raw %}
 ```
 handleSave() flow with image sync:
 
@@ -453,6 +458,7 @@ handleSave() flow with image sync:
 4. putFile() — save the final markdown note
 5. Return SaveResponse with imageResults
 ```
+{% endraw %}
 
 ### 3.7 Settings UI
 
