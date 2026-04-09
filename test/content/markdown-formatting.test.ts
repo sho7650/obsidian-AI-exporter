@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildQuestionHeader } from '../../src/content/markdown-formatting';
+import { buildQuestionHeader, stripMarkdownChars } from '../../src/content/markdown-formatting';
 
 /**
  * Unit tests for buildQuestionHeader (issue #187).
@@ -68,5 +68,84 @@ describe('buildQuestionHeader', () => {
       const expectedSlice = `ab ${'c'.repeat(56)}`; // 3 + 56 = 59
       expect(buildQuestionHeader(input)).toBe(`## ${expectedSlice}…`);
     });
+  });
+
+  describe('markdown character stripping (issue #203)', () => {
+    it('strips backticks from short input', () => {
+      expect(buildQuestionHeader('How do I use `map` in JS?')).toBe('## How do I use map in JS?');
+    });
+
+    it('strips triple backticks', () => {
+      expect(buildQuestionHeader('```python code``` example')).toBe('## python code example');
+    });
+
+    it('strips bold and italic markers', () => {
+      expect(buildQuestionHeader('Use **bold** and _italic_ text')).toBe(
+        '## Use bold and italic text'
+      );
+    });
+
+    it('strips strikethrough tildes', () => {
+      expect(buildQuestionHeader('Remove ~~old~~ text')).toBe('## Remove old text');
+    });
+
+    it('strips square brackets from links', () => {
+      expect(buildQuestionHeader('See [React](https://react.dev) docs')).toBe(
+        '## See React(https://react.dev) docs'
+      );
+    });
+
+    it('strips all markdown chars from a mixed input', () => {
+      expect(buildQuestionHeader('Use `map` with **bold** and [link]')).toBe(
+        '## Use map with bold and link'
+      );
+    });
+
+    it('collapses double spaces left after stripping', () => {
+      expect(buildQuestionHeader('use ` map ` in code')).toBe('## use map in code');
+    });
+
+    it('returns empty string when input is only markdown chars', () => {
+      expect(buildQuestionHeader('```')).toBe('');
+    });
+
+    it('prevents unclosed backtick near truncation boundary', () => {
+      // Backtick at position ~55 in a 70+ char string — stripping removes it
+      // so the header never contains an unclosed backtick.
+      const input = `${'a'.repeat(50)} \`code that would be truncated in the middle\``;
+      const result = buildQuestionHeader(input);
+      expect(result).not.toContain('`');
+      expect(result.startsWith('## ')).toBe(true);
+    });
+  });
+});
+
+describe('stripMarkdownChars', () => {
+  it('returns unchanged text when no markdown chars present', () => {
+    expect(stripMarkdownChars('hello world')).toBe('hello world');
+  });
+
+  it('strips backticks', () => {
+    expect(stripMarkdownChars('`code`')).toBe('code');
+  });
+
+  it('strips asterisks and underscores', () => {
+    expect(stripMarkdownChars('**bold** and _italic_')).toBe('bold and italic');
+  });
+
+  it('strips tildes', () => {
+    expect(stripMarkdownChars('~~deleted~~')).toBe('deleted');
+  });
+
+  it('strips square brackets', () => {
+    expect(stripMarkdownChars('[link](url)')).toBe('link(url)');
+  });
+
+  it('handles mixed markdown characters', () => {
+    expect(stripMarkdownChars('`code` **bold** _em_ ~~del~~ [a]')).toBe('code bold em del a');
+  });
+
+  it('returns empty string for input of only markdown chars', () => {
+    expect(stripMarkdownChars('`*_~[]')).toBe('');
   });
 });

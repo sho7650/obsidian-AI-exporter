@@ -23,9 +23,21 @@ function getAssistantLabel(source: AIPlatform): string {
 }
 
 /**
+ * Strip markdown-significant characters that could corrupt heading structure
+ * if left unclosed after truncation (issue #203).
+ *
+ * Removes: backticks, asterisks, underscores, tildes, square brackets.
+ * These are harmless to remove from a TOC header label.
+ */
+export function stripMarkdownChars(text: string): string {
+  return text.replace(/[`*_~[\]]/g, '');
+}
+
+/**
  * Build a `## ` header line from a user message for TOC navigation (issue #187).
  *
  * - Normalizes all whitespace (including newlines) to single spaces.
+ * - Strips markdown-significant characters to prevent unclosed syntax (issue #203).
  * - Truncates to {@link QUESTION_HEADER_MAX_LENGTH} characters total, preferring
  *   word-boundary breaks past the halfway mark and appending an ellipsis.
  * - Returns an empty string for empty/whitespace-only content so callers can
@@ -35,15 +47,16 @@ function getAssistantLabel(source: AIPlatform): string {
  */
 export function buildQuestionHeader(content: string): string {
   const normalized = content.replace(/\s+/g, ' ').trim();
-  if (!normalized) return '';
+  const cleaned = stripMarkdownChars(normalized).replace(/ {2,}/g, ' ').trim();
+  if (!cleaned) return '';
 
-  if (normalized.length <= QUESTION_HEADER_MAX_LENGTH) {
-    return `## ${normalized}`;
+  if (cleaned.length <= QUESTION_HEADER_MAX_LENGTH) {
+    return `## ${cleaned}`;
   }
 
   // Reserve one character for the ellipsis so total visible length stays within budget.
   const sliceEnd = QUESTION_HEADER_MAX_LENGTH - 1;
-  const slice = normalized.substring(0, sliceEnd);
+  const slice = cleaned.substring(0, sliceEnd);
   const lastSpace = slice.lastIndexOf(' ');
   const truncated = lastSpace > sliceEnd / 2 ? slice.substring(0, lastSpace) : slice;
   return `## ${truncated}…`;
