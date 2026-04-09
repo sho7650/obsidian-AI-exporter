@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.6](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.20.5...v0.20.6) (2026-04-09)
+
+
+### Bug Fixes
+
+* preserve multi-paragraph and code-block user messages in Claude ([#200](https://github.com/sho7650/obsidian-AI-exporter/issues/200)) ([#201](https://github.com/sho7650/obsidian-AI-exporter/issues/201)) ([604e31d](https://github.com/sho7650/obsidian-AI-exporter/commit/604e31d73db97884a83ac01e62b963797fdf4079))
+
 ## [0.20.5](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.20.4...v0.20.5) (2026-04-07)
 
 
