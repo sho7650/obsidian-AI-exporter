@@ -134,6 +134,8 @@ message_count: 14
 
 > [!QUESTION] User
 > 次の内容の artifact を作成して。
+> 
+> -   Claude Code の概要について。
 
 > [!NOTE] Claude
 > Claude Code の概要をまとめた artifact を作成しました。VSCode 拡張機能のバージョン問題についても注記を入れておきました。

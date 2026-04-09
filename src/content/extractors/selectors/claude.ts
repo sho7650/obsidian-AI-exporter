@@ -21,11 +21,17 @@ export const SELECTORS = {
   ],
 
   // User message content selectors
+  //
+  // Primary targets the grid container that wraps the entire user turn,
+  // so multi-paragraph questions and <pre>/<code> blocks stay together
+  // in a single extracted message (see issue #200).
+  // Legacy selectors remain as fallbacks for older Claude DOM variants
+  // that did not expose [data-testid="user-message"].
   userMessage: [
-    '.whitespace-pre-wrap.break-words', // Content style (HIGH)
-    '[data-testid="user-message"]', // Test attribute (LOW)
+    '[data-testid="user-message"]', // Grid container (HIGH)
     '[class*="user-message"]', // Partial match (MEDIUM)
-    '.bg-bg-300 p', // Structure-based (MEDIUM)
+    '.whitespace-pre-wrap.break-words', // Legacy inner <p> (LOW fallback)
+    '.bg-bg-300 p', // Legacy structural fallback (LOW)
   ],
 
   // User message wrapper (for date extraction)

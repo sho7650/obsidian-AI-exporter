@@ -9,6 +9,7 @@
 
 import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
+import { htmlToMarkdownRaw } from '../markdown-rules';
 import type {
   ConversationMessage,
   DeepResearchSource,
@@ -173,10 +174,26 @@ export class ClaudeExtractor extends BaseExtractor {
   }
 
   /**
-   * Extract user message content (plain text)
+   * Extract user message content as markdown.
+   *
+   * Sanitizes the grid container's innerHTML via DOMPurify and converts it
+   * to markdown (without angle-bracket escaping — {@link formatMessage}
+   * applies that step later). This preserves paragraph breaks and
+   * `<pre>`/`<code>` blocks that a plain `textContent` extraction would
+   * flatten or drop entirely (see issue #200).
+   *
+   * Falls back to sanitized plain text for elements that produce no
+   * markdown output (e.g. bare text nodes without block structure).
    */
   private extractUserContent(element: Element): string {
-    // Try to get text content from the element
+    const rawHtml = element.innerHTML;
+    if (rawHtml) {
+      const markdown = htmlToMarkdownRaw(sanitizeHtml(rawHtml)).trim();
+      if (markdown) return markdown;
+    }
+
+    // Defensive fallback: preserve prior behavior for elements that have
+    // only a text node and no convertible HTML structure.
     const textContent = element.textContent?.trim();
     if (textContent) {
       return this.sanitizeText(textContent);

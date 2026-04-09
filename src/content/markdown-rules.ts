@@ -250,11 +250,24 @@ turndown.addRule('tables', {
 });
 
 /**
- * Convert HTML content to Markdown
+ * Convert HTML content to Markdown without escaping angle brackets.
+ *
+ * Use this when the caller will apply {@link escapeAngleBrackets} later
+ * (e.g. via {@link formatMessage} in markdown-formatting.ts), to avoid
+ * double-escaping `<` and `>` characters.
  */
-export function htmlToMarkdown(html: string): string {
+export function htmlToMarkdownRaw(html: string): string {
   // Clean up HTML before conversion
   const cleaned = html.replace(/<br\s*\/?>/gi, '\n').replace(/&nbsp;/g, ' ');
 
-  return escapeAngleBrackets(turndown.turndown(cleaned));
+  return turndown.turndown(cleaned);
+}
+
+/**
+ * Convert HTML content to Markdown with angle brackets escaped for safe
+ * Obsidian rendering. Use this when the result is the final markdown and
+ * no further escaping will be applied.
+ */
+export function htmlToMarkdown(html: string): string {
+  return escapeAngleBrackets(htmlToMarkdownRaw(html));
 }

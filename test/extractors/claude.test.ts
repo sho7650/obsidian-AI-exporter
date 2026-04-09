@@ -594,7 +594,23 @@ describe('ClaudeExtractor', () => {
     });
 
     describe('userMessage selectors', () => {
-      it('works with primary selector (.whitespace-pre-wrap)', async () => {
+      it('works with primary selector ([data-testid="user-message"])', async () => {
+        setClaudeLocation('test-123');
+        loadFixture(`
+          <div data-testid="user-message">User text</div>
+          <div class="font-claude-response">
+            <div class="standard-markdown"><p>Response</p></div>
+          </div>
+        `);
+        const messages = extractor.extractMessages();
+        const userMessages = messages.filter(m => m.role === 'user');
+        expect(userMessages).toHaveLength(1);
+        expect(userMessages[0].content).toBe('User text');
+      });
+
+      it('works with legacy .whitespace-pre-wrap fallback', async () => {
+        // When [data-testid="user-message"] is absent (older Claude DOM),
+        // the selector chain falls through to .whitespace-pre-wrap.break-words.
         setClaudeLocation('test-123');
         loadFixture(`
           <p class="whitespace-pre-wrap break-words">User question</p>
@@ -604,19 +620,6 @@ describe('ClaudeExtractor', () => {
         `);
         const result = await extractor.extract();
         expect(result.data?.messages.some(m => m.role === 'user')).toBe(true);
-      });
-
-      it('works with secondary selector ([data-testid])', async () => {
-        setClaudeLocation('test-123');
-        loadFixture(`
-          <div data-testid="user-message">User text</div>
-          <div class="font-claude-response">
-            <div class="standard-markdown"><p>Response</p></div>
-          </div>
-        `);
-        const messages = extractor.extractMessages();
-        // The user message selector is looking for specific elements
-        expect(messages.length).toBeGreaterThanOrEqual(0);
       });
 
       it('works with tertiary selector ([class*=user-message])', async () => {
@@ -812,6 +815,188 @@ describe('ClaudeExtractor', () => {
     });
   });
 
+  // ========== Issue #200: Multi-paragraph & code-block user messages ==========
+  // @see https://github.com/sho7650/obsidian-AI-exporter/issues/200
+  describe('Issue #200: multi-paragraph and code-block user messages', () => {
+    it('collapses multi-paragraph user message into a single message', async () => {
+      // Claude renders multi-paragraph user questions as multiple <p> children
+      // inside a single [data-testid="user-message"] grid container.
+      // Previously the primary selector matched each <p> individually, splitting
+      // one user turn into N messages. The fix targets the container instead.
+      setClaudeLocation('test-123');
+      loadFixture(`
+        <div class="conversation-thread">
+          <div data-test-render-count="2" class="group" style="height: auto;">
+            <div class="bg-bg-300 rounded-xl pl-2.5 py-2.5">
+              <div data-testid="user-message" class="grid grid-cols-1 gap-2">
+                <p class="whitespace-pre-wrap break-words">Paragraph one</p>
+                <p class="whitespace-pre-wrap break-words">Paragraph two</p>
+                <p class="whitespace-pre-wrap break-words">Paragraph three</p>
+              </div>
+            </div>
+          </div>
+          <div data-test-render-count="2" class="group" style="height: auto;">
+            <div class="font-claude-response" data-is-streaming="false">
+              <div class="standard-markdown"><p>Assistant response</p></div>
+            </div>
+          </div>
+        </div>
+      `);
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(true);
+      const userMessages = result.data?.messages.filter(m => m.role === 'user') ?? [];
+      expect(userMessages).toHaveLength(1);
+      const content = userMessages[0].content;
+      expect(content).toContain('Paragraph one');
+      expect(content).toContain('Paragraph two');
+      expect(content).toContain('Paragraph three');
+      // Paragraphs must be separated by a blank-line markdown break,
+      // not joined into a single flattened string.
+      expect(content).toMatch(/Paragraph one\n\nParagraph two/);
+    });
+
+    it('preserves fenced code block inside user message', async () => {
+      // User messages containing <pre><code>...</code></pre> previously dropped
+      // the code block entirely because .whitespace-pre-wrap.break-words did not
+      // match <pre>, and textContent-based extraction flattened whitespace.
+      setClaudeLocation('test-123');
+      loadFixture(`
+        <div class="conversation-thread">
+          <div data-test-render-count="2" class="group" style="height: auto;">
+            <div class="bg-bg-300 rounded-xl pl-2.5 py-2.5">
+              <div data-testid="user-message" class="grid grid-cols-1 gap-2">
+                <p class="whitespace-pre-wrap break-words">Before code</p>
+                <pre><code class="language-ts">const x: number = 42;
+console.log(x);</code></pre>
+                <p class="whitespace-pre-wrap break-words">After code</p>
+              </div>
+            </div>
+          </div>
+          <div data-test-render-count="2" class="group" style="height: auto;">
+            <div class="font-claude-response" data-is-streaming="false">
+              <div class="standard-markdown"><p>Assistant response</p></div>
+            </div>
+          </div>
+        </div>
+      `);
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(true);
+      const userMessages = result.data?.messages.filter(m => m.role === 'user') ?? [];
+      expect(userMessages).toHaveLength(1);
+      const content = userMessages[0].content;
+      expect(content).toContain('Before code');
+      expect(content).toContain('After code');
+      expect(content).toContain('const x: number = 42;');
+      expect(content).toContain('console.log(x);');
+      // Code must be emitted as a fenced block (triple backticks),
+      // not as flattened inline text.
+      expect(content).toMatch(/```[\s\S]*const x: number = 42;[\s\S]*```/);
+    });
+
+    it('extracts single-paragraph user messages unchanged (backwards compat)', async () => {
+      // The helper createClaudePage uses the real DOM structure with a single <p>
+      // inside [data-testid="user-message"]. The fix must not regress this case.
+      setClaudeLocation('test-123');
+      createClaudePage('test-123', [
+        { role: 'user', content: 'Single question' },
+        { role: 'assistant', content: '<p>Answer</p>' },
+      ]);
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(true);
+      const userMessages = result.data?.messages.filter(m => m.role === 'user') ?? [];
+      expect(userMessages).toHaveLength(1);
+      expect(userMessages[0].content).toBe('Single question');
+    });
+
+    it('still excludes user-styled elements nested inside assistant responses', () => {
+      // The .closest('.font-claude-response') guard must still work after the
+      // primary selector changes from inner <p> to grid container.
+      setClaudeLocation('test-123');
+      loadFixture(`
+        <div class="conversation-thread">
+          <div data-test-render-count="2" class="group" style="height: auto;">
+            <div class="bg-bg-300 rounded-xl pl-2.5 py-2.5">
+              <div data-testid="user-message">
+                <p class="whitespace-pre-wrap break-words">Real user message</p>
+              </div>
+            </div>
+          </div>
+          <div data-test-render-count="2" class="group" style="height: auto;">
+            <div class="font-claude-response" data-is-streaming="false">
+              <div class="standard-markdown">
+                <p>Assistant text</p>
+                <div data-testid="user-message">
+                  <p class="whitespace-pre-wrap break-words">Nested user-message inside assistant (should be skipped)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `);
+
+      const messages = extractor.extractMessages();
+
+      const userMessages = messages.filter(m => m.role === 'user');
+      expect(userMessages).toHaveLength(1);
+      expect(userMessages[0].content).toBe('Real user message');
+    });
+
+    it('falls back to legacy .whitespace-pre-wrap selector when data-testid is absent', async () => {
+      // Legacy Claude DOM variants that do not use [data-testid="user-message"]
+      // must continue to work via the fallback selector chain.
+      setClaudeLocation('test-123');
+      loadFixture(`
+        <p class="whitespace-pre-wrap break-words">Legacy message</p>
+        <div class="font-claude-response" data-is-streaming="false">
+          <div class="standard-markdown"><p>Answer</p></div>
+        </div>
+      `);
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(true);
+      const userMessages = result.data?.messages.filter(m => m.role === 'user') ?? [];
+      expect(userMessages.length).toBeGreaterThanOrEqual(1);
+      expect(userMessages[0].content).toContain('Legacy message');
+    });
+
+    it('returns a readable title for a multi-paragraph first user message', () => {
+      // getTitle() → getFirstMessageTitle() calls textContent on the first match.
+      // With the container as primary selector, textContent includes all paragraphs,
+      // flattened by sanitizeText(). The title must still be non-empty and bounded.
+      setClaudeLocation('test-123');
+      loadFixture(`
+        <div class="conversation-thread">
+          <div data-test-render-count="2" class="group" style="height: auto;">
+            <div class="bg-bg-300 rounded-xl pl-2.5 py-2.5">
+              <div data-testid="user-message" class="grid grid-cols-1 gap-2">
+                <p class="whitespace-pre-wrap break-words">Paragraph one</p>
+                <p class="whitespace-pre-wrap break-words">Paragraph two</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `);
+      // Override document.title so getPageTitle() returns null and the code
+      // falls through to getFirstMessageTitle.
+      const originalTitle = document.title;
+      document.title = '';
+      try {
+        const title = extractor.getTitle();
+        expect(title).toMatch(/^Paragraph one/);
+        expect(title.length).toBeGreaterThan(0);
+      } finally {
+        document.title = originalTitle;
+      }
+    });
+  });
+
   // ========== Coverage Gap: extract() canExtract false (DES-005 3.4) ==========
   describe('extract() error paths', () => {
     it('returns error when called from non-claude domain', async () => {
@@ -828,7 +1013,12 @@ describe('ClaudeExtractor', () => {
       setClaudeLocation('12345678-1234-1234-1234-123456789012');
       const originalQSA = document.querySelectorAll.bind(document);
       vi.spyOn(document, 'querySelectorAll').mockImplementation(selector => {
-        if (typeof selector === 'string' && selector.includes('whitespace-pre-wrap')) {
+        // Throw regardless of which user-message selector the extractor tries first
+        // (selector order may change; match both the primary and the legacy fallback).
+        if (
+          typeof selector === 'string' &&
+          (selector.includes('user-message') || selector.includes('whitespace-pre-wrap'))
+        ) {
           throw 'string thrown as error';
         }
         return originalQSA(selector);
@@ -1214,7 +1404,8 @@ describe('ClaudeExtractor', () => {
           content: '<p>ホテルから徒歩3〜5分で海に着きます。</p>',
           thinkingStatus: {
             statusText: 'ルート案をまとめる準備を整えた。',
-            embeddedComponent: '<div data-testid="map" style="width:100%;height:450px;">Map Content</div>',
+            embeddedComponent:
+              '<div data-testid="map" style="width:100%;height:450px;">Map Content</div>',
           },
         },
       ]);
@@ -1288,7 +1479,8 @@ describe('ClaudeExtractor', () => {
         { role: 'user', content: 'Show me a Python example' },
         {
           role: 'assistant',
-          content: '<p>Here is an example:</p><pre><code class="language-python">def hello():\n    print("Hello, world!")</code></pre>',
+          content:
+            '<p>Here is an example:</p><pre><code class="language-python">def hello():\n    print("Hello, world!")</code></pre>',
         },
       ]);
       const result = await extractor.extract();
@@ -1321,7 +1513,8 @@ describe('ClaudeExtractor', () => {
         { role: 'user', content: 'Compare Python and JavaScript' },
         {
           role: 'assistant',
-          content: '<p>Python:</p><pre><code class="language-python">print("hello")</code></pre><p>JavaScript:</p><pre><code class="language-javascript">console.log("hello")</code></pre>',
+          content:
+            '<p>Python:</p><pre><code class="language-python">print("hello")</code></pre><p>JavaScript:</p><pre><code class="language-javascript">console.log("hello")</code></pre>',
         },
       ]);
       const result = await extractor.extract();
