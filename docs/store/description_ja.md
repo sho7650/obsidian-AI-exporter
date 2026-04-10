@@ -1,7 +1,7 @@
-Gemini、Claude、ChatGPT、Perplexity の AI 会話をワンクリックで Obsidian に保存。
+Gemini、Claude、ChatGPT、Perplexity、NotebookLM の AI 会話をワンクリックで Obsidian に保存。
 
 🎯 できること
-Google Gemini（gemini.google.com）、Claude AI（claude.ai）、ChatGPT（chatgpt.com）、Perplexity（www.perplexity.ai）から会話を抽出し、美しく整形された Markdown ノートとしてエクスポートします。
+Google Gemini（gemini.google.com）、Claude AI（claude.ai）、ChatGPT（chatgpt.com）、Perplexity（www.perplexity.ai）、NotebookLM（notebooklm.google.com）から会話を抽出し、美しく整形された Markdown ノートとしてエクスポートします。
 
 ☕ 3つのエクスポート方法
 • Obsidian：Local REST API プラグイン経由で vault に直接保存
@@ -9,7 +9,7 @@ Google Gemini（gemini.google.com）、Claude AI（claude.ai）、ChatGPT（chat
 • クリップボード：整形済み Markdown をコピーしてどこにでも貼り付け
 
 ✨ 主な機能
-• Gemini、Claude、ChatGPT、Perplexity の会話をワンクリックでエクスポート
+• Gemini、Claude、ChatGPT、Perplexity、NotebookLM の会話をワンクリックでエクスポート
 • YAML フロントマター付きの整形された Markdown
 • Q&A ブロックに Obsidian コールアウト構文（正しい AI 名を表示）
 • Deep Research（Gemini、Perplexity）と Extended Thinking / Artifacts（Claude）に対応
@@ -39,7 +39,7 @@ Obsidian 連携の場合：
 ファイルダウンロードとクリップボードは設定不要で利用可能。
 
 🚀 使い方
-1. gemini.google.com、claude.ai、chatgpt.com、www.perplexity.ai で会話を開く
+1. gemini.google.com、claude.ai、chatgpt.com、www.perplexity.ai、notebooklm.google.com で会話を開く
 2. ページに表示される紫色の「Sync」ボタンをクリック
 3. エクスポート方法を選択：Obsidian、ファイル、またはクリップボード
 4. 完了！会話が Markdown として保存されます
