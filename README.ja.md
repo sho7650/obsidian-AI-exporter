@@ -99,6 +99,12 @@ Google Gemini、Claude AI、ChatGPT、Perplexity の会話を Obsidian に保存
 2. 右下に表示される紫色の「Sync」ボタンをクリック
 3. Gemini と同じ出力オプションで会話がエクスポートされます
 
+### NotebookLM
+
+1. [notebooklm.google.com](https://notebooklm.google.com) でノートブックを開く
+2. 右下に表示される紫色の「Sync」ボタンをクリック
+3. チャット会話がソース引用（footnote 形式）付きでエクスポートされます
+
 ### Deep Research / Extended Thinking の保存
 
 **Gemini Deep Research:**
@@ -215,7 +221,7 @@ npm run test:coverage
 ## アーキテクチャ
 
 ```
-Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai)
+Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, notebooklm.google.com)
     ↓ 会話 / Deep Research / Artifacts を抽出
 Background Service Worker
     ↓ Obsidian に送信

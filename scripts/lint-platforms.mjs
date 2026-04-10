@@ -25,6 +25,7 @@ const HOST_DISPLAY_NAMES = {
   'claude.ai': 'Claude',
   'chatgpt.com': 'ChatGPT',
   'www.perplexity.ai': 'Perplexity',
+  'notebooklm.google.com': 'NotebookLM',
 };
 
 // Check targets: each entry defines a file and what to look for.

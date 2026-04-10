@@ -355,7 +355,7 @@ export abstract class BaseExtractor implements IConversationExtractor {
    * Matches: " - Claude", " | Gemini", " - Google Gemini", " - ChatGPT", etc.
    */
   private static readonly TITLE_SUFFIX_PATTERN =
-    /\s*[-|]\s*(?:Google\s+)?(?:Gemini|Claude|ChatGPT|Perplexity)\s*$/i;
+    /\s*[-|]\s*(?:Google\s+)?(?:Gemini|Claude|ChatGPT|Perplexity|NotebookLM)\s*$/i;
 
   /**
    * Extract conversation title from document.title, stripping platform suffixes.
@@ -370,7 +370,9 @@ export abstract class BaseExtractor implements IConversationExtractor {
     if (!raw) return null;
     // Skip if the remaining text is just the platform name
     const lower = raw.toLowerCase();
-    if (['gemini', 'google gemini', 'claude', 'chatgpt', 'perplexity'].includes(lower)) {
+    if (
+      ['gemini', 'google gemini', 'claude', 'chatgpt', 'perplexity', 'notebooklm'].includes(lower)
+    ) {
       return null;
     }
     return raw.substring(0, MAX_CONVERSATION_TITLE_LENGTH);

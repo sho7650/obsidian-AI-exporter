@@ -105,6 +105,7 @@ export const ALLOWED_ORIGINS = [
   'https://claude.ai',
   'https://chatgpt.com',
   'https://www.perplexity.ai',
+  'https://notebooklm.google.com',
 ] as const;
 
 /**
@@ -127,7 +128,7 @@ export const VALID_OUTPUT_DESTINATIONS = ['obsidian', 'file', 'clipboard'] as co
 /**
  * Valid AI platform sources
  */
-export const VALID_SOURCES = ['gemini', 'claude', 'perplexity', 'chatgpt'] as const;
+export const VALID_SOURCES = ['gemini', 'claude', 'perplexity', 'chatgpt', 'notebooklm'] as const;
 
 /**
  * Valid message format options for template rendering
@@ -142,6 +143,7 @@ export const PLATFORM_LABELS: Record<AIPlatform, string> = {
   claude: 'Claude',
   chatgpt: 'ChatGPT',
   perplexity: 'Perplexity',
+  notebooklm: 'NotebookLM',
 } as const;
 
 // ============================================================

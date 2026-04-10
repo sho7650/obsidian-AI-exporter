@@ -5,7 +5,7 @@
 /**
  * Supported AI platform identifiers
  */
-export type AIPlatform = 'gemini' | 'claude' | 'perplexity' | 'chatgpt';
+export type AIPlatform = 'gemini' | 'claude' | 'perplexity' | 'chatgpt' | 'notebooklm';
 
 /**
  * Represents a single message in a conversation

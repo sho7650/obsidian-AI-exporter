@@ -7,6 +7,7 @@ import { GeminiExtractor } from './extractors/gemini';
 import { ClaudeExtractor } from './extractors/claude';
 import { ChatGPTExtractor } from './extractors/chatgpt';
 import { PerplexityExtractor } from './extractors/perplexity';
+import { NotebookLMExtractor } from './extractors/notebooklm';
 import { extractErrorMessage } from '../lib/error-utils';
 import type { IConversationExtractor } from '../lib/types';
 import { conversationToNote } from './markdown';
@@ -42,6 +43,7 @@ const PLATFORM_ROOT_SELECTORS: Record<string, string[]> = {
   'claude.ai': ['main', '#__next'],
   'chatgpt.com': ['main', '#__next'],
   'www.perplexity.ai': ['main', '#__next'],
+  'notebooklm.google.com': ['main', '#app-container'],
 };
 
 /** Conversation container selectors to detect when content is ready */
@@ -149,6 +151,9 @@ function getExtractor(): IConversationExtractor | null {
   }
   if (hostname === 'www.perplexity.ai') {
     return new PerplexityExtractor();
+  }
+  if (hostname === 'notebooklm.google.com') {
+    return new NotebookLMExtractor();
   }
 
   return null;

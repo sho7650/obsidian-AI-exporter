@@ -1363,3 +1363,135 @@ function escapeHtmlForPerplexity(text: string): string {
   div.textContent = text;
   return div.innerHTML;
 }
+
+// ============================================================
+// NotebookLM Helpers
+// ============================================================
+
+/**
+ * Message structure for NotebookLM conversation DOM
+ */
+interface NotebookLMConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+/**
+ * Escape HTML for NotebookLM fixture safety
+ */
+function escapeHtmlForNotebookLM(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
+ * Create NotebookLM conversation DOM structure
+ *
+ * Replicates the Angular Material chat-panel structure.
+ * Assistant content is injected as raw HTML (like other platforms).
+ */
+export function createNotebookLMConversationDOM(
+  messages: NotebookLMConversationMessage[],
+  notebookTitle = 'Test Notebook'
+): string {
+  const pairs: string[] = [];
+  let i = 0;
+
+  while (i < messages.length) {
+    const user = messages[i];
+    const assistant = messages[i + 1];
+
+    let pairHtml = '';
+
+    if (user?.role === 'user') {
+      pairHtml += `
+        <chat-message class="individual-message">
+          <div class="from-user-container">
+            <mat-card class="mat-mdc-card mdc-card from-user-message-card-content">
+              <mat-card-content class="mat-mdc-card-content from-user-message-inner-content message-content">
+                <div class="message-text-content mat-body-medium">
+                  <div class="is-rich-chat-ui" role="heading" aria-level="3">
+                    <p>${escapeHtmlForNotebookLM(user.content)}</p>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </chat-message>`;
+      i++;
+    }
+
+    if (assistant?.role === 'assistant') {
+      pairHtml += `
+        <chat-message class="individual-message">
+          <div class="to-user-container">
+            <mat-card class="mat-mdc-card mdc-card to-user-message-card-content">
+              <mat-card-content class="mat-mdc-card-content message-content to-user-message-inner-content">
+                <div class="message-text-content mat-body-medium">
+                  <div>
+                    <element-list-renderer>
+                      ${assistant.content}
+                    </element-list-renderer>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </chat-message>`;
+      i++;
+    }
+
+    if (pairHtml) {
+      pairs.push(`<div class="chat-message-pair is-rich-chat-ui">${pairHtml}</div>`);
+    }
+  }
+
+  return `
+    <section class="chat-panel">
+      <chat-panel>
+        <div class="chat-panel-content">
+          <chat-panel-header>
+            <div class="cover-image can-customize is-rich-chat-ui">
+              <div class="cover-content">
+                <div class="cover-title mat-headline-medium">${escapeHtmlForNotebookLM(notebookTitle)}</div>
+              </div>
+            </div>
+          </chat-panel-header>
+          ${pairs.join('\n')}
+        </div>
+      </chat-panel>
+    </section>`;
+}
+
+/**
+ * Set window.location for NotebookLM URL testing
+ */
+export function setNotebookLMLocation(notebookId: string): void {
+  Object.defineProperty(window, 'location', {
+    value: {
+      hostname: 'notebooklm.google.com',
+      pathname: `/notebook/${notebookId}`,
+      href: `https://notebooklm.google.com/notebook/${notebookId}`,
+      origin: 'https://notebooklm.google.com',
+      protocol: 'https:',
+      host: 'notebooklm.google.com',
+      search: '',
+      hash: '',
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
+/**
+ * Create a complete NotebookLM conversation page
+ */
+export function createNotebookLMPage(
+  notebookId: string,
+  messages: NotebookLMConversationMessage[],
+  notebookTitle = 'Test Notebook'
+): void {
+  setNotebookLMLocation(notebookId);
+  loadFixture(createNotebookLMConversationDOM(messages, notebookTitle));
+}

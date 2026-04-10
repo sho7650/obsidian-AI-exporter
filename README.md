@@ -99,6 +99,12 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 2. Click the purple "Sync" button in the bottom-right corner
 3. The conversation will be exported with the same output options as Gemini
 
+### NotebookLM
+
+1. Open a notebook on [notebooklm.google.com](https://notebooklm.google.com)
+2. Click the purple "Sync" button in the bottom-right corner
+3. The chat conversation will be exported with inline source citations as footnotes
+
 ### Deep Research / Extended Thinking Export
 
 **Gemini Deep Research:**
@@ -215,7 +221,7 @@ npm run test:coverage
 ## Architecture
 
 ```
-Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai)
+Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, notebooklm.google.com)
     ↓ extracts conversation / Deep Research / Artifacts
 Background Service Worker
     ↓ sends to Obsidian

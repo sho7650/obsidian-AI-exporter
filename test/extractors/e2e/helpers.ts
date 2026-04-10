@@ -21,11 +21,13 @@ import {
   setClaudeLocation,
   setChatGPTLocation,
   setPerplexityLocation,
+  setNotebookLMLocation,
 } from '../../fixtures/dom-helpers';
 import { GeminiExtractor } from '../../../src/content/extractors/gemini';
 import { ClaudeExtractor } from '../../../src/content/extractors/claude';
 import { ChatGPTExtractor } from '../../../src/content/extractors/chatgpt';
 import { PerplexityExtractor } from '../../../src/content/extractors/perplexity';
+import { NotebookLMExtractor } from '../../../src/content/extractors/notebooklm';
 import { conversationToNote } from '../../../src/content/markdown';
 import { generateNoteContent } from '../../../src/lib/note-generator';
 
@@ -123,7 +125,7 @@ const DEFAULT_E2E_SETTINGS: ExtensionSettings = {
  * @throws Error if fixture file does not exist
  */
 function loadFixtureFile(
-  platform: 'gemini' | 'claude' | 'chatgpt' | 'perplexity',
+  platform: 'gemini' | 'claude' | 'chatgpt' | 'perplexity' | 'notebooklm',
   fixtureName: string
 ): string {
   const fixturePath = resolve(FIXTURE_BASE_PATH, platform, `${fixtureName}.html`);
@@ -147,7 +149,7 @@ function loadFixtureFile(
  * Set window.location for platform
  */
 function setLocationForPlatform(
-  platform: 'gemini' | 'claude' | 'chatgpt' | 'perplexity',
+  platform: 'gemini' | 'claude' | 'chatgpt' | 'perplexity' | 'notebooklm',
   conversationId: string
 ): void {
   switch (platform) {
@@ -163,13 +165,16 @@ function setLocationForPlatform(
     case 'perplexity':
       setPerplexityLocation(conversationId);
       break;
+    case 'notebooklm':
+      setNotebookLMLocation(conversationId);
+      break;
   }
 }
 
 /**
  * Create extractor for platform
  */
-function createExtractor(platform: 'gemini' | 'claude' | 'chatgpt' | 'perplexity') {
+function createExtractor(platform: 'gemini' | 'claude' | 'chatgpt' | 'perplexity' | 'notebooklm') {
   switch (platform) {
     case 'gemini':
       return new GeminiExtractor();
@@ -179,6 +184,8 @@ function createExtractor(platform: 'gemini' | 'claude' | 'chatgpt' | 'perplexity
       return new ChatGPTExtractor();
     case 'perplexity':
       return new PerplexityExtractor();
+    case 'notebooklm':
+      return new NotebookLMExtractor();
   }
 }
 
@@ -194,7 +201,7 @@ function createExtractor(platform: 'gemini' | 'claude' | 'chatgpt' | 'perplexity
  * 6. generateNoteContent final output
  */
 export async function runE2EPipeline(
-  platform: 'gemini' | 'claude' | 'chatgpt' | 'perplexity',
+  platform: 'gemini' | 'claude' | 'chatgpt' | 'perplexity' | 'notebooklm',
   fixtureName: string,
   conversationId: string,
   settings: ExtensionSettings = DEFAULT_E2E_SETTINGS
@@ -269,7 +276,7 @@ export function assertExtractionSuccess(
  */
 export function assertSourcePlatform(
   data: ConversationData,
-  expected: 'gemini' | 'claude' | 'chatgpt' | 'perplexity'
+  expected: 'gemini' | 'claude' | 'chatgpt' | 'perplexity' | 'notebooklm'
 ): void {
   if (data.source !== expected) {
     throw new Error(`Source mismatch: expected '${expected}', got '${data.source}'`);
@@ -343,7 +350,7 @@ export function assertFrontmatterFields(
  */
 export function assertCalloutFormat(
   markdown: string,
-  _platform: 'gemini' | 'claude' | 'chatgpt' | 'perplexity'
+  _platform: 'gemini' | 'claude' | 'chatgpt' | 'perplexity' | 'notebooklm'
 ): void {
   if (!markdown.includes('> [!QUESTION]')) {
     throw new Error('User callout (> [!QUESTION]) not found in output');

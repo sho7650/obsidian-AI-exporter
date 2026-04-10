@@ -23,6 +23,7 @@
     "https://claude.ai/*",
     "https://chatgpt.com/*",
     "https://www.perplexity.ai/*",
+    "https://notebooklm.google.com/*",
     "http://127.0.0.1/*",
     "https://127.0.0.1/*"
   ],
@@ -39,7 +40,8 @@
         "https://gemini.google.com/*",
         "https://claude.ai/*",
         "https://chatgpt.com/*",
-        "https://www.perplexity.ai/*"
+        "https://www.perplexity.ai/*",
+        "https://notebooklm.google.com/*"
       ],
       "js": [
         "src/content/index.ts"
