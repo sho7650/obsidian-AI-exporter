@@ -1391,7 +1391,7 @@ function escapeHtmlForNotebookLM(text: string): string {
  * Replicates the Angular Material chat-panel structure.
  * Assistant content is injected as raw HTML (like other platforms).
  */
-export function createNotebookLMConversationDOM(
+function createNotebookLMConversationDOM(
   messages: NotebookLMConversationMessage[],
   notebookTitle = 'Test Notebook'
 ): string {

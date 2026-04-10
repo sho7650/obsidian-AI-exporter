@@ -65,6 +65,3 @@ beforeEach(() => {
   // Reset getContexts to return empty array (no existing offscreen documents)
   chromeMock.runtime.getContexts.mockResolvedValue([]);
 });
-
-// Export for test use
-export { chromeMock };

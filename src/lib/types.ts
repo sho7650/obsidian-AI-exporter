@@ -21,8 +21,6 @@ export interface ConversationMessage {
   htmlContent?: string;
   /** Tool-use content (web search, code interpreter) — rendered as separate callout */
   toolContent?: string;
-  /** Message timestamp (reserved for future use - not currently extracted) */
-  timestamp?: Date;
   /** Zero-based message order in conversation */
   index: number;
 }
