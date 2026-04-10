@@ -41,8 +41,7 @@ const READY_SELECTORS: Readonly<Record<string, string>> = {
   claude_dr: '#markdown-artifact',
   chatgpt_conv: 'section[data-turn-id]',
   perplexity_conv: 'div[id^="markdown-content-"]',
-  // TODO: replace with real ready-selector after DOM investigation
-  notebooklm_conv: '[data-turn-id]',
+  notebooklm_conv: '.chat-message-pair',
 };
 
 // --- Helper Functions ---

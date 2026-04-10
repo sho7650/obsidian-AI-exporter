@@ -1,12 +1,11 @@
 /**
  * CSS Selectors for NotebookLM (notebooklm.google.com)
  *
- * Selectors are ordered by stability (HIGH → LOW)
- *
- * STATUS: STUB — placeholder selectors pending DOM investigation.
- * Run `npm run e2e:auth` and `npm run e2e:daemon start` to access
- * a live NotebookLM session for CDP-based DOM inspection, then
- * replace the placeholders below with real selectors.
+ * Selectors are ordered by stability (HIGH → LOW).
+ * NotebookLM uses Angular Material with custom elements
+ * (chat-panel, chat-message, element-list-renderer, etc.)
+ * and semantic CSS classes. No shadow DOM — standard
+ * querySelectorAll reaches all elements.
  *
  * @see docs/adr/005-shared-selector-modules.md
  */
@@ -14,27 +13,39 @@
 import type { SelectorGroup } from './types';
 
 export const SELECTORS = {
-  // Chat turn container (each Q&A pair)
-  // TODO: identify from live DOM
+  // Chat message pair container (each Q&A turn)
   conversationTurn: [
-    '[data-turn-id]', // Placeholder (UNKNOWN)
+    '.chat-message-pair', // Semantic (HIGH)
+    'div.chat-message-pair', // More specific (HIGH)
   ],
 
-  // User query text
-  // TODO: identify from live DOM
+  // User query content
   userQuery: [
-    '[data-testid="user-message"]', // Placeholder (UNKNOWN)
+    '.from-user-container .message-text-content', // Structure (HIGH)
+    '.from-user-message-inner-content .message-text-content', // Alt class (MEDIUM)
   ],
 
   // Assistant response content
-  // TODO: identify from live DOM
   assistantResponse: [
-    '.response-container', // Placeholder (UNKNOWN)
+    '.to-user-container .message-text-content', // Structure (HIGH)
+    '.to-user-message-inner-content .message-text-content', // Alt class (MEDIUM)
   ],
 
-  // Markdown / prose content within response
-  // TODO: identify from live DOM
+  // Structured content within assistant response (contains paragraphs, lists)
   markdownContent: [
-    '.markdown', // Placeholder (UNKNOWN)
+    'element-list-renderer', // Angular component (HIGH)
+  ],
+
+  // Citation markers (inline source references)
+  // Excludes "more citations" button via :not(:has(mat-icon))
+  citationMarker: [
+    'button.citation-marker:not(:has(mat-icon))', // Numbered citation (HIGH)
+    '.xap-inline-dialog.citation-marker', // Alt class (MEDIUM)
+  ],
+
+  // Notebook title (in chat panel header)
+  notebookTitle: [
+    '.cover-title', // Style (HIGH)
+    '.cover-title.mat-headline-medium', // Full class (MEDIUM)
   ],
 } as const satisfies SelectorGroup;
