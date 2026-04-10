@@ -25,7 +25,7 @@ describe('loadConfig', () => {
     const config = loadConfig();
     expect(config.cdpPort).toBe(9222);
     expect(config.keepAliveIntervalMs).toBe(15 * 60 * 1000);
-    expect(config.platformUrls).toHaveLength(4);
+    expect(config.platformUrls).toHaveLength(5);
     expect(config.profileDir).toMatch(/e2e\/auth\/profiles$/);
     expect(config.pidFile).toMatch(/e2e\/daemon\/chrome\.pid$/);
   });
@@ -58,12 +58,13 @@ describe('loadConfig', () => {
     expect(() => loadConfig()).toThrow('Invalid CDP_PORT');
   });
 
-  it('includes all 4 platform URLs', () => {
+  it('includes all 5 platform URLs', () => {
     const config = loadConfig();
     expect(config.platformUrls).toContain('https://gemini.google.com');
     expect(config.platformUrls).toContain('https://claude.ai');
     expect(config.platformUrls).toContain('https://chatgpt.com');
     expect(config.platformUrls).toContain('https://www.perplexity.ai');
+    expect(config.platformUrls).toContain('https://notebooklm.google.com');
   });
 
   it('loads .env.local via dotenv on startup', async () => {

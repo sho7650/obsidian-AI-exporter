@@ -51,6 +51,7 @@ export function loadConfig(): DaemonConfig {
       'https://claude.ai',
       'https://chatgpt.com',
       'https://www.perplexity.ai',
+      'https://notebooklm.google.com',
     ],
     chromeFlags: [
       '--no-first-run',

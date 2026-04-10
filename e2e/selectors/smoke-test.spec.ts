@@ -21,6 +21,7 @@ import {
   CLAUDE_DR_SELECTORS,
   CHATGPT_SELECTORS,
   PERPLEXITY_SELECTORS,
+  NOTEBOOKLM_SELECTORS,
 } from '../../src/content/extractors/selectors';
 import type { SelectorGroup } from '../../src/content/extractors/selectors/types';
 import { checkAuthStatus, type AuthStatus } from './auth-check';
@@ -40,6 +41,8 @@ const READY_SELECTORS: Readonly<Record<string, string>> = {
   claude_dr: '#markdown-artifact',
   chatgpt_conv: 'section[data-turn-id]',
   perplexity_conv: 'div[id^="markdown-content-"]',
+  // TODO: replace with real ready-selector after DOM investigation
+  notebooklm_conv: '[data-turn-id]',
 };
 
 // --- Helper Functions ---
@@ -220,6 +223,20 @@ test.describe('Perplexity', () => {
       'perplexity_conv',
       {
         SELECTORS: PERPLEXITY_SELECTORS,
+      }
+    );
+  });
+});
+
+test.describe('NotebookLM', () => {
+  test('conversation selectors', async () => {
+    await runPlatformValidation(
+      session.context,
+      'notebooklm',
+      process.env.NOTEBOOKLM_CONV_URL,
+      'notebooklm_conv',
+      {
+        SELECTORS: NOTEBOOKLM_SELECTORS,
       }
     );
   });

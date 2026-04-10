@@ -25,3 +25,5 @@ export {
 export { SELECTORS as CHATGPT_SELECTORS } from './chatgpt';
 
 export { SELECTORS as PERPLEXITY_SELECTORS } from './perplexity';
+
+export { SELECTORS as NOTEBOOKLM_SELECTORS } from './notebooklm';

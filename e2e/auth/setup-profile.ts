@@ -33,6 +33,7 @@ const TARGET_URLS = [
   'https://claude.ai',
   'https://chatgpt.com',
   'https://www.perplexity.ai',
+  'https://notebooklm.google.com',
 ];
 
 function waitForLine(prompt: string): Promise<void> {
@@ -67,7 +68,7 @@ async function setupProfile(): Promise<void> {
   console.log(`Profile: ${PROFILE_DIR}`);
   console.log(`State:   ${STATE_PATH}\n`);
   console.log('Steps:');
-  console.log('  1. Chrome will open with 4 tabs');
+  console.log('  1. Chrome will open with 5 tabs');
   console.log('  2. Log in to ALL platforms');
   console.log('  3. Come back here and press Enter');
   console.log('  4. storageState will be extracted automatically');
