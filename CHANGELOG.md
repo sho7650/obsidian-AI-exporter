@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.20.7...v0.21.0) (2026-04-10)
+
+
+### Features
+
+* add NotebookLM platform support with chat extraction ([#206](https://github.com/sho7650/obsidian-AI-exporter/issues/206)) ([2d1249e](https://github.com/sho7650/obsidian-AI-exporter/commit/2d1249e8be4f0dfbd8a133e92d93b97d48a52e4a))
+
 ## [0.20.7](https://github.com/sho7650/obsidian-AI-exporter/compare/v0.20.6...v0.20.7) (2026-04-09)
 
 
