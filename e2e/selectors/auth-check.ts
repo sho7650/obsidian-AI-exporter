@@ -17,6 +17,7 @@ const AUTH_URL_PATTERNS: Readonly<Record<string, RegExp>> = {
   claude: /^https:\/\/claude\.ai\/chat\//,
   chatgpt: /^https:\/\/chatgpt\.com\/c\//,
   perplexity: /^https:\/\/www\.perplexity\.ai\/search\//,
+  notebooklm: /^https:\/\/notebooklm\.google\.com\/notebook\//,
 };
 
 export type AuthStatus = 'authenticated' | 'auth_expired' | 'unreachable';
