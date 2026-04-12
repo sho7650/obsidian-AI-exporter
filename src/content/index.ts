@@ -24,6 +24,7 @@ import {
   AUTO_SAVE_CHECK_INTERVAL,
   EVENT_THROTTLE_DELAY,
   INFO_TOAST_DURATION,
+  MUTATION_DEBOUNCE_DELAY,
 } from '../lib/constants';
 import type {
   ContentScriptSettings,
@@ -33,9 +34,6 @@ import type {
   MultiOutputResponse,
 } from '../lib/types';
 import { throttle } from '../lib/throttle';
-
-/** Debounce delay for MutationObserver callback (milliseconds) */
-const MUTATION_DEBOUNCE_DELAY = 100;
 
 /** Platform-specific main content container selectors for optimized observation */
 const PLATFORM_ROOT_SELECTORS: Record<string, string[]> = {

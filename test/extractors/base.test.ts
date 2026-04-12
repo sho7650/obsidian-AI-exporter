@@ -57,9 +57,7 @@ class TestExtractor extends BaseExtractor {
     return this.getPageTitle();
   }
 
-  public testSortByDomPosition(
-    elements: Array<{ element: Element; type: 'user' | 'assistant' }>
-  ): Array<{ element: Element; type: 'user' | 'assistant' }> {
+  public testSortByDomPosition<T extends { element: Element }>(elements: T[]): T[] {
     return this.sortByDomPosition(elements);
   }
 

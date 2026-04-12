@@ -166,22 +166,22 @@ describe('ObsidianApiClient', () => {
       });
     });
 
-    it('throws timeout error for network errors', async () => {
+    it('throws connection error for TypeError (connection refused)', async () => {
       mockFetch.mockRejectedValue(new TypeError('Failed to fetch'));
 
       await expect(client.getFile('path/to/file.md')).rejects.toMatchObject({
         status: 0,
-        message: 'Request timed out. Please check your connection.',
+        message: 'Cannot reach Obsidian. Is it running?',
       });
     });
 
-    it('throws timeout error for AbortError', async () => {
+    it('throws abort error for AbortError', async () => {
       const abortError = new DOMException('The operation was aborted', 'AbortError');
       mockFetch.mockRejectedValue(abortError);
 
       await expect(client.getFile('path/to/file.md')).rejects.toMatchObject({
         status: 0,
-        message: 'Request timed out. Please check your connection.',
+        message: 'Request was cancelled.',
       });
     });
 
@@ -233,12 +233,12 @@ describe('ObsidianApiClient', () => {
       });
     });
 
-    it('throws timeout error for network errors', async () => {
+    it('throws connection error for TypeError (connection refused)', async () => {
       mockFetch.mockRejectedValue(new TypeError('Failed to fetch'));
 
       await expect(client.putFile('path/to/file.md', 'content')).rejects.toMatchObject({
         status: 0,
-        message: 'Request timed out. Please check your connection.',
+        message: 'Cannot reach Obsidian. Is it running?',
       });
     });
 
@@ -308,12 +308,12 @@ describe('ObsidianApiClient', () => {
       });
     });
 
-    it('throws timeout error for network errors', async () => {
+    it('throws connection error for TypeError (connection refused)', async () => {
       mockFetch.mockRejectedValue(new TypeError('Failed to fetch'));
 
       await expect(client.listFiles('AI')).rejects.toMatchObject({
         status: 0,
-        message: 'Request timed out. Please check your connection.',
+        message: 'Cannot reach Obsidian. Is it running?',
       });
     });
 

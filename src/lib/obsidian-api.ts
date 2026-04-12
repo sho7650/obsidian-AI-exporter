@@ -39,16 +39,6 @@ export function classifyNetworkError(error: unknown): NetworkErrorType {
 }
 
 /**
- * Check if an error is a network-related error
- *
- * @param error - The caught error
- * @returns True if the error is network-related
- */
-function isNetworkError(error: unknown): boolean {
-  return classifyNetworkError(error) !== 'unknown';
-}
-
-/**
  * Create an AbortSignal with timeout
  * Polyfill for AbortSignal.timeout() (Chrome < 103 support)
  *
@@ -120,8 +110,15 @@ export class ObsidianApiClient {
         signal: createTimeoutSignal(DEFAULT_API_TIMEOUT),
       });
     } catch (error) {
-      if (isNetworkError(error)) {
-        throw this.createError(0, 'Request timed out. Please check your connection.');
+      const errorType = classifyNetworkError(error);
+      if (errorType !== 'unknown') {
+        const message =
+          errorType === 'timeout'
+            ? 'Request timed out. Please check your connection.'
+            : errorType === 'connection'
+              ? 'Cannot reach Obsidian. Is it running?'
+              : 'Request was cancelled.';
+        throw this.createError(0, message);
       }
       throw error;
     }

@@ -28,6 +28,7 @@ function getAssistantLabel(source: AIPlatform): string {
  *
  * Removes: backticks, asterisks, underscores, tildes, square brackets.
  * These are harmless to remove from a TOC header label.
+ * @internal Exported for testing
  */
 export function stripMarkdownChars(text: string): string {
   return text.replace(/[`*_~[\]]/g, '');
@@ -43,7 +44,7 @@ export function stripMarkdownChars(text: string): string {
  * - Returns an empty string for empty/whitespace-only content so callers can
  *   fall back to the unheaded format.
  *
- * Exported for unit testing.
+ * @internal Exported for testing
  */
 export function buildQuestionHeader(content: string): string {
   const normalized = content.replace(/\s+/g, ' ').trim();

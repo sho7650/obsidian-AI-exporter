@@ -8,6 +8,7 @@ import { MIN_PORT, MAX_PORT, MAX_VAULT_PATH_LENGTH, MIN_API_KEY_LENGTH } from '.
 
 /**
  * Allowed callout types
+ * @internal Exported for testing
  */
 export const ALLOWED_CALLOUT_TYPES = [
   'NOTE',
@@ -118,17 +119,6 @@ export function validateApiKey(key: string): string {
   // Empty check
   if (!trimmed) {
     throw new Error('API key is required');
-  }
-
-  // Obsidian REST API generates SHA-256 hashes (64 hex chars),
-  // but we allow flexibility for manually configured keys
-  if (trimmed.length !== 64) {
-    console.warn(`[G2O] API key length is ${trimmed.length}, expected 64 (SHA-256 hex)`);
-  }
-
-  // Hex format validation (warning only, non-blocking)
-  if (!/^[0-9a-fA-F]+$/.test(trimmed)) {
-    console.warn('[G2O] API key contains non-hexadecimal characters');
   }
 
   // Minimum length check (for security)

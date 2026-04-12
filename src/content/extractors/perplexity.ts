@@ -88,19 +88,14 @@ export class PerplexityExtractor extends BaseExtractor {
     }
 
     // Sort by DOM position to preserve visual ordering
-    tagged.sort((a, b) => {
-      const pos = a.element.compareDocumentPosition(b.element);
-      if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-      if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
-      return 0;
-    });
+    const sorted = this.sortByDomPosition(tagged);
 
     const messages: ConversationMessage[] = [];
     let userIdx = 0;
     let responseIdx = 0;
     let reportIdx = 0;
 
-    for (const item of tagged) {
+    for (const item of sorted) {
       if (item.type === 'user') {
         const content = this.extractUserContent(item.element);
         if (content) {

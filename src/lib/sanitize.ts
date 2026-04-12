@@ -37,6 +37,7 @@ function extractLatexFromKatex(element: Element): string | null {
  * Gemini coexistence: Elements already inside a [data-math] ancestor
  * (Gemini's native format) are skipped.
  *
+ * @internal Exported for testing
  * @param html Raw HTML string from extractor innerHTML
  * @returns HTML with standard KaTeX converted to data-math format
  */

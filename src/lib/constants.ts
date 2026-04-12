@@ -92,6 +92,9 @@ export const AUTO_SAVE_CHECK_INTERVAL = 10000;
 /** Event throttle delay (milliseconds) */
 export const EVENT_THROTTLE_DELAY = 1000;
 
+/** Debounce delay for MutationObserver callback (milliseconds) */
+export const MUTATION_DEBOUNCE_DELAY = 100;
+
 // ============================================================
 // Security Constants
 // ============================================================

@@ -148,7 +148,9 @@ describe('NotebookLMExtractor', () => {
 
     it('handles empty conversation', async () => {
       setNotebookLMLocation('test-id');
-      loadFixture('<section class="chat-panel"><chat-panel><div class="chat-panel-content"></div></chat-panel></section>');
+      loadFixture(
+        '<section class="chat-panel"><chat-panel><div class="chat-panel-content"></div></chat-panel></section>'
+      );
       const result = await extractor.extract();
       // May succeed with warnings or fail — either is acceptable
       expect(result).toBeDefined();
@@ -264,6 +266,117 @@ describe('NotebookLMExtractor', () => {
       const result = await extractor.extract();
       expect(result.success).toBe(true);
       expect(result.data?.messages.some(m => m.role === 'user')).toBe(true);
+    });
+  });
+
+  // ========== Branch Coverage: extractUserContent / extractAssistantContent ==========
+  describe('Content extraction fallback paths', () => {
+    it('skips user message when textContent is empty', async () => {
+      setNotebookLMLocation('test-123');
+      loadFixture(`
+        <section class="chat-panel"><chat-panel><div class="chat-panel-content">
+          <div class="chat-message-pair is-rich-chat-ui">
+            <chat-message class="individual-message">
+              <div class="from-user-container">
+                <mat-card class="mat-mdc-card mdc-card from-user-message-card-content">
+                  <mat-card-content class="mat-mdc-card-content from-user-message-inner-content message-content">
+                    <div class="message-text-content mat-body-medium"></div>
+                  </mat-card-content>
+                </mat-card>
+              </div>
+            </chat-message>
+            <chat-message class="individual-message">
+              <div class="to-user-container">
+                <mat-card class="mat-mdc-card mdc-card to-user-message-card-content">
+                  <mat-card-content class="mat-mdc-card-content message-content to-user-message-inner-content">
+                    <div class="message-text-content mat-body-medium">
+                      <div><element-list-renderer><p>Response</p></element-list-renderer></div>
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+              </div>
+            </chat-message>
+          </div>
+        </div></chat-panel></section>
+      `);
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      // No user message should be extracted (empty textContent)
+      expect(result.data?.messages.every(m => m.role === 'assistant')).toBe(true);
+    });
+
+    it('falls back to innerHTML when no element-list-renderer found', async () => {
+      setNotebookLMLocation('test-123');
+      loadFixture(`
+        <section class="chat-panel"><chat-panel><div class="chat-panel-content">
+          <div class="chat-message-pair is-rich-chat-ui">
+            <chat-message class="individual-message">
+              <div class="from-user-container">
+                <mat-card class="mat-mdc-card mdc-card from-user-message-card-content">
+                  <mat-card-content class="mat-mdc-card-content from-user-message-inner-content message-content">
+                    <div class="message-text-content mat-body-medium">
+                      <div class="is-rich-chat-ui" role="heading" aria-level="3"><p>Question</p></div>
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+              </div>
+            </chat-message>
+            <chat-message class="individual-message">
+              <div class="to-user-container">
+                <mat-card class="mat-mdc-card mdc-card to-user-message-card-content">
+                  <mat-card-content class="mat-mdc-card-content message-content to-user-message-inner-content">
+                    <div class="message-text-content mat-body-medium">
+                      <div><p>Direct content without renderer</p></div>
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+              </div>
+            </chat-message>
+          </div>
+        </div></chat-panel></section>
+      `);
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg).toBeDefined();
+      expect(assistantMsg?.content).toContain('Direct content without renderer');
+    });
+
+    it('skips assistant message when both renderer and innerHTML are empty', async () => {
+      setNotebookLMLocation('test-123');
+      loadFixture(`
+        <section class="chat-panel"><chat-panel><div class="chat-panel-content">
+          <div class="chat-message-pair is-rich-chat-ui">
+            <chat-message class="individual-message">
+              <div class="from-user-container">
+                <mat-card class="mat-mdc-card mdc-card from-user-message-card-content">
+                  <mat-card-content class="mat-mdc-card-content from-user-message-inner-content message-content">
+                    <div class="message-text-content mat-body-medium">
+                      <div class="is-rich-chat-ui" role="heading" aria-level="3"><p>Question</p></div>
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+              </div>
+            </chat-message>
+            <chat-message class="individual-message">
+              <div class="to-user-container">
+                <mat-card class="mat-mdc-card mdc-card to-user-message-card-content">
+                  <mat-card-content class="mat-mdc-card-content message-content to-user-message-inner-content">
+                    <div class="message-text-content mat-body-medium"></div>
+                  </mat-card-content>
+                </mat-card>
+              </div>
+            </chat-message>
+          </div>
+        </div></chat-panel></section>
+      `);
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      // Only user message, no assistant (empty content skipped)
+      expect(result.data?.messages.every(m => m.role === 'user')).toBe(true);
     });
   });
 

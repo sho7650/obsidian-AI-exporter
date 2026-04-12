@@ -645,6 +645,27 @@ describe('ClaudeExtractor', () => {
         // Tests fallback chain
         expect(true).toBe(true);
       });
+
+      it('falls back to textContent when innerHTML produces no markdown', () => {
+        setClaudeLocation('test-123');
+        loadFixture(`
+          <div data-testid="user-message">Fallback text</div>
+          <div class="font-claude-response">
+            <div class="standard-markdown"><p>Response</p></div>
+          </div>
+        `);
+        // Override innerHTML to return empty so the textContent fallback triggers
+        const userEl = document.querySelector('[data-testid="user-message"]')!;
+        Object.defineProperty(userEl, 'innerHTML', {
+          get: () => '',
+          configurable: true,
+        });
+
+        const messages = extractor.extractMessages();
+        const userMsg = messages.find(m => m.role === 'user');
+        expect(userMsg).toBeDefined();
+        expect(userMsg?.content).toBe('Fallback text');
+      });
     });
 
     describe('assistantResponse selectors', () => {

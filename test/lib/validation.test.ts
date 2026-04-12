@@ -95,28 +95,19 @@ describe('validateApiKey', () => {
     expect(validateApiKey(minKey)).toBe(minKey);
   });
 
-  it('warns on non-standard length', () => {
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('accepts non-standard length key silently', () => {
     const nonStandardKey = 'a'.repeat(32);
     expect(validateApiKey(nonStandardKey)).toBe(nonStandardKey);
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('length is 32'));
-    consoleSpy.mockRestore();
   });
 
-  it('warns on non-hex characters', () => {
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('accepts non-hex characters key silently', () => {
     const nonHexKey = 'g'.repeat(64);
     expect(validateApiKey(nonHexKey)).toBe(nonHexKey);
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('non-hexadecimal'));
-    consoleSpy.mockRestore();
   });
 
-  it('accepts valid hex key without warnings', () => {
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('accepts valid hex key', () => {
     const validHexKey = 'abcdef0123456789'.repeat(4);
     expect(validateApiKey(validHexKey)).toBe(validHexKey);
-    expect(consoleSpy).not.toHaveBeenCalled();
-    consoleSpy.mockRestore();
   });
 });
 
