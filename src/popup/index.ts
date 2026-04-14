@@ -76,6 +76,7 @@ const elements = {
   obsidianUrl: getElement<HTMLInputElement>('obsidianUrl'),
   vaultPath: getElement<HTMLInputElement>('vaultPath'),
   messageFormat: getElement<HTMLSelectElement>('messageFormat'),
+  calloutSettingsGroup: getElement<HTMLDivElement>('calloutSettingsGroup'),
   userCallout: getElement<HTMLInputElement>('userCallout'),
   assistantCallout: getElement<HTMLInputElement>('assistantCallout'),
   includeQuestionHeaders: getElement<HTMLInputElement>('includeQuestionHeaders'),
@@ -190,8 +191,12 @@ function setupEventListeners(): void {
   // Enable/disable callout inputs based on message format
   elements.messageFormat.addEventListener('change', () => {
     const isCallout = elements.messageFormat.value === 'callout';
-    elements.userCallout.disabled = !isCallout;
-    elements.assistantCallout.disabled = !isCallout;
+
+    if (isCallout) {
+      elements.calloutSettingsGroup.classList.remove('hidden');
+    } else {
+      elements.calloutSettingsGroup.classList.add('hidden');
+    }
   });
 
   // Setup API key visibility toggle

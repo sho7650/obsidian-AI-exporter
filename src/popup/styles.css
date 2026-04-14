@@ -2,6 +2,8 @@
 
 /* Light theme (default) */
 :root {
+  interpolate-size: allow-keywords;
+
   /* Background colors */
   --bg-primary: #ffffff;
   --bg-secondary: #f8f9fa;
@@ -129,6 +131,19 @@ body {
 .form-row {
   display: flex;
   gap: 12px;
+  overflow: hidden;
+  transition: height 0.5s, display 0.5s;
+  transition-behavior: allow-discrete;
+}
+
+@starting-style {
+  .form-row {
+    height: 0;
+  }
+}
+
+.form-row.hidden {
+  height: 0;
 }
 
 .form-row .form-group {
@@ -534,4 +549,8 @@ select {
 
 .advanced-content {
   padding-top: 12px;
+}
+
+.hidden {
+  display: none;
 }
