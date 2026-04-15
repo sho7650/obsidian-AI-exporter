@@ -535,3 +535,148 @@ select {
 .advanced-content {
   padding-top: 12px;
 }
+
+/* Color Picker Input Wrapper */
+.color-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.color-preview {
+  position: absolute;
+  left: 8px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.4));
+  pointer-events: none;
+  z-index: 2;
+  display: none;
+}
+
+.color-input-wrapper.has-color .color-preview {
+  display: block;
+}
+
+.color-input-wrapper.has-color input[type='text'] {
+  padding-left: 28px;
+}
+
+.color-input-wrapper input[type='text'] {
+  flex: 1;
+  padding-right: 28px;
+  cursor: pointer;
+  background-color: var(--bg-secondary);
+}
+
+.color-input-wrapper input[type='text']:disabled {
+  opacity: 1;
+  color: var(--text-primary);
+  -webkit-text-fill-color: var(--text-primary);
+}
+
+.color-input-wrapper input[type='color'] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+  pointer-events: none;
+}
+
+.color-reset-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  z-index: 2;
+}
+
+.color-reset-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.color-input-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 32px;
+  bottom: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+/* Number Input Custom Spinners */
+.number-input-wrapper {
+  position: relative;
+  display: flex;
+}
+
+.number-input-wrapper input[type='number'] {
+  padding-right: 28px;
+  -moz-appearance: textfield;
+}
+
+.number-input-wrapper input[type='number']::-webkit-inner-spin-button,
+.number-input-wrapper input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.number-spinbuttons {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  bottom: 1px;
+  width: 24px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: var(--bg-secondary);
+  border-top-right-radius: 7px;
+  border-bottom-right-radius: 7px;
+  overflow: hidden;
+}
+
+.spin-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 0.1s, color 0.1s;
+  padding: 0;
+}
+
+.spin-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.spin-btn:active {
+  background: var(--border);
+}
+
+.spin-btn.spin-up {
+  border-bottom: 1px solid var(--border);
+}
+
+.spin-btn svg {
+  width: 10px;
+  height: 6px;
+}

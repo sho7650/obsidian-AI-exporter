@@ -233,6 +233,14 @@ export interface TemplateOptions {
   includeQuestionHeaders?: boolean;
   /** IANA timezone for created/modified dates (e.g., 'Asia/Tokyo'). Defaults to 'UTC'. */
   timezone?: string;
+  /** Font size for User message header. e.g., '3' or '14px' */
+  userHeaderFontSize?: string;
+  /** Font size for Assistant message header. e.g., '3' or '14px' */
+  assistantHeaderFontSize?: string;
+  /** Font color for User message header. e.g., '#FF0000' or 'red' */
+  userHeaderFontColor?: string;
+  /** Font color for Assistant message header. e.g., '#0000FF' or 'blue' */
+  assistantHeaderFontColor?: string;
   /** Custom frontmatter fields (reserved for future use) */
   customFrontmatter?: Record<string, string>;
 }

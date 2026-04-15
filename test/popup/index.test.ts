@@ -119,6 +119,10 @@ describe('popup/index patterns', () => {
         </select>
         <input id="userCallout" type="text">
         <input id="assistantCallout" type="text">
+        <input id="userHeaderFontSize" type="number">
+        <input id="assistantHeaderFontSize" type="number">
+        <input id="userHeaderFontColor" type="text">
+        <input id="assistantHeaderFontColor" type="text">
         <input id="includeId" type="checkbox">
         <input id="includeTitle" type="checkbox">
         <input id="includeTags" type="checkbox">
@@ -175,6 +179,32 @@ describe('popup/index patterns', () => {
       expect(assistantCallout.value).toBe('NOTE');
     });
 
+    it('populates font settings inputs', () => {
+      const userSize = document.getElementById('userHeaderFontSize') as HTMLInputElement;
+      const userColor = document.getElementById('userHeaderFontColor') as HTMLInputElement;
+      const assistantSize = document.getElementById('assistantHeaderFontSize') as HTMLInputElement;
+      const assistantColor = document.getElementById('assistantHeaderFontColor') as HTMLInputElement;
+
+      const settings = {
+        templateOptions: {
+          userHeaderFontSize: '4',
+          userHeaderFontColor: '#ff0000',
+          assistantHeaderFontSize: '3',
+          assistantHeaderFontColor: '#00ff00',
+        },
+      };
+
+      userSize.value = settings.templateOptions.userHeaderFontSize || '';
+      userColor.value = settings.templateOptions.userHeaderFontColor || '';
+      assistantSize.value = settings.templateOptions.assistantHeaderFontSize || '';
+      assistantColor.value = settings.templateOptions.assistantHeaderFontColor || '';
+
+      expect(userSize.value).toBe('4');
+      expect(userColor.value).toBe('#ff0000');
+      expect(assistantSize.value).toBe('3');
+      expect(assistantColor.value).toBe('#00ff00');
+    });
+
     it('populates enableToolContent checkbox', () => {
       const enableToolContent = document.getElementById('enableToolContent') as HTMLInputElement;
       const settings = { enableToolContent: true };
@@ -210,6 +240,10 @@ describe('popup/index patterns', () => {
         </select>
         <input id="userCallout" type="text" value="QUESTION">
         <input id="assistantCallout" type="text" value="NOTE">
+        <input id="userHeaderFontSize" type="number" value="4">
+        <input id="userHeaderFontColor" type="text" value="#ff0000">
+        <input id="assistantHeaderFontSize" type="number" value="3">
+        <input id="assistantHeaderFontColor" type="text" value="#00ff00">
         <input id="includeId" type="checkbox" checked>
         <input id="includeTitle" type="checkbox" checked>
         <input id="includeTags" type="checkbox" checked>
@@ -228,6 +262,10 @@ describe('popup/index patterns', () => {
         messageFormat: document.getElementById('messageFormat') as HTMLSelectElement,
         userCallout: document.getElementById('userCallout') as HTMLInputElement,
         assistantCallout: document.getElementById('assistantCallout') as HTMLInputElement,
+        userHeaderFontSize: document.getElementById('userHeaderFontSize') as HTMLInputElement,
+        userHeaderFontColor: document.getElementById('userHeaderFontColor') as HTMLInputElement,
+        assistantHeaderFontSize: document.getElementById('assistantHeaderFontSize') as HTMLInputElement,
+        assistantHeaderFontColor: document.getElementById('assistantHeaderFontColor') as HTMLInputElement,
         includeId: document.getElementById('includeId') as HTMLInputElement,
         includeTitle: document.getElementById('includeTitle') as HTMLInputElement,
         includeTags: document.getElementById('includeTags') as HTMLInputElement,
@@ -240,6 +278,10 @@ describe('popup/index patterns', () => {
         messageFormat: elements.messageFormat.value as 'callout' | 'plain' | 'blockquote',
         userCalloutType: elements.userCallout.value || 'QUESTION',
         assistantCalloutType: elements.assistantCallout.value || 'NOTE',
+        userHeaderFontSize: elements.userHeaderFontSize.value.trim() || undefined,
+        userHeaderFontColor: elements.userHeaderFontColor.value.trim() || undefined,
+        assistantHeaderFontSize: elements.assistantHeaderFontSize.value.trim() || undefined,
+        assistantHeaderFontColor: elements.assistantHeaderFontColor.value.trim() || undefined,
         includeId: elements.includeId.checked,
         includeTitle: elements.includeTitle.checked,
         includeTags: elements.includeTags.checked,
@@ -259,6 +301,8 @@ describe('popup/index patterns', () => {
       expect(settings.obsidianUrl).toBe('http://127.0.0.1:27123');
       expect(settings.vaultPath).toBe('AI/Gemini');
       expect(settings.templateOptions.messageFormat).toBe('callout');
+      expect(settings.templateOptions.userHeaderFontSize).toBe('4');
+      expect(settings.templateOptions.userHeaderFontColor).toBe('#ff0000');
     });
 
     it('collectSettings includes enableToolContent', () => {
@@ -510,13 +554,12 @@ describe('popup/index patterns', () => {
     /** Replicates updateCalloutSettingsVisibility() from src/popup/index.ts */
     function updateCalloutSettingsVisibility(
       messageFormat: HTMLSelectElement,
-      calloutSettingsGroup: HTMLElement
+      calloutSettingsGroup: HTMLElement,
+      headerFontSettingsGroup: HTMLElement
     ): void {
-      if (messageFormat.value === 'callout') {
-        calloutSettingsGroup.style.display = '';
-      } else {
-        calloutSettingsGroup.style.display = 'none';
-      }
+      const isCallout = messageFormat.value === 'callout';
+      calloutSettingsGroup.style.display = isCallout ? '' : 'none';
+      headerFontSettingsGroup.style.display = isCallout ? 'none' : '';
     }
 
     beforeEach(() => {
@@ -530,73 +573,57 @@ describe('popup/index patterns', () => {
           <input id="userCallout" type="text">
           <input id="assistantCallout" type="text">
         </div>
+        <div id="headerFontSettingsGroup"></div>
       `;
     });
 
-    it('hides callout settings group when format is plain', () => {
+    it('hides callout settings and shows header settings when format is plain', () => {
       const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
       const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
+      const headerGroup = document.getElementById('headerFontSettingsGroup') as HTMLElement;
 
       messageFormat.addEventListener('change', () =>
-        updateCalloutSettingsVisibility(messageFormat, group)
+        updateCalloutSettingsVisibility(messageFormat, group, headerGroup)
       );
 
       messageFormat.value = 'plain';
       messageFormat.dispatchEvent(new Event('change'));
 
       expect(group.style.display).toBe('none');
+      expect(headerGroup.style.display).toBe('');
     });
 
-    it('hides callout settings group when format is blockquote', () => {
+    it('shows callout settings and hides header settings when format is callout', () => {
       const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
       const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
+      const headerGroup = document.getElementById('headerFontSettingsGroup') as HTMLElement;
 
-      messageFormat.addEventListener('change', () =>
-        updateCalloutSettingsVisibility(messageFormat, group)
-      );
-
-      messageFormat.value = 'blockquote';
-      messageFormat.dispatchEvent(new Event('change'));
-
-      expect(group.style.display).toBe('none');
-    });
-
-    it('shows callout settings group when format is callout', () => {
-      const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
-      const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
-
-      // Start hidden
+      // Start reversed
       group.style.display = 'none';
+      headerGroup.style.display = '';
 
       messageFormat.addEventListener('change', () =>
-        updateCalloutSettingsVisibility(messageFormat, group)
+        updateCalloutSettingsVisibility(messageFormat, group, headerGroup)
       );
 
       messageFormat.value = 'callout';
       messageFormat.dispatchEvent(new Event('change'));
 
       expect(group.style.display).toBe('');
+      expect(headerGroup.style.display).toBe('none');
     });
 
-    it('syncs visibility on initial load when format is not callout', () => {
+    it('syncs visibility on initial load when format is plain', () => {
       const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
       const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
+      const headerGroup = document.getElementById('headerFontSettingsGroup') as HTMLElement;
 
       // Simulate restoring a non-callout format from settings
       messageFormat.value = 'plain';
-      updateCalloutSettingsVisibility(messageFormat, group);
+      updateCalloutSettingsVisibility(messageFormat, group, headerGroup);
 
       expect(group.style.display).toBe('none');
-    });
-
-    it('syncs visibility on initial load when format is callout', () => {
-      const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
-      const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
-
-      messageFormat.value = 'callout';
-      updateCalloutSettingsVisibility(messageFormat, group);
-
-      expect(group.style.display).toBe('');
+      expect(headerGroup.style.display).toBe('');
     });
   });
 
@@ -646,6 +673,96 @@ describe('popup/index patterns', () => {
       });
 
       expect(saveSettings).toHaveBeenCalled();
+    });
+  });
+
+  describe('number constraints pattern', () => {
+    it('enforces min and max values on input', () => {
+      document.body.innerHTML = '<input type="number" id="testNum" min="1" max="7" />';
+      const input = document.getElementById('testNum') as HTMLInputElement;
+      
+      const enforceConstraints = () => {
+        if (input.value === '') return;
+        
+        const val = parseInt(input.value, 10);
+        const min = parseInt(input.min || '1', 10);
+        const max = parseInt(input.max || '7', 10);
+
+        if (isNaN(val)) {
+          input.value = '';
+        } else if (val < min) {
+          input.value = min.toString();
+        } else if (val > max) {
+          input.value = max.toString();
+        }
+      };
+
+      input.addEventListener('input', enforceConstraints);
+
+      // Test value above max
+      input.value = '8';
+      input.dispatchEvent(new Event('input'));
+      expect(input.value).toBe('7');
+
+      // Test value below min
+      input.value = '0';
+      input.dispatchEvent(new Event('input'));
+      expect(input.value).toBe('1');
+
+      // Test valid value
+      input.value = '5';
+      input.dispatchEvent(new Event('input'));
+      expect(input.value).toBe('5');
+
+      // Test negative value
+      input.value = '-5';
+      input.dispatchEvent(new Event('input'));
+      expect(input.value).toBe('1');
+
+      // Test empty string bypass
+      input.value = '';
+      input.dispatchEvent(new Event('input'));
+      expect(input.value).toBe('');
+    });
+  });
+
+  describe('color interactions pattern', () => {
+    it('syncs color preview background and class based on text input value', () => {
+      document.body.innerHTML = `
+        <div class="color-input-wrapper">
+          <div class="color-preview"></div>
+          <input type="text" id="colorText" />
+        </div>
+      `;
+      const wrapper = document.querySelector('.color-input-wrapper') as HTMLElement;
+      const preview = document.querySelector('.color-preview') as HTMLElement;
+      const textInput = document.getElementById('colorText') as HTMLInputElement;
+
+      const updatePreview = () => {
+        if (textInput.value) {
+          preview.style.backgroundColor = textInput.value;
+          wrapper.classList.add('has-color');
+        } else {
+          preview.style.backgroundColor = '';
+          wrapper.classList.remove('has-color');
+        }
+      };
+
+      // Initially empty
+      updatePreview();
+      expect(wrapper.classList.contains('has-color')).toBe(false);
+
+      // Set color via input
+      textInput.value = '#ff0000';
+      updatePreview();
+      expect(wrapper.classList.contains('has-color')).toBe(true);
+      expect(preview.style.backgroundColor).toBe('rgb(255, 0, 0)'); // browser standardizes #ff0000 to rgb(255, 0, 0)
+
+      // Clear color
+      textInput.value = '';
+      updatePreview();
+      expect(wrapper.classList.contains('has-color')).toBe(false);
+      expect(preview.style.backgroundColor).toBe('');
     });
   });
 });

@@ -499,12 +499,38 @@ describe('conversationToNote', () => {
     expect(note.body).toContain('> ');
   });
 
+  it('formats with custom header font size and different colors for user and assistant', () => {
+    const options: TemplateOptions = {
+      ...defaultOptions,
+      messageFormat: 'blockquote',
+      userHeaderFontSize: '4',
+      assistantHeaderFontSize: '2',
+      userHeaderFontColor: 'red',
+      assistantHeaderFontColor: 'blue',
+    };
+    const note = conversationToNote(mockData, options);
+    expect(note.body).toContain('<font size="4" color="red"><b>User:</b></font>');
+    expect(note.body).toContain('<font size="2" color="blue"><b>Gemini:</b></font>');
+  });
+
   it('formats as plain when specified', () => {
     const options = { ...defaultOptions, messageFormat: 'plain' as const };
     const note = conversationToNote(mockData, options);
     expect(note.body).toContain('**User:**');
     expect(note.body).toContain('**Gemini:**');
     expect(note.body).not.toContain('[!');
+  });
+
+  it('formats with custom header font size only in plain format', () => {
+    const options: TemplateOptions = {
+      ...defaultOptions,
+      messageFormat: 'plain',
+      userHeaderFontSize: '14px',
+      assistantHeaderFontSize: '12px',
+    };
+    const note = conversationToNote(mockData, options);
+    expect(note.body).toContain('<font size="14px"><b>User:</b></font>');
+    expect(note.body).toContain('<font size="12px"><b>Gemini:</b></font>');
   });
 
   it('handles multiple messages', () => {

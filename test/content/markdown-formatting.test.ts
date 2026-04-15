@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildQuestionHeader, stripMarkdownChars } from '../../src/content/markdown-formatting';
+import { buildQuestionHeader, stripMarkdownChars, formatMessage } from '../../src/content/markdown-formatting';
 
 /**
  * Unit tests for buildQuestionHeader (issue #187).
@@ -147,5 +147,50 @@ describe('stripMarkdownChars', () => {
 
   it('returns empty string for input of only markdown chars', () => {
     expect(stripMarkdownChars('`*_~[]')).toBe('');
+  });
+});
+
+describe('formatMessage', () => {
+  const baseOptions = {
+    messageFormat: 'plain' as const,
+    userCalloutType: 'QUESTION',
+    assistantCalloutType: 'NOTE',
+    includeQuestionHeaders: false,
+    includeId: false,
+    includeTitle: false,
+    includeTags: false,
+    includeSource: false,
+    includeDates: false,
+    includeMessageCount: false,
+  };
+
+  it('uses ** for labels when no font settings are applied in plain format', () => {
+    const result = formatMessage('Hello', 'user', baseOptions, 'chatgpt');
+    expect(result).toBe('**User:**\n\nHello');
+  });
+
+  it('uses ** for assistant labels when no font settings are applied in plain format', () => {
+    const result = formatMessage('Hello', 'assistant', baseOptions, 'claude');
+    expect(result).toBe('**Claude:**\n\nHello');
+  });
+
+  it('wraps label in <b> inside <font> when font settings are used', () => {
+    const options = {
+      ...baseOptions,
+      userHeaderFontSize: '5',
+      userHeaderFontColor: '#ff0000'
+    };
+    const result = formatMessage('Hello', 'user', options, 'chatgpt');
+    expect(result).toBe('<font size="5" color="#ff0000"><b>User:</b></font>\n\nHello');
+  });
+
+  it('applies assistant font settings similarly in blockquote format', () => {
+    const options = {
+      ...baseOptions,
+      messageFormat: 'blockquote' as const,
+      assistantHeaderFontSize: '6',
+    };
+    const result = formatMessage('Hello', 'assistant', options, 'gemini');
+    expect(result).toBe('<font size="6"><b>Gemini:</b></font>\n> Hello');
   });
 });

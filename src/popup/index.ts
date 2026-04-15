@@ -79,6 +79,17 @@ const elements = {
   calloutSettingsGroup: getElement<HTMLElement>('calloutSettingsGroup'),
   userCallout: getElement<HTMLInputElement>('userCallout'),
   assistantCallout: getElement<HTMLInputElement>('assistantCallout'),
+  headerFontSettingsGroup: getElement<HTMLElement>('headerFontSettingsGroup'),
+  userHeaderFontSize: getElement<HTMLInputElement>('userHeaderFontSize'),
+  assistantHeaderFontSize: getElement<HTMLInputElement>('assistantHeaderFontSize'),
+  userHeaderFontColor: getElement<HTMLInputElement>('userHeaderFontColor'),
+  userHeaderFontColorPicker: getElement<HTMLInputElement>('userHeaderFontColorPicker'),
+  userHeaderFontColorOverlay: getElement<HTMLDivElement>('userHeaderFontColorOverlay'),
+  userHeaderFontColorReset: getElement<HTMLButtonElement>('userHeaderFontColorReset'),
+  assistantHeaderFontColor: getElement<HTMLInputElement>('assistantHeaderFontColor'),
+  assistantHeaderFontColorPicker: getElement<HTMLInputElement>('assistantHeaderFontColorPicker'),
+  assistantHeaderFontColorOverlay: getElement<HTMLDivElement>('assistantHeaderFontColorOverlay'),
+  assistantHeaderFontColorReset: getElement<HTMLButtonElement>('assistantHeaderFontColorReset'),
   includeQuestionHeaders: getElement<HTMLInputElement>('includeQuestionHeaders'),
   includeId: getElement<HTMLInputElement>('includeId'),
   includeTitle: getElement<HTMLInputElement>('includeTitle'),
@@ -106,6 +117,8 @@ async function initialize(): Promise<void> {
     populateForm(settings);
     setupEventListeners();
     setupToggleSwitchAccessibility();
+    setupColorInputs();
+    setupNumberInputs();
   } catch (error) {
     showStatus(getMessage('toast_error_connectionFailed'), 'error');
     console.error('[G2O Popup] Init error:', error);
@@ -139,6 +152,10 @@ function populateForm(settings: ExtensionSettings): void {
   elements.messageFormat.value = templateOptions.messageFormat || 'callout';
   elements.userCallout.value = templateOptions.userCalloutType || 'QUESTION';
   elements.assistantCallout.value = templateOptions.assistantCalloutType || 'NOTE';
+  elements.userHeaderFontSize.value = templateOptions.userHeaderFontSize || '';
+  elements.assistantHeaderFontSize.value = templateOptions.assistantHeaderFontSize || '';
+  elements.userHeaderFontColor.value = templateOptions.userHeaderFontColor || '';
+  elements.assistantHeaderFontColor.value = templateOptions.assistantHeaderFontColor || '';
   updateCalloutSettingsVisibility();
   elements.includeQuestionHeaders.checked = templateOptions.includeQuestionHeaders ?? false;
 
@@ -249,6 +266,122 @@ function setupToggleSwitchAccessibility(): void {
 }
 
 /**
+ * Setup custom color inputs (text + hidden color picker overlay)
+ */
+function setupColorInputs(): void {
+  const setupPair = (
+    textInput: HTMLInputElement,
+    pickerInput: HTMLInputElement,
+    overlay: HTMLDivElement,
+    resetBtn: HTMLButtonElement
+  ) => {
+    const updatePreview = () => {
+      const wrapper = textInput.closest('.color-input-wrapper');
+      if (!wrapper) return;
+      const preview = wrapper.querySelector('.color-preview') as HTMLElement;
+      if (preview) {
+        if (textInput.value) {
+          preview.style.backgroundColor = textInput.value;
+          wrapper.classList.add('has-color');
+        } else {
+          wrapper.classList.remove('has-color');
+        }
+      }
+    };
+
+    // Run on initialize
+    updatePreview();
+
+    // When overlay is clicked, trigger color picker
+    overlay.addEventListener('click', () => {
+      pickerInput.value = textInput.value || '#000000';
+      if (typeof pickerInput.showPicker === 'function') {
+        try {
+          pickerInput.showPicker();
+        } catch {
+          pickerInput.click();
+        }
+      } else {
+        pickerInput.click();
+      }
+    });
+
+    // When color picker value changes, update text input
+    pickerInput.addEventListener('input', () => {
+      textInput.value = pickerInput.value;
+      updatePreview();
+    });
+
+    // Reset button clears the text input
+    resetBtn.addEventListener('click', () => {
+      textInput.value = '';
+      updatePreview();
+    });
+  };
+
+  setupPair(
+    elements.userHeaderFontColor,
+    elements.userHeaderFontColorPicker,
+    elements.userHeaderFontColorOverlay,
+    elements.userHeaderFontColorReset
+  );
+
+  setupPair(
+    elements.assistantHeaderFontColor,
+    elements.assistantHeaderFontColorPicker,
+    elements.assistantHeaderFontColorOverlay,
+    elements.assistantHeaderFontColorReset
+  );
+}
+
+/**
+ * Setup custom spinner buttons for number inputs
+ */
+function setupNumberInputs(): void {
+  const setupSpinner = (inputId: string) => {
+    const input = document.getElementById(inputId) as HTMLInputElement;
+    const btnUp = document.getElementById(`${inputId}Up`) as HTMLButtonElement;
+    const btnDown = document.getElementById(`${inputId}Down`) as HTMLButtonElement;
+    
+    if (!input || !btnUp || !btnDown) return;
+
+    btnUp.addEventListener('click', () => {
+      input.stepUp();
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    btnDown.addEventListener('click', () => {
+      input.stepDown();
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    const enforceConstraints = () => {
+      if (input.value === '') return;
+      
+      const val = parseInt(input.value, 10);
+      const min = parseInt(input.min || '1', 10);
+      const max = parseInt(input.max || '7', 10);
+
+      if (isNaN(val)) {
+        input.value = '';
+      } else if (val < min) {
+        input.value = min.toString();
+      } else if (val > max) {
+        input.value = max.toString();
+      }
+    };
+
+    input.addEventListener('input', enforceConstraints);
+    input.addEventListener('change', enforceConstraints);
+  };
+
+  setupSpinner('userHeaderFontSize');
+  setupSpinner('assistantHeaderFontSize');
+}
+
+/**
  * Populate timezone select with IANA timezone names
  * Groups by region for easier navigation
  */
@@ -296,12 +429,9 @@ function updateTimezoneVisibility(): void {
 }
 
 function updateCalloutSettingsVisibility(): void {
-  const group = elements.calloutSettingsGroup;
-  if (elements.messageFormat.value === 'callout') {
-    group.style.display = '';
-  } else {
-    group.style.display = 'none';
-  }
+  const isCallout = elements.messageFormat.value === 'callout';
+  elements.calloutSettingsGroup.style.display = isCallout ? '' : 'none';
+  elements.headerFontSettingsGroup.style.display = isCallout ? 'none' : '';
 }
 
 /**
@@ -338,6 +468,10 @@ function collectSettings(): ExtensionSettings {
     messageFormat,
     userCalloutType: validateCalloutType(elements.userCallout.value || 'QUESTION', 'QUESTION'),
     assistantCalloutType: validateCalloutType(elements.assistantCallout.value || 'NOTE', 'NOTE'),
+    userHeaderFontSize: elements.userHeaderFontSize.value.trim() || undefined,
+    assistantHeaderFontSize: elements.assistantHeaderFontSize.value.trim() || undefined,
+    userHeaderFontColor: elements.userHeaderFontColor.value.trim() || undefined,
+    assistantHeaderFontColor: elements.assistantHeaderFontColor.value.trim() || undefined,
     includeQuestionHeaders: elements.includeQuestionHeaders.checked,
     includeId: elements.includeId.checked,
     includeTitle: elements.includeTitle.checked,

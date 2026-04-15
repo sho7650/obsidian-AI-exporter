@@ -81,6 +81,22 @@
     "message": "Assistant Callout Type",
     "description": "Label for assistant callout type"
   },
+  "settings_userHeaderFontSize": {
+    "message": "User Font Size",
+    "description": "Label for user header font size input"
+  },
+  "settings_assistantHeaderFontSize": {
+    "message": "Assistant Font Size",
+    "description": "Label for assistant header font size input"
+  },
+  "settings_userHeaderFontColor": {
+    "message": "User Color",
+    "description": "Label for user header font color input"
+  },
+  "settings_assistantHeaderFontColor": {
+    "message": "Assistant Color",
+    "description": "Label for assistant header font color input"
+  },
   "settings_includeQuestionHeaders": {
     "message": "Add `## ` headers before user messages",
     "description": "Checkbox label for issue #187 question header option"

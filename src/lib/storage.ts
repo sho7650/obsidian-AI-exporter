@@ -26,6 +26,10 @@ const DEFAULT_TEMPLATE_OPTIONS: TemplateOptions = {
   userCalloutType: 'QUESTION',
   assistantCalloutType: 'NOTE',
   includeQuestionHeaders: false,
+  userHeaderFontSize: '',
+  assistantHeaderFontSize: '',
+  userHeaderFontColor: '',
+  assistantHeaderFontColor: '',
 };
 
 const DEFAULT_OUTPUT_OPTIONS: OutputOptions = {

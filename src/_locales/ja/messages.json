@@ -61,6 +61,18 @@
   "settings_assistantCallout": {
     "message": "アシスタントのコールアウト種類"
   },
+  "settings_userHeaderFontSize": {
+    "message": "ユーザーのフォントサイズ"
+  },
+  "settings_assistantHeaderFontSize": {
+    "message": "アシスタントのフォントサイズ"
+  },
+  "settings_userHeaderFontColor": {
+    "message": "ユーザーのカラー"
+  },
+  "settings_assistantHeaderFontColor": {
+    "message": "アシスタントのカラー"
+  },
   "settings_includeQuestionHeaders": {
     "message": "ユーザーメッセージの前に `## ` 見出しを追加"
   },

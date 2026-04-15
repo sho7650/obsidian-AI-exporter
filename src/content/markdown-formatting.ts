@@ -91,7 +91,16 @@ export function formatMessage(
     }
 
     case 'blockquote': {
-      const label = role === 'user' ? '**User:**' : `**${assistantLabel}:**`;
+      const rawLabel = role === 'user' ? 'User:' : `${assistantLabel}:`;
+      let label = `**${rawLabel}**`;
+      const fontSize = role === 'user' ? options.userHeaderFontSize : options.assistantHeaderFontSize;
+      const fontColor = role === 'user' ? options.userHeaderFontColor : options.assistantHeaderFontColor;
+
+      if (fontSize || fontColor) {
+        const sizeAttr = fontSize ? ` size="${fontSize}"` : '';
+        const colorAttr = fontColor ? ` color="${fontColor}"` : '';
+        label = `<font${sizeAttr}${colorAttr}><b>${rawLabel}</b></font>`;
+      }
       const lines = markdown.split('\n').map(line => `> ${line}`);
       formatted = `${label}\n${lines.join('\n')}`;
       break;
@@ -99,7 +108,16 @@ export function formatMessage(
 
     case 'plain':
     default: {
-      const label = role === 'user' ? '**User:**' : `**${assistantLabel}:**`;
+      const rawLabel = role === 'user' ? 'User:' : `${assistantLabel}:`;
+      let label = `**${rawLabel}**`;
+      const fontSize = role === 'user' ? options.userHeaderFontSize : options.assistantHeaderFontSize;
+      const fontColor = role === 'user' ? options.userHeaderFontColor : options.assistantHeaderFontColor;
+
+      if (fontSize || fontColor) {
+        const sizeAttr = fontSize ? ` size="${fontSize}"` : '';
+        const colorAttr = fontColor ? ` color="${fontColor}"` : '';
+        label = `<font${sizeAttr}${colorAttr}><b>${rawLabel}</b></font>`;
+      }
       formatted = `${label}\n\n${markdown}`;
       break;
     }

@@ -204,6 +204,71 @@
                 </div>
               </div>
 
+              <div id="headerFontSettingsGroup">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="userHeaderFontSize" data-i18n="settings_userHeaderFontSize"
+                      >User Font Size</label
+                    >
+                    <div class="number-input-wrapper">
+                      <input type="number" id="userHeaderFontSize" min="1" max="7" step="1" />
+                      <div class="number-spinbuttons">
+                        <button type="button" class="spin-btn spin-up" id="userHeaderFontSizeUp" aria-label="Increase">
+                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m1 5 4-4 4 4"/></svg>
+                        </button>
+                        <button type="button" class="spin-btn spin-down" id="userHeaderFontSizeDown" aria-label="Decrease">
+                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m1 1 4 4 4-4"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label for="userHeaderFontColor" data-i18n="settings_userHeaderFontColor"
+                      >User Color</label
+                    >
+                    <div class="color-input-wrapper">
+                      <div class="color-preview" id="userHeaderFontColorPreview"></div>
+                      <input type="text" id="userHeaderFontColor" disabled />
+                      <div class="color-input-overlay" id="userHeaderFontColorOverlay"></div>
+                      <input type="color" id="userHeaderFontColorPicker" />
+                      <button type="button" id="userHeaderFontColorReset" class="color-reset-btn" title="Reset">✕</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="assistantHeaderFontSize" data-i18n="settings_assistantHeaderFontSize"
+                      >Assistant Font Size</label
+                    >
+                    <div class="number-input-wrapper">
+                      <input type="number" id="assistantHeaderFontSize" min="1" max="7" step="1" />
+                      <div class="number-spinbuttons">
+                        <button type="button" class="spin-btn spin-up" id="assistantHeaderFontSizeUp" aria-label="Increase">
+                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m1 5 4-4 4 4"/></svg>
+                        </button>
+                        <button type="button" class="spin-btn spin-down" id="assistantHeaderFontSizeDown" aria-label="Decrease">
+                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m1 1 4 4 4-4"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label
+                      for="assistantHeaderFontColor"
+                      data-i18n="settings_assistantHeaderFontColor"
+                      >Assistant Color</label
+                    >
+                    <div class="color-input-wrapper">
+                      <div class="color-preview" id="assistantHeaderFontColorPreview"></div>
+                      <input type="text" id="assistantHeaderFontColor" disabled />
+                      <div class="color-input-overlay" id="assistantHeaderFontColorOverlay"></div>
+                      <input type="color" id="assistantHeaderFontColorPicker" />
+                      <button type="button" id="assistantHeaderFontColorReset" class="color-reset-btn" title="Reset">✕</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div class="form-group">
                 <label class="checkbox-label">
                   <input type="checkbox" id="includeQuestionHeaders" />
