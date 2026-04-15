@@ -506,7 +506,19 @@ describe('popup/index patterns', () => {
     });
   });
 
-  describe('messageFormat change handler', () => {
+  describe('callout settings visibility', () => {
+    /** Replicates updateCalloutSettingsVisibility() from src/popup/index.ts */
+    function updateCalloutSettingsVisibility(
+      messageFormat: HTMLSelectElement,
+      calloutSettingsGroup: HTMLElement
+    ): void {
+      if (messageFormat.value === 'callout') {
+        calloutSettingsGroup.style.display = '';
+      } else {
+        calloutSettingsGroup.style.display = 'none';
+      }
+    }
+
     beforeEach(() => {
       document.body.innerHTML = `
         <select id="messageFormat">
@@ -514,51 +526,77 @@ describe('popup/index patterns', () => {
           <option value="plain">Plain</option>
           <option value="blockquote">Blockquote</option>
         </select>
-        <input id="userCallout" type="text">
-        <input id="assistantCallout" type="text">
+        <div class="form-row" id="calloutSettingsGroup">
+          <input id="userCallout" type="text">
+          <input id="assistantCallout" type="text">
+        </div>
       `;
     });
 
-    it('disables callout inputs when format is not callout', () => {
+    it('hides callout settings group when format is plain', () => {
       const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
-      const userCallout = document.getElementById('userCallout') as HTMLInputElement;
-      const assistantCallout = document.getElementById('assistantCallout') as HTMLInputElement;
+      const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
 
-      messageFormat.addEventListener('change', () => {
-        const isCallout = messageFormat.value === 'callout';
-        userCallout.disabled = !isCallout;
-        assistantCallout.disabled = !isCallout;
-      });
+      messageFormat.addEventListener('change', () =>
+        updateCalloutSettingsVisibility(messageFormat, group)
+      );
 
-      // Change to plain
       messageFormat.value = 'plain';
       messageFormat.dispatchEvent(new Event('change'));
 
-      expect(userCallout.disabled).toBe(true);
-      expect(assistantCallout.disabled).toBe(true);
+      expect(group.style.display).toBe('none');
     });
 
-    it('enables callout inputs when format is callout', () => {
+    it('hides callout settings group when format is blockquote', () => {
       const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
-      const userCallout = document.getElementById('userCallout') as HTMLInputElement;
-      const assistantCallout = document.getElementById('assistantCallout') as HTMLInputElement;
+      const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
 
-      // Start disabled
-      userCallout.disabled = true;
-      assistantCallout.disabled = true;
+      messageFormat.addEventListener('change', () =>
+        updateCalloutSettingsVisibility(messageFormat, group)
+      );
 
-      messageFormat.addEventListener('change', () => {
-        const isCallout = messageFormat.value === 'callout';
-        userCallout.disabled = !isCallout;
-        assistantCallout.disabled = !isCallout;
-      });
+      messageFormat.value = 'blockquote';
+      messageFormat.dispatchEvent(new Event('change'));
 
-      // Change to callout
+      expect(group.style.display).toBe('none');
+    });
+
+    it('shows callout settings group when format is callout', () => {
+      const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
+      const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
+
+      // Start hidden
+      group.style.display = 'none';
+
+      messageFormat.addEventListener('change', () =>
+        updateCalloutSettingsVisibility(messageFormat, group)
+      );
+
       messageFormat.value = 'callout';
       messageFormat.dispatchEvent(new Event('change'));
 
-      expect(userCallout.disabled).toBe(false);
-      expect(assistantCallout.disabled).toBe(false);
+      expect(group.style.display).toBe('');
+    });
+
+    it('syncs visibility on initial load when format is not callout', () => {
+      const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
+      const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
+
+      // Simulate restoring a non-callout format from settings
+      messageFormat.value = 'plain';
+      updateCalloutSettingsVisibility(messageFormat, group);
+
+      expect(group.style.display).toBe('none');
+    });
+
+    it('syncs visibility on initial load when format is callout', () => {
+      const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
+      const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
+
+      messageFormat.value = 'callout';
+      updateCalloutSettingsVisibility(messageFormat, group);
+
+      expect(group.style.display).toBe('');
     });
   });
 

@@ -76,6 +76,7 @@ const elements = {
   obsidianUrl: getElement<HTMLInputElement>('obsidianUrl'),
   vaultPath: getElement<HTMLInputElement>('vaultPath'),
   messageFormat: getElement<HTMLSelectElement>('messageFormat'),
+  calloutSettingsGroup: getElement<HTMLElement>('calloutSettingsGroup'),
   userCallout: getElement<HTMLInputElement>('userCallout'),
   assistantCallout: getElement<HTMLInputElement>('assistantCallout'),
   includeQuestionHeaders: getElement<HTMLInputElement>('includeQuestionHeaders'),
@@ -138,6 +139,7 @@ function populateForm(settings: ExtensionSettings): void {
   elements.messageFormat.value = templateOptions.messageFormat || 'callout';
   elements.userCallout.value = templateOptions.userCalloutType || 'QUESTION';
   elements.assistantCallout.value = templateOptions.assistantCalloutType || 'NOTE';
+  updateCalloutSettingsVisibility();
   elements.includeQuestionHeaders.checked = templateOptions.includeQuestionHeaders ?? false;
 
   elements.includeId.checked = templateOptions.includeId ?? true;
@@ -187,12 +189,8 @@ function setupEventListeners(): void {
   // Show/hide timezone when includeDates changes
   elements.includeDates.addEventListener('change', updateTimezoneVisibility);
 
-  // Enable/disable callout inputs based on message format
-  elements.messageFormat.addEventListener('change', () => {
-    const isCallout = elements.messageFormat.value === 'callout';
-    elements.userCallout.disabled = !isCallout;
-    elements.assistantCallout.disabled = !isCallout;
-  });
+  // Show/hide callout settings based on message format
+  elements.messageFormat.addEventListener('change', updateCalloutSettingsVisibility);
 
   // Setup API key visibility toggle
   setupApiKeyToggle();
@@ -291,6 +289,15 @@ function populateTimezoneOptions(): void {
 function updateTimezoneVisibility(): void {
   const group = elements.timezoneGroup;
   if (elements.includeDates.checked) {
+    group.style.display = '';
+  } else {
+    group.style.display = 'none';
+  }
+}
+
+function updateCalloutSettingsVisibility(): void {
+  const group = elements.calloutSettingsGroup;
+  if (elements.messageFormat.value === 'callout') {
     group.style.display = '';
   } else {
     group.style.display = 'none';
