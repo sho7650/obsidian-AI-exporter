@@ -25,7 +25,7 @@
     "e2e:daemon:status": "npx tsx e2e/daemon/daemon.ts status"
   },
   "dependencies": {
-    "dompurify": "^3.3.2",
+    "dompurify": "^3.4.0",
     "turndown": "^7.1.2"
   },
   "devDependencies": {
