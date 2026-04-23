@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.1.1...v1.1.2) (2026-04-23)
+
+
+### Bug Fixes
+
+* **perplexity:** extract all prose blocks in markdown-content containers ([#218](https://github.com/sho7650/obsidian-AI-exporter/issues/218)) ([5e0df58](https://github.com/sho7650/obsidian-AI-exporter/commit/5e0df58c194ddcc1bfed146e23ac8ee703c07c8e))
+
 ## [1.1.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.1.0...v1.1.1) (2026-04-18)
 
 
