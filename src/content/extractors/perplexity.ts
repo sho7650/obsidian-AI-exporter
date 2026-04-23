@@ -174,14 +174,30 @@ export class PerplexityExtractor extends BaseExtractor {
   /**
    * Extract assistant response content (HTML for markdown conversion)
    *
-   * Finds the .prose child element and extracts its innerHTML.
+   * Perplexity uses two layouts for `#markdown-content-N`:
+   *   (1) Legacy: a single `.prose` child wraps the whole answer.
+   *   (2) New: multiple sibling `.has-inline-images > div > .prose` blocks,
+   *       one per section (observed around 2026-04). Using querySelector
+   *       here dropped every block after the first, truncating the answer.
+   *
+   * Strategy: collect all `.prose` descendants and concatenate their innerHTML
+   * in document order. querySelectorAll already returns DOM order, so a single
+   * matching selector covers both layouts.
+   *
+   * Citation URL caveat: the "pill" citations rendered as a hover trigger
+   * (span.group/trigger without an <a href>) do NOT carry their source URL
+   * in the static DOM — URLs are lazy-loaded into the Sources tab only after
+   * the user opens it. Those citations are preserved here as plain text.
+   * Citations that DO embed <a href> (typically video / featured sources) are
+   * converted to markdown links correctly via Turndown.
+   *
    * All HTML is sanitized via DOMPurify to prevent XSS.
    */
   private extractAssistantContent(contentElement: HTMLElement): string {
-    // Find .prose child within the markdown-content container
-    const proseEl = this.queryWithFallback<HTMLElement>(SELECTORS.proseContent, contentElement);
-    if (proseEl) {
-      return sanitizeHtml(proseEl.innerHTML);
+    const proseEls = this.queryAllWithFallback<HTMLElement>(SELECTORS.proseContent, contentElement);
+    if (proseEls.length > 0) {
+      const joined = proseEls.map(el => el.innerHTML).join('\n');
+      return sanitizeHtml(joined);
     }
 
     // Fallback: use the content element's innerHTML directly

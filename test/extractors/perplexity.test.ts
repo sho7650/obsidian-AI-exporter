@@ -415,6 +415,106 @@ describe('PerplexityExtractor', () => {
       expect(messages).toHaveLength(1);
       expect(messages[0].role).toBe('user');
     });
+
+    // Regression: Perplexity started rendering some responses as multiple sibling
+    // .prose blocks inside a single #markdown-content-N container (each section
+    // wrapped in its own .has-inline-images > div > .prose wrapper). The previous
+    // implementation used querySelector (first match), dropping every block after
+    // the first. Observed in the wild on 2026-04-23 (data/perplexity-fail.html,
+    // "Polaris とは何か" answer — truncated after one paragraph).
+    it('concatenates all sibling .prose blocks inside one markdown-content container', () => {
+      setPerplexityLocation('test-slug');
+      loadFixture(`
+        <div class="max-w-threadContentWidth">
+          <div class="group/query">
+            <div class="bg-offset rounded-2xl">
+              <span class="select-text">Polarisについて教えて</span>
+            </div>
+          </div>
+          <div id="markdown-content-0" class="markdown-content">
+            <div class="has-inline-images">
+              <div>
+                <div class="prose dark:prose-invert inline">
+                  <p>First intro paragraph.</p>
+                </div>
+              </div>
+            </div>
+            <div class="has-inline-images">
+              <div>
+                <div class="prose dark:prose-invert inline">
+                  <h2>Polaris とは何か</h2>
+                </div>
+              </div>
+            </div>
+            <div class="has-inline-images">
+              <div>
+                <div class="prose dark:prose-invert inline">
+                  <p>Body of the Polaris section.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `);
+
+      const messages = extractor.extractMessages();
+      const assistantMsg = messages.find(m => m.role === 'assistant');
+
+      expect(assistantMsg).toBeDefined();
+      expect(assistantMsg?.content).toContain('First intro paragraph.');
+      expect(assistantMsg?.content).toContain('Polaris とは何か');
+      expect(assistantMsg?.content).toContain('Body of the Polaris section.');
+    });
+
+    it('preserves DOM order when concatenating sibling .prose blocks', () => {
+      setPerplexityLocation('test-slug');
+      loadFixture(`
+        <div class="max-w-threadContentWidth">
+          <div class="group/query">
+            <div class="bg-offset rounded-2xl">
+              <span class="select-text">ordering test</span>
+            </div>
+          </div>
+          <div id="markdown-content-0" class="markdown-content">
+            <div class="has-inline-images"><div><div class="prose dark:prose-invert inline"><p>ALPHA</p></div></div></div>
+            <div class="has-inline-images"><div><div class="prose dark:prose-invert inline"><p>BETA</p></div></div></div>
+            <div class="has-inline-images"><div><div class="prose dark:prose-invert inline"><p>GAMMA</p></div></div></div>
+          </div>
+        </div>
+      `);
+
+      const messages = extractor.extractMessages();
+      const content = messages.find(m => m.role === 'assistant')?.content ?? '';
+      const alphaIdx = content.indexOf('ALPHA');
+      const betaIdx = content.indexOf('BETA');
+      const gammaIdx = content.indexOf('GAMMA');
+
+      expect(alphaIdx).toBeGreaterThanOrEqual(0);
+      expect(betaIdx).toBeGreaterThan(alphaIdx);
+      expect(gammaIdx).toBeGreaterThan(betaIdx);
+    });
+
+    it('still works with the legacy single-.prose structure', () => {
+      setPerplexityLocation('test-slug');
+      loadFixture(`
+        <div class="max-w-threadContentWidth">
+          <div class="group/query">
+            <div class="bg-offset rounded-2xl">
+              <span class="select-text">legacy</span>
+            </div>
+          </div>
+          <div id="markdown-content-0" class="markdown-content">
+            <div class="prose dark:prose-invert">
+              <p>Only paragraph.</p>
+            </div>
+          </div>
+        </div>
+      `);
+
+      const messages = extractor.extractMessages();
+      const assistantMsg = messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('Only paragraph.');
+    });
   });
 
   // ========== Issue #96: Math equations rendering ==========
