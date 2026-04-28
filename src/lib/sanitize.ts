@@ -96,6 +96,8 @@ export function preprocessKatex(html: string): string {
  * The uponSanitizeAttribute hook selectively allows:
  * - data-turn-source-index (Deep Research inline citations, 1-based index into source list)
  * - data-math (KaTeX math expressions — Gemini native or standard KaTeX via preprocessKatex)
+ * - data-footnote-ref (NotebookLM citation placeholder spans → Turndown rule)
+ * - data-footnote-def (NotebookLM footnote definition paragraphs → Turndown rule)
  * while blocking all other data-* attributes.
  *
  * Note: The hook is added/removed per call to avoid cross-contamination
@@ -107,7 +109,12 @@ export function sanitizeHtml(html: string): string {
   const preprocessed = preprocessKatex(html);
 
   DOMPurify.addHook('uponSanitizeAttribute', (_node, data) => {
-    if (data.attrName === 'data-turn-source-index' || data.attrName === 'data-math') {
+    if (
+      data.attrName === 'data-turn-source-index' ||
+      data.attrName === 'data-math' ||
+      data.attrName === 'data-footnote-ref' ||
+      data.attrName === 'data-footnote-def'
+    ) {
       data.forceKeepAttr = true;
     } else if (data.attrName.startsWith('data-')) {
       data.keepAttr = false;

@@ -174,6 +174,20 @@ turndown.addRule('footnoteRef', {
   },
 });
 
+// Custom rule for footnote definitions (NotebookLM citations)
+// Converts <p data-footnote-def>[^label]: title</p> to a literal footnote
+// definition line. Bypasses Turndown's default text-escaping so the
+// `[^label]:` syntax survives intact.
+turndown.addRule('footnoteDef', {
+  filter: node => {
+    return node.nodeName === 'P' && (node as HTMLElement).hasAttribute('data-footnote-def');
+  },
+  replacement: (_content, node) => {
+    const text = (node.textContent ?? '').trim();
+    return text ? `\n\n${text}` : '';
+  },
+});
+
 // Custom rule for display math blocks (Gemini KaTeX: <div data-math="...">)
 turndown.addRule('mathBlock', {
   filter: node => {

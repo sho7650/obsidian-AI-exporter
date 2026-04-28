@@ -17,6 +17,19 @@ import { sanitizeHtml } from '../../lib/sanitize';
 import type { ConversationMessage } from '../../lib/types';
 
 import { SELECTORS } from './selectors/notebooklm';
+import { transformCitationsToFootnotes } from './notebooklm-citations';
+
+const HTML_ESCAPE_MAP: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, ch => HTML_ESCAPE_MAP[ch] ?? ch);
+}
 
 /**
  * NotebookLM chat conversation extractor
@@ -102,7 +115,7 @@ export class NotebookLMExtractor extends BaseExtractor {
       // Extract assistant response from this turn
       const assistantEl = this.queryWithFallback<HTMLElement>(SELECTORS.assistantResponse, turn);
       if (assistantEl) {
-        const content = this.extractAssistantContent(assistantEl);
+        const content = this.extractAssistantContent(assistantEl, index);
         if (content) {
           messages.push({
             id: `assistant-${index}`,
@@ -132,20 +145,30 @@ export class NotebookLMExtractor extends BaseExtractor {
    * Extract assistant response content (HTML for markdown conversion)
    *
    * Looks for element-list-renderer within the response container.
+   * Inline citation buttons are rewritten to footnote-ref placeholder spans
+   * BEFORE sanitization so the per-message footnote labels survive into
+   * the markdown pipeline. Footnote definitions are appended as
+   * `<p data-footnote-def>` paragraphs that the Turndown rule emits as
+   * literal `[^label]: title` lines.
+   *
    * All HTML is sanitized via DOMPurify to prevent XSS.
    */
-  private extractAssistantContent(element: HTMLElement): string {
-    // Find the structured content renderer
+  private extractAssistantContent(element: HTMLElement, messageIndex: number): string {
     const renderer = this.queryWithFallback<HTMLElement>(SELECTORS.markdownContent, element);
-    if (renderer) {
-      return sanitizeHtml(renderer.innerHTML);
+    const rawHtml = renderer?.innerHTML ?? element.innerHTML;
+    if (!rawHtml) {
+      return '';
     }
 
-    // Fallback: use the element's innerHTML
-    if (element.innerHTML) {
-      return sanitizeHtml(element.innerHTML);
-    }
+    const { html: transformedHtml, footnotes } = transformCitationsToFootnotes(
+      rawHtml,
+      messageIndex
+    );
 
-    return '';
+    const footnoteDefsHtml = footnotes
+      .map(line => `<p data-footnote-def="">${escapeHtml(line)}</p>`)
+      .join('');
+
+    return sanitizeHtml(transformedHtml + footnoteDefsHtml);
   }
 }

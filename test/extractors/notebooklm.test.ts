@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { NotebookLMExtractor } from '../../src/content/extractors/notebooklm';
+import { htmlToMarkdown } from '../../src/content/markdown';
 import {
   loadFixture,
   clearFixture,
@@ -158,8 +159,13 @@ describe('NotebookLMExtractor', () => {
   });
 
   // ========== Citation Handling ==========
+  // Issue #185: inline citations were rendered as bare numbers ("big claim359")
+  // because citation buttons were stripped by DOMPurify but their inner text
+  // survived. These tests pin the fix: citations become Obsidian footnote refs
+  // with per-message labels, and footnote definitions are appended after the
+  // assistant prose.
   describe('Citation extraction', () => {
-    it('strips citation marker buttons from extracted text', async () => {
+    it('converts inline citation buttons to Obsidian footnote refs and definitions', async () => {
       createNotebookLMPage('test-id', [
         { role: 'user', content: 'Question' },
         {
@@ -168,8 +174,8 @@ describe('NotebookLMExtractor', () => {
             <labs-tailwind-structural-element-view-v2>
               <paragraph-element-view>
                 <div class="paragraph is-rich-chat-ui normal">
-                  <span>Some text with a citation</span>
-                  <span><button class="xap-inline-dialog citation-marker"><span aria-label="1: Source Title">1</span></button></span>
+                  <span>A big claim</span>
+                  <span><button class="xap-inline-dialog citation-marker"><span aria-label="1: First Source">1</span></button></span>
                   <span>.</span>
                 </div>
               </paragraph-element-view>
@@ -178,12 +184,124 @@ describe('NotebookLMExtractor', () => {
       ]);
 
       const result = await extractor.extract();
-
       expect(result.success).toBe(true);
       const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
-      // Citation number should not appear as raw inline text
-      // (it should either be stripped or converted to footnote)
-      expect(assistantMsg?.content).toContain('Some text with a citation');
+      expect(assistantMsg).toBeDefined();
+
+      const markdown = htmlToMarkdown(assistantMsg!.content);
+
+      // Footnote ref appears in the prose
+      expect(markdown).toContain('[^m0-1]');
+      // Footnote definition is appended (with the source title from aria-label)
+      expect(markdown).toContain('[^m0-1]: First Source');
+      // Bug regression guard: bare digit no longer glued to the prose
+      expect(markdown).not.toMatch(/big claim\d/);
+      // No leftover citation button artifact
+      expect(markdown).not.toContain('citation-marker');
+    });
+
+    it('drops the "more citations" mat-icon button without producing a footnote', async () => {
+      createNotebookLMPage('test-id', [
+        { role: 'user', content: 'Question' },
+        {
+          role: 'assistant',
+          content: `
+            <labs-tailwind-structural-element-view-v2>
+              <paragraph-element-view>
+                <div class="paragraph is-rich-chat-ui normal">
+                  <span>Sourced fact</span>
+                  <span><button class="xap-inline-dialog citation-marker"><span aria-label="2: Real Source">2</span></button></span>
+                  <span><button class="xap-inline-dialog citation-marker"><mat-icon>more_horiz</mat-icon></button></span>
+                  <span>.</span>
+                </div>
+              </paragraph-element-view>
+            </labs-tailwind-structural-element-view-v2>`,
+        },
+      ]);
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      const markdown = htmlToMarkdown(assistantMsg!.content);
+
+      expect(markdown).toContain('[^m0-2]: Real Source');
+      // Only one footnote ref; the mat-icon button is silently dropped
+      expect(markdown.match(/\[\^m0-/g) ?? []).toHaveLength(2); // 1 ref + 1 def line
+      expect(markdown).not.toContain('mat-icon');
+      expect(markdown).not.toContain('more_horiz');
+    });
+
+    it('keeps footnote labels unique across assistant turns', async () => {
+      createNotebookLMPage('test-id', [
+        { role: 'user', content: 'Q1' },
+        {
+          role: 'assistant',
+          content: `
+            <labs-tailwind-structural-element-view-v2>
+              <paragraph-element-view>
+                <div class="paragraph is-rich-chat-ui normal">
+                  <span>First</span>
+                  <span><button class="citation-marker"><span aria-label="1: Source A">1</span></button></span>
+                  <span>.</span>
+                </div>
+              </paragraph-element-view>
+            </labs-tailwind-structural-element-view-v2>`,
+        },
+        { role: 'user', content: 'Q2' },
+        {
+          role: 'assistant',
+          content: `
+            <labs-tailwind-structural-element-view-v2>
+              <paragraph-element-view>
+                <div class="paragraph is-rich-chat-ui normal">
+                  <span>Second</span>
+                  <span><button class="citation-marker"><span aria-label="1: Source B">1</span></button></span>
+                  <span>.</span>
+                </div>
+              </paragraph-element-view>
+            </labs-tailwind-structural-element-view-v2>`,
+        },
+      ]);
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+
+      const assistants = result.data?.messages.filter(m => m.role === 'assistant') ?? [];
+      expect(assistants).toHaveLength(2);
+      const md0 = htmlToMarkdown(assistants[0].content);
+      const md1 = htmlToMarkdown(assistants[1].content);
+
+      // Per-turn labels prevent cross-message [^N] collisions
+      expect(md0).toContain('[^m0-1]: Source A');
+      expect(md1).toContain('[^m1-1]: Source B');
+      expect(md0).not.toContain('[^m1-1]');
+      expect(md1).not.toContain('[^m0-1]');
+    });
+
+    it('falls back to the visible number when aria-label is missing', async () => {
+      createNotebookLMPage('test-id', [
+        { role: 'user', content: 'Question' },
+        {
+          role: 'assistant',
+          content: `
+            <labs-tailwind-structural-element-view-v2>
+              <paragraph-element-view>
+                <div class="paragraph is-rich-chat-ui normal">
+                  <span>Cite</span>
+                  <span><button class="citation-marker"><span>5</span></button></span>
+                  <span>.</span>
+                </div>
+              </paragraph-element-view>
+            </labs-tailwind-structural-element-view-v2>`,
+        },
+      ]);
+
+      const result = await extractor.extract();
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      const markdown = htmlToMarkdown(assistantMsg!.content);
+
+      expect(markdown).toContain('[^m0-5]');
+      expect(markdown).toContain('[^m0-5]: 5');
     });
   });
 
