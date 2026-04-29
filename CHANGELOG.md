@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.1.2...v1.1.3) (2026-04-29)
+
+
+### Bug Fixes
+
+* **notebooklm:** convert inline citations to Obsidian footnote refs ([#221](https://github.com/sho7650/obsidian-AI-exporter/issues/221)) ([1309e7f](https://github.com/sho7650/obsidian-AI-exporter/commit/1309e7f7c32a98e37ebe8e43e1fd61b2ed1c4a16))
+
 ## [1.1.2](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.1.1...v1.1.2) (2026-04-23)
 
 
