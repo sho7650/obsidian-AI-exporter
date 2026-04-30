@@ -46,3 +46,8 @@ e2e/.env.local
 e2e/results/
 e2e/baselines/
 e2e/daemon/chrome.pid
+
+# nix + direnv
+.direnv/
+result
+result-*
