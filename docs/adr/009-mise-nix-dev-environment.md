@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-010](010-nix-only-dev-environment.md) (2026-05-01).
+
+The "nixpkgs Node lags upstream" rationale (cited as the reason to keep mise as the Node manager) was empirically refuted: `pkgs.nodejs_24` in `nixpkgs-25.11-darwin` resolves to **24.15.0** (bit-identical to the upstream LTS and to the mise pin recorded here), with bundled npm 11.12.1, and is in the darwin binary cache. ADR-010 records the migration to a single-tool nix architecture.
+
+The "Implementation-time discoveries" section below is preserved for historical context — the `pkgs.mise` build failure on `aarch64-darwin` and the `nix-direnv` bash 4.4 finding remain valid institutional knowledge.
 
 ## Context
 
