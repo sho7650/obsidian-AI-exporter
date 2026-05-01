@@ -1,5 +1,5 @@
 {
-  description = "gemini2obsidian dev environment (system-level deps)";
+  description = "gemini2obsidian dev environment (Node toolchain + system deps)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-25.11-darwin";
@@ -26,8 +26,12 @@
         {
           default = pkgs.mkShellNoCC {
             packages = [
+              pkgs.nodejs_24
               pkgs.zip
             ];
+            shellHook = ''
+              export PATH="$PWD/node_modules/.bin:$PATH"
+            '';
           };
         }
       );
