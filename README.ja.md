@@ -198,25 +198,31 @@ message_count: 1
 
 ## 開発
 
-```bash
-# HMR 対応の開発サーバー
-npm run dev
+開発環境は Nix が管理します（[ADR-010](docs/adr/010-nix-only-dev-environment.md) 参照）。`direnv` + `nix-direnv` を入れていればディレクトリ移動時に自動で環境が読み込まれます。そうでない場合は `nix develop` を実行してください。
 
-# プロダクションビルド
-npm run build
+すべてのワークフローに Nix エントリポイント（正規）と `npm run` エイリアス（互換）があります。詳細は [ADR-011](docs/adr/011-nix-task-surface.md) を参照。
 
-# リント
-npm run lint
+| ワークフロー | Nix（正規） | npm（エイリアス） |
+|---|---|---|
+| 開発サーバー（HMR） | `nix run .#dev` | `npm run dev` |
+| プロダクションビルド | `nix run .#build` | `npm run build` |
+| ビルド + ストア用 zip | `nix run .#build-zip` | `npm run build:zip` |
+| リント | `nix run .#lint` | `npm run lint` |
+| プラットフォーム整合性チェック | `nix run .#lint-platforms` | `npm run lint:platforms` |
+| フォーマット（書き込み） | `nix run .#format` | `npm run format` |
+| フォーマット（チェック） | `nix run .#format-check` | `npm run format:check` |
+| テスト | `nix run .#test` | `npm test` |
+| テスト（watch） | `nix run .#test-watch` | `npm run test:watch` |
+| カバレッジ付きテスト | `nix run .#test-coverage` | `npm run test:coverage` |
+| E2E 認証セットアップ | `nix run .#e2e-auth` | `npm run e2e:auth` |
+| E2E セレクター検証 | `nix run .#e2e-selectors` | `npm run e2e:selectors` |
+| E2E セレクター（headed） | `nix run .#e2e-selectors-headed` | `npm run e2e:selectors:headed` |
+| CDP デーモン | `nix run .#e2e-daemon -- <start\|stop\|status>` | `npm run e2e:daemon:<sub>` |
 
-# フォーマット
-npm run format
+> [!NOTE]
+> Nix の属性名にはコロンが使えないため、`e2e:auth` のような名前は `e2e-auth` にマッピングされます。CDP デーモンはサブコマンドを引数で渡します: `nix run .#e2e-daemon -- start`。
 
-# テスト実行
-npm test
-
-# カバレッジ付きテスト
-npm run test:coverage
-```
+`node_modules/` が無い状態で Nix エントリポイントを起動するとエラーになり、`npm ci` を実行するよう案内されます。依存関係の自動インストールは意図的に行いません。
 
 ## アーキテクチャ
 

@@ -68,30 +68,34 @@ The following are **always required**. No shortcuts.
 
 ## Commands
 
+Nix is the canonical task surface (see [ADR-011](docs/adr/011-nix-task-surface.md)); `npm run` continues to work as a compatibility alias. Both invoke the same `node_modules/.bin/*` binaries.
+
 ```bash
-npm run build          # TypeScript check + Vite production build
-npm run build:zip      # Build + zip dist/ for Chrome Web Store
-npm run dev            # Vite dev server with HMR
-npm run lint           # ESLint on src/ + platform consistency check
-npm run lint:platforms # Platform consistency check only
-npm run format         # Prettier formatting (write)
-npm run format:check   # Prettier formatting (check only, for CI)
-npm run test           # Run test suite (vitest)
-npm run test:watch     # Run tests in watch mode
-npm run test:coverage  # Run tests with coverage report
+nix run .#build           # TypeScript check + Vite production build
+nix run .#build-zip       # Build + zip dist/ for Chrome Web Store
+nix run .#dev             # Vite dev server with HMR
+nix run .#lint            # ESLint on src/ + platform consistency check
+nix run .#lint-platforms  # Platform consistency check only
+nix run .#format          # Prettier formatting (write)
+nix run .#format-check    # Prettier formatting (check only, for CI)
+nix run .#test            # Run test suite (vitest)
+nix run .#test-watch      # Run tests in watch mode
+nix run .#test-coverage   # Run tests with coverage report
 ```
+
+Naming: Nix attribute names cannot contain `:`, so `npm run e2e:auth` maps to `nix run .#e2e-auth`. If `node_modules/` is missing, the wrapper exits with an instruction to run `npm ci` first (no auto-install per project rules).
 
 ### E2E Selector Validation
 
 ```bash
-npm run e2e:auth              # Manual login for all platforms
-npm run e2e:selectors         # Run selector validation
-npm run e2e:daemon start      # Start CDP daemon (headless Chrome + keep-alive)
-npm run e2e:daemon stop       # Stop CDP daemon
-npm run e2e:daemon status     # Check daemon health + open tabs
+nix run .#e2e-auth                 # Manual login for all platforms
+nix run .#e2e-selectors            # Run selector validation
+nix run .#e2e-daemon -- start      # Start CDP daemon (headless Chrome + keep-alive)
+nix run .#e2e-daemon -- stop       # Stop CDP daemon
+nix run .#e2e-daemon -- status     # Check daemon health + open tabs
 ```
 
-Re-authentication workflow: `e2e:daemon stop` → `e2e:auth` → `e2e:daemon start`
+Re-authentication workflow: `e2e-daemon -- stop` → `e2e-auth` → `e2e-daemon -- start`
 
 Load the extension in Chrome: `chrome://extensions` → Load unpacked → select `dist/` folder
 

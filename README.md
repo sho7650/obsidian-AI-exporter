@@ -198,25 +198,31 @@ Detailed analysis sections...
 
 ## Development
 
-```bash
-# Development server with HMR
-npm run dev
+The dev environment is provisioned by Nix (see [ADR-010](docs/adr/010-nix-only-dev-environment.md)). With `direnv` and `nix-direnv` installed, entering the directory loads the environment automatically; otherwise run `nix develop`.
 
-# Production build
-npm run build
+Every workflow has a Nix entry point (canonical) and an `npm run` alias (compatibility). See [ADR-011](docs/adr/011-nix-task-surface.md).
 
-# Lint code
-npm run lint
+| Workflow | Nix (canonical) | npm (alias) |
+|---|---|---|
+| Dev server (HMR) | `nix run .#dev` | `npm run dev` |
+| Production build | `nix run .#build` | `npm run build` |
+| Build + zip for store | `nix run .#build-zip` | `npm run build:zip` |
+| Lint | `nix run .#lint` | `npm run lint` |
+| Lint platform consistency | `nix run .#lint-platforms` | `npm run lint:platforms` |
+| Format (write) | `nix run .#format` | `npm run format` |
+| Format (check) | `nix run .#format-check` | `npm run format:check` |
+| Test | `nix run .#test` | `npm test` |
+| Test (watch) | `nix run .#test-watch` | `npm run test:watch` |
+| Test with coverage | `nix run .#test-coverage` | `npm run test:coverage` |
+| E2E auth setup | `nix run .#e2e-auth` | `npm run e2e:auth` |
+| E2E selector validation | `nix run .#e2e-selectors` | `npm run e2e:selectors` |
+| E2E selectors (headed) | `nix run .#e2e-selectors-headed` | `npm run e2e:selectors:headed` |
+| CDP daemon | `nix run .#e2e-daemon -- <start\|stop\|status>` | `npm run e2e:daemon:<sub>` |
 
-# Format code
-npm run format
+> [!NOTE]
+> Nix attribute names cannot contain `:`, so npm script names like `e2e:auth` map to `e2e-auth`. The CDP daemon takes its subcommand as an argument: `nix run .#e2e-daemon -- start`.
 
-# Run tests
-npm test
-
-# Run tests with coverage
-npm run test:coverage
-```
+If `node_modules/` is missing, the Nix wrapper exits with an instruction to run `npm ci` first. Dependency installation is intentionally not auto-run.
 
 ## Architecture
 

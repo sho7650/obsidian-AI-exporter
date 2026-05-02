@@ -4,7 +4,7 @@
 
 Accepted (2026-05-01).
 
-Supersedes [ADR-009](009-mise-nix-dev-environment.md).
+Supersedes [ADR-009](009-mise-nix-dev-environment.md). Extended by [ADR-011](011-nix-task-surface.md) (2026-05-02).
 
 ## Context
 
