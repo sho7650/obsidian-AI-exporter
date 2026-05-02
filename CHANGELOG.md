@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.7](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.1.6...v1.1.7) (2026-05-02)
+
+
+### Miscellaneous
+
+* **devenv:** expose all npm scripts as nix apps ([#232](https://github.com/sho7650/obsidian-AI-exporter/issues/232)) ([2b84440](https://github.com/sho7650/obsidian-AI-exporter/commit/2b844404fad8070d9b39b01916d631ed0d7b49af))
+
 ## [1.1.6](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.1.5...v1.1.6) (2026-05-01)
 
 
