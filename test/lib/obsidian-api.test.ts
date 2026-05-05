@@ -330,6 +330,62 @@ describe('ObsidianApiClient', () => {
     });
   });
 
+  describe('listEntries', () => {
+    it('returns files AND directory markers (no filtering)', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({ files: ['2026/', '2025/', 'README.md', 'old-chat-abc12345.md'] }),
+      });
+
+      const entries = await client.listEntries('AI/gemini');
+
+      expect(entries).toEqual(['2026/', '2025/', 'README.md', 'old-chat-abc12345.md']);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://127.0.0.1:27123/vault/AI%2Fgemini/',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            Accept: 'application/json',
+          }),
+        })
+      );
+    });
+
+    it('returns empty array for non-existent directory (404)', async () => {
+      mockFetch.mockResolvedValue({ ok: false, status: 404 });
+
+      const entries = await client.listEntries('nonexistent');
+
+      expect(entries).toEqual([]);
+    });
+
+    it('throws error for server errors', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      });
+
+      await expect(client.listEntries('AI')).rejects.toMatchObject({
+        status: 500,
+      });
+    });
+
+    it('filters out non-string elements but preserves directory entries', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ files: ['2026/', 42, null, 'note.md', true] }),
+      });
+
+      const entries = await client.listEntries('AI');
+
+      expect(entries).toEqual(['2026/', 'note.md']);
+    });
+  });
+
   describe('AbortSignal.timeout fallback', () => {
     it('uses fallback when AbortSignal.timeout is not available', async () => {
       // Save original AbortSignal.timeout

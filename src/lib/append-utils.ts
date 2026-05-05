@@ -45,19 +45,32 @@ export function extractIdSuffix(fileName: string): string {
   return parts.length > 1 ? parts[parts.length - 1] : '';
 }
 
+/** Maximum depth for the recursive ID-scan to bound API calls. */
+const RECURSIVE_SCAN_MAX_DEPTH = 6;
+
 /**
  * Look up an existing file for a conversation.
  *
  * Strategy (ordered by cost):
  * 1. Direct path: GET fullPath → verify frontmatter ID
- * 2. ID scan: listFiles(folder) → filter by ID suffix → verify frontmatter ID
+ * 2a. ID scan (flat): listFiles(resolvedPath) → filter by ID suffix → verify frontmatter ID
+ * 2b. ID scan (recursive): when {@link searchBasePath} differs from resolvedPath
+ *     (i.e. the vault-path template contains date variables), walk subdirectories
+ *     from searchBasePath looking for `-{idSuffix}.md` matches. This lets append-mode
+ *     find a previous-month file even when the current resolved path points at a
+ *     not-yet-existing folder.
  * 3. Not found
+ *
+ * @param searchBasePath - Optional. When provided AND different from resolvedPath,
+ *   triggers the recursive scan. Defaults to resolvedPath (preserves the legacy
+ *   flat-scan behaviour for templates without date variables).
  */
 export async function lookupExistingFile(
   client: ObsidianApiClient,
   fullPath: string,
   resolvedPath: string,
-  note: ObsidianNote
+  note: ObsidianNote,
+  searchBasePath: string = resolvedPath
 ): Promise<FileLookupResult> {
   const expectedId = note.frontmatter.id;
 
@@ -72,7 +85,21 @@ export async function lookupExistingFile(
 
   // Step 2: ID suffix scan
   const idSuffix = extractIdSuffix(note.fileName);
-  if (idSuffix && resolvedPath) {
+  if (!idSuffix) return { found: false, path: fullPath, content: '', matchType: 'none' };
+
+  const useRecursive = searchBasePath !== resolvedPath && searchBasePath !== '';
+
+  if (useRecursive) {
+    const recursive = await recursiveIdScan(
+      client,
+      searchBasePath,
+      idSuffix,
+      expectedId,
+      fullPath,
+      RECURSIVE_SCAN_MAX_DEPTH
+    );
+    if (recursive) return recursive;
+  } else if (resolvedPath) {
     const files = await client.listFiles(resolvedPath);
     for (const file of files) {
       if (file.endsWith(`-${idSuffix}.md`)) {
@@ -91,6 +118,48 @@ export async function lookupExistingFile(
 
   // Step 3: Not found
   return { found: false, path: fullPath, content: '', matchType: 'none' };
+}
+
+/**
+ * Walk subdirectories from baseDir up to maxDepth, looking for any `.md` file
+ * whose name ends in `-{idSuffix}.md` and whose frontmatter id matches expectedId.
+ * Returns the first match, or null when exhausted.
+ */
+async function recursiveIdScan(
+  client: ObsidianApiClient,
+  baseDir: string,
+  idSuffix: string,
+  expectedId: string,
+  skipPath: string,
+  maxDepth: number
+): Promise<FileLookupResult | null> {
+  type Frame = { dir: string; depth: number };
+  const queue: Frame[] = [{ dir: baseDir, depth: 0 }];
+
+  while (queue.length > 0) {
+    const { dir, depth } = queue.shift() as Frame;
+    const entries = await client.listEntries(dir);
+    for (const entry of entries) {
+      if (entry.endsWith('/')) {
+        if (depth + 1 <= maxDepth) {
+          const subdir = entry.slice(0, -1);
+          queue.push({ dir: `${dir}/${subdir}`, depth: depth + 1 });
+        }
+        continue;
+      }
+      if (!entry.endsWith(`-${idSuffix}.md`)) continue;
+      const candidatePath = `${dir}/${entry}`;
+      if (candidatePath === skipPath) continue;
+      const content = await client.getFile(candidatePath);
+      if (content === null) continue;
+      const parsed = parseFrontmatter(content);
+      if (parsed?.fields.id === expectedId) {
+        return { found: true, path: candidatePath, content, matchType: 'id-scan' };
+      }
+    }
+  }
+
+  return null;
 }
 
 /**

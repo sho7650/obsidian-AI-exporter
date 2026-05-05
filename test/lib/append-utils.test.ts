@@ -36,6 +36,7 @@ describe('lookupExistingFile', () => {
   let mockClient: {
     getFile: ReturnType<typeof vi.fn>;
     listFiles: ReturnType<typeof vi.fn>;
+    listEntries: ReturnType<typeof vi.fn>;
   };
   let testNote: ObsidianNote;
 
@@ -43,6 +44,7 @@ describe('lookupExistingFile', () => {
     mockClient = {
       getFile: vi.fn(),
       listFiles: vi.fn(),
+      listEntries: vi.fn(),
     };
 
     testNote = createTestNote({
@@ -161,6 +163,99 @@ describe('lookupExistingFile', () => {
 
     expect(result.found).toBe(true);
     expect(result.path).toBe('AI/claude/correct-abc12345.md');
+  });
+
+  // ----- Recursive scan when date variables produce a different searchBasePath -----
+
+  it('finds file in a sibling date folder when searchBasePath differs from resolvedPath', async () => {
+    // Save target: AI/claude/2026/06/my-chat-abc12345.md (June)
+    // Existing file lives in AI/claude/2026/05/old-title-abc12345.md (May)
+    const existingContent = '---\nid: claude_abc-def-123\n---\nBody';
+
+    // Direct path miss (June folder doesn't have it yet)
+    mockClient.getFile.mockResolvedValueOnce(null);
+    // listEntries from searchBasePath (AI/claude) returns the year folder
+    mockClient.listEntries.mockResolvedValueOnce(['2026/']);
+    // listEntries from AI/claude/2026 returns month folders
+    mockClient.listEntries.mockResolvedValueOnce(['05/', '06/']);
+    // listEntries from AI/claude/2026/05 returns the file
+    mockClient.listEntries.mockResolvedValueOnce(['old-title-abc12345.md', 'unrelated.md']);
+    // listEntries from AI/claude/2026/06 returns empty (current month, file not yet there)
+    mockClient.listEntries.mockResolvedValueOnce([]);
+    // getFile for the matched candidate
+    mockClient.getFile.mockResolvedValueOnce(existingContent);
+
+    const result = await lookupExistingFile(
+      mockClient as never,
+      'AI/claude/2026/06/my-chat-abc12345.md', // resolvedPath = full path with date
+      'AI/claude/2026/06', // resolvedPath dir
+      testNote,
+      'AI/claude' // searchBasePath = template stripped of date variables
+    );
+
+    expect(result.found).toBe(true);
+    expect(result.matchType).toBe('id-scan');
+    expect(result.path).toBe('AI/claude/2026/05/old-title-abc12345.md');
+  });
+
+  it('falls back to current-folder ID scan when searchBasePath equals resolvedPath', async () => {
+    // No date variables — searchBasePath === resolvedPath
+    // Should NOT call listEntries at all (only listFiles, like current behavior)
+    const existingContent = '---\nid: claude_abc-def-123\n---\nBody';
+    mockClient.getFile.mockResolvedValueOnce(null);
+    mockClient.listFiles.mockResolvedValueOnce(['old-title-abc12345.md']);
+    mockClient.getFile.mockResolvedValueOnce(existingContent);
+
+    const result = await lookupExistingFile(
+      mockClient as never,
+      'AI/claude/my-chat-abc12345.md',
+      'AI/claude',
+      testNote,
+      'AI/claude' // identical to resolvedPath
+    );
+
+    expect(result.found).toBe(true);
+    expect(result.matchType).toBe('id-scan');
+    expect(mockClient.listEntries).not.toHaveBeenCalled();
+  });
+
+  it('returns not found when recursive scan exhausts all subdirectories', async () => {
+    mockClient.getFile.mockResolvedValueOnce(null); // direct miss
+    mockClient.listEntries.mockResolvedValueOnce(['2025/']);
+    mockClient.listEntries.mockResolvedValueOnce(['12/']);
+    mockClient.listEntries.mockResolvedValueOnce(['unrelated.md']); // no ID match
+
+    const result = await lookupExistingFile(
+      mockClient as never,
+      'AI/claude/2026/06/my-chat-abc12345.md',
+      'AI/claude/2026/06',
+      testNote,
+      'AI/claude'
+    );
+
+    expect(result.found).toBe(false);
+    expect(result.matchType).toBe('none');
+  });
+
+  it('skips the direct fullPath candidate during recursive scan', async () => {
+    // The recursive scan must not double-fetch the same file already checked at step 1.
+    mockClient.getFile.mockResolvedValueOnce(null); // direct miss for fullPath
+    mockClient.listEntries.mockResolvedValueOnce(['2026/']);
+    mockClient.listEntries.mockResolvedValueOnce(['06/']);
+    // Only the same filename at the same path appears
+    mockClient.listEntries.mockResolvedValueOnce(['my-chat-abc12345.md']);
+
+    const result = await lookupExistingFile(
+      mockClient as never,
+      'AI/claude/2026/06/my-chat-abc12345.md',
+      'AI/claude/2026/06',
+      testNote,
+      'AI/claude'
+    );
+
+    // getFile must have been called exactly once (the direct check at step 1).
+    expect(mockClient.getFile).toHaveBeenCalledTimes(1);
+    expect(result.found).toBe(false);
   });
 });
 

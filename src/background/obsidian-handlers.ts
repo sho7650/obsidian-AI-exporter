@@ -7,7 +7,12 @@
 import { ObsidianApiClient } from '../lib/obsidian-api';
 import { getErrorMessage } from '../lib/error-utils';
 import { generateNoteContent } from '../lib/note-generator';
-import { resolvePathTemplate, containsPathTraversal } from '../lib/path-utils';
+import {
+  resolvePathTemplate,
+  containsPathTraversal,
+  getDateVariables,
+  getSearchBasePath,
+} from '../lib/path-utils';
 import { lookupExistingFile, buildAppendContent } from '../lib/append-utils';
 import { validateObsidianUrl } from '../lib/validation';
 import type { ExtensionSettings, ObsidianNote, SaveResponse } from '../lib/types';
@@ -45,14 +50,15 @@ async function tryAppendMode(
   settings: ExtensionSettings,
   note: ObsidianNote,
   fullPath: string,
-  resolvedPath: string
+  resolvedPath: string,
+  searchBasePath: string
 ): Promise<SaveResponse | null> {
   if (!settings.enableAppendMode || note.frontmatter.type === 'deep-research') {
     return null;
   }
 
   try {
-    const lookup = await lookupExistingFile(client, fullPath, resolvedPath, note);
+    const lookup = await lookupExistingFile(client, fullPath, resolvedPath, note, searchBasePath);
     if (!lookup.found) return null;
 
     const appendResult = buildAppendContent(lookup.content, note, settings);
@@ -84,16 +90,26 @@ export async function handleSave(
   }
 
   try {
-    const resolvedPath = resolvePathTemplate(settings.vaultPath, {
+    const templateVariables: Record<string, string> = {
       platform: note.frontmatter.source,
-    });
+      ...getDateVariables(new Date()),
+    };
+    const resolvedPath = resolvePathTemplate(settings.vaultPath, templateVariables);
+    const searchBasePath = getSearchBasePath(settings.vaultPath, templateVariables);
     const fullPath = resolvedPath ? `${resolvedPath}/${note.fileName}` : note.fileName;
 
     if (containsPathTraversal(fullPath)) {
       return { success: false, error: 'Invalid file path' };
     }
 
-    const appendResult = await tryAppendMode(client, settings, note, fullPath, resolvedPath);
+    const appendResult = await tryAppendMode(
+      client,
+      settings,
+      note,
+      fullPath,
+      resolvedPath,
+      searchBasePath
+    );
     if (appendResult) return appendResult;
 
     const existingContent = await client.getFile(fullPath);

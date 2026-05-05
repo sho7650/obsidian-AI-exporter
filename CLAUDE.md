@@ -136,9 +136,19 @@ Extractors implement `IConversationExtractor` from `src/lib/types.ts`. The `Base
 
 ### Vault Path Templates
 
-Vault path supports `{platform}` template variable (default: `AI/{platform}`).
-`resolvePathTemplate()` in `src/lib/path-utils.ts` resolves variables at save time.
-The background service worker substitutes `{platform}` with the actual source (gemini, claude, chatgpt, perplexity).
+Vault path supports template variables resolved at save time by `resolvePathTemplate()` in `src/lib/path-utils.ts`. Default: `AI/{platform}`.
+
+| Token      | Resolves to                                                  |
+| ---------- | ------------------------------------------------------------ |
+| `{platform}` | Source name (`gemini`, `claude`, `chatgpt`, `perplexity`, `notebooklm`) |
+| `{YYYY}`   | 4-digit year, local time (e.g. `2026`)                       |
+| `{YY}`     | 2-digit year, local time (e.g. `26`)                         |
+| `{MM}`     | 2-digit month, zero-padded, local time (e.g. `05`)           |
+| `{DD}`     | 2-digit day, zero-padded, local time (e.g. `04`)             |
+
+Date tokens use the user's local time zone and are computed at save time via `getDateVariables()`. Unknown tokens are preserved verbatim (safe fallback).
+
+**Append-mode and date templates**: when the vault path contains date tokens (e.g. `AI/{platform}/{YYYY}/{MM}`), append-mode falls back to a recursive ID-suffix scan starting from the date-stripped base (`getSearchBasePath()` returns the prefix up to the first date token). This lets the extension keep updating an existing conversation file even after the calendar rolls over to a new month — append continues to write to the original file rather than creating a duplicate in the current month's folder. Non-append saves always create a new file under the freshly resolved date path.
 
 ### DOM Selectors
 

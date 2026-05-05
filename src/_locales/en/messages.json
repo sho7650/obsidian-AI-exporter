@@ -46,7 +46,7 @@
     "description": "Label for vault path input"
   },
   "settings_vaultPathPlaceholder": {
-    "message": "e.g., AI/{platform}",
+    "message": "e.g., AI/{platform}/{YYYY}/{MM}",
     "description": "Placeholder for vault path input"
   },
   "settings_advancedSettings": {
@@ -54,8 +54,8 @@
     "description": "Collapsible section title for advanced settings"
   },
   "settings_vaultPathHelp": {
-    "message": "Use {platform} to auto-organize by source (gemini, claude, chatgpt, perplexity)",
-    "description": "Help text explaining template variable for vault path"
+    "message": "Use {platform} for source (gemini, claude, chatgpt, perplexity, notebooklm) and {YYYY} {YY} {MM} {DD} for the save date (local time). Example: AI/{platform}/{YYYY}/{MM}",
+    "description": "Help text explaining template variables for vault path"
   },
   "settings_messageFormat": {
     "message": "Message Format",

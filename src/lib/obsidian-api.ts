@@ -228,6 +228,21 @@ export class ObsidianApiClient {
    * @returns Array of filenames (directories filtered out)
    */
   async listFiles(directory: string): Promise<string[]> {
+    const entries = await this.listEntries(directory);
+    return entries.filter(f => !f.endsWith('/'));
+  }
+
+  /**
+   * List entries in a vault directory, including subdirectory markers.
+   * Subdirectory entries end with a trailing `/` (Obsidian Local REST API convention).
+   *
+   * Used by append-mode recursive scan when the vault path template contains
+   * date variables — the scan walks subdirectories from the search base.
+   *
+   * @param directory - Directory path relative to vault root
+   * @returns Array of entry names; directories carry a trailing `/`
+   */
+  async listEntries(directory: string): Promise<string[]> {
     const encodedDir = encodeURIComponent(directory);
     const response = await this.fetchWithTimeout(`${this.baseUrl}/vault/${encodedDir}/`, {
       method: 'GET',
@@ -247,9 +262,7 @@ export class ObsidianApiClient {
 
     const data = (await response.json()) as Record<string, unknown>;
     const rawFiles = Array.isArray(data?.files) ? data.files : [];
-    const files = rawFiles.filter((f): f is string => typeof f === 'string');
-    // Filter out directories (entries ending with '/')
-    return files.filter(f => !f.endsWith('/'));
+    return rawFiles.filter((f): f is string => typeof f === 'string');
   }
 
   /**

@@ -35,13 +35,13 @@
     "message": "保存先パス"
   },
   "settings_vaultPathPlaceholder": {
-    "message": "例: AI/{platform}"
+    "message": "例: AI/{platform}/{YYYY}/{MM}"
   },
   "settings_advancedSettings": {
     "message": "詳細設定"
   },
   "settings_vaultPathHelp": {
-    "message": "{platform} でプラットフォームごとにフォルダ分類（gemini, claude, chatgpt, perplexity）"
+    "message": "{platform} はプラットフォーム名（gemini, claude, chatgpt, perplexity, notebooklm）、{YYYY} {YY} {MM} {DD} は保存時のローカル日付に置換されます。例: AI/{platform}/{YYYY}/{MM}"
   },
   "settings_messageFormat": {
     "message": "メッセージ形式"

@@ -753,6 +753,58 @@ describe('background/index', () => {
         error: 'API key not configured',
       });
     });
+
+    it('resolves date variables in vault path at save time (local time)', async () => {
+      vi.setSystemTime(new Date(2026, 4, 4, 10, 0, 0)); // 2026-05-04 local
+      try {
+        mockGetSettings = vi.fn(() =>
+          Promise.resolve({ ...defaultSettings, vaultPath: 'AI/{platform}/{YYYY}/{MM}' })
+        );
+        mockClient.getFile.mockResolvedValue(null);
+        mockClient.putFile.mockResolvedValue(undefined);
+
+        const sendResponse = vi.fn();
+        capturedListener(
+          { action: 'saveToObsidian', data: validNote },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+        await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+        expect(mockClient.putFile).toHaveBeenCalledWith(
+          'AI/gemini/2026/05/test.md',
+          expect.any(String)
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('zero-pads single-digit month and day in resolved path', async () => {
+      vi.setSystemTime(new Date(2026, 0, 3, 8, 0, 0)); // 2026-01-03 local
+      try {
+        mockGetSettings = vi.fn(() =>
+          Promise.resolve({ ...defaultSettings, vaultPath: '{platform}/{YYYY}-{MM}-{DD}' })
+        );
+        mockClient.getFile.mockResolvedValue(null);
+        mockClient.putFile.mockResolvedValue(undefined);
+
+        const sendResponse = vi.fn();
+        capturedListener(
+          { action: 'saveToObsidian', data: validNote },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+        await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+        expect(mockClient.putFile).toHaveBeenCalledWith(
+          'gemini/2026-01-03/test.md',
+          expect.any(String)
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   describe('getExistingFile handler', () => {
