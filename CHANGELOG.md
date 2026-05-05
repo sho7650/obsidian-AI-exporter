@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.1.8...v1.2.0) (2026-05-05)
+
+
+### Features
+
+* support date tokens (YYYY, YY, MM, DD) in vault path templates ([#236](https://github.com/sho7650/obsidian-AI-exporter/issues/236)) ([6cd7a86](https://github.com/sho7650/obsidian-AI-exporter/commit/6cd7a861fa3baa3a68a769075715c04e7c1d5e56))
+
 ## [1.1.8](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.1.7...v1.1.8) (2026-05-04)
 
 
