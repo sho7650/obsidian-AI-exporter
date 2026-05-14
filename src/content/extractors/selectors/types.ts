@@ -11,7 +11,7 @@
  * CSS selector fallback chain: selectors ordered by stability (HIGH → LOW).
  * queryWithFallback() tries each selector in order until one matches.
  */
-export type SelectorList = readonly string[];
+type SelectorList = readonly string[];
 
 /**
  * Named group of selector fallback chains for a platform.
