@@ -19,25 +19,23 @@ import { sendMessage } from '../lib/messaging';
  * Initialize i18n for all elements with data-i18n attributes
  */
 function initializeI18n(): void {
-  // Translate elements with data-i18n attribute
+  // Translate elements with data-i18n attribute. The selector guarantees the
+  // attribute is present, so getAttribute() returns a non-null string.
   document.querySelectorAll('[data-i18n]').forEach(element => {
-    const key = element.getAttribute('data-i18n');
-    if (key) {
-      const message = getMessage(key);
-      if (message && message !== key) {
-        element.textContent = message;
-      }
+    const key = element.getAttribute('data-i18n')!;
+    const message = getMessage(key);
+    if (message && message !== key) {
+      element.textContent = message;
     }
   });
 
-  // Translate placeholders with data-i18n-placeholder attribute
+  // Translate placeholders on inputs carrying data-i18n-placeholder.
   document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
-    const key = element.getAttribute('data-i18n-placeholder');
-    if (key && element instanceof HTMLInputElement) {
-      const message = getMessage(key);
-      if (message && message !== key) {
-        element.placeholder = message;
-      }
+    if (!(element instanceof HTMLInputElement)) return;
+    const key = element.getAttribute('data-i18n-placeholder')!;
+    const message = getMessage(key);
+    if (message && message !== key) {
+      element.placeholder = message;
     }
   });
 
@@ -162,17 +160,13 @@ function populateForm(settings: ExtensionSettings): void {
  * Update Obsidian settings section visibility based on output selection
  */
 function updateObsidianSettingsVisibility(): void {
-  const isObsidianEnabled = elements.outputObsidian.checked;
   const obsidianSection = elements.obsidianSettings;
-
-  if (obsidianSection) {
-    if (isObsidianEnabled) {
-      obsidianSection.classList.remove('disabled');
-      obsidianSection.removeAttribute('data-disabled-reason');
-    } else {
-      obsidianSection.classList.add('disabled');
-      obsidianSection.setAttribute('data-disabled-reason', getMessage('tooltip_obsidianDisabled'));
-    }
+  if (elements.outputObsidian.checked) {
+    obsidianSection.classList.remove('disabled');
+    obsidianSection.removeAttribute('data-disabled-reason');
+  } else {
+    obsidianSection.classList.add('disabled');
+    obsidianSection.setAttribute('data-disabled-reason', getMessage('tooltip_obsidianDisabled'));
   }
 }
 

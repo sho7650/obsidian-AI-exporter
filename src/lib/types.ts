@@ -233,8 +233,6 @@ export interface TemplateOptions {
   includeQuestionHeaders?: boolean;
   /** IANA timezone for created/modified dates (e.g., 'Asia/Tokyo'). Defaults to 'UTC'. */
   timezone?: string;
-  /** Custom frontmatter fields (reserved for future use) */
-  customFrontmatter?: Record<string, string>;
 }
 
 /**
