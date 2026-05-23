@@ -17,8 +17,6 @@ import type {
   SyncSettings,
   ExtractionResult,
 } from '../../lib/types';
-import { MAX_DEEP_RESEARCH_TITLE_LENGTH } from '../../lib/constants';
-
 import { SELECTORS, DEEP_RESEARCH_SELECTORS, JOINED_SELECTORS } from './selectors/claude';
 
 /**
@@ -96,15 +94,9 @@ export class ClaudeExtractor extends BaseExtractor {
     );
   }
 
-  /**
-   * Get Deep Research report title from h1 element
-   */
-  getDeepResearchTitle(): string {
-    const titleEl = this.queryWithFallback<HTMLElement>(DEEP_RESEARCH_SELECTORS.title);
-    if (titleEl?.textContent) {
-      return this.sanitizeText(titleEl.textContent).substring(0, MAX_DEEP_RESEARCH_TITLE_LENGTH);
-    }
-    return 'Untitled Deep Research Report';
+  /** Expose platform selectors to BaseExtractor's DR title/content helpers. */
+  protected getDeepResearchSelectors() {
+    return DEEP_RESEARCH_SELECTORS;
   }
 
   // ========== Deep Research Hook ==========
@@ -329,17 +321,6 @@ export class ClaudeExtractor extends BaseExtractor {
   }
 
   // ========== Deep Research Extraction ==========
-
-  /**
-   * Extract Deep Research report content
-   */
-  extractDeepResearchContent(): string {
-    const contentEl = this.queryWithFallback<HTMLElement>(DEEP_RESEARCH_SELECTORS.content);
-    if (contentEl) {
-      return sanitizeHtml(contentEl.innerHTML);
-    }
-    return '';
-  }
 
   /**
    * Extract source list from Deep Research inline citations

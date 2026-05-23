@@ -14,7 +14,12 @@ import type {
 } from '../../lib/types';
 import { extractErrorMessage } from '../../lib/error-utils';
 import { generateHash } from '../../lib/hash';
-import { MAX_CONVERSATION_TITLE_LENGTH, PLATFORM_LABELS } from '../../lib/constants';
+import { sanitizeHtml } from '../../lib/sanitize';
+import {
+  MAX_CONVERSATION_TITLE_LENGTH,
+  MAX_DEEP_RESEARCH_TITLE_LENGTH,
+  PLATFORM_LABELS,
+} from '../../lib/constants';
 
 /**
  * Abstract base class for conversation extractors
@@ -171,24 +176,45 @@ export abstract class BaseExtractor implements IConversationExtractor {
   }
 
   /**
-   * Get Deep Research report title.
-   * Override in subclasses with platform-specific selectors.
+   * Platform-specific Deep Research selectors. Override in subclasses that
+   * support Deep Research; null (default) means the platform has no DR mode
+   * and the title/content getters return their non-DR defaults.
+   */
+  protected getDeepResearchSelectors(): {
+    title: readonly string[];
+    content: readonly string[];
+  } | null {
+    return null;
+  }
+
+  /**
+   * Get Deep Research report title using subclass-provided selectors.
    */
   protected getDeepResearchTitle(): string {
+    const selectors = this.getDeepResearchSelectors();
+    if (selectors) {
+      const titleEl = this.queryWithFallback<HTMLElement>(selectors.title);
+      if (titleEl?.textContent) {
+        return this.sanitizeText(titleEl.textContent).substring(0, MAX_DEEP_RESEARCH_TITLE_LENGTH);
+      }
+    }
     return 'Untitled Deep Research Report';
   }
 
   /**
-   * Extract Deep Research report content HTML.
-   * Override in subclasses with platform-specific selectors.
+   * Extract Deep Research report content HTML using subclass-provided selectors.
    */
   protected extractDeepResearchContent(): string {
-    return '';
+    const selectors = this.getDeepResearchSelectors();
+    if (!selectors) return '';
+    const contentEl = this.queryWithFallback<HTMLElement>(selectors.content);
+    return contentEl ? sanitizeHtml(contentEl.innerHTML) : '';
   }
 
   /**
    * Extract Deep Research link information.
-   * Override in subclasses with platform-specific selectors.
+   * Default returns no sources; DR-supporting subclasses override with
+   * platform-specific source/citation extraction.
    */
   protected extractDeepResearchLinks(): DeepResearchLinks {
     return { sources: [] };
