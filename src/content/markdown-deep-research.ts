@@ -17,15 +17,16 @@ import { htmlToMarkdown } from './markdown-rules';
 import { buildSourceMap } from '../lib/source-map';
 import type { DeepResearchLinks, DeepResearchSource } from '../lib/types';
 
-/** Create a fresh regex for source-footnote wrapped citations */
-function createWrappedCitationPattern(): RegExp {
-  return /<source-footnote[^>]*>[\s\S]*?<sup[^>]*?data-turn-source-index="(\d+)"[^>]*?>[\s\S]*?<\/sup>[\s\S]*?<\/source-footnote>/gi;
-}
+/**
+ * Source-footnote wrapped citations. String.replace with /g resets internal
+ * state per call, so a module-scoped RegExp is safe to reuse.
+ */
+const WRAPPED_CITATION_PATTERN =
+  /<source-footnote[^>]*>[\s\S]*?<sup[^>]*?data-turn-source-index="(\d+)"[^>]*?>[\s\S]*?<\/sup>[\s\S]*?<\/source-footnote>/gi;
 
-/** Create a fresh regex for standalone sup citations (fallback) */
-function createStandaloneCitationPattern(): RegExp {
-  return /<sup[^>]*?data-turn-source-index="(\d+)"[^>]*?>[\s\S]*?<\/sup>/gi;
-}
+/** Standalone sup citations (fallback). */
+const STANDALONE_CITATION_PATTERN =
+  /<sup[^>]*?data-turn-source-index="(\d+)"[^>]*?>[\s\S]*?<\/sup>/gi;
 
 /**
  * Escape Markdown link metacharacters in text
@@ -94,10 +95,10 @@ function convertInlineCitationsToFootnoteRefs(
   const replacer = createCitationReplacer(sourceMap);
 
   // Pattern 1: source-footnote wrapped
-  let result = html.replace(createWrappedCitationPattern(), replacer);
+  let result = html.replace(WRAPPED_CITATION_PATTERN, replacer);
 
   // Pattern 2: standalone sup element (fallback)
-  result = result.replace(createStandaloneCitationPattern(), replacer);
+  result = result.replace(STANDALONE_CITATION_PATTERN, replacer);
 
   return result;
 }

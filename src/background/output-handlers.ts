@@ -213,24 +213,6 @@ async function handleCopyToClipboard(
 }
 
 /**
- * Execute output to specific destination
- */
-async function executeOutput(
-  dest: OutputDestination,
-  note: ObsidianNote,
-  settings: ExtensionSettings
-): Promise<OutputResult> {
-  switch (dest) {
-    case 'obsidian':
-      return handleSaveToObsidian(note, settings);
-    case 'file':
-      return handleDownloadToFile(note, settings);
-    case 'clipboard':
-      return handleCopyToClipboard(note, settings);
-  }
-}
-
-/**
  * Handle multi-output operation
  * Executes all outputs in parallel, aggregates results
  */
@@ -239,7 +221,16 @@ export async function handleMultiOutput(
   outputs: OutputDestination[],
   settings: ExtensionSettings
 ): Promise<MultiOutputResponse> {
-  const promises = outputs.map(dest => executeOutput(dest, note, settings));
+  const promises = outputs.map(dest => {
+    switch (dest) {
+      case 'obsidian':
+        return handleSaveToObsidian(note, settings);
+      case 'file':
+        return handleDownloadToFile(note, settings);
+      case 'clipboard':
+        return handleCopyToClipboard(note, settings);
+    }
+  });
 
   // Promise.allSettled: one failure does not block others
   const settled = await Promise.allSettled(promises);
