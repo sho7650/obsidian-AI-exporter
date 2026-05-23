@@ -426,33 +426,6 @@ describe('BaseExtractor', () => {
 
       consoleSpy.mockRestore();
     });
-
-    it('calls hooks in correct order', async () => {
-      const callOrder: string[] = [];
-
-      // Make extractMessages return data so we reach all hooks
-      extractor.extractMessages = () => [
-        { id: 'user-0', role: 'user', content: 'Hello', index: 0 },
-        { id: 'assistant-0', role: 'assistant', content: 'Hi', index: 1 },
-      ];
-
-      // Spy on the template method hook points via prototype
-      const origBeforeExtract = extractor['onBeforeExtract'].bind(extractor);
-      extractor['onBeforeExtract'] = async () => {
-        callOrder.push('onBeforeExtract');
-        return origBeforeExtract();
-      };
-
-      const origAfterExtract = extractor['onAfterExtract'].bind(extractor);
-      extractor['onAfterExtract'] = (result: ExtractionResult) => {
-        callOrder.push('onAfterExtract');
-        return origAfterExtract(result);
-      };
-
-      const result = await extractor.extract();
-      expect(result.success).toBe(true);
-      expect(callOrder).toEqual(['onBeforeExtract', 'onAfterExtract']);
-    });
   });
 
   describe('sortByDomPosition', () => {

@@ -47,10 +47,10 @@ export abstract class BaseExtractor implements IConversationExtractor {
   /**
    * Main extraction method (template method pattern)
    *
-   * Subclasses customize behavior via hook methods:
-   * - tryExtractDeepResearch() — intercept for Deep Research mode
-   * - onBeforeExtract() — pre-extraction setup (e.g., auto-scroll)
-   * - onAfterExtract() — post-extraction mutation (e.g., append warnings)
+   * Subclasses customize behavior via tryExtractDeepResearch() to intercept
+   * for Deep Research mode. Platforms that need pre/post processing around
+   * the normal flow (e.g. Gemini's auto-scroll + warning) override extract()
+   * directly.
    */
   async extract(): Promise<ExtractionResult> {
     try {
@@ -61,24 +61,16 @@ export abstract class BaseExtractor implements IConversationExtractor {
         };
       }
 
-      // Hook: try deep research extraction first
       const deepResearchResult = this.tryExtractDeepResearch();
       if (deepResearchResult) {
         return deepResearchResult;
       }
 
-      // Hook: pre-extraction (e.g., auto-scroll)
-      await this.onBeforeExtract();
-
-      // Normal conversation extraction
       console.info(`[G2O] Extracting ${this.platformLabel} conversation`);
       const messages = this.extractMessages();
       const conversationId = this.getConversationId() || `${this.platform}-${Date.now()}`;
       const title = this.getTitle();
-      const result = this.buildConversationResult(messages, conversationId, title, this.platform);
-
-      // Hook: post-extraction (e.g., append warnings)
-      return this.onAfterExtract(result);
+      return this.buildConversationResult(messages, conversationId, title, this.platform);
     } catch (error) {
       console.error(`[G2O] ${this.platformLabel} extraction error:`, error);
       return {
@@ -97,22 +89,6 @@ export abstract class BaseExtractor implements IConversationExtractor {
    */
   protected tryExtractDeepResearch(): ExtractionResult | null {
     return null;
-  }
-
-  /**
-   * Hook: called before normal extraction starts.
-   * Override for pre-extraction setup (e.g., Gemini auto-scroll).
-   */
-  protected async onBeforeExtract(): Promise<void> {
-    // no-op by default
-  }
-
-  /**
-   * Hook: called after normal extraction completes.
-   * Override to mutate or augment the result (e.g., append warnings).
-   */
-  protected onAfterExtract(result: ExtractionResult): ExtractionResult {
-    return result;
   }
 
   // ========== Settings ==========
