@@ -16,13 +16,6 @@ import type { AIPlatform, TemplateOptions } from '../lib/types';
 const QUESTION_HEADER_MAX_LENGTH = 60;
 
 /**
- * Get display label for AI assistant based on source platform
- */
-function getAssistantLabel(source: AIPlatform): string {
-  return PLATFORM_LABELS[source];
-}
-
-/**
  * Strip markdown-significant characters that could corrupt heading structure
  * if left unclosed after truncation (issue #203).
  *
@@ -74,7 +67,7 @@ export function formatMessage(
 ): string {
   // Convert HTML to Markdown for assistant messages; escape angle brackets for user messages
   const markdown = role === 'assistant' ? htmlToMarkdown(content) : escapeAngleBrackets(content);
-  const assistantLabel = getAssistantLabel(source);
+  const assistantLabel = PLATFORM_LABELS[source];
 
   let formatted: string;
   switch (options.messageFormat) {
