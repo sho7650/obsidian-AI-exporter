@@ -165,10 +165,7 @@ export class PerplexityExtractor extends BaseExtractor {
    * Extract user query content (plain text)
    */
   private extractUserContent(queryElement: HTMLElement): string {
-    if (queryElement.textContent) {
-      return this.sanitizeText(queryElement.textContent);
-    }
-    return '';
+    return this.extractPlainText(queryElement);
   }
 
   /**

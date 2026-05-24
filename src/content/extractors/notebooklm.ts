@@ -220,10 +220,7 @@ export class NotebookLMExtractor extends BaseExtractor {
    * Extract user message content (plain text)
    */
   private extractUserContent(element: HTMLElement): string {
-    if (element.textContent) {
-      return this.sanitizeText(element.textContent);
-    }
-    return '';
+    return this.extractPlainText(element);
   }
 
   /**

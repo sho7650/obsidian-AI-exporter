@@ -408,6 +408,13 @@ export abstract class BaseExtractor implements IConversationExtractor {
   }
 
   /**
+   * Extract sanitized plain text from an element (empty string if none).
+   */
+  protected extractPlainText(element: Element): string {
+    return element.textContent ? this.sanitizeText(element.textContent) : '';
+  }
+
+  /**
    * Try multiple selectors in priority order and return first successful result
    *
    * Selectors are tried sequentially (not combined) to preserve priority ordering.
