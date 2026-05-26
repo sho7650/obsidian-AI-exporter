@@ -1,22 +1,16 @@
-/**
- * NotebookLM Extractor
- *
- * Extracts chat conversations from NotebookLM (notebooklm.google.com)
- * with inline source citations converted to footnotes.
- *
- * NotebookLM uses Angular Material with custom elements:
- * - chat-panel / chat-message — conversation structure
- * - element-list-renderer — structured response content
- * - button.citation-marker — inline source citations
- *
- * MVP scope: Chat Q&A only (no Studio artifacts, Audio, or Mind Maps)
- */
-
 import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
-import type { ConversationMessage } from '../../lib/types';
+import { extractErrorMessage } from '../../lib/error-utils';
+import type {
+  ConversationMessage,
+  ConversationData,
+  ExtractionResult,
+  SyncSettings,
+} from '../../lib/types';
+import { showToast, updateToast } from '../ui';
 
 import { SELECTORS } from './selectors/notebooklm';
+import { processPlainTextCitations } from '../citation-utils';
 
 // ========== Citation transformation (formerly notebooklm-citations.ts) ==========
 //
@@ -67,27 +61,32 @@ function isMoreCitationsButton(button: Element): boolean {
 
 function transformCitationsToFootnotes(
   html: string,
-  messageIndex: number
+  messageIndex: number,
+  sourceTitles: string[] = []
 ): CitationTransformResult {
-  if (!html) return { html: '', footnotes: [] };
+  if (!html) {
+    return { html: '', footnotes: [] };
+  }
 
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const buttons = Array.from(doc.querySelectorAll('button.citation-marker'));
-  if (buttons.length === 0) return { html, footnotes: [] };
 
   const footnoteByNumber = new Map<string, string>();
   const order: string[] = [];
 
+  // 1. Process Button Citations (Normal Chat)
   for (const button of buttons) {
     if (isMoreCitationsButton(button)) {
       button.remove();
       continue;
     }
+
     const parsed = parseCitation(button);
     if (!parsed) {
       button.remove();
       continue;
     }
+
     const label = `m${messageIndex}-${parsed.number}`;
     const placeholder = doc.createElement('span');
     placeholder.setAttribute(FOOTNOTE_REF_ATTR, label);
@@ -100,7 +99,20 @@ function transformCitationsToFootnotes(
     }
   }
 
+  processPlainTextCitations(
+    doc,
+    messageIndex,
+    (num) => sourceTitles[num - 1] || `Source ${num}`,
+    footnoteByNumber,
+    order
+  );
+
+  if (order.length === 0) {
+    return { html: doc.body.innerHTML, footnotes: [] };
+  }
+
   const footnotes = order.map(num => `[^m${messageIndex}-${num}]: ${footnoteByNumber.get(num)}`);
+
   return { html: doc.body.innerHTML, footnotes };
 }
 
@@ -125,6 +137,16 @@ function escapeHtml(value: string): string {
 export class NotebookLMExtractor extends BaseExtractor {
   readonly platform = 'notebooklm';
 
+  /** Whether to extract notebook sources (driven by settings toggle) */
+  private includeSources = false;
+
+  // ========== Settings ==========
+
+  override applySettings(settings: SyncSettings): void {
+    super.applySettings(settings);
+    this.includeSources = settings.enableNotebookSources ?? false;
+  }
+
   // ========== Platform Detection ==========
 
   /**
@@ -135,6 +157,273 @@ export class NotebookLMExtractor extends BaseExtractor {
    */
   canExtract(): boolean {
     return window.location.hostname === 'notebooklm.google.com';
+  }
+
+  // ========== Override Extract ==========
+  
+  override async extract(): Promise<ExtractionResult> {
+    try {
+      if (!this.canExtract()) {
+        return {
+          success: false,
+          error: `Not on a ${this.platformLabel} page`,
+        };
+      }
+
+      console.info(`[G2O] Extracting ${this.platformLabel} conversation`);
+      const conversationId = this.getConversationId() || `${this.platform}-${Date.now()}`;
+      const title = this.getTitle();
+
+      const messages = this.extractMessages();
+      let chatResult: ExtractionResult | null = null;
+      if (messages.length > 0) {
+        chatResult = this.buildConversationResult(messages, conversationId, title, this.platform);
+      }
+
+      // Extract sources only when the setting is enabled
+      if (!this.includeSources) {
+        // Chat-only mode (default)
+        if (!chatResult?.data || Array.isArray(chatResult.data)) {
+          return {
+            success: false,
+            error: 'No chat messages found',
+          };
+        }
+        return chatResult;
+      }
+
+      // Sources mode: extract chat + sources
+      let sourcesData: ConversationData[] = [];
+      try {
+        sourcesData = await this.extractAllSources(conversationId, title);
+      } catch (err) {
+        console.warn(`[G2O] Source extraction failed/aborted, continuing with chat note:`, err);
+      }
+
+      const allData: ConversationData[] = [];
+
+      // Add chat data with notebookTitle for path resolution
+      if (chatResult?.data && !Array.isArray(chatResult.data)) {
+        allData.push({ ...chatResult.data, notebookTitle: title });
+      }
+
+      // Add source data
+      allData.push(...sourcesData);
+
+      if (allData.length === 0) {
+        return {
+          success: false,
+          error: 'No chat messages or sources found',
+        };
+      }
+
+      return {
+        success: true,
+        data: allData,
+      };
+
+    } catch (error) {
+      console.error(`[G2O] ${this.platformLabel} extraction error:`, error);
+      return {
+        success: false,
+        error: extractErrorMessage(error),
+      };
+    }
+  }
+
+  // ========== Source Extraction ==========
+
+  /**
+   * Re-query source list items from the live DOM.
+   * NotebookLM re-renders the panel after every click, so cached
+   * node references become detached and cannot be clicked.
+   */
+  private getLiveSourceItems(): HTMLElement[] {
+    return this.queryAllWithFallback<HTMLElement>(SELECTORS.sourceListItems);
+  }
+
+  /**
+   * Wait until the source panel list is visible and has at least
+   * `minCount` items.  Used after "back" navigation to confirm the
+   * list has fully re-rendered before the next iteration.
+   */
+  private async waitForSourceList(minCount: number, timeoutMs = 8000): Promise<boolean> {
+    const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const items = this.getLiveSourceItems();
+      if (items.length >= minCount) return true;
+      await delay(150);
+    }
+    return false;
+  }
+
+  /**
+   * Extract all sources sequentially using always-fresh DOM references.
+   *
+   * Key reliability improvements over the naïve approach:
+   *  1. Re-query the source list on every iteration (avoids stale/detached refs).
+   *  2. After "back" navigation, wait until the list re-appears before proceeding.
+   *  3. Pass the previous content fingerprint so waitForSourceContent can
+   *     confirm the viewer has actually switched to new content.
+   *  4. Per-source try/catch — a single failure skips that source, not the batch.
+   */
+  private async extractAllSources(baseId: string, notebookTitle: string): Promise<ConversationData[]> {
+    // Snapshot the total count once up front
+    const totalCount = this.getLiveSourceItems().length;
+    if (totalCount === 0) return [];
+
+    // Helper to get stable prefix from mat-icon ligature name
+    const getSourceTypePrefix = (iconName: string): string => {
+      const name = iconName.toLowerCase();
+      if (name.includes('link') || name.includes('public') || name.includes('web') || name.includes('language')) {
+        return 'URL - ';
+      }
+      if (name.includes('description') || name.includes('drive') || name.includes('doc') || name.includes('article')) {
+        return 'Doc - ';
+      }
+      if (name.includes('pdf')) {
+        return 'PDF - ';
+      }
+      if (name.includes('note') || name.includes('text') || name.includes('edit') || name.includes('draft')) {
+        return 'Paste - ';
+      }
+      if (name.includes('video') || name.includes('youtube') || name.includes('play')) {
+        return 'YouTube - ';
+      }
+      return '';
+    };
+
+    const results: ConversationData[] = [];
+    let previousContent = ''; // fingerprint to detect content switch
+
+    for (let i = 0; i < totalCount; i++) {
+      // --- 1. Re-query live DOM each iteration ---
+      const items = this.getLiveSourceItems();
+      const item = items[i];
+      if (!item) {
+        console.warn(`[G2O] Source item ${i + 1} not found in live DOM, skipping`);
+        continue;
+      }
+
+      const titleEl = this.queryWithFallback<HTMLElement>(SELECTORS.sourceTitle, item);
+      let sourceTitle = titleEl?.textContent?.trim() || `Source ${i + 1}`;
+
+      // Get and apply prefix derived from DOM mat-icon
+      const iconEl = item.querySelector('mat-icon');
+      const iconName = iconEl?.textContent?.trim() || '';
+      const prefix = getSourceTypePrefix(iconName);
+      if (prefix && !sourceTitle.startsWith(prefix)) {
+        sourceTitle = `${prefix}${sourceTitle}`;
+      }
+
+      updateToast(`Extracting source ${i + 1} of ${totalCount}: ${sourceTitle}...`);
+
+      try {
+        // --- 2. Click via live reference ---
+        const clickTarget = this.queryWithFallback<HTMLElement>(SELECTORS.sourceListClickTarget, item);
+        if (!clickTarget) {
+          console.warn(`[G2O] No click target for source "${sourceTitle}", skipping`);
+          continue;
+        }
+        clickTarget.click();
+
+        // --- 3. Wait for content to change away from previous source ---
+        const content = await this.waitForSourceContent(previousContent);
+
+        if (content) {
+          previousContent = content.substring(0, 200); // fingerprint for next iteration
+          results.push({
+            id: `${baseId}-source-${i}`,
+            title: sourceTitle,
+            notebookTitle,
+            url: window.location.href,
+            source: this.platform,
+            type: 'notebook-source',
+            messages: [{
+              id: `source-${i}`,
+              role: 'assistant',
+              content: sanitizeHtml(content),
+              htmlContent: sanitizeHtml(content),
+              index: 0
+            }],
+            extractedAt: new Date(),
+            metadata: {
+              messageCount: 1,
+              userMessageCount: 0,
+              assistantMessageCount: 1,
+              hasCodeBlocks: false
+            }
+          });
+        } else {
+          console.warn(`[G2O] Source "${sourceTitle}" timed out waiting for content`);
+        }
+      } catch (err) {
+        console.warn(`[G2O] Failed to extract source "${sourceTitle}":`, err);
+      }
+
+      // --- 4. Navigate back and wait for list to re-render ---
+      const backBtn = this.queryWithFallback<HTMLElement>(SELECTORS.panelHeaderClickable);
+      if (backBtn) {
+        backBtn.click();
+      }
+
+      // Wait for source list to reappear (up to 5 s) before next iteration
+      const listReady = await this.waitForSourceList(totalCount);
+      if (!listReady) {
+        console.warn(`[G2O] Source list did not re-appear after navigating back from source ${i + 1}`);
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Wait for the source viewer to show content that differs from the
+   * previous source's content fingerprint.
+   *
+   * @param previousContent - First 200 chars of the previous source body.
+   *   Empty string on the first source (no prior content to compare).
+   * @param timeoutMs - Maximum wait time in milliseconds.
+   */
+  private async waitForSourceContent(
+    previousContent = '',
+    timeoutMs = 12000
+  ): Promise<string> {
+    const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+    const deadline = Date.now() + timeoutMs;
+    const identicalAcceptTime = Date.now() + 2500; // Accept identical content after 2.5s
+
+    while (Date.now() < deadline) {
+      const viewers = this.queryAllWithFallback<HTMLElement>(SELECTORS.sourceViewer);
+      const viewer = viewers.find(v => v.offsetParent !== null);
+
+      if (viewer) {
+        const body = this.queryWithFallback<HTMLElement>(SELECTORS.sourceViewerBody, viewer);
+        const text = body?.textContent?.trim() ?? '';
+
+        if (text.length > 0) { // Support extremely short documents too
+          const fingerprint = text.substring(0, 200);
+          // Confirm it is genuinely new content (not stale from previous source)
+          const isNewContent = !previousContent || fingerprint !== previousContent;
+          
+          if (isNewContent) {
+            // Extra stabilisation delay — let any remaining lazy elements render
+            await delay(400);
+            const stableBody = this.queryWithFallback<HTMLElement>(SELECTORS.sourceViewerBody, viewer);
+            return stableBody?.innerHTML || '';
+          } else if (Date.now() > identicalAcceptTime) {
+            // We waited 2.5 seconds and content is identical. 
+            // Assume the user actually uploaded two identical files or empty files.
+            return body?.innerHTML || '';
+          }
+        }
+      }
+
+      await delay(150);
+    }
+
+    return '';
   }
 
   // ========== ID & Title Extraction ==========
@@ -242,9 +531,14 @@ export class NotebookLMExtractor extends BaseExtractor {
       return '';
     }
 
+    // Grab source titles from sidebar to resolve plain-text citations in Deep Research docs
+    const sourceTitles = this.queryAllWithFallback<HTMLElement>(SELECTORS.sourceTitle)
+      .map(el => this.sanitizeText(el.textContent || ''));
+
     const { html: transformedHtml, footnotes } = transformCitationsToFootnotes(
       rawHtml,
-      messageIndex
+      messageIndex,
+      sourceTitles
     );
 
     const footnoteDefsHtml = footnotes

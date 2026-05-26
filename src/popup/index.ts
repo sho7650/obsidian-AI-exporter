@@ -87,6 +87,7 @@ const elements = {
   enableAutoScroll: getElement<HTMLInputElement>('enableAutoScroll'),
   enableAppendMode: getElement<HTMLInputElement>('enableAppendMode'),
   enableToolContent: getElement<HTMLInputElement>('enableToolContent'),
+  enableNotebookSources: getElement<HTMLInputElement>('enableNotebookSources'),
   timezone: getElement<HTMLSelectElement>('timezone'),
   timezoneGroup: getElement<HTMLElement>('timezoneGroup'),
   testBtn: getElement<HTMLButtonElement>('testBtn'),
@@ -124,6 +125,7 @@ function populateForm(settings: ExtensionSettings): void {
   elements.enableAutoScroll.checked = settings.enableAutoScroll ?? false;
   elements.enableAppendMode.checked = settings.enableAppendMode ?? false;
   elements.enableToolContent.checked = settings.enableToolContent ?? false;
+  elements.enableNotebookSources.checked = settings.enableNotebookSources ?? false;
 
   // Update Obsidian settings section visibility
   updateObsidianSettingsVisibility();
@@ -353,6 +355,7 @@ function collectSettings(): ExtensionSettings {
     enableAutoScroll: elements.enableAutoScroll.checked,
     enableAppendMode: elements.enableAppendMode.checked,
     enableToolContent: elements.enableToolContent.checked,
+    enableNotebookSources: elements.enableNotebookSources.checked,
   };
 }
 

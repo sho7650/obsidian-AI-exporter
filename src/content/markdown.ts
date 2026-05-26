@@ -20,8 +20,11 @@ import type {
 import { formatDateWithTimezone } from '../lib/date-utils';
 
 // Re-exports (preserve existing import paths)
-export { htmlToMarkdown, escapeAngleBrackets } from './markdown-rules';
+export { escapeAngleBrackets } from './markdown-rules';
 export { convertDeepResearchContent } from './markdown-deep-research';
+
+import { htmlToMarkdown } from './markdown-rules';
+export { htmlToMarkdown };
 
 /**
  * Generate sanitized filename from title
@@ -46,8 +49,17 @@ export function generateContentHash(content: string): string {
 
 /**
  * Convert conversation data to Obsidian note
+ *
+ * For NotebookLM notebook-source types, generates filenames under the
+ * sources/ subdirectory. The chat note (when it has a notebookTitle) is
+ * named chat.md. Source titles are linked from the chat note via wikilinks.
  */
-export function conversationToNote(data: ConversationData, options: TemplateOptions): ObsidianNote {
+export function conversationToNote(
+  data: ConversationData,
+  options: TemplateOptions,
+  /** Source titles for wikilink injection (chat notes only) */
+  sourceLinks?: string[]
+): ObsidianNote {
   const timezone = options.timezone ?? 'UTC';
   const now = formatDateWithTimezone(new Date(), timezone);
 
@@ -63,7 +75,9 @@ export function conversationToNote(data: ConversationData, options: TemplateOpti
     tags:
       data.type === 'deep-research'
         ? ['ai-research', 'deep-research', data.source]
-        : ['ai-conversation', data.source],
+        : data.type === 'notebook-source'
+          ? ['ai-notebook', 'notebook-source', data.source]
+          : ['ai-conversation', data.source],
     message_count: data.messages.length,
   };
 
@@ -76,6 +90,13 @@ export function conversationToNote(data: ConversationData, options: TemplateOpti
       body = '';
     } else {
       body = convertDeepResearchContent(data.messages[0].content, data.links);
+    }
+  } else if (data.type === 'notebook-source') {
+    // Notebook Source: format directly as markdown without callouts
+    if (data.messages.length === 0) {
+      body = '';
+    } else {
+      body = htmlToMarkdown(data.messages[0].content);
     }
   } else {
     // Normal conversation format (callout style)
@@ -91,10 +112,34 @@ export function conversationToNote(data: ConversationData, options: TemplateOpti
     }
 
     body = bodyParts.join('\n\n');
+
+    // Append wikilinks to sources if provided (NotebookLM chat note)
+    if (sourceLinks && sourceLinks.length > 0) {
+      const linksSection = [
+        '',
+        '## Sources',
+        '',
+        ...sourceLinks.map(link => `- ${link}`),
+      ].join('\n');
+      body = body + '\n' + linksSection;
+    }
   }
 
-  // Generate filename and content hash
-  const fileName = generateFileName(data.title, data.id);
+  // Generate filename
+  // NotebookLM notebook-source: use sources/{title}.md
+  // NotebookLM chat with notebookTitle: use chat.md
+  // Default: standard filename generation
+  let fileName: string;
+  if (data.type === 'notebook-source') {
+    const sourceFileName = generateFileName(data.title, data.id);
+    fileName = `sources/${sourceFileName}`;
+  } else if (data.notebookTitle) {
+    // Chat note within a notebook folder
+    fileName = 'chat.md';
+  } else {
+    fileName = generateFileName(data.title, data.id);
+  }
+
   const contentHash = generateContentHash(body);
 
   return {
@@ -104,3 +149,4 @@ export function conversationToNote(data: ConversationData, options: TemplateOpti
     contentHash,
   };
 }
+

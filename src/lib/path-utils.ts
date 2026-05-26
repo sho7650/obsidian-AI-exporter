@@ -105,3 +105,20 @@ export function getSearchBasePath(template: string, variables: Record<string, st
   const resolved = resolvePathTemplate(prefix, filtered);
   return resolved.replace(/\/+$/, '');
 }
+
+/**
+ * Sanitize a filename or directory name by removing/replacing characters that are illegal
+ * on Windows/Mac/Linux filesystems (like < > : " / \ | ? * and control characters).
+ * Also normalizes spaces and trims leading/trailing hyphens/dots/spaces.
+ */
+export function sanitizeFileName(name: string): string {
+  return name
+    // eslint-disable-next-line no-control-regex
+    .replace(/[<>:"/\\|?*\x00-\x1F]+/g, '-') // Replace illegal characters with -
+    .replace(/\s+/g, ' ')                   // Normalize spaces
+    .replace(/^-+|-+$/g, '')                 // Trim leading/trailing hyphens
+    .replace(/^\.+|\.+$/g, '')               // Trim leading/trailing periods
+    .substring(0, 100)                       // Prevent OS path too long errors
+    .trim();
+}
+
