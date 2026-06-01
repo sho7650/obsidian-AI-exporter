@@ -38,7 +38,7 @@
     "@types/chrome": "^0.0.268",
     "@types/jsdom": "^27.0.0",
     "@types/turndown": "^5.0.4",
-    "@vitest/coverage-v8": "^4.0.16",
+    "@vitest/coverage-v8": "^4.1.8",
     "dotenv": "^17.3.1",
     "eslint": "^10.1.0",
     "globals": "^17.4.0",
@@ -50,7 +50,7 @@
     "typescript-eslint": "^8.56.1",
     "vite": "^6.4.2",
     "vite-plugin-static-copy": "^3.1.4",
-    "vitest": "^4.0.16"
+    "vitest": "^4.1.8"
   },
   "overrides": {
     "@crxjs/vite-plugin": {
