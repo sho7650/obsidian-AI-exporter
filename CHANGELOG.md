@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.8](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.2.7...v1.2.8) (2026-06-02)
+
+
+### Miscellaneous
+
+* **deps-dev:** Bump vitest and @vitest/coverage-v8 ([#253](https://github.com/sho7650/obsidian-AI-exporter/issues/253)) ([db18bf1](https://github.com/sho7650/obsidian-AI-exporter/commit/db18bf1cf81edfefd6524b0d059ed29a58ca5345))
+
 ## [1.2.7](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.2.6...v1.2.7) (2026-06-02)
 
 
