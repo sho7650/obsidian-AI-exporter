@@ -48,4 +48,48 @@ export const SELECTORS = {
     '.cover-title', // Style (HIGH)
     '.cover-title.mat-headline-medium', // Full class (MEDIUM)
   ],
+
+  // Source list items
+  sourceListItems: [
+    '.source-panel .single-source-container',
+  ],
+
+  // Source list click target
+  sourceListClickTarget: [
+    '.source-stretched-button',
+  ],
+
+  // Source title inside list item
+  sourceTitle: [
+    '.source-title',
+  ],
+
+  // Panel header to return to sources list
+  panelHeaderClickable: [
+    '.source-panel .panel-header-clickable',
+  ],
+
+  // Source viewer
+  sourceViewer: [
+    'source-viewer',
+  ],
+
+  // Deep research report container
+  deepResearchReportContainer: [
+    '.deep-research-report-container',
+    '.results-container'
+  ],
+  deepResearchReportText: [
+    '.deep-research-report-text'
+  ],
+
+  // Source viewer bodies (for waiting)
+  sourceViewerBody: [
+    'labs-tailwind-doc-viewer',
+    '.elements-container',
+    '.scroll-area',
+    '.scroll-container',
+    '.summary',
+    '.source-guide-container'
+  ]
 } as const satisfies SelectorGroup;

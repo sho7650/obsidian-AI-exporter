@@ -257,33 +257,37 @@ export abstract class BaseExtractor implements IConversationExtractor {
       return { isValid: false, warnings, errors };
     }
 
-    const { messages, type } = result.data;
-    const isDeepResearch = type === 'deep-research';
+    const dataList = Array.isArray(result.data) ? result.data : [result.data];
 
-    if (messages.length === 0) {
-      errors.push('No messages found in conversation');
-    }
+    for (const data of dataList) {
+      const { messages, type } = data;
+      const isDeepResearch = type === 'deep-research';
 
-    // Deep Research reports have only 1 message (the report itself), so skip this warning
-    if (messages.length < 2 && !isDeepResearch) {
-      warnings.push('Very few messages extracted - selectors may need updating');
-    }
-
-    // Check for balanced conversation (roughly equal user/assistant messages)
-    // Skip for Deep Research which only has assistant content
-    if (!isDeepResearch) {
-      const userCount = messages.filter(m => m.role === 'user').length;
-      const assistantCount = messages.filter(m => m.role === 'assistant').length;
-
-      if (Math.abs(userCount - assistantCount) > 1) {
-        warnings.push('Unbalanced message count - some messages may not have been extracted');
+      if (messages.length === 0) {
+        errors.push('No messages found in conversation');
       }
-    }
 
-    // Check for empty content
-    const emptyMessages = messages.filter(m => !m.content.trim());
-    if (emptyMessages.length > 0) {
-      warnings.push(`${emptyMessages.length} message(s) have empty content`);
+      // Deep Research reports have only 1 message (the report itself), so skip this warning
+      if (messages.length < 2 && !isDeepResearch && type !== 'notebook-source') {
+        warnings.push('Very few messages extracted - selectors may need updating');
+      }
+
+      // Check for balanced conversation (roughly equal user/assistant messages)
+      // Skip for Deep Research which only has assistant content
+      if (!isDeepResearch && type !== 'notebook-source') {
+        const userCount = messages.filter(m => m.role === 'user').length;
+        const assistantCount = messages.filter(m => m.role === 'assistant').length;
+
+        if (Math.abs(userCount - assistantCount) > 1) {
+          warnings.push('Unbalanced message count - some messages may not have been extracted');
+        }
+      }
+
+      // Check for empty content
+      const emptyMessages = messages.filter(m => !m.content.trim());
+      if (emptyMessages.length > 0) {
+        warnings.push(`${emptyMessages.length} message(s) have empty content`);
+      }
     }
 
     return {

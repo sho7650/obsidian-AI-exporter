@@ -289,6 +289,21 @@ export function showToast(
 }
 
 /**
+ * Update the current toast message dynamically if it exists,
+ * otherwise creates a new permanent toast.
+ */
+export function updateToast(message: string): void {
+  if (currentToast) {
+    const toastMessage = currentToast.querySelector('.message');
+    if (toastMessage) {
+      toastMessage.textContent = message;
+    }
+  } else {
+    showToast(message, 'info', 0);
+  }
+}
+
+/**
  * Show success toast with file info
  */
 export function showSuccessToast(fileName: string, isNewFile: boolean): void {

@@ -16,6 +16,7 @@
 import { htmlToMarkdown } from './markdown-rules';
 import { buildSourceMap } from '../lib/source-map';
 import type { DeepResearchLinks, DeepResearchSource } from '../lib/types';
+import { processPlainTextCitations } from './citation-utils';
 
 /**
  * Source-footnote wrapped citations. String.replace with /g resets internal
@@ -53,37 +54,14 @@ function sanitizeUrl(url: string): string {
 }
 
 /**
- * Create a citation replacer callback for use with String.replace()
- * Shared logic for both wrapped and standalone citation patterns.
- */
-function createCitationReplacer(
-  sourceMap: Map<number, DeepResearchSource>
-): (_match: string, indexStr: string) => string {
-  return (_match: string, indexStr: string): string => {
-    const index = parseInt(indexStr, 10);
-    const source = sourceMap.get(index);
-    if (source) {
-      // Return placeholder span with content (Turndown filters empty elements)
-      // The custom Turndown rule will convert this to [^N]
-      return `<span data-footnote-ref="${index}">REF</span>`;
-    }
-    // Source not found: log warning and remove marker silently
-    console.warn(`[G2O] Citation reference ${index} not found in source map`);
-    return '';
-  };
-}
-
-/**
  * Convert inline citations to footnote reference placeholders
  *
- * Before: <source-footnote><sup data-turn-source-index="N">...</sup></source-footnote>
- * After: <span data-footnote-ref="N"></span>
+ * Supports both standard Gemini/Claude HTML citations:
+ *   `<source-footnote><sup data-turn-source-index="N">...</sup></source-footnote>`
+ * and raw plain-text bracket citations like `[1, 2]`.
  *
- * Design: We insert placeholder spans that survive Turndown processing,
- * then replace them with Obsidian footnote syntax [^N] after conversion.
- * This avoids double-escaping issues where Markdown gets re-escaped by Turndown.
- *
- * Important: data-turn-source-index is 1-based and may be non-sequential
+ * Design: We use Regex to replace HTML tags with `<span data-footnote-ref="m0-N">`
+ * placeholders that survive Turndown processing, then let Turndown output [^m0-N].
  *
  * @param html HTML content to convert
  * @param sourceMap Map built from buildSourceMap()
@@ -92,15 +70,35 @@ function convertInlineCitationsToFootnoteRefs(
   html: string,
   sourceMap: Map<number, DeepResearchSource>
 ): string {
-  const replacer = createCitationReplacer(sourceMap);
+  const replacer = (match: string, p1: string) => {
+    const index = parseInt(p1, 10);
+    if (sourceMap.has(index)) {
+      return `<span data-footnote-ref="m0-${index}">REF</span>`;
+    }
+    return match; // If not in source map, leave it untouched
+  };
 
+  // Phase 1: Process HTML element-based citations via regex for performance
   // Pattern 1: source-footnote wrapped
   let result = html.replace(WRAPPED_CITATION_PATTERN, replacer);
-
   // Pattern 2: standalone sup element (fallback)
   result = result.replace(STANDALONE_CITATION_PATTERN, replacer);
 
-  return result;
+  // Parse modified string into DOM for Phase 2
+  const doc = new DOMParser().parseFromString(result, 'text/html');
+
+  // Deep Research does not require collecting the resolved footnotes per message 
+  // because all sources are appended as a single block at the bottom.
+  processPlainTextCitations(
+    doc,
+    0, // deep research uses "m0-" as prefix consistently
+    (num) => {
+      const source = sourceMap.get(num);
+      return source ? source.title : null;
+    }
+  );
+
+  return doc.body.innerHTML;
 }
 
 /**
@@ -109,8 +107,8 @@ function convertInlineCitationsToFootnoteRefs(
  * Output format:
  * # References
  *
- * [^1]: [Title1](URL1)
- * [^2]: [Title2](URL2)
+ * [^m0-1]: [Title1](URL1)
+ * [^m0-2]: [Title2](URL2)
  * ...
  *
  * @param sources All sources from the source list (includes unreferenced sources)
@@ -129,11 +127,11 @@ function generateReferencesSection(sources: DeepResearchSource[]): string {
     const safeUrl = sanitizeUrl(source.url);
 
     if (safeUrl) {
-      // [^N]: [Title](URL)
-      lines.push(`[^${footnoteIndex}]: [${escapeMarkdownLink(source.title)}](${safeUrl})`);
+      // [^m0-N]: [Title](URL)
+      lines.push(`[^m0-${footnoteIndex}]: [${escapeMarkdownLink(source.title)}](${safeUrl})`);
     } else {
       // URL invalid: title only
-      lines.push(`[^${footnoteIndex}]: ${escapeMarkdownLink(source.title)}`);
+      lines.push(`[^m0-${footnoteIndex}]: ${escapeMarkdownLink(source.title)}`);
     }
   });
 

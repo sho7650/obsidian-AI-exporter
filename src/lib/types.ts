@@ -33,7 +33,9 @@ export interface ConversationData {
   title: string;
   url: string;
   source: AIPlatform;
-  type?: 'conversation' | 'deep-research';
+  type?: 'conversation' | 'deep-research' | 'notebook-source';
+  /** Parent notebook title (for NotebookLM source notes) */
+  notebookTitle?: string;
   /** Deep Research link information (optional) */
   links?: DeepResearchLinks;
   messages: ConversationMessage[];
@@ -184,6 +186,8 @@ export interface SyncSettings {
   enableAppendMode: boolean;
   /** Include tool-use / intermediate content (e.g., web search results) */
   enableToolContent: boolean;
+  /** Export NotebookLM sources alongside chat when syncing */
+  enableNotebookSources: boolean;
 }
 
 /**
@@ -260,7 +264,7 @@ export interface SaveResponse {
  */
 export interface ExtractionResult {
   success: boolean;
-  data?: ConversationData;
+  data?: ConversationData | ConversationData[];
   error?: string;
   warnings?: string[];
 }

@@ -10,7 +10,8 @@ import { PerplexityExtractor } from './extractors/perplexity';
 import { NotebookLMExtractor } from './extractors/notebooklm';
 import { extractErrorMessage } from '../lib/error-utils';
 import type { IConversationExtractor } from '../lib/types';
-import { conversationToNote } from './markdown';
+import { conversationToNote, generateFileName } from './markdown';
+import { sanitizeFileName } from '../lib/path-utils';
 import {
   injectSyncButton,
   setButtonLoading,
@@ -18,6 +19,7 @@ import {
   showErrorToast,
   showWarningToast,
   showToast,
+  updateToast,
 } from './ui';
 import { sendMessage } from '../lib/messaging';
 import {
@@ -269,10 +271,22 @@ function displaySaveResults(
     showErrorToast(errorMsg || 'Failed to save');
   }
 
+  // Show partial errors/warnings from destinations that succeeded but had internal failures
+  const partialErrors = saveResult.results
+    .filter((r: OutputResult) => r.success && r.error)
+    .map((r: OutputResult) => r.error)
+    .join('\n');
+
+  if (partialErrors) {
+    setTimeout(() => {
+      showWarningToast(partialErrors);
+    }, INFO_TOAST_DURATION);
+  }
+
   if (extractionWarnings && extractionWarnings.length > 0 && saveResult.anySuccessful) {
     setTimeout(() => {
       showWarningToast(extractionWarnings.join('. '));
-    }, INFO_TOAST_DURATION);
+    }, INFO_TOAST_DURATION + (partialErrors ? 1500 : 0));
   }
 }
 
@@ -324,20 +338,118 @@ async function handleSync(): Promise<void> {
       return;
     }
 
-    // Convert to Obsidian note
-    const note = conversationToNote(result.data, settings.templateOptions);
+    if (Array.isArray(result.data)) {
+      if (result.data.length === 0) {
+        showErrorToast('No data found to export');
+        return;
+      }
 
-    console.info('[G2O] Generated note:', {
-      fileName: note.fileName,
-      messageCount: result.data.messages.length,
-      outputs: enabledOutputs,
-    });
+      // Separate chat data from source data
+      const chatData = result.data.find(d => d.type !== 'notebook-source');
+      const sourceData = result.data.filter(d => d.type === 'notebook-source');
 
-    // Save to enabled outputs
-    showToast('Saving...', 'info', INFO_TOAST_DURATION);
-    const saveResult = await saveToOutputs(note, enabledOutputs);
+      // Generate base name for the chat note
+      const chatNoteBaseName = chatData 
+        ? generateFileName(chatData.title, chatData.id)
+        : 'chat.md';
+      
+      const sourcesFolderName = chatNoteBaseName.replace(/\.md$/i, '');
 
-    displaySaveResults(saveResult, note.fileName, result.warnings);
+      // Check for name collisions case-insensitively and suffix duplicates
+      const titleCounts = new Map<string, number>();
+      const sourceDataUnique = sourceData.map((s, index) => {
+        const baseSanitized = sanitizeFileName(s.title);
+        let uniqueTitle = baseSanitized || `source-${index + 1}`;
+        let count = titleCounts.get(uniqueTitle.toLowerCase()) ?? 0;
+        
+        while (titleCounts.has(uniqueTitle.toLowerCase())) {
+          count++;
+          uniqueTitle = `${baseSanitized} ${count}`;
+        }
+        titleCounts.set(uniqueTitle.toLowerCase(), count + 1);
+        
+        return {
+          ...s,
+          uniqueTitle
+        };
+      });
+
+      // Build bare wikilinks: [[Unique Title]]
+      const sourceLinks: string[] = sourceDataUnique.map(s => {
+        return `[[${s.uniqueTitle}]]`;
+      });
+
+      // Convert all data to notes, passing wikilinks to the chat note
+      const notes: ObsidianNote[] = [];
+      if (chatData) {
+        const chatNote = conversationToNote(chatData, settings.templateOptions, sourceLinks);
+        // Set the chat note filename to the exact base name (saved at root of vault-path)
+        chatNote.fileName = chatNoteBaseName;
+        notes.push(chatNote);
+      }
+      for (const s of sourceDataUnique) {
+        const sourceNote = conversationToNote(s, settings.templateOptions);
+        // Set the source note filename inside the sibling directory
+        sourceNote.fileName = `${sourcesFolderName}/${s.uniqueTitle}.md`;
+        notes.push(sourceNote);
+      }
+
+      console.info('[G2O] Generated multiple notes:', {
+        count: notes.length,
+        outputs: enabledOutputs,
+      });
+
+      showToast(`Saving ${notes.length} files...`, 'info', 0); // 0 = permanent until replaced/finished
+      
+      let allSuccessful = true;
+      let anySuccessful = false;
+      let totalAppended = 0;
+      const allResults: OutputResult[] = [];
+
+      for (let i = 0; i < notes.length; i++) {
+        const note = notes[i];
+        updateToast(`Saving ${i + 1}/${notes.length}: ${note.fileName}`);
+        
+        const saveResult = await saveToOutputs(note, enabledOutputs);
+        if (!saveResult.allSuccessful) allSuccessful = false;
+        if (saveResult.anySuccessful) anySuccessful = true;
+        if (saveResult.messagesAppended) totalAppended += saveResult.messagesAppended;
+        
+        // Collect errors per file
+        saveResult.results.forEach(r => {
+          if (!r.success) {
+            // Prepend filename to error for context
+            allResults.push({ ...r, error: `${note.fileName}: ${r.error}` });
+          } else {
+            allResults.push(r);
+          }
+        });
+      }
+      
+      const aggregateResult: MultiOutputResponse = {
+        allSuccessful,
+        anySuccessful,
+        messagesAppended: totalAppended > 0 ? totalAppended : undefined,
+        results: allResults
+      };
+      
+      displaySaveResults(aggregateResult, `${notes.length} files`, result.warnings);
+    } else {
+      // Convert to Obsidian note
+      const note = conversationToNote(result.data, settings.templateOptions);
+
+      console.info('[G2O] Generated note:', {
+        fileName: note.fileName,
+        messageCount: result.data.messages.length,
+        outputs: enabledOutputs,
+      });
+
+      // Save to enabled outputs
+      showToast('Saving...', 'info', INFO_TOAST_DURATION);
+      const saveResult = await saveToOutputs(note, enabledOutputs);
+
+      displaySaveResults(saveResult, note.fileName, result.warnings);
+    }
   } catch (error) {
     console.error('[G2O] Sync error:', error);
     showErrorToast(extractErrorMessage(error));
@@ -363,7 +475,7 @@ function testConnection(): Promise<{ success: boolean; error?: string }> {
 }
 
 /**
- * Save note to multiple outputs via background script
+ * Save a note to outputs via background script
  * Uses type-safe messaging utility
  */
 function saveToOutputs(

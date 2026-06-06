@@ -46,6 +46,7 @@ const DEFAULT_SYNC_SETTINGS: SyncSettings = {
   enableAutoScroll: false,
   enableAppendMode: false,
   enableToolContent: false,
+  enableNotebookSources: false,
 };
 
 const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -92,6 +93,8 @@ export async function getSettings(): Promise<ExtensionSettings> {
         syncResult.settings?.enableAppendMode ?? DEFAULT_SYNC_SETTINGS.enableAppendMode,
       enableToolContent:
         syncResult.settings?.enableToolContent ?? DEFAULT_SYNC_SETTINGS.enableToolContent,
+      enableNotebookSources:
+        syncResult.settings?.enableNotebookSources ?? DEFAULT_SYNC_SETTINGS.enableNotebookSources,
     };
   } catch (error) {
     console.error('[G2O] Failed to get settings:', error);
@@ -148,6 +151,9 @@ export async function saveSettings(settings: Partial<ExtensionSettings>): Promis
     }
     if (settings.enableToolContent !== undefined) {
       syncData.enableToolContent = settings.enableToolContent;
+    }
+    if (settings.enableNotebookSources !== undefined) {
+      syncData.enableNotebookSources = settings.enableNotebookSources;
     }
 
     if (Object.keys(syncData).length > 0) {
