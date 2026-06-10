@@ -102,11 +102,15 @@ export function updateFrontmatter(
   const lines = rawFrontmatter.split('\n');
   const result: string[] = [];
 
+  // Pre-compile one pattern per update key (instead of per line × key)
+  const compiledUpdates = Object.entries(updates).map(([key, value]) => {
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return { key, value, pattern: new RegExp(`^${escapedKey}\\s*:`) };
+  });
+
   for (const line of lines) {
     let replaced = false;
-    for (const [key, value] of Object.entries(updates)) {
-      const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const pattern = new RegExp(`^${escapedKey}\\s*:`);
+    for (const { key, value, pattern } of compiledUpdates) {
       if (pattern.test(line)) {
         // Use raw number for numeric values, escape strings
         const formattedValue =

@@ -13,7 +13,6 @@ import type {
   ExtractionResult,
   ConversationMessage,
   DeepResearchSource,
-  DeepResearchLinks,
 } from '../../lib/types';
 
 import { SELECTORS, DEEP_RESEARCH_SELECTORS, COMPUTED_SELECTORS } from './selectors/gemini';
@@ -47,15 +46,6 @@ export class GeminiExtractor extends BaseExtractor {
   }
 
   // ========== Extraction ==========
-
-  /**
-   * Intercept for Deep Research mode before normal extraction
-   */
-  protected tryExtractDeepResearch(): ExtractionResult | null {
-    if (!this.isDeepResearchVisible()) return null;
-    console.info('[G2O] Deep Research panel detected, extracting report');
-    return this.buildDeepResearchResult();
-  }
 
   /**
    * Override extract() so Gemini-specific auto-scroll runs before message
@@ -128,14 +118,7 @@ export class GeminiExtractor extends BaseExtractor {
 
       // Extract domain (fallback to URL parsing) using pre-computed selector
       const domainEl = anchor.querySelector(COMPUTED_SELECTORS.sourceDomain);
-      let domain = domainEl?.textContent?.trim() || '';
-      if (!domain) {
-        try {
-          domain = new URL(url).hostname;
-        } catch {
-          domain = 'unknown';
-        }
-      }
+      const domain = domainEl?.textContent?.trim() || this.extractDomain(url);
 
       sources.push({
         index, // 0-based array index
@@ -146,18 +129,6 @@ export class GeminiExtractor extends BaseExtractor {
     });
 
     return sources;
-  }
-
-  /**
-   * Extract all Deep Research link information
-   * Only extracts source list; inline citations are processed during Markdown conversion
-   */
-  extractDeepResearchLinks(): DeepResearchLinks {
-    const sources = this.extractSourceList();
-
-    return {
-      sources,
-    };
   }
 
   /**

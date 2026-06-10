@@ -111,17 +111,22 @@ async function handleSaveToObsidian(
   }
 }
 
+/** Chunk size for base64 conversion — bounds String.fromCharCode argument count. */
+const BASE64_CHUNK_SIZE = 8192;
+
 /**
  * Convert string to base64 with proper Unicode handling
- * Service Worker doesn't support Blob/URL.createObjectURL
+ * Service Worker doesn't support Blob/URL.createObjectURL.
+ * Converts in chunks: per-byte concatenation is quadratic on MB-sized notes,
+ * while a single spread of the whole array would overflow the call stack.
  */
 function stringToBase64(str: string): string {
   const bytes = new TextEncoder().encode(str);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const parts: string[] = [];
+  for (let i = 0; i < bytes.length; i += BASE64_CHUNK_SIZE) {
+    parts.push(String.fromCharCode(...bytes.subarray(i, i + BASE64_CHUNK_SIZE)));
   }
-  return btoa(binary);
+  return btoa(parts.join(''));
 }
 
 /**
@@ -248,12 +253,7 @@ export async function handleMultiOutput(
   });
 
   // Extract messagesAppended from obsidian result (append mode)
-  let messagesAppended: number | undefined;
-  settled.forEach((result, index) => {
-    if (result.status === 'fulfilled' && outputs[index] === 'obsidian') {
-      messagesAppended = result.value.messagesAppended;
-    }
-  });
+  const messagesAppended = results.find(r => r.destination === 'obsidian')?.messagesAppended;
 
   return {
     results,

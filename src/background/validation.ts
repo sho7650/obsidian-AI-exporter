@@ -19,6 +19,7 @@ import {
 } from '../lib/constants';
 import type { ExtensionMessage, ObsidianNote } from '../lib/types';
 import { containsPathTraversal } from '../lib/path-utils';
+import { isHttpUrl } from '../lib/validation';
 
 /**
  * Validate message sender (M-02)
@@ -161,15 +162,8 @@ function validateNoteData(note: ObsidianNote): boolean {
   if (typeof note.frontmatter.url !== 'string') {
     return false;
   }
-  if (note.frontmatter.url.length > 0) {
-    try {
-      const parsed = new URL(note.frontmatter.url);
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-        return false;
-      }
-    } catch {
-      return false;
-    }
+  if (note.frontmatter.url.length > 0 && !isHttpUrl(note.frontmatter.url)) {
+    return false;
   }
 
   return true;

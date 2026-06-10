@@ -97,7 +97,7 @@ export class PerplexityExtractor extends BaseExtractor {
 
     for (const item of sorted) {
       if (item.type === 'user') {
-        const content = this.extractUserContent(item.element);
+        const content = this.extractPlainText(item.element);
         if (content) {
           messages.push({
             id: `user-${userIdx}`,
@@ -159,13 +159,6 @@ export class PerplexityExtractor extends BaseExtractor {
     }
 
     return tagged;
-  }
-
-  /**
-   * Extract user query content (plain text)
-   */
-  private extractUserContent(queryElement: HTMLElement): string {
-    return this.extractPlainText(queryElement);
   }
 
   /**

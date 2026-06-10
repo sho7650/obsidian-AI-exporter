@@ -186,7 +186,7 @@ export class NotebookLMExtractor extends BaseExtractor {
       // Extract user query from this turn
       const userEl = this.queryWithFallback<HTMLElement>(SELECTORS.userQuery, turn);
       if (userEl) {
-        const content = this.extractUserContent(userEl);
+        const content = this.extractPlainText(userEl);
         if (content) {
           messages.push({
             id: `user-${index}`,
@@ -214,13 +214,6 @@ export class NotebookLMExtractor extends BaseExtractor {
     });
 
     return messages;
-  }
-
-  /**
-   * Extract user message content (plain text)
-   */
-  private extractUserContent(element: HTMLElement): string {
-    return this.extractPlainText(element);
   }
 
   /**

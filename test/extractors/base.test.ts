@@ -49,10 +49,6 @@ class TestExtractor extends BaseExtractor {
     return this.queryAllWithFallback(selectors, parent);
   }
 
-  public testGenerateHashValue(content: string): string {
-    return this.generateHashValue(content);
-  }
-
   public testGetPageTitle(): string | null {
     return this.getPageTitle();
   }
@@ -373,24 +369,6 @@ describe('BaseExtractor', () => {
     it('truncates to MAX_CONVERSATION_TITLE_LENGTH', () => {
       document.title = 'a'.repeat(200);
       expect(extractor.testGetPageTitle()!.length).toBe(100);
-    });
-  });
-
-  describe('generateHashValue', () => {
-    it('delegates to hash function', () => {
-      const hash = extractor.testGenerateHashValue('test content');
-      expect(hash).toBe('5b9662eb');
-    });
-
-    it('returns consistent hash', () => {
-      const hash1 = extractor.testGenerateHashValue('same content');
-      const hash2 = extractor.testGenerateHashValue('same content');
-      expect(hash1).toBe(hash2);
-    });
-
-    it('returns 8-character hex string', () => {
-      const hash = extractor.testGenerateHashValue('any content');
-      expect(hash).toMatch(/^[0-9a-f]{8}$/);
     });
   });
 

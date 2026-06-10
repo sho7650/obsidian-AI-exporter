@@ -11,6 +11,7 @@ import type {
   ConversationMessage,
   ConversationMetadata,
   DeepResearchLinks,
+  DeepResearchSource,
 } from '../../lib/types';
 import { extractErrorMessage } from '../../lib/error-utils';
 import { generateHash } from '../../lib/hash';
@@ -84,11 +85,22 @@ export abstract class BaseExtractor implements IConversationExtractor {
 
   /**
    * Hook: attempt Deep Research extraction before normal extraction.
-   * Override in subclasses that support Deep Research.
+   * Driven by isDeepResearchVisible(); platforms without Deep Research
+   * keep the default false and skip straight to normal extraction.
    * @returns ExtractionResult if Deep Research detected, null otherwise
    */
   protected tryExtractDeepResearch(): ExtractionResult | null {
-    return null;
+    if (!this.isDeepResearchVisible()) return null;
+    console.info(`[G2O] ${this.platformLabel} Deep Research panel detected, extracting report`);
+    return this.buildDeepResearchResult();
+  }
+
+  /**
+   * Hook: whether the platform's Deep Research panel is currently visible.
+   * Override in subclasses that support Deep Research.
+   */
+  protected isDeepResearchVisible(): boolean {
+    return false;
   }
 
   // ========== Settings ==========
@@ -106,8 +118,8 @@ export abstract class BaseExtractor implements IConversationExtractor {
   /**
    * Build a Deep Research extraction result.
    * Shared logic for Claude and Gemini Deep Research modes.
-   * Subclasses override getDeepResearchTitle(), extractDeepResearchContent(),
-   * and extractDeepResearchLinks() for platform-specific DOM access.
+   * Subclasses override getDeepResearchSelectors() and extractSourceList()
+   * for platform-specific DOM access.
    */
   protected buildDeepResearchResult(): ExtractionResult {
     const title = this.getDeepResearchTitle();
@@ -121,7 +133,7 @@ export abstract class BaseExtractor implements IConversationExtractor {
       };
     }
 
-    const titleHash = this.generateHashValue(title);
+    const titleHash = generateHash(title);
     const conversationId = `deep-research-${titleHash}`;
     const links = this.extractDeepResearchLinks();
 
@@ -189,11 +201,31 @@ export abstract class BaseExtractor implements IConversationExtractor {
 
   /**
    * Extract Deep Research link information.
-   * Default returns no sources; DR-supporting subclasses override with
-   * platform-specific source/citation extraction.
+   * Sources come from the extractSourceList() hook; platforms without
+   * Deep Research return no sources.
    */
-  protected extractDeepResearchLinks(): DeepResearchLinks {
-    return { sources: [] };
+  extractDeepResearchLinks(): DeepResearchLinks {
+    return { sources: this.extractSourceList() };
+  }
+
+  /**
+   * Hook: platform-specific Deep Research source/citation extraction.
+   * Override in subclasses that support Deep Research.
+   */
+  protected extractSourceList(): DeepResearchSource[] {
+    return [];
+  }
+
+  /**
+   * Hostname of a URL, or 'unknown' when the URL cannot be parsed.
+   * Shared fallback for Deep Research source domain extraction.
+   */
+  protected extractDomain(url: string): string {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return 'unknown';
+    }
   }
 
   // ========== DOM Sort & Message Build Utilities ==========
@@ -257,7 +289,7 @@ export abstract class BaseExtractor implements IConversationExtractor {
       return { isValid: false, warnings, errors };
     }
 
-    const { messages, type } = result.data;
+    const { messages, type, metadata } = result.data;
     const isDeepResearch = type === 'deep-research';
 
     if (messages.length === 0) {
@@ -271,13 +303,11 @@ export abstract class BaseExtractor implements IConversationExtractor {
 
     // Check for balanced conversation (roughly equal user/assistant messages)
     // Skip for Deep Research which only has assistant content
-    if (!isDeepResearch) {
-      const userCount = messages.filter(m => m.role === 'user').length;
-      const assistantCount = messages.filter(m => m.role === 'assistant').length;
-
-      if (Math.abs(userCount - assistantCount) > 1) {
-        warnings.push('Unbalanced message count - some messages may not have been extracted');
-      }
+    if (
+      !isDeepResearch &&
+      Math.abs(metadata.userMessageCount - metadata.assistantMessageCount) > 1
+    ) {
+      warnings.push('Unbalanced message count - some messages may not have been extracted');
     }
 
     // Check for empty content
@@ -351,11 +381,23 @@ export abstract class BaseExtractor implements IConversationExtractor {
   }
 
   /**
-   * Known platform suffixes in document.title
+   * Known platform suffixes in document.title, derived from PLATFORM_LABELS
+   * so new platforms are picked up automatically.
    * Matches: " - Claude", " | Gemini", " - Google Gemini", " - ChatGPT", etc.
    */
-  private static readonly TITLE_SUFFIX_PATTERN =
-    /\s*[-|]\s*(?:Google\s+)?(?:Gemini|Claude|ChatGPT|Perplexity|NotebookLM)\s*$/i;
+  private static readonly TITLE_SUFFIX_PATTERN = new RegExp(
+    `\\s*[-|]\\s*(?:Google\\s+)?(?:${Object.values(PLATFORM_LABELS).join('|')})\\s*$`,
+    'i'
+  );
+
+  /**
+   * Titles that are nothing but a platform name (lowercased), derived from
+   * PLATFORM_LABELS plus known aliases.
+   */
+  private static readonly PLATFORM_ONLY_TITLES = new Set([
+    'google gemini',
+    ...Object.values(PLATFORM_LABELS).map(label => label.toLowerCase()),
+  ]);
 
   /**
    * Extract conversation title from document.title, stripping platform suffixes.
@@ -369,10 +411,7 @@ export abstract class BaseExtractor implements IConversationExtractor {
     const raw = document.title?.replace(BaseExtractor.TITLE_SUFFIX_PATTERN, '').trim();
     if (!raw) return null;
     // Skip if the remaining text is just the platform name
-    const lower = raw.toLowerCase();
-    if (
-      ['gemini', 'google gemini', 'claude', 'chatgpt', 'perplexity', 'notebooklm'].includes(lower)
-    ) {
+    if (BaseExtractor.PLATFORM_ONLY_TITLES.has(raw.toLowerCase())) {
       return null;
     }
     return raw.substring(0, MAX_CONVERSATION_TITLE_LENGTH);
@@ -391,13 +430,6 @@ export abstract class BaseExtractor implements IConversationExtractor {
       return this.sanitizeText(el.textContent).substring(0, MAX_CONVERSATION_TITLE_LENGTH);
     }
     return fallbackTitle;
-  }
-
-  /**
-   * Generate a hash from content for deduplication
-   */
-  protected generateHashValue(content: string): string {
-    return generateHash(content);
   }
 
   /**

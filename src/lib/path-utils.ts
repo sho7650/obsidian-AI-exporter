@@ -53,7 +53,6 @@ export function resolvePathTemplate(path: string, variables: Record<string, stri
  * Date-template tokens recognised by {@link resolvePathTemplate}.
  * Used by {@link getSearchBasePath} to detect the date-templated portion of a path.
  */
-const DATE_TOKENS = ['YYYY', 'YY', 'MM', 'DD'] as const;
 const DATE_TOKEN_PATTERN = /\{(YYYY|YY|MM|DD)\}/;
 
 /**
@@ -94,14 +93,9 @@ export function getDateVariables(date: Date): Record<string, string> {
  */
 export function getSearchBasePath(template: string, variables: Record<string, string>): string {
   const match = DATE_TOKEN_PATTERN.exec(template);
+  // The prefix ends before the first date token, so it can only contain
+  // non-date variables ({platform} etc.) — no filtering needed.
   const prefix = match ? template.slice(0, match.index) : template;
-  // Resolve {platform} (and any other non-date variables) on the prefix only.
-  const filtered: Record<string, string> = {};
-  for (const [key, value] of Object.entries(variables)) {
-    if (!(DATE_TOKENS as readonly string[]).includes(key)) {
-      filtered[key] = value;
-    }
-  }
-  const resolved = resolvePathTemplate(prefix, filtered);
+  const resolved = resolvePathTemplate(prefix, variables);
   return resolved.replace(/\/+$/, '');
 }

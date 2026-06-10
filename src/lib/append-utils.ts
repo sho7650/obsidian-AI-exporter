@@ -9,7 +9,6 @@ import type { ObsidianApiClient } from './obsidian-api';
 import type { ObsidianNote, ExtensionSettings } from './types';
 import { parseFrontmatter, updateFrontmatter } from './frontmatter-parser';
 import { countExistingMessages, extractTailMessages } from './message-counter';
-import { generateNoteContent } from './note-generator';
 import { formatDateWithTimezone } from './date-utils';
 
 /**
@@ -183,23 +182,19 @@ export function buildAppendContent(
   const newTotal = note.frontmatter.message_count;
   if (newTotal <= existingCount) return null; // No new messages
 
-  // 4. Generate full note content to get formatted new body
-  const fullContent = generateNoteContent(note, settings);
-  const fullParsed = parseFrontmatter(fullContent);
-  if (!fullParsed) return null;
-
-  // 5. Extract tail messages from the full new body
-  const newMessages = extractTailMessages(fullParsed.body, existingCount);
+  // 4. Extract tail messages from the new formatted body
+  // (note.body is exactly what generateNoteContent would embed after the frontmatter)
+  const newMessages = extractTailMessages(note.body, existingCount);
   if (!newMessages) return null;
 
-  // 6. Update frontmatter fields
+  // 5. Update frontmatter fields
   const timezone = settings.templateOptions.timezone ?? 'UTC';
   const updatedRaw = updateFrontmatter(parsed.raw, {
     modified: formatDateWithTimezone(new Date(), timezone),
     message_count: newTotal,
   });
 
-  // 7. Rebuild: updated frontmatter + existing body + separator + new messages
+  // 6. Rebuild: updated frontmatter + existing body + separator + new messages
   const content = updatedRaw + '\n' + parsed.body + '\n\n' + newMessages;
 
   return {

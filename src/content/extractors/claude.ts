@@ -10,13 +10,7 @@
 import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { htmlToMarkdownRaw } from '../markdown-rules';
-import type {
-  ConversationMessage,
-  DeepResearchSource,
-  DeepResearchLinks,
-  SyncSettings,
-  ExtractionResult,
-} from '../../lib/types';
+import type { ConversationMessage, DeepResearchSource, SyncSettings } from '../../lib/types';
 import { SELECTORS, DEEP_RESEARCH_SELECTORS, JOINED_SELECTORS } from './selectors/claude';
 
 /**
@@ -97,17 +91,6 @@ export class ClaudeExtractor extends BaseExtractor {
   /** Expose platform selectors to BaseExtractor's DR title/content helpers. */
   protected getDeepResearchSelectors() {
     return DEEP_RESEARCH_SELECTORS;
-  }
-
-  // ========== Deep Research Hook ==========
-
-  /**
-   * Intercept for Deep Research mode before normal extraction
-   */
-  protected tryExtractDeepResearch(): ExtractionResult | null {
-    if (!this.isDeepResearchVisible()) return null;
-    console.info('[G2O] Claude Deep Research panel detected, extracting report');
-    return this.buildDeepResearchResult();
   }
 
   // ========== Message Extraction ==========
@@ -354,13 +337,7 @@ export class ClaudeExtractor extends BaseExtractor {
         title = 'Unknown Title';
       }
 
-      // Extract domain
-      let domain: string;
-      try {
-        domain = new URL(url).hostname;
-      } catch {
-        domain = 'unknown';
-      }
+      const domain = this.extractDomain(url);
 
       const index = sources.length;
       seenUrls.set(url, index);
@@ -374,15 +351,5 @@ export class ClaudeExtractor extends BaseExtractor {
     });
 
     return sources;
-  }
-
-  /**
-   * Extract all Deep Research link information
-   *
-   * API compatibility with GeminiExtractor
-   */
-  extractDeepResearchLinks(): DeepResearchLinks {
-    const sources = this.extractSourceList();
-    return { sources };
   }
 }

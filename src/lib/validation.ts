@@ -108,6 +108,18 @@ export function validateObsidianUrl(url: string): string {
 }
 
 /**
+ * Check that a string parses as a URL with an http or https scheme.
+ */
+export function isHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Validate API key
  * Conforms to Obsidian REST API implementation:
  * - SHA-256 hash hex string (64 characters)
