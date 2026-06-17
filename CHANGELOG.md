@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.12](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.2.11...v1.2.12) (2026-06-17)
+
+
+### Miscellaneous
+
+* **deps-dev:** Bump js-yaml from 4.1.1 to 4.2.0 ([#262](https://github.com/sho7650/obsidian-AI-exporter/issues/262)) ([8bc9122](https://github.com/sho7650/obsidian-AI-exporter/commit/8bc91225aa2384a41b00f5c12a9c069e78af0a6e))
+
 ## [1.2.11](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.2.10...v1.2.11) (2026-06-17)
 
 
