@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.13](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.2.12...v1.2.13) (2026-06-17)
+
+
+### Miscellaneous
+
+* bump nixpkgs input to latest nixpkgs-25.11-darwin ([#264](https://github.com/sho7650/obsidian-AI-exporter/issues/264)) ([ad4e45a](https://github.com/sho7650/obsidian-AI-exporter/commit/ad4e45aeb28c5bd36daad60a5f743e565e0cebed))
+
 ## [1.2.12](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.2.11...v1.2.12) (2026-06-17)
 
 
