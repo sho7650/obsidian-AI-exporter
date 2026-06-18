@@ -29,7 +29,7 @@ interface MessageResponseMap {
  *
  * Design Decision: Runtime validation is intentionally omitted here because:
  * 1. Messages originate from and are handled within the same extension
- * 2. The background service worker (src/background/index.ts) performs
+ * 2. The background service worker (src/background/service-worker.ts) performs
  *    comprehensive validation via validateMessageContent() before processing
  * 3. Adding redundant validation would impact performance without security benefit
  *
@@ -75,7 +75,7 @@ export function sendMessage<K extends keyof MessageResponseMap>(
           return;
         }
         // Type assertion is safe: background validates all messages before responding
-        // See: src/background/index.ts validateMessageContent()
+        // See: src/background/service-worker.ts validateMessageContent()
         resolve(response as MessageResponseMap[K]);
       });
     } catch (error) {

@@ -177,6 +177,6 @@ npm run format        # prettier --write
 
 Files that always change together:
 - `src/lib/types.ts` + extractors (when adding fields)
-- `src/background/index.ts` + `src/background/validation.ts` (when adding message actions)
+- `src/background/service-worker.ts` + `src/background/validation.ts` (when adding message actions)
 - `src/manifest.json` + `src/lib/constants.ts` (when adding platforms)
 - `src/content/extractors/*.ts` + `test/extractors/*.test.ts` + `test/fixtures/dom-helpers.ts`
