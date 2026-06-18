@@ -98,7 +98,7 @@ describe('background/index', () => {
       migrateSettings: vi.fn(() => Promise.resolve()),
     }));
 
-    await import('../../src/background/index');
+    await import('../../src/background/service-worker');
   });
 
   afterEach(() => {
@@ -1844,7 +1844,7 @@ describe('background/index migrateSettings failure', () => {
       migrateSettings: vi.fn(() => Promise.reject(new Error('migration failed'))),
     }));
 
-    await import('../../src/background/index');
+    await import('../../src/background/service-worker');
 
     // The .catch() handler schedules a microtask — flush it.
     await new Promise(resolve => setTimeout(resolve, 0));

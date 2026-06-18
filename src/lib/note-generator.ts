@@ -2,7 +2,7 @@
  * Note Content Generator
  *
  * Generates final markdown content with frontmatter from ObsidianNote.
- * Separated from background/index.ts to avoid Chrome API dependency in tests.
+ * Separated from background/service-worker.ts to avoid Chrome API dependency in tests.
  */
 
 import { escapeYamlValue } from './yaml-utils';

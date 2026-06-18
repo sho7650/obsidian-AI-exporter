@@ -120,7 +120,7 @@ Obsidian Local REST API (127.0.0.1:27123)
 | `src/lib/obsidian-api.ts`          | REST API client for Obsidian                              |
 | `src/lib/path-utils.ts`            | Path security & `{platform}` template resolution          |
 | `src/lib/types.ts`                 | Shared TypeScript interfaces                              |
-| `src/background/index.ts`          | Service worker handling API calls & template resolution   |
+| `src/background/service-worker.ts` | Service worker handling API calls & template resolution   |
 | `src/popup/`                       | Settings UI (toggle switches, collapsible advanced panel) |
 
 ### Extractor Pattern
@@ -203,7 +203,7 @@ When adding a new platform extractor:
 3. Create new extractor class extending `BaseExtractor`
 4. Add routing in `src/content/index.ts` (`getExtractor()`)
 5. Update `waitForConversationContainer()` selectors if needed
-6. **Add origin to `ALLOWED_ORIGINS` in `src/background/index.ts`** ← CRITICAL
+6. **Add origin to `ALLOWED_ORIGINS` in `src/background/service-worker.ts`** ← CRITICAL
 7. Update `src/manifest.json`:
    - `host_permissions`
    - `content_scripts.matches`

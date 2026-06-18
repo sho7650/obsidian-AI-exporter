@@ -31,7 +31,7 @@
     "extension_pages": "default-src 'self'; script-src 'self'; connect-src 'self' http://127.0.0.1:* https://127.0.0.1:*; object-src 'none'; frame-src 'none'; style-src 'self'"
   },
   "background": {
-    "service_worker": "src/background/index.ts",
+    "service_worker": "src/background/service-worker.ts",
     "type": "module"
   },
   "content_scripts": [
