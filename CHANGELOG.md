@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.14](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.2.13...v1.2.14) (2026-06-18)
+
+
+### Bug Fixes
+
+* rename background entry to avoid service-worker loader chunk collision ([#266](https://github.com/sho7650/obsidian-AI-exporter/issues/266)) ([6319b0b](https://github.com/sho7650/obsidian-AI-exporter/commit/6319b0b704e9bfcadcc239bbce0a927059e00b8b))
+
 ## [1.2.13](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.2.12...v1.2.13) (2026-06-17)
 
 
