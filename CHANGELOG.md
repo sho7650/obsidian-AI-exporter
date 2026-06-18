@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.15](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.2.14...v1.2.15) (2026-06-18)
+
+
+### Bug Fixes
+
+* bump dompurify to 3.4.11 and undici override to ^7.28.0 for audit ([#270](https://github.com/sho7650/obsidian-AI-exporter/issues/270)) ([19b495f](https://github.com/sho7650/obsidian-AI-exporter/commit/19b495f1c888c9ec21d710570f9dc7f6bcf16e66))
+
 ## [1.2.14](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.2.13...v1.2.14) (2026-06-18)
 
 
