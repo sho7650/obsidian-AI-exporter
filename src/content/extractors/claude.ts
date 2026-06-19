@@ -183,19 +183,33 @@ export class ClaudeExtractor extends BaseExtractor {
    * @see NFR-001-2 in design document
    */
   private extractAssistantContent(element: Element): string {
-    // Grid layout: Extended Thinking or Tool-Use (.row-start-1 + .row-start-2)
-    const responseSection = element.querySelector('.row-start-2');
-    if (responseSection) {
-      // Check if .row-start-2 has markdown content (Extended Thinking / Tool-Use)
-      const markdownInSection = this.queryWithFallback<HTMLElement>(
-        SELECTORS.markdownContent,
-        responseSection
-      );
-      if (markdownInSection) {
-        return sanitizeHtml(markdownInSection.innerHTML);
+    // Grid layout: Extended Thinking or Tool-Use (.row-start-1 + .row-start-2).
+    //
+    // A single response may be split across MULTIPLE sequential grid blocks
+    // (interleaved thinking / tool-use steps), each with its own .row-start-2
+    // content section and the final answer in the last block. Gather every
+    // section's markdown so the answer isn't dropped when it follows earlier
+    // preamble blocks (a prior single-querySelector kept only the first).
+    // Tool-use / thinking summaries live in .row-start-1 headers, so reading
+    // only .row-start-2 keeps status labels out of the response body.
+    const responseSections = element.querySelectorAll<HTMLElement>('.row-start-2');
+    if (responseSections.length > 0) {
+      const parts: string[] = [];
+      responseSections.forEach(section => {
+        const markdownInSection = this.queryWithFallback<HTMLElement>(
+          SELECTORS.markdownContent,
+          section
+        );
+        if (markdownInSection) {
+          const html = sanitizeHtml(markdownInSection.innerHTML);
+          if (html.trim()) parts.push(html);
+        }
+      });
+      if (parts.length > 0) {
+        return parts.join('\n');
       }
-      // .row-start-2 has no markdown content (e.g., thinking-status responses
-      // where content is a grid sibling). Fall through to search entire element.
+      // All .row-start-2 sections empty (e.g., thinking-status responses where
+      // content is a grid sibling). Fall through to search entire element.
     }
 
     // Non-grid fallback or empty .row-start-2: search the entire element
