@@ -15,6 +15,7 @@ import {
   createEmptyClaudeDeepResearchPanel,
   createClaudePageWithToolUse,
   createClaudePageWithThinkingStatus,
+  createClaudePageWithMultiStatusResponse,
 } from '../fixtures/dom-helpers';
 
 describe('ClaudeExtractor', () => {
@@ -1489,6 +1490,55 @@ console.log(x);</code></pre>
       expect(result.success).toBe(true);
       const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
       expect(assistantMsg?.content).toContain('Found several hotels.');
+    });
+  });
+
+  // ========== Multi-block interleaved-thinking response ==========
+  // A single response split across several sequential status/tool-use grid
+  // blocks: each block has its own .row-start-1 status header + .row-start-2
+  // content; the final block holds the full answer. Regression: only the
+  // first block's preamble was captured (see reported Salesforce DOM).
+  describe('Multi-block thinking-status response', () => {
+    it('captures the final answer when it follows intermediate preamble blocks', async () => {
+      createClaudePageWithMultiStatusResponse(
+        '22b989c9-b969-49d2-a726-de037f920d41',
+        'ナレッジ共有の方法を調査して',
+        [
+          { statusText: '検証し、解決策を調査した。', content: '<p>少し調査します。</p>' },
+          { statusText: '後継機能を精査中。', content: '<p>深掘りします。</p>' },
+          { statusText: '体系的に整理中。', content: '<p>確認します。</p>' },
+          {
+            statusText: '多角的に分析し、実装パターンを整理した。',
+            content: '<p>調査結果をまとめます。</p><h3>1. なぜ特殊か</h3><p>二層構造です。</p>',
+          },
+        ]
+      );
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      // The full final answer must be captured (regression: only first block was)
+      expect(assistantMsg?.content).toContain('調査結果をまとめます');
+      expect(assistantMsg?.content).toContain('なぜ特殊か');
+      expect(assistantMsg?.content).toContain('二層構造');
+      // Intermediate preamble text is part of the visible response too
+      expect(assistantMsg?.content).toContain('少し調査します');
+      // Status summary labels (.row-start-1 buttons) must not leak into content
+      expect(assistantMsg?.content).not.toContain('多角的に分析し');
+    });
+
+    it('captures multi-block content without leaking status labels (tool content off)', async () => {
+      createClaudePageWithMultiStatusResponse('22b989c9-b969-49d2-a726-de037f920d42', 'Question', [
+        { statusText: 'Investigated the problem.', content: '<p>Let me look into this.</p>' },
+        { statusText: 'Summarized findings.', content: '<p>Final answer body.</p>' },
+      ]);
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('Final answer body.');
+      expect(assistantMsg?.content).not.toContain('Investigated the problem');
+      expect(assistantMsg?.content).not.toContain('Summarized findings');
     });
   });
 

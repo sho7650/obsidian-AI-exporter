@@ -865,6 +865,64 @@ export function createClaudePageWithThinkingStatus(
   `);
 }
 
+/**
+ * Create a Claude page whose assistant response is split across multiple
+ * sequential thinking-status / tool-use blocks (interleaved-thinking layout).
+ *
+ * Mirrors Claude's real DOM where a single response is composed of several
+ * `.grid.grid-rows-[auto_auto]` step blocks. Each block exposes its own
+ * `.row-start-1` status header and `.row-start-2` content section; the final
+ * block carries the full answer while earlier blocks hold short preambles.
+ *
+ * @see Issue: multi-block responses captured only the first preamble block
+ */
+export function createClaudePageWithMultiStatusResponse(
+  conversationId: string,
+  userContent: string,
+  steps: Array<{ statusText: string; content: string }>
+): void {
+  setClaudeLocation(conversationId);
+
+  const stepBlocks = steps
+    .map(
+      (step, i) => `
+      <div class="${i === 0 ? '' : 'mt-4'}"><div class="grid grid-rows-[auto_auto] min-w-0">
+        <div class="row-start-1 col-start-1 min-w-0">
+          <div class="min-w-0 pl-2 py-1.5">
+            <button class="group/status" aria-expanded="false">
+              <span class="truncate font-base">${escapeHtmlForClaude(step.statusText)}</span>
+            </button>
+          </div>
+        </div>
+        <div class="row-start-2 col-start-1 relative grid isolate min-w-0">
+          <div class="row-start-1 col-start-1 relative z-[2] min-w-0">
+            <div><div class="standard-markdown grid-cols-1 grid">${step.content}</div></div>
+          </div>
+        </div>
+      </div></div>`
+    )
+    .join('\n');
+
+  loadFixture(`
+    <div class="app-container">
+      <div class="conversation-thread">
+        <div data-test-render-count="2" class="group" style="height: auto;">
+          <div class="bg-bg-300 rounded-xl pl-2.5 py-2.5">
+            <div data-testid="user-message">
+              <p class="whitespace-pre-wrap break-words">${escapeHtmlForClaude(userContent)}</p>
+            </div>
+          </div>
+        </div>
+        <div data-test-render-count="1" class="group" style="height: auto;">
+          <div class="font-claude-response" data-is-streaming="false">
+            <div>${stepBlocks}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
 // ========== ChatGPT DOM Helpers ==========
 
 /**
