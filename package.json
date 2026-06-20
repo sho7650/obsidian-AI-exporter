@@ -9,6 +9,7 @@
     "build:zip": "npm run build && cd dist && zip -r ../gemini2obsidian-$(node -p \"require('../package.json').version\").zip . -x '*.DS_Store' -x '.vite/*' && cd ..",
     "lint": "eslint src/ && node scripts/lint-platforms.mjs",
     "lint:platforms": "node scripts/lint-platforms.mjs",
+    "compare-build": "node scripts/compare-build.mjs",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,html}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,html}\"",
     "preview": "vite preview",
