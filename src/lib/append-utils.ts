@@ -99,24 +99,42 @@ export async function lookupExistingFile(
     );
     if (recursive) return recursive;
   } else if (resolvedPath) {
-    const files = await client.listFiles(resolvedPath);
-    for (const file of files) {
-      if (file.endsWith(`-${idSuffix}.md`)) {
-        const matchedPath = `${resolvedPath}/${file}`;
-        if (matchedPath === fullPath) continue; // Already checked
-        const content = await client.getFile(matchedPath);
-        if (content !== null) {
-          const parsed = parseFrontmatter(content);
-          if (parsed?.fields.id === expectedId) {
-            return { found: true, path: matchedPath, content, matchType: 'id-scan' };
-          }
-        }
-      }
-    }
+    const flat = await flatIdScan(client, resolvedPath, idSuffix, expectedId, fullPath);
+    if (flat) return flat;
   }
 
   // Step 3: Not found
   return { found: false, path: fullPath, content: '', matchType: 'none' };
+}
+
+/**
+ * Scan a single directory for any `.md` file whose name ends in `-{idSuffix}.md`
+ * and whose frontmatter id matches expectedId. Returns the first match, or null.
+ *
+ * Non-recursive sibling of {@link recursiveIdScan}, used when the vault path
+ * template has no date variables (legacy flat-scan behaviour).
+ */
+async function flatIdScan(
+  client: ObsidianApiClient,
+  dir: string,
+  idSuffix: string,
+  expectedId: string,
+  skipPath: string
+): Promise<FileLookupResult | null> {
+  const files = await client.listFiles(dir);
+  for (const file of files) {
+    if (!file.endsWith(`-${idSuffix}.md`)) continue;
+    const candidatePath = `${dir}/${file}`;
+    if (candidatePath === skipPath) continue; // Already checked as direct match
+    const content = await client.getFile(candidatePath);
+    if (content === null) continue;
+    const parsed = parseFrontmatter(content);
+    if (parsed?.fields.id === expectedId) {
+      return { found: true, path: candidatePath, content, matchType: 'id-scan' };
+    }
+  }
+
+  return null;
 }
 
 /**
