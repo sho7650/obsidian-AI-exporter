@@ -24,13 +24,14 @@
       # Tool binaries come from npm-managed node_modules; Nix supplies the
       # Node runtime and the invocation surface. See ADR-011.
       mkAppDrv =
-        pkgs: name: script:
+        pkgs: name: extraInputs: script:
         pkgs.writeShellApplication {
           inherit name;
           runtimeInputs = [
             pkgs.nodejs_24
             pkgs.zip
-          ];
+          ]
+          ++ extraInputs;
           text = ''
             if [ ! -d "$PWD/node_modules" ]; then
               echo "error: node_modules/ not found in $PWD" >&2
@@ -47,7 +48,12 @@
         let
           app = name: script: {
             type = "app";
-            program = "${mkAppDrv pkgs name script}/bin/${name}";
+            program = "${mkAppDrv pkgs name [ ] script}/bin/${name}";
+          };
+          # Variant for apps that need extra runtime tools on PATH.
+          appWith = name: extraInputs: script: {
+            type = "app";
+            program = "${mkAppDrv pkgs name extraInputs script}/bin/${name}";
           };
         in
         {
@@ -67,6 +73,17 @@
             node scripts/lint-platforms.mjs
           '';
           lint-platforms = app "lint-platforms" ''node scripts/lint-platforms.mjs "$@"'';
+          # Compare a local build against the GitHub Actions release ZIP.
+          # Needs gh (download release artifact), unzip (extract it), and
+          # diffoscope (human-readable drill-down on mismatch). See ADR.
+          compare-build =
+            appWith "compare-build"
+              [
+                pkgs.gh
+                pkgs.unzip
+                pkgs.diffoscope
+              ]
+              ''node scripts/compare-build.mjs "$@"'';
           format = app "format" ''prettier --write "src/**/*.{ts,tsx,css,html}" "$@"'';
           format-check = app "format-check" ''prettier --check "src/**/*.{ts,tsx,css,html}" "$@"'';
           test = app "test" ''vitest run "$@"'';
