@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.2.17...v1.3.0) (2026-06-20)
+
+
+### Features
+
+* add build comparison tooling (local vs CI release ZIP) ([#277](https://github.com/sho7650/obsidian-AI-exporter/issues/277)) ([d8c2d22](https://github.com/sho7650/obsidian-AI-exporter/commit/d8c2d22a1a8402fa6c82c8c5cfc5db3d6780e312))
+
 ## [1.2.17](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.2.16...v1.2.17) (2026-06-20)
 
 
