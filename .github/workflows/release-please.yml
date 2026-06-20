@@ -39,7 +39,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Node 24 to match flake.nix (nodejs_24) and ci.yml, so the released
+          # ZIP is built on the same toolchain as local/dev builds. Keeps the
+          # release artifact reproducible/comparable against a local build.
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
