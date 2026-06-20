@@ -8,25 +8,32 @@
 import TurndownService from 'turndown';
 import { MAX_LANG_HINT_LENGTH } from '../lib/constants';
 
+/** Leading blockquote prefix (one or more `> ` markers) to preserve as-is. */
+const BLOCKQUOTE_PREFIX_PATTERN = /^(\s*>\s*)+/;
+/** Inline code segments — capture group means odd split indices are code. */
+const INLINE_CODE_SPLIT_PATTERN = /(`[^`]+`)/;
+/** Angle brackets, including backslash-escaped forms (`\<`, `\>`). */
+const ANGLE_BRACKET_PATTERN = /\\[<>]|[<>]/g;
+
 /**
  * Escape angle brackets in a single line of Markdown text.
  * Preserves blockquote markers and inline code segments.
  */
 function escapeAngleBracketsInLine(line: string): string {
   // 1. Extract blockquote prefix (preserve as-is)
-  const bqMatch = line.match(/^(\s*>\s*)+/);
+  const bqMatch = line.match(BLOCKQUOTE_PREFIX_PATTERN);
   const prefix = bqMatch ? bqMatch[0] : '';
   const rest = line.slice(prefix.length);
 
   // 2. Split by inline code segments (capture group → odd indices are code)
-  const parts = rest.split(/(`[^`]+`)/);
+  const parts = rest.split(INLINE_CODE_SPLIT_PATTERN);
 
   // 3. Escape angle brackets in non-code segments.
   //    Also handle \< and \> (backslash+angle) to prevent incomplete escaping (CodeQL js/incomplete-sanitization).
   const escaped = parts
     .map((part, i) => {
       if (i % 2 === 1) return part; // inline code — preserve
-      return part.replace(/\\[<>]|[<>]/g, match => {
+      return part.replace(ANGLE_BRACKET_PATTERN, match => {
         if (match.length === 2) {
           // \< or \> → escaped backslash + escaped angle bracket
           return '\\\\' + '\\' + match[1];

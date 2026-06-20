@@ -56,8 +56,10 @@ export function validateCalloutType(type: string, defaultType: CalloutType): Cal
  * Validate vault path
  */
 export function validateVaultPath(path: string): string {
+  const trimmed = path.trim();
+
   // Empty path is allowed (saves to vault root)
-  if (!path.trim()) return '';
+  if (!trimmed) return '';
 
   // Path traversal check
   if (containsPathTraversal(path)) {
@@ -69,7 +71,7 @@ export function validateVaultPath(path: string): string {
     throw new Error(`Vault path is too long (max ${MAX_VAULT_PATH_LENGTH} characters)`);
   }
 
-  return path.trim();
+  return trimmed;
 }
 
 /**

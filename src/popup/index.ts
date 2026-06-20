@@ -277,25 +277,20 @@ function populateTimezoneOptions(): void {
   }
 }
 
+/** Toggle a settings group's visibility via inline display style. */
+function setGroupVisible(group: HTMLElement, visible: boolean): void {
+  group.style.display = visible ? '' : 'none';
+}
+
 /**
  * Show/hide timezone dropdown based on includeDates checkbox
  */
 function updateTimezoneVisibility(): void {
-  const group = elements.timezoneGroup;
-  if (elements.includeDates.checked) {
-    group.style.display = '';
-  } else {
-    group.style.display = 'none';
-  }
+  setGroupVisible(elements.timezoneGroup, elements.includeDates.checked);
 }
 
 function updateCalloutSettingsVisibility(): void {
-  const group = elements.calloutSettingsGroup;
-  if (elements.messageFormat.value === 'callout') {
-    group.style.display = '';
-  } else {
-    group.style.display = 'none';
-  }
+  setGroupVisible(elements.calloutSettingsGroup, elements.messageFormat.value === 'callout');
 }
 
 /**
