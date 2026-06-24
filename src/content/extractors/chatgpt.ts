@@ -142,19 +142,45 @@ export class ChatGPTExtractor extends BaseExtractor {
   }
 
   /**
+   * Reasoning-summary label inside a thinking turn (e.g. "Thought for 47s",
+   * "Thought for a few seconds").
+   *
+   * A gpt-*-thinking assistant turn renders short reasoning-summary
+   * `.markdown.prose` blocks BEFORE this label and the real answer AFTER it.
+   * The summaries and the answer share an identical wrapper structure, so this
+   * localized button text is the only available boundary marker (see #281).
+   *
+   * The English branch requires the trailing "for" keyword so transient
+   * control buttons like "Thinking…" / "Continue reasoning" are not matched,
+   * while still accepting natural-language durations. Matching is best-effort:
+   * unrecognized locales fall back to keeping every block, so the answer is
+   * never dropped.
+   */
+  private static readonly REASONING_LABEL_PATTERN =
+    /^(?:thought|thinking|reasoned|worked)\s+for\b|^(?:思考|考え)/i;
+
+  /**
    * Extract assistant response content (HTML for markdown conversion)
    *
-   * All HTML is sanitized via DOMPurify to prevent XSS
-   * Also cleans utm_source parameters from citation URLs
+   * A single assistant turn can contain MULTIPLE `.markdown.prose` blocks
+   * across separate `[data-message-id]` wrappers (issue #281). All answer
+   * blocks are collected and joined in DOM order so later parts of the
+   * response are not dropped. Reasoning-summary blocks preceding a
+   * "Thought for Ns" label are excluded best-effort (Claude-consistent).
+   *
+   * All HTML is sanitized via DOMPurify to prevent XSS, and utm_source
+   * parameters are stripped from citation URLs.
    * @see NFR-001-2 in design document
    */
   private extractAssistantContent(turnElement: Element): string {
-    // Find markdown content within the turn
-    const markdownEl = this.queryWithFallback<HTMLElement>(SELECTORS.markdownContent, turnElement);
-    if (markdownEl) {
-      // Clean citation URLs before returning
-      const cleanedHtml = this.cleanCitationUrls(markdownEl.innerHTML);
-      return sanitizeHtml(cleanedHtml);
+    const markdownEls = this.queryAllWithFallback<HTMLElement>(
+      SELECTORS.markdownContent,
+      turnElement
+    );
+
+    if (markdownEls.length > 0) {
+      const answerEls = this.selectAnswerBlocks(turnElement, markdownEls);
+      return answerEls.map(el => this.sanitizeBlockHtml(el.innerHTML)).join('\n\n');
     }
 
     // Fallback: try assistantResponse selectors
@@ -163,11 +189,59 @@ export class ChatGPTExtractor extends BaseExtractor {
       turnElement
     );
     if (assistantEl) {
-      const cleanedHtml = this.cleanCitationUrls(assistantEl.innerHTML);
-      return sanitizeHtml(cleanedHtml);
+      return this.sanitizeBlockHtml(assistantEl.innerHTML);
     }
 
     return '';
+  }
+
+  /**
+   * Clean citation URLs and sanitize a single content block's HTML.
+   */
+  private sanitizeBlockHtml(html: string): string {
+    return sanitizeHtml(this.cleanCitationUrls(html));
+  }
+
+  /**
+   * Choose which markdown blocks belong to the answer.
+   *
+   * With a single block, behavior is unchanged. With multiple blocks, a
+   * "Thought for Ns" reasoning label (if detected) marks the boundary: only
+   * blocks positioned after it are kept. If no label is found, or excluding
+   * reasoning would leave nothing, all blocks are kept so the answer is never
+   * lost (safety floor — degrades to "join everything").
+   */
+  private selectAnswerBlocks(turnElement: Element, blocks: HTMLElement[]): HTMLElement[] {
+    if (blocks.length <= 1) {
+      return blocks;
+    }
+
+    const reasoningLabel = this.findReasoningLabel(turnElement);
+    if (!reasoningLabel) {
+      return blocks;
+    }
+
+    const afterLabel = blocks.filter(
+      block =>
+        (reasoningLabel.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+    );
+    return afterLabel.length > 0 ? afterLabel : blocks;
+  }
+
+  /**
+   * Find the reasoning-summary label button within an assistant turn.
+   * Returns the first button whose text matches REASONING_LABEL_PATTERN,
+   * or null when none is present (non-thinking response).
+   */
+  private findReasoningLabel(turnElement: Element): HTMLElement | null {
+    const buttons = turnElement.querySelectorAll<HTMLElement>('button');
+    for (const button of buttons) {
+      const text = button.textContent?.trim() ?? '';
+      if (ChatGPTExtractor.REASONING_LABEL_PATTERN.test(text)) {
+        return button;
+      }
+    }
+    return null;
   }
 
   /**

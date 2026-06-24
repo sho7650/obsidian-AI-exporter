@@ -741,4 +741,157 @@ describe('ChatGPTExtractor', () => {
       expect(assistantMsg?.content).toContain('foo=bar');
     });
   });
+
+  // ========== Multi-block assistant content (issue #281) ==========
+  // A single section[data-turn="assistant"] can contain MULTIPLE assistant
+  // [data-message-id] wrappers, each with its own .markdown.prose. For
+  // gpt-*-thinking models, short reasoning-summary blocks precede a
+  // "Thought for Ns" label, followed by the real answer. The previous
+  // implementation returned only the FIRST .markdown.prose, dropping the answer.
+  describe('Multi-block assistant content (issue #281)', () => {
+    // Real structure captured via CDP from gpt-5-5-thinking:
+    //   reasoning msg → reasoning msg → <button>Thought for 47s</button> → answer msg
+    const thinkingTurn = `
+      <section data-turn-id="turn-1" data-turn="assistant">
+        <div data-message-author-role="assistant" data-message-id="m1" data-message-model-slug="gpt-5-5-thinking">
+          <div class="flex w-full flex-col gap-1 empty:hidden">
+            <div class="markdown prose dark:prose-invert markdown-new-styling"><p>REASONING ONE summary</p></div>
+          </div>
+        </div>
+        <div data-message-author-role="assistant" data-message-id="m2" data-message-model-slug="gpt-5-5-thinking">
+          <div class="flex w-full flex-col gap-1 empty:hidden">
+            <div class="markdown prose dark:prose-invert markdown-new-styling"><p>REASONING TWO summary</p></div>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex min-w-0 items-center">
+            <button type="button">Thought for 47s</button>
+          </div>
+        </div>
+        <div data-message-author-role="assistant" data-message-id="m3" data-turn-start-message="true" data-message-model-slug="gpt-5-5-thinking">
+          <div class="flex w-full flex-col gap-1 empty:hidden">
+            <div class="markdown prose dark:prose-invert markdown-new-styling"><h2>CONCLUSION</h2><p>ANSWER body text</p></div>
+          </div>
+        </div>
+      </section>`;
+
+    it('excludes reasoning summaries and returns the answer after the Thought label', () => {
+      setChatGPTLocation('test-123');
+      loadFixture(thinkingTurn);
+      const messages = extractor.extractMessages();
+      expect(messages).toHaveLength(1);
+      const content = messages[0].content;
+      expect(content).toContain('ANSWER body text');
+      expect(content).toContain('CONCLUSION');
+      expect(content).not.toContain('REASONING ONE');
+      expect(content).not.toContain('REASONING TWO');
+    });
+
+    it('joins all blocks when an assistant turn has multiple markdown blocks without reasoning', () => {
+      setChatGPTLocation('test-123');
+      loadFixture(`
+        <section data-turn-id="turn-1" data-turn="assistant">
+          <div data-message-author-role="assistant" data-message-id="m1">
+            <div class="markdown prose"><p>PART ONE of answer</p></div>
+          </div>
+          <div data-message-author-role="assistant" data-message-id="m2">
+            <div class="markdown prose"><p>PART TWO of answer</p></div>
+          </div>
+          <div class="z-0 flex min-h-[46px] justify-start">
+            <button type="button" aria-label="Copy response">Copy response</button>
+            <button type="button" aria-label="Sources">Sources</button>
+          </div>
+        </section>`);
+      const messages = extractor.extractMessages();
+      expect(messages).toHaveLength(1);
+      expect(messages[0].content).toContain('PART ONE of answer');
+      expect(messages[0].content).toContain('PART TWO of answer');
+    });
+
+    it('falls back to joining all blocks when reasoning label leaves no answer block after it', () => {
+      setChatGPTLocation('test-123');
+      loadFixture(`
+        <section data-turn-id="turn-1" data-turn="assistant">
+          <div data-message-author-role="assistant" data-message-id="m1">
+            <div class="markdown prose"><p>FIRST block content</p></div>
+          </div>
+          <div data-message-author-role="assistant" data-message-id="m2">
+            <div class="markdown prose"><p>SECOND block content</p></div>
+          </div>
+          <button type="button">Thought for 12s</button>
+        </section>`);
+      const messages = extractor.extractMessages();
+      expect(messages).toHaveLength(1);
+      // Label is after all prose → safety floor keeps everything
+      expect(messages[0].content).toContain('FIRST block content');
+      expect(messages[0].content).toContain('SECOND block content');
+    });
+
+    it('joins all blocks (incl. reasoning) when the reasoning label is in an unrecognized locale', () => {
+      setChatGPTLocation('test-123');
+      loadFixture(`
+        <section data-turn-id="turn-1" data-turn="assistant">
+          <div data-message-author-role="assistant" data-message-id="m1">
+            <div class="markdown prose"><p>REASONING summary part</p></div>
+          </div>
+          <button type="button">Pensó durante 47s</button>
+          <div data-message-author-role="assistant" data-message-id="m2">
+            <div class="markdown prose"><p>ANSWER conclusion part</p></div>
+          </div>
+        </section>`);
+      const messages = extractor.extractMessages();
+      expect(messages).toHaveLength(1);
+      // Unrecognized label → never drop the answer (safety floor joins all)
+      expect(messages[0].content).toContain('ANSWER conclusion part');
+      expect(messages[0].content).toContain('REASONING summary part');
+    });
+
+    it('does not treat a transient "Thinking…" control button as a reasoning boundary', () => {
+      setChatGPTLocation('test-123');
+      loadFixture(`
+        <section data-turn-id="turn-1" data-turn="assistant">
+          <div data-message-author-role="assistant" data-message-id="m1">
+            <div class="markdown prose"><p>FIRST visible part</p></div>
+          </div>
+          <button type="button">Thinking…</button>
+          <div data-message-author-role="assistant" data-message-id="m2">
+            <div class="markdown prose"><p>SECOND visible part</p></div>
+          </div>
+        </section>`);
+      const messages = extractor.extractMessages();
+      expect(messages).toHaveLength(1);
+      // "Thinking…" lacks the "for" keyword → not a boundary → keep everything
+      expect(messages[0].content).toContain('FIRST visible part');
+      expect(messages[0].content).toContain('SECOND visible part');
+    });
+
+    it('leaves single-block assistant turns unchanged', () => {
+      setChatGPTLocation('test-123');
+      loadFixture(`
+        <section data-turn-id="turn-1" data-turn="assistant">
+          <div data-message-author-role="assistant" data-message-id="m1">
+            <div class="markdown prose"><p>Single answer block</p></div>
+          </div>
+        </section>`);
+      const messages = extractor.extractMessages();
+      expect(messages).toHaveLength(1);
+      expect(messages[0].content).toContain('Single answer block');
+    });
+
+    it('cleans utm_source from citation URLs across every joined block', () => {
+      setChatGPTLocation('test-123');
+      loadFixture(`
+        <section data-turn-id="turn-1" data-turn="assistant">
+          <div data-message-author-role="assistant" data-message-id="m1">
+            <div class="markdown prose"><p>A <a href="https://a.com?utm_source=chatgpt.com">A</a></p></div>
+          </div>
+          <div data-message-author-role="assistant" data-message-id="m2">
+            <div class="markdown prose"><p>B <a href="https://b.com?utm_source=chatgpt.com">B</a></p></div>
+          </div>
+        </section>`);
+      const messages = extractor.extractMessages();
+      expect(messages).toHaveLength(1);
+      expect(messages[0].content).not.toContain('utm_source');
+    });
+  });
 });
