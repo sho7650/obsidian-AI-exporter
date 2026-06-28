@@ -155,13 +155,7 @@ export class GeminiExtractor extends BaseExtractor {
     }
 
     // Priority 2: First user query text
-    const firstQueryText = this.queryWithFallback<HTMLElement>(SELECTORS.queryTextLine);
-    if (firstQueryText?.textContent) {
-      const title = this.sanitizeText(firstQueryText.textContent);
-      return title.substring(0, MAX_CONVERSATION_TITLE_LENGTH);
-    }
-
-    return 'Untitled Gemini Conversation';
+    return this.getFirstMessageTitle(SELECTORS.queryTextLine, 'Untitled Gemini Conversation');
   }
 
   /**
@@ -268,7 +262,7 @@ export class GeminiExtractor extends BaseExtractor {
     }
 
     // Final fallback: element's full text content
-    return this.sanitizeText(element.textContent || '');
+    return this.extractPlainText(element);
   }
 
   /**
