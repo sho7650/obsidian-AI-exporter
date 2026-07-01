@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.3...v1.3.4) (2026-07-01)
+
+
+### Bug Fixes
+
+* skip Gemini selector validation on transient load stalls ([#289](https://github.com/sho7650/obsidian-AI-exporter/issues/289)) ([668c58b](https://github.com/sho7650/obsidian-AI-exporter/commit/668c58bdbb636500861b854eb3aaa178a227d65d))
+
 ## [1.3.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.2...v1.3.3) (2026-06-28)
 
 
