@@ -27,6 +27,7 @@ import type { SelectorGroup } from '../../src/content/extractors/selectors/types
 import { checkAuthStatus, type AuthStatus } from './auth-check';
 import { hasBaseline, saveBaseline, loadBaseline, compareWithBaseline } from './baseline';
 import { classifyResults, type SelectorResult } from './classifier';
+import { waitForReadyWithRetry, decideLoadOutcome } from './load-readiness';
 
 dotenv.config({ path: path.join(import.meta.dirname, '..', '.env.local') });
 
@@ -43,6 +44,25 @@ const READY_SELECTORS: Readonly<Record<string, string>> = {
   perplexity_conv: 'div[id^="markdown-content-"]',
   notebooklm_conv: '.chat-message-pair',
 };
+
+/**
+ * Loading indicators per ready-key. When the ready selector never appears but
+ * one of these is still present, the content stalled mid-load (transient) and
+ * the test is skipped rather than failed. Platforms without an entry always
+ * fall through to validation (a genuine regression will still FAIL).
+ *
+ * Gemini renders `mat-progress-spinner` in its chat shell while the
+ * conversation-history fetch is pending.
+ */
+const LOADING_SELECTORS: Readonly<Record<string, string>> = {
+  gemini_conv: 'mat-progress-spinner, mat-spinner',
+  gemini_dr: 'mat-progress-spinner, mat-spinner',
+};
+
+/** Number of navigation attempts (reload between failures) before giving up. */
+const READY_MAX_ATTEMPTS = 3;
+/** Per-attempt wait for the ready selector. */
+const READY_TIMEOUT_MS = 15_000;
 
 // --- Helper Functions ---
 
@@ -91,13 +111,45 @@ async function runPlatformValidation(
       return;
     }
 
-    // Wait for page ready
+    // Wait for page ready, retrying with a reload between attempts. Live SPAs
+    // (notably Gemini) intermittently stall while fetching conversation history,
+    // leaving the shell on a loading spinner. See load-readiness.ts.
     const readySelector = READY_SELECTORS[readyKey];
     if (readySelector) {
-      try {
-        await page.waitForSelector(readySelector, { timeout: 15_000 });
-      } catch {
-        console.warn(`${platform}: ready selector '${readySelector}' not found, proceeding`);
+      const readyFound = await waitForReadyWithRetry(
+        {
+          waitReady: async () => {
+            try {
+              await page.waitForSelector(readySelector, { timeout: READY_TIMEOUT_MS });
+              return true;
+            } catch {
+              return false;
+            }
+          },
+          reload: async () => {
+            await page.reload({ waitUntil: 'domcontentloaded', timeout: 30_000 });
+          },
+        },
+        { maxAttempts: READY_MAX_ATTEMPTS }
+      );
+
+      if (!readyFound) {
+        const loadingSelector = LOADING_SELECTORS[readyKey];
+        const loadingPresent = loadingSelector
+          ? (await page.evaluate(
+              (sel: string) => document.querySelectorAll(sel).length,
+              loadingSelector
+            )) > 0
+          : false;
+
+        const decision = decideLoadOutcome({ platform, readyFound, loadingPresent });
+        console.warn(
+          `${platform}: ready selector '${readySelector}' not found — ${decision.reason}`
+        );
+        if (decision.action === 'skip') {
+          test.skip(true, decision.reason);
+          return;
+        }
       }
     }
 
