@@ -10,6 +10,8 @@ import {
   setPerplexityLocation,
   setNonPerplexityLocation,
   createPerplexityInlineCitation,
+  createPerplexityPillCitation,
+  createPerplexityLegacyPillCitation,
   createPerplexityPage,
   createPerplexityDeepResearchPage,
   createPerplexityMultiTurnWithDeepResearch,
@@ -177,22 +179,294 @@ describe('PerplexityExtractor', () => {
     });
   });
 
-  // ========== Citation Handling ==========
-  describe('Citation Handling', () => {
-    it('preserves <a href> links after sanitization', async () => {
+  // ========== Citation Handling (issue #291) ==========
+  //
+  // Perplexity renders inline citations as "pill" spans carrying the source
+  // URL in data-pplx-citation-url. Without transformation, DOMPurify strips
+  // the wrapper and the pill text is glued to the prose ("sketch.facebook+1").
+  // Citations are rewritten to footnote-ref placeholders BEFORE sanitization
+  // (same pipeline as NotebookLM), with per-message footnote definitions
+  // linking title and URL.
+  describe('Citation Handling (issue #291)', () => {
+    it('converts hover-trigger pill citations to footnote refs with URL', async () => {
       setPerplexityLocation('test-slug');
-      const citationHtml = createPerplexityInlineCitation('https://example.com', 'example');
+      const pill = createPerplexityPillCitation(
+        'https://www.biccamera.co.jp/apple/applecare/',
+        'biccamera.co'
+      );
       createPerplexityPage('test-slug', [
-        { role: 'user', content: 'Test citations' },
-        { role: 'assistant', content: `<p>Here is a citation ${citationHtml}</p>` },
+        { role: 'user', content: 'AppleCare question' },
+        { role: 'assistant', content: `<p>Global repair is included.${pill}</p>` },
       ]);
       const result = await extractor.extract();
       expect(result.success).toBe(true);
       const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
-      expect(assistantMsg?.content).toContain('href="https://example.com"');
-      expect(assistantMsg?.content).toContain('example');
-      // data-pplx-* attributes should be stripped by DOMPurify
+      // Assistant message is messages[1] → footnote label prefix m1-
+      expect(assistantMsg?.content).toContain('data-footnote-ref="m1-1"');
+      expect(assistantMsg?.content).toContain(
+        '[^m1-1]: [biccamera.co](https://www.biccamera.co.jp/apple/applecare/)'
+      );
+      // The reported bug: pill text glued to prose as "domain+N"
+      expect(assistantMsg?.content).not.toContain('biccamera.co+1');
       expect(assistantMsg?.content).not.toContain('data-pplx');
+    });
+
+    it('converts anchor citations to footnotes using aria-label as title', async () => {
+      setPerplexityLocation('test-slug');
+      const anchor = createPerplexityInlineCitation(
+        'https://www.macworld.com/article/230521/applecare-warranty-faq.html',
+        'macworld',
+        'AppleCare+: How to extend your Apple warranty'
+      );
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'Warranty question' },
+        { role: 'assistant', content: `<p>Enroll within 60 days.${anchor}</p>` },
+      ]);
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistantMsg?.content).toContain('data-footnote-ref="m1-1"');
+      expect(assistantMsg?.content).toContain(
+        '[^m1-1]: [AppleCare+: How to extend your Apple warranty]' +
+          '(https://www.macworld.com/article/230521/applecare-warranty-faq.html)'
+      );
+    });
+
+    it('dedupes citations with the same URL within one message', async () => {
+      setPerplexityLocation('test-slug');
+      const pillA = createPerplexityPillCitation('https://example.com/a', 'example');
+      const pillB = createPerplexityPillCitation('https://example.com/a', 'example');
+      const pillC = createPerplexityPillCitation('https://other.example.org/b', 'other.example');
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'Dedup test' },
+        {
+          role: 'assistant',
+          content: `<p>First.${pillA}</p><p>Second.${pillB}</p><p>Third.${pillC}</p>`,
+        },
+      ]);
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+      // Same URL → same label, single definition
+      expect(content.match(/data-footnote-ref="m1-1"/g)).toHaveLength(2);
+      expect(content.match(/\[\^m1-1\]: /g)).toHaveLength(1);
+      // Different URL → next sequential label
+      expect(content).toContain('data-footnote-ref="m1-2"');
+      expect(content).toContain('[^m1-2]: [other.example](https://other.example.org/b)');
+    });
+
+    it('produces unique footnote labels across messages', async () => {
+      setPerplexityLocation('test-slug');
+      const pill1 = createPerplexityPillCitation('https://example.com/one', 'example');
+      const pill2 = createPerplexityPillCitation('https://example.com/two', 'example');
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'Q1' },
+        { role: 'assistant', content: `<p>A1.${pill1}</p>` },
+        { role: 'user', content: 'Q2' },
+        { role: 'assistant', content: `<p>A2.${pill2}</p>` },
+      ]);
+      const result = await extractor.extract();
+      const messages = result.data?.messages ?? [];
+      expect(messages[1].content).toContain('data-footnote-ref="m1-1"');
+      expect(messages[3].content).toContain('data-footnote-ref="m3-1"');
+    });
+
+    it('removes citation-nbsp spacer spans', async () => {
+      setPerplexityLocation('test-slug');
+      const pill = createPerplexityPillCitation('https://example.com', 'example');
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'Spacer test' },
+        { role: 'assistant', content: `<p>Text.${pill}</p>` },
+      ]);
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+      expect(content).not.toContain('citation-nbsp');
+    });
+
+    it('drops citations with unsafe (non-http) URLs without emitting footnotes', async () => {
+      setPerplexityLocation('test-slug');
+      const evil = createPerplexityPillCitation('javascript:alert(1)', 'evil');
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'XSS test' },
+        { role: 'assistant', content: `<p>Safe text.${evil}</p>` },
+      ]);
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+      expect(content).toContain('Safe text.');
+      expect(content).not.toContain('javascript:alert');
+      expect(content).not.toContain('data-footnote-ref');
+      expect(content).not.toContain('[^m1-');
+    });
+
+    it('falls back to pill domain text as title when aria-label is absent', async () => {
+      setPerplexityLocation('test-slug');
+      const pill = createPerplexityPillCitation(
+        'https://netsetsu.com/mac-applecare-later/',
+        'netsetsu',
+        2
+      );
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'Title fallback' },
+        { role: 'assistant', content: `<p>Note.${pill}</p>` },
+      ]);
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+      // "+2" suffix must be stripped from the title
+      expect(content).toContain('[^m1-1]: [netsetsu](https://netsetsu.com/mac-applecare-later/)');
+    });
+
+    it('renders footnote syntax through the markdown pipeline', async () => {
+      setPerplexityLocation('test-slug');
+      const pill = createPerplexityPillCitation(
+        'https://www.biccamera.co.jp/apple/applecare/',
+        'biccamera.co'
+      );
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'Markdown test' },
+        { role: 'assistant', content: `<p>Repairs are global.${pill}</p>` },
+      ]);
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+      const markdown = htmlToMarkdown(content);
+      expect(markdown).toContain('Repairs are global.[^m1-1]');
+      expect(markdown).toContain(
+        '[^m1-1]: [biccamera.co](https://www.biccamera.co.jp/apple/applecare/)'
+      );
+    });
+
+    it('removes legacy pills (no URL in static DOM) instead of gluing their text', async () => {
+      setPerplexityLocation('test-slug');
+      const legacyPill = createPerplexityLegacyPillCitation('perplexity');
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'Legacy pill test' },
+        { role: 'assistant', content: `<p>Citations are numbered.${legacyPill}</p>` },
+      ]);
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+      const markdown = htmlToMarkdown(content);
+      expect(markdown).toContain('Citations are numbered.');
+      // No URL available → no footnote, and no glued "perplexity+1" text
+      expect(markdown).not.toContain('perplexity+1');
+      expect(content).not.toContain('data-footnote-ref');
+    });
+
+    it('handles modern and legacy pills in the same message', async () => {
+      setPerplexityLocation('test-slug');
+      const modern = createPerplexityPillCitation('https://example.com/modern', 'example');
+      const legacy = createPerplexityLegacyPillCitation('legacysite');
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'Mixed pills' },
+        { role: 'assistant', content: `<p>Modern.${modern}</p><p>Legacy.${legacy}</p>` },
+      ]);
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+      expect(content).toContain('data-footnote-ref="m1-1"');
+      expect(content).toContain('[^m1-1]: [example](https://example.com/modern)');
+      expect(content).not.toContain('legacysite');
+    });
+
+    it('renders footnote refs inside table cells (not literal REF)', async () => {
+      setPerplexityLocation('test-slug');
+      const pill = createPerplexityPillCitation('https://example.com/table-source', 'example');
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'Table test' },
+        {
+          role: 'assistant',
+          content:
+            '<table><thead><tr><th>Plan</th><th>Detail</th></tr></thead>' +
+            `<tbody><tr><td>Pro</td><td>10x citations${pill}</td></tr></tbody></table>`,
+        },
+      ]);
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+      const markdown = htmlToMarkdown(content);
+      expect(markdown).toContain('10x citations[^m1-1]');
+      expect(markdown).not.toContain('REF');
+    });
+
+    it('keeps legacy citations that embed a working <a href>', async () => {
+      setPerplexityLocation('test-slug');
+      // Legacy DOM (no data-pplx-citation-url anywhere) but with a real anchor:
+      // the link is recoverable and must survive as a markdown link.
+      const legacyAnchor =
+        '<span class="group/trigger inline-flex min-w-0" data-state="closed">' +
+        '<span class="citation inline-flex min-w-0">' +
+        '<a rel="noopener" target="_blank" href="https://example.com/video">' +
+        '<span>example</span></a></span></span>';
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'Legacy anchor test' },
+        { role: 'assistant', content: `<p>Watch this.${legacyAnchor}</p>` },
+      ]);
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+      expect(content).toContain('href="https://example.com/video"');
+    });
+
+    it('upgrades footnote title when a later duplicate carries aria-label', async () => {
+      setPerplexityLocation('test-slug');
+      const url = 'https://example.com/article';
+      const pillFirst = createPerplexityPillCitation(url, 'example');
+      const anchorLater = createPerplexityInlineCitation(url, 'example', 'Full Article Title');
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'Title upgrade test' },
+        { role: 'assistant', content: `<p>First.${pillFirst}</p><p>Later.${anchorLater}</p>` },
+      ]);
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+      expect(content).toContain('[^m1-1]: [Full Article Title](https://example.com/article)');
+      expect(content.match(/data-footnote-ref="m1-1"/g)).toHaveLength(2);
+    });
+
+    it('escapes markdown metacharacters in footnote titles', async () => {
+      setPerplexityLocation('test-slug');
+      const anchor = createPerplexityInlineCitation(
+        'https://example.com/win',
+        'example',
+        'Intro to C:\\Windows\\ [draft] (v2)'
+      );
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'Escape test' },
+        { role: 'assistant', content: `<p>Paths.${anchor}</p>` },
+      ]);
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+      const markdown = htmlToMarkdown(content);
+      // Backslashes, brackets, and parens must all be escaped so the link
+      // text terminates correctly and the URL part stays intact.
+      const defLine = markdown.split('\n').find(l => l.startsWith('[^m1-1]:')) ?? '';
+      expect(defLine).toContain('(https://example.com/win)');
+      expect(defLine).toContain('Intro to C:\\\\Windows\\\\ \\[draft\\] \\(v2\\)');
+    });
+
+    it('percent-escapes parentheses and spaces in footnote URLs', async () => {
+      setPerplexityLocation('test-slug');
+      const pill = createPerplexityPillCitation(
+        'https://en.wikipedia.org/wiki/Mercury_(planet)',
+        'wikipedia'
+      );
+      const pillSpace = createPerplexityPillCitation('https://example.com/my page', 'example');
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'URL escape test' },
+        { role: 'assistant', content: `<p>Planet.${pill}</p><p>Space.${pillSpace}</p>` },
+      ]);
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+      expect(content).toContain('(https://en.wikipedia.org/wiki/Mercury_%28planet%29)');
+      expect(content).toContain('(https://example.com/my%20page)');
+    });
+
+    it('preserves ordinary (non-citation) links in prose', async () => {
+      setPerplexityLocation('test-slug');
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'Plain link test' },
+        {
+          role: 'assistant',
+          content: '<p>See <a href="https://example.com/docs">the docs</a> for details.</p>',
+        },
+      ]);
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+      expect(content).toContain('href="https://example.com/docs"');
+      expect(content).toContain('the docs');
     });
   });
 
@@ -661,19 +935,23 @@ describe('PerplexityExtractor', () => {
       expect(reportMsg.htmlContent).toContain('<em>');
     });
 
-    it('preserves citation links in report content', async () => {
-      const citationHtml = createPerplexityInlineCitation('https://example.com', 'source');
+    it('converts citations in report content to footnotes', async () => {
+      const citationHtml = createPerplexityPillCitation('https://example.com', 'source');
       createPerplexityDeepResearchPage('deep-research-citations', {
         query: 'Test citations',
         reportTitle: 'Report with Citations',
-        reportContent: `<p>Key finding ${citationHtml} supports this.</p>`,
+        reportContent: `<p>Key finding.${citationHtml} supports this.</p>`,
       });
 
       const result = await extractor.extract();
       expect(result.success).toBe(true);
 
+      // Report is messages[1] → footnote label prefix m1-
       const reportMsg = result.data!.messages[1];
-      expect(reportMsg.content).toContain('href="https://example.com"');
+      expect(reportMsg.content).toContain('data-footnote-ref="m1-1"');
+      // URL is normalized via new URL().href (adds the trailing slash)
+      expect(reportMsg.content).toContain('[^m1-1]: [source](https://example.com/)');
+      expect(reportMsg.content).not.toContain('source+1');
     });
 
     it('preserves DOM order in multi-turn with Deep Research', async () => {

@@ -16,7 +16,7 @@ This document specifies the design for `PerplexityExtractor`, a new extractor cl
 |---|---|---|
 | Hostname | `www.perplexity.ai` | All observed URLs use `www` subdomain |
 | Conversation ID | Full slug from `/search/{slug}` | REQ Q2 |
-| Citations | Preserve in HTML; `<a href>` survives DOMPurify | REQ Q3; `data-pplx-*` stripped by sanitize.ts, but `href` persists |
+| Citations | Convert to Obsidian footnotes `[^label]: [title](url)` before sanitization | Issue #291; URL read from `data-pplx-citation-url`, see §4.4 |
 | Deep Research | Treat as `type: 'conversation'` | REQ Q5; no structural difference in DOM |
 | Fixture directory | Rename `perplxity` → `perplexity` | REQ Q4 |
 
@@ -171,29 +171,53 @@ Standard flow matching ChatGPTExtractor pattern:
 4. Build `ConversationData` with `source: 'perplexity'`
 5. Return `ExtractionResult`
 
-### 4.4 Citation Handling in DOMPurify
+### 4.4 Citation Handling — Footnote Transformation (issue #291)
 
-**Key insight**: Perplexity citations use this structure:
+> **Revised 2026-07-02.** The original design relied on citations embedding an
+> `<a href>` that survives DOMPurify. Perplexity has since switched to "pill"
+> citations whose text (e.g. `biccamera.co +1`) was glued to the prose in the
+> output (`sketch.facebook+1`, issue #291). Citations are now rewritten to
+> Obsidian footnotes before sanitization.
+
+**Key insight** (DOM observed 2026-07-02): every citation — both variants —
+wraps in a span carrying the source URL in `data-pplx-citation-url`:
 
 ```html
-<span class="citation inline"
-      data-pplx-citation=""
-      data-pplx-citation-url="https://example.com">
-  <a href="https://example.com">
-    <span>example</span>
-  </a>
-</span>
+<!-- Hover-trigger pill variant (no <a>, no title) -->
+<span class="citation inline" data-pplx-citation=""
+      data-pplx-citation-url="https://example.com/...">
+  <span class="group/trigger ...">
+    ... <span>example.co</span><span>+1</span> ...
+
+<!-- Anchor variant (title in aria-label) -->
+<span class="citation inline" data-pplx-citation=""
+      data-pplx-citation-url="https://example.com/...">
+  <span class="inline-flex" aria-label="Source Title">
+    <a href="https://example.com/...">... <span>example.co</span> ...</a>
 ```
 
-After DOMPurify processing (current `sanitize.ts`):
-- `data-pplx-citation` → **STRIPPED** (blocked by `data-*` filter in hook)
-- `data-pplx-citation-url` → **STRIPPED** (blocked by `data-*` filter in hook)
-- `<a href="https://example.com">` → **PRESERVED** (standard HTML)
-- `<span>example</span>` → **PRESERVED** (standard HTML)
+**Transformation** (`transformCitationsToFootnotes` in `perplexity.ts`, runs
+BEFORE `sanitizeHtml()` — same pipeline as NotebookLM, shared helpers in
+`extractors/footnotes.ts`):
 
-**Result**: The `<a href>` tag survives sanitization. Turndown will convert `<a href="url">text</a>` to `[text](url)` in Markdown. No changes to `sanitize.ts` needed.
+1. Each `span.citation[data-pplx-citation-url]` is replaced with a
+   `<span data-footnote-ref="m{messageIndex}-{n}">` placeholder
+   (allow-listed in `sanitize.ts`, converted to `[^label]` by Turndown).
+2. Citations are deduped by URL within one message; labels stay unique
+   across messages via the `m{messageIndex}-` prefix.
+3. Footnote definitions `[^label]: [title](url)` are appended as
+   `<p data-footnote-def>` paragraphs. Title priority: `aria-label` →
+   pill text with the trailing `+N` counter stripped → URL hostname.
+4. Only `http(s)` URLs are accepted from the data attribute (XSS guard).
+5. Legacy pills (pre-2026-07: `span.group/trigger` with **no**
+   `data-pplx-citation-url` ancestor — the URL genuinely does not exist in
+   the static DOM) are removed so their text is not glued to the prose.
+6. `<span class="citation-nbsp">` spacer spans are removed.
 
-The `<span class="citation-nbsp">` (empty separator span) will be stripped by DOMPurify or ignored by Turndown, which is acceptable behavior.
+**Known limitation**: a pill's `+N` counter indicates additional sources whose
+URLs are not present in the static DOM (they render only inside the lazily
+mounted Sources tab); only the primary URL is captured. The full source list
+(including uncited sources) is tracked as a separate enhancement.
 
 ---
 

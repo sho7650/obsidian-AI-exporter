@@ -1181,19 +1181,75 @@ export function setNonPerplexityLocation(hostname: string, pathname = '/'): void
 }
 
 /**
- * Create Perplexity inline citation element
+ * Shared inner pill body: domain text plus an optional "+N" counter.
+ * Kept in one place so the three citation variants below cannot drift apart
+ * when the fixture is refreshed against newer observed DOM.
+ */
+function perplexityPillBody(domainText: string, extraCount?: number): string {
+  const counter =
+    extraCount === undefined
+      ? ''
+      : `<span class="inline-block ml-xs mr-px"><span class="opacity-50">+${extraCount}</span></span>`;
+  return `<span class="relative -mt-px max-w-full min-w-0 whitespace-nowrap"><span class="text-3xs rounded-badge group min-w-4 max-w-full cursor-pointer align-middle"><span class="inline-block relative overflow-hidden">${escapeHtmlForPerplexity(domainText)}</span>${counter}</span></span>`;
+}
+
+/** Wrap pill content in the modern data-pplx-citation-url carrier span. */
+function perplexityCitationWrapper(url: string, inner: string): string {
+  return `<span class="citation-nbsp"></span><span class="citation inline" data-pplx-citation="" data-pplx-citation-url="${url}">${inner}</span>`;
+}
+
+/**
+ * Create Perplexity inline citation element (anchor variant)
+ *
+ * Replicates the real DOM observed 2026-07-02 (issue #291): the outer
+ * span carries the source URL in data-pplx-citation-url, an inner span
+ * carries the source title in aria-label, and an <a href> wraps the pill.
  *
  * @param url Source URL
- * @param displayText Link display text
+ * @param displayText Domain-like pill text (e.g. "biccamera.co")
+ * @param title Source title exposed via aria-label (optional)
  */
-export function createPerplexityInlineCitation(url: string, displayText: string): string {
-  return `
-    <span class="citation inline" data-pplx-citation="" data-pplx-citation-url="${url}">
-      <a href="${url}">
-        <span>${escapeHtmlForPerplexity(displayText)}</span>
-      </a>
-    </span>
-  `;
+export function createPerplexityInlineCitation(
+  url: string,
+  displayText: string,
+  title?: string
+): string {
+  const ariaAttr = title ? ` aria-label="${escapeHtmlForPerplexity(title)}"` : '';
+  const anchor = `<span class="inline-flex"${ariaAttr} data-state="closed"><span class="citation inline"><a rel="noopener" class="inline-flex max-w-full min-w-0" target="_blank" href="${url}">${perplexityPillBody(displayText)}</a></span></span>`;
+  return perplexityCitationWrapper(url, anchor);
+}
+
+/**
+ * Create Perplexity pill citation element (hover-trigger variant, no <a>)
+ *
+ * Replicates the real DOM observed 2026-07-02 (issue #291): the pill is a
+ * hover trigger without an anchor. The source URL exists ONLY in the
+ * data-pplx-citation-url attribute of the outer span. Without transformation
+ * the pill text is glued to the prose as "domain+N" (the reported bug).
+ *
+ * @param url Source URL
+ * @param domainText Domain-like pill text (e.g. "biccamera.co")
+ * @param extraCount Number rendered as "+N" after the domain text
+ */
+export function createPerplexityPillCitation(
+  url: string,
+  domainText: string,
+  extraCount = 1
+): string {
+  const trigger = `<span class="group/trigger inline-flex min-w-0" data-state="closed"><span class="citation inline">${perplexityPillBody(domainText, extraCount)}</span></span>`;
+  return perplexityCitationWrapper(url, trigger);
+}
+
+/**
+ * Create Perplexity LEGACY pill citation (observed before 2026-07)
+ *
+ * Older pages render the hover-trigger pill WITHOUT the wrapping
+ * data-pplx-citation-url span — the source URL is not present in the static
+ * DOM at all. These pills cannot be converted to footnotes and must be
+ * removed so their text is not glued to the prose.
+ */
+export function createPerplexityLegacyPillCitation(domainText: string, extraCount = 1): string {
+  return `<span class="citation-nbsp"></span><span class="group/trigger inline-flex min-w-0" data-state="closed"><span class="citation inline-flex min-w-0">${perplexityPillBody(domainText, extraCount)}</span></span>`;
 }
 
 /**
