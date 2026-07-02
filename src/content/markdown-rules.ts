@@ -223,6 +223,22 @@ turndown.addRule('mathInline', {
   },
 });
 
+// Extract a table cell's text. Cells are serialized via textContent (inline
+// Turndown rules do not run inside the custom table rule), so footnote-ref
+// placeholder spans must be converted to `[^label]` here or their marker
+// text would leak into the cell verbatim.
+function tableCellText(cell: Element): string {
+  if (!cell.querySelector('[data-footnote-ref]')) {
+    return cell.textContent?.trim() || '';
+  }
+  const clone = cell.cloneNode(true) as Element;
+  clone.querySelectorAll('[data-footnote-ref]').forEach(ref => {
+    const label = ref.getAttribute('data-footnote-ref');
+    ref.replaceWith(label ? `[^${label}]` : '');
+  });
+  return clone.textContent?.trim() || '';
+}
+
 // Custom rule for tables
 turndown.addRule('tables', {
   filter: 'table',
@@ -235,7 +251,7 @@ turndown.addRule('tables', {
     if (headerRow) {
       const headers: string[] = [];
       headerRow.querySelectorAll('th, td').forEach(cell => {
-        headers.push(cell.textContent?.trim() || '');
+        headers.push(tableCellText(cell));
       });
       if (headers.length > 0) {
         rows.push(headers);
@@ -247,7 +263,7 @@ turndown.addRule('tables', {
     bodyRows.forEach(row => {
       const cells: string[] = [];
       row.querySelectorAll('td, th').forEach(cell => {
-        cells.push(cell.textContent?.trim() || '');
+        cells.push(tableCellText(cell));
       });
       if (cells.length > 0) {
         rows.push(cells);

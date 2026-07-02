@@ -37,4 +37,27 @@ export const SELECTORS = {
     '.prose.max-w-none', // Specific to report (HIGH)
     '.prose.dark\\:prose-invert.max-w-none', // Full match (MEDIUM)
   ],
+
+  // Inline citation pill carrying the source URL (issue #291).
+  // Observed 2026-07-02: every citation (hover-trigger pill and anchor variant)
+  // wraps in a span whose data-pplx-citation-url attribute holds the source URL.
+  citation: [
+    'span.citation[data-pplx-citation-url]', // Semantic (HIGH)
+    '[data-pplx-citation-url]', // Attribute-only fallback (MEDIUM)
+  ],
+
+  // Empty spacer span rendered before each citation pill; produces no
+  // whitespace in text extraction, so it is removed during transformation.
+  citationSpacer: [
+    'span.citation-nbsp', // Semantic (HIGH)
+  ],
+
+  // Legacy citation pill (observed before 2026-07): rendered WITHOUT a
+  // data-pplx-citation-url ancestor, so no source URL exists in the static
+  // DOM. Matched only AFTER the modern-citation pass replaced every
+  // URL-carrying pill; pills embedding an <a href> are kept (perplexity.ts).
+  legacyCitationPill: [
+    'span[class~="group/trigger"]', // Legacy hover-trigger wrapper (HIGH)
+    'span.citation', // Residual citation pill after modern pass (MEDIUM)
+  ],
 } as const satisfies SelectorGroup;

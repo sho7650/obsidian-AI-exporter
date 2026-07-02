@@ -15,6 +15,7 @@
 
 import { htmlToMarkdown } from './markdown-rules';
 import { buildSourceMap } from '../lib/source-map';
+import { escapeMarkdownLink } from './extractors/footnotes';
 import type { DeepResearchLinks, DeepResearchSource } from '../lib/types';
 
 /**
@@ -27,14 +28,6 @@ const WRAPPED_CITATION_PATTERN =
 /** Standalone sup citations (fallback). */
 const STANDALONE_CITATION_PATTERN =
   /<sup[^>]*?data-turn-source-index="(\d+)"[^>]*?>[\s\S]*?<\/sup>/gi;
-
-/**
- * Escape Markdown link metacharacters in text
- * Prevents injection of Markdown links via crafted titles
- */
-function escapeMarkdownLink(text: string): string {
-  return text.replace(/[\\[\]()]/g, '\\$&');
-}
 
 /**
  * Sanitize URL to remove dangerous schemes

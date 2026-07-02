@@ -15,6 +15,8 @@
 import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import type { ConversationMessage } from '../../lib/types';
+import { createFootnoteRef, footnoteDefsToHtml } from './footnotes';
+import type { CitationTransformResult } from './footnotes';
 
 import { SELECTORS } from './selectors/notebooklm';
 
@@ -32,15 +34,7 @@ import { SELECTORS } from './selectors/notebooklm';
 // `footnoteRef` Turndown rule (markdown-rules.ts) converts to Obsidian
 // footnote syntax `[^label]`.
 
-const FOOTNOTE_REF_ATTR = 'data-footnote-ref';
 const ARIA_LABEL_PATTERN = /^\s*(\d+)\s*[:.]\s*(.+?)\s*$/;
-
-interface CitationTransformResult {
-  /** HTML with citation buttons replaced by footnote-ref placeholder spans. */
-  html: string;
-  /** Per-message footnote definition lines (`[^label]: title`), deduped. */
-  footnotes: string[];
-}
 
 function parseCitation(button: Element): { number: string; title: string } | null {
   const labelEl = button.querySelector('[aria-label]');
@@ -89,10 +83,7 @@ function transformCitationsToFootnotes(
       continue;
     }
     const label = `m${messageIndex}-${parsed.number}`;
-    const placeholder = doc.createElement('span');
-    placeholder.setAttribute(FOOTNOTE_REF_ATTR, label);
-    placeholder.textContent = 'REF';
-    button.replaceWith(placeholder);
+    button.replaceWith(createFootnoteRef(doc, label));
 
     if (!footnoteByNumber.has(parsed.number)) {
       footnoteByNumber.set(parsed.number, parsed.title);
@@ -102,18 +93,6 @@ function transformCitationsToFootnotes(
 
   const footnotes = order.map(num => `[^m${messageIndex}-${num}]: ${footnoteByNumber.get(num)}`);
   return { html: doc.body.innerHTML, footnotes };
-}
-
-const HTML_ESCAPE_MAP: Record<string, string> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;',
-};
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, ch => HTML_ESCAPE_MAP[ch] ?? ch);
 }
 
 /**
@@ -240,10 +219,6 @@ export class NotebookLMExtractor extends BaseExtractor {
       messageIndex
     );
 
-    const footnoteDefsHtml = footnotes
-      .map(line => `<p data-footnote-def="">${escapeHtml(line)}</p>`)
-      .join('');
-
-    return sanitizeHtml(transformedHtml + footnoteDefsHtml);
+    return sanitizeHtml(transformedHtml + footnoteDefsToHtml(footnotes));
   }
 }
