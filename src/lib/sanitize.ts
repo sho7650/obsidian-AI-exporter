@@ -42,6 +42,16 @@ function extractLatexFromKatex(element: Element): string | null {
  * @returns HTML with standard KaTeX converted to data-math format
  */
 export function preprocessKatex(html: string): string {
+  const result = preprocessKatexToNode(html);
+  return typeof result === 'string' ? result : result.innerHTML;
+}
+
+/**
+ * Same as {@link preprocessKatex}, but returns the already-parsed body when a
+ * conversion happened. sanitizeHtml passes the node straight to DOMPurify
+ * (which accepts Node input), avoiding a serialize + re-parse per message.
+ */
+function preprocessKatexToNode(html: string): string | HTMLElement {
   // Fast path: skip DOMParser overhead when no KaTeX content present
   if (!html.includes('katex')) {
     return html;
@@ -76,7 +86,7 @@ export function preprocessKatex(html: string): string {
     modified = true;
   }
 
-  return modified ? doc.body.innerHTML : html;
+  return modified ? doc.body : html;
 }
 
 /**
@@ -105,8 +115,10 @@ export function preprocessKatex(html: string): string {
  */
 export function sanitizeHtml(html: string): string {
   // Pre-process: convert standard KaTeX structures to data-math attributes
-  // Must run BEFORE DOMPurify, which strips MathML elements (<math>, <annotation>)
-  const preprocessed = preprocessKatex(html);
+  // Must run BEFORE DOMPurify, which strips MathML elements (<math>, <annotation>).
+  // When conversion happened, the parsed body is handed to DOMPurify directly
+  // (Node input) so the message is not serialized and re-parsed a third time.
+  const preprocessed = preprocessKatexToNode(html);
 
   DOMPurify.addHook('uponSanitizeAttribute', (_node, data) => {
     if (

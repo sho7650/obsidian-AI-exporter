@@ -18,7 +18,7 @@ interface FileLookupResult {
   found: boolean;
   path: string;
   content: string;
-  matchType: 'direct' | 'id-scan' | 'none';
+  matchType: 'direct' | 'memo' | 'id-scan' | 'none';
 }
 
 /**
@@ -63,15 +63,30 @@ const RECURSIVE_SCAN_MAX_DEPTH = 6;
  * @param searchBasePath - Optional. When provided AND different from resolvedPath,
  *   triggers the recursive scan. Defaults to resolvedPath (preserves the legacy
  *   flat-scan behaviour for templates without date variables).
+ * @param hintPath - Optional. Path where this conversation's file was previously
+ *   found (caller-memoized). Tried before anything else so repeat appends after
+ *   a calendar rollover cost one GET instead of a directory scan.
  */
 export async function lookupExistingFile(
   client: ObsidianApiClient,
   fullPath: string,
   resolvedPath: string,
   note: ObsidianNote,
-  searchBasePath: string = resolvedPath
+  searchBasePath: string = resolvedPath,
+  hintPath?: string
 ): Promise<FileLookupResult> {
   const expectedId = note.frontmatter.id;
+
+  // Step 0: Caller-memoized hint (id re-verified — the memo may be stale)
+  if (hintPath && hintPath !== fullPath) {
+    const hintContent = await client.getFile(hintPath);
+    if (hintContent !== null) {
+      const parsed = parseFrontmatter(hintContent);
+      if (parsed?.fields.id === expectedId) {
+        return { found: true, path: hintPath, content: hintContent, matchType: 'memo' };
+      }
+    }
+  }
 
   // Step 1: Direct path match
   const directContent = await client.getFile(fullPath);
