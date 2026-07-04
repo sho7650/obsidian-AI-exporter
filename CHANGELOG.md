@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.12](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.11...v1.3.12) (2026-07-04)
+
+
+### Code Refactoring
+
+* share the citation-to-footnote transform skeleton ([#307](https://github.com/sho7650/obsidian-AI-exporter/issues/307)) ([aecf6e4](https://github.com/sho7650/obsidian-AI-exporter/commit/aecf6e4a3c571b5af7745ac25b05946938bc21e0))
+
 ## [1.3.11](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.10...v1.3.11) (2026-07-04)
 
 
