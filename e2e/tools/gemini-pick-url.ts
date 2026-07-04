@@ -25,6 +25,19 @@ export function extractConversationId(url: string): string | null {
   return match ? match[1] : null;
 }
 
+/**
+ * Strict hostname check for the Gemini tab.
+ * URL parsing (not startsWith) prevents lookalike hosts such as
+ * "gemini.google.com.attacker.com" (CodeQL js/incomplete-url-substring-sanitization).
+ */
+export function isGeminiUrl(url: string): boolean {
+  try {
+    return new URL(url).hostname === 'gemini.google.com';
+  } catch {
+    return false;
+  }
+}
+
 const DESKTOP_VIEWPORT = { width: 1440, height: 900 };
 const SPA_SETTLE_MS = 4000;
 
@@ -35,7 +48,7 @@ async function main(): Promise<void> {
   const browser = await chromium.connectOverCDP(`http://127.0.0.1:${config.cdpPort}`);
   try {
     const context = browser.contexts()[0];
-    const tab = context?.pages().find(p => p.url().startsWith('https://gemini.google.com'));
+    const tab = context?.pages().find(p => isGeminiUrl(p.url()));
     if (!tab) {
       console.error(
         '[pick-url] No Gemini tab in the daemon. Start it with: npm run e2e:daemon:start'
