@@ -44,8 +44,16 @@ chrome.runtime.onMessage.addListener(
     }
 
     // Message content validation (M-02)
-    if (!validateMessageContent(message)) {
-      console.warn('[G2O Background] Invalid message content');
+    // A throw here would otherwise escape the listener and leave the sender
+    // hanging without a response, so treat it as invalid content
+    try {
+      if (!validateMessageContent(message)) {
+        console.warn('[G2O Background] Invalid message content');
+        sendResponse({ success: false, error: 'Invalid message content' });
+        return false;
+      }
+    } catch (error) {
+      console.warn('[G2O Background] Message validation threw:', getErrorMessage(error));
       sendResponse({ success: false, error: 'Invalid message content' });
       return false;
     }

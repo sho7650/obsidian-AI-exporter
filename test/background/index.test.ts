@@ -204,6 +204,59 @@ describe('background/index', () => {
       );
     });
 
+    describe('missing data validation', () => {
+      it('rejects saveToOutputs without data instead of throwing', () => {
+        const sendResponse = vi.fn();
+        capturedListener(
+          { action: 'saveToOutputs', outputs: ['obsidian'] },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('rejects saveToObsidian without data', () => {
+        const sendResponse = vi.fn();
+        capturedListener(
+          { action: 'saveToObsidian' },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('responds instead of throwing when message property access throws', () => {
+        const sendResponse = vi.fn();
+        const poisonedMessage = {};
+        Object.defineProperty(poisonedMessage, 'action', {
+          enumerable: true,
+          get() {
+            throw new Error('poisoned getter');
+          },
+        });
+
+        expect(() =>
+          capturedListener(
+            poisonedMessage,
+            validSender as chrome.runtime.MessageSender,
+            sendResponse
+          )
+        ).not.toThrow();
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+    });
+
     describe('saveToObsidian validation', () => {
       const validNote: ObsidianNote = {
         fileName: 'test.md',
