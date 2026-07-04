@@ -85,7 +85,13 @@ describe('offscreen/offscreen', () => {
       { action: 'clipboardWrite', target: 'offscreen', content: 'test' },
       {
         id: chrome.runtime.id,
-        tab: { id: 1, index: 0, highlighted: false, active: true, pinned: false } as chrome.tabs.Tab,
+        tab: {
+          id: 1,
+          index: 0,
+          highlighted: false,
+          active: true,
+          pinned: false,
+        } as chrome.tabs.Tab,
       } as chrome.runtime.MessageSender,
       sendResponse
     );
@@ -117,5 +123,53 @@ describe('offscreen/offscreen', () => {
     expect(mockTextarea.select).toHaveBeenCalled();
     expect(document.execCommand).toHaveBeenCalledWith('copy');
     expect(sendResponse).toHaveBeenCalledWith({ success: true });
+  });
+
+  it('responds with error when execCommand copy fails', () => {
+    Object.defineProperty(document, 'execCommand', {
+      value: vi.fn(() => false),
+      writable: true,
+      configurable: true,
+    });
+
+    const sendResponse = vi.fn();
+    capturedListener(
+      { action: 'clipboardWrite', target: 'offscreen', content: 'test' },
+      { id: chrome.runtime.id } as chrome.runtime.MessageSender,
+      sendResponse
+    );
+
+    expect(sendResponse).toHaveBeenCalledWith({
+      success: false,
+      error: 'execCommand copy failed',
+    });
+  });
+
+  it('responds with error when clipboard textarea is missing', () => {
+    vi.spyOn(document, 'querySelector').mockReturnValue(null);
+
+    const sendResponse = vi.fn();
+    capturedListener(
+      { action: 'clipboardWrite', target: 'offscreen', content: 'test' },
+      { id: chrome.runtime.id } as chrome.runtime.MessageSender,
+      sendResponse
+    );
+
+    expect(sendResponse).toHaveBeenCalledWith({
+      success: false,
+      error: 'Clipboard textarea element not found',
+    });
+  });
+
+  it('ignores messages with a different action or target', () => {
+    const sendResponse = vi.fn();
+    const result = capturedListener(
+      { action: 'getSettings' },
+      { id: chrome.runtime.id } as chrome.runtime.MessageSender,
+      sendResponse
+    );
+
+    expect(result).toBe(false);
+    expect(sendResponse).not.toHaveBeenCalled();
   });
 });
