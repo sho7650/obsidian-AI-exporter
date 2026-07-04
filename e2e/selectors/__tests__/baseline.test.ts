@@ -3,150 +3,202 @@ import fs from 'fs';
 import path from 'path';
 import {
   compareWithBaseline,
-  saveBaseline,
-  loadBaseline,
-  hasBaseline,
+  loadBaselineGroups,
+  updateBaselineGroups,
+  BaselineUpdateError,
   type BaselineEntry,
 } from '../baseline';
 
-// Use a temp directory for baseline files in tests
-const TEST_BASELINE_DIR = path.join(import.meta.dirname, '..', '..', 'baselines');
+const BASELINE_DIR = path.join(import.meta.dirname, '..', '..', 'baselines');
+const platform = '__test_platform__';
+const filePath = path.join(BASELINE_DIR, `${platform}.json`);
 
 function makeEntry(overrides: Partial<BaselineEntry> = {}): BaselineEntry {
   return {
-    platform: 'test',
+    platform,
     group: 'SELECTORS',
     name: 'testSelector',
     selector: '.test',
-    index: 0,
     matchCount: 5,
     ...overrides,
   };
 }
 
-describe('compareWithBaseline', () => {
-  it('returns match when both baseline and current have matches', () => {
-    const baseline = [makeEntry({ matchCount: 5 })];
-    const current = [makeEntry({ matchCount: 3 })];
+function cleanup(): void {
+  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+}
 
-    const result = compareWithBaseline(current, baseline);
+describe('compareWithBaseline (v2: keyed by group+name+selector)', () => {
+  it('returns match when both baseline and current have matches', () => {
+    const result = compareWithBaseline([makeEntry({ matchCount: 7 })], [makeEntry({ matchCount: 5 })]);
 
     expect(result).toHaveLength(1);
     expect(result[0].status).toBe('match');
     expect(result[0].baselineCount).toBe(5);
-    expect(result[0].currentCount).toBe(3);
+    expect(result[0].currentCount).toBe(7);
+  });
+
+  it('returns degraded when the count dropped but is still > 0', () => {
+    const result = compareWithBaseline([makeEntry({ matchCount: 2 })], [makeEntry({ matchCount: 5 })]);
+
+    expect(result[0].status).toBe('degraded');
   });
 
   it('returns lost when baseline had matches but current has 0', () => {
-    const baseline = [makeEntry({ matchCount: 8 })];
-    const current = [makeEntry({ matchCount: 0 })];
+    const result = compareWithBaseline([makeEntry({ matchCount: 0 })], [makeEntry({ matchCount: 8 })]);
 
-    const result = compareWithBaseline(current, baseline);
-
-    expect(result).toHaveLength(1);
     expect(result[0].status).toBe('lost');
   });
 
-  it('returns match when both are 0', () => {
-    const baseline = [makeEntry({ matchCount: 0 })];
-    const current = [makeEntry({ matchCount: 0 })];
+  it('keys on the selector STRING: a changed selector at the same name is new + removed', () => {
+    const baseline = [makeEntry({ selector: '.old-selector', matchCount: 4 })];
+    const current = [makeEntry({ selector: '.new-selector', matchCount: 4 })];
 
     const result = compareWithBaseline(current, baseline);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].status).toBe('match');
+    const statuses = result.map(r => r.status).sort();
+    expect(statuses).toEqual(['new_selector', 'removed']);
   });
 
-  it('detects new selectors not in baseline', () => {
-    const baseline = [makeEntry({ name: 'old', index: 0 })];
-    const current = [
-      makeEntry({ name: 'old', index: 0, matchCount: 3 }),
-      makeEntry({ name: 'new', index: 0, matchCount: 2 }),
+  it('flags baseline entries with no current counterpart as removed', () => {
+    const baseline = [
+      makeEntry({ name: 'kept', matchCount: 3 }),
+      makeEntry({ name: 'gone', selector: '.gone', matchCount: 3 }),
     ];
+    const current = [makeEntry({ name: 'kept', matchCount: 3 })];
 
     const result = compareWithBaseline(current, baseline);
 
-    const newEntry = result.find((r) => r.status === 'new_selector');
-    expect(newEntry).toBeDefined();
-    expect(newEntry!.baselineCount).toBe(-1);
-    expect(newEntry!.currentCount).toBe(2);
+    const removed = result.find(r => r.status === 'removed');
+    expect(removed).toBeDefined();
+    expect(removed!.name).toContain('gone');
+    expect(removed!.currentCount).toBe(-1);
   });
 
-  it('handles empty baseline (all new)', () => {
-    const current = [makeEntry({ matchCount: 3 })];
-
-    const result = compareWithBaseline(current, []);
+  it('flags current entries with no baseline counterpart as new_selector', () => {
+    const result = compareWithBaseline(
+      [makeEntry({ name: 'brand-new', selector: '.brand-new', matchCount: 2 })],
+      []
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0].status).toBe('new_selector');
+    expect(result[0].baselineCount).toBe(-1);
   });
 
-  it('handles empty current', () => {
-    const baseline = [makeEntry({ matchCount: 5 })];
+  it('reordering selector variants does not produce spurious statuses', () => {
+    const a = makeEntry({ name: 'x', selector: '.primary', matchCount: 3 });
+    const b = makeEntry({ name: 'x', selector: '.fallback', matchCount: 3 });
 
-    const result = compareWithBaseline([], baseline);
+    const result = compareWithBaseline([b, a], [a, b]);
 
-    expect(result).toHaveLength(0);
-  });
-
-  it('matches by group + name + index', () => {
-    const baseline = [
-      makeEntry({ group: 'A', name: 'x', index: 0, matchCount: 3 }),
-      makeEntry({ group: 'A', name: 'x', index: 1, matchCount: 2 }),
-    ];
-    const current = [
-      makeEntry({ group: 'A', name: 'x', index: 0, matchCount: 0 }),
-      makeEntry({ group: 'A', name: 'x', index: 1, matchCount: 5 }),
-    ];
-
-    const result = compareWithBaseline(current, baseline);
-
-    expect(result).toHaveLength(2);
-    expect(result[0].status).toBe('lost');     // index 0: 3 → 0
-    expect(result[1].status).toBe('match');    // index 1: 2 → 5
+    expect(result.every(r => r.status === 'match')).toBe(true);
   });
 });
 
-describe('baseline file operations', () => {
-  const platform = '__test_platform__';
+describe('updateBaselineGroups', () => {
+  beforeEach(cleanup);
+  afterEach(cleanup);
 
-  beforeEach(() => {
-    // Clean up any leftover test baseline
-    const filePath = path.join(TEST_BASELINE_DIR, `${platform}.json`);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+  it('writes a v2 file containing the given group', () => {
+    updateBaselineGroups(platform, {
+      SELECTORS: [makeEntry({ matchCount: 3 })],
+    });
+
+    const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    expect(raw.version).toBe(2);
+    expect(typeof raw.updatedAt).toBe('string');
+    expect(raw.groups.SELECTORS).toHaveLength(1);
+    expect(raw.groups.SELECTORS[0].matchCount).toBe(3);
+  });
+
+  it('merges new groups without touching existing ones (two-test platforms)', () => {
+    updateBaselineGroups(platform, { SELECTORS: [makeEntry({ matchCount: 3 })] });
+    updateBaselineGroups(platform, {
+      DEEP_RESEARCH_SELECTORS: [
+        makeEntry({ group: 'DEEP_RESEARCH_SELECTORS', selector: '.dr', matchCount: 2 }),
+      ],
+    });
+
+    const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    expect(raw.groups.SELECTORS).toHaveLength(1);
+    expect(raw.groups.DEEP_RESEARCH_SELECTORS).toHaveLength(1);
+  });
+
+  it('replaces a group wholesale on re-update (no stale entries)', () => {
+    updateBaselineGroups(platform, {
+      SELECTORS: [makeEntry({ selector: '.a', matchCount: 1 }), makeEntry({ selector: '.b', matchCount: 2 })],
+    });
+    updateBaselineGroups(platform, {
+      SELECTORS: [makeEntry({ selector: '.b', matchCount: 2 })],
+    });
+
+    const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    expect(raw.groups.SELECTORS).toHaveLength(1);
+    expect(raw.groups.SELECTORS[0].selector).toBe('.b');
+  });
+
+  it('rejects zero-count entries with a BaselineUpdateError naming the selector', () => {
+    expect(() =>
+      updateBaselineGroups(platform, {
+        SELECTORS: [makeEntry({ matchCount: 3 }), makeEntry({ name: 'dead', selector: '.dead', matchCount: 0 })],
+      })
+    ).toThrow(BaselineUpdateError);
+
+    try {
+      updateBaselineGroups(platform, {
+        SELECTORS: [makeEntry({ name: 'dead', selector: '.dead', matchCount: 0 })],
+      });
+    } catch (e) {
+      expect((e as Error).message).toContain('dead');
     }
+    // Nothing written on rejection
+    expect(fs.existsSync(filePath)).toBe(false);
+  });
+});
+
+describe('loadBaselineGroups', () => {
+  beforeEach(cleanup);
+  afterEach(cleanup);
+
+  it('reports all groups missing when no file exists', () => {
+    const res = loadBaselineGroups(platform, ['SELECTORS']);
+
+    expect(res.legacy).toBe(false);
+    expect(res.missingGroups).toEqual(['SELECTORS']);
+    expect(res.entries).toEqual([]);
   });
 
-  afterEach(() => {
-    const filePath = path.join(TEST_BASELINE_DIR, `${platform}.json`);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
+  it('returns entries for requested groups only', () => {
+    updateBaselineGroups(platform, {
+      SELECTORS: [makeEntry({ matchCount: 3 })],
+      DEEP_RESEARCH_SELECTORS: [
+        makeEntry({ group: 'DEEP_RESEARCH_SELECTORS', selector: '.dr', matchCount: 2 }),
+      ],
+    });
+
+    const res = loadBaselineGroups(platform, ['SELECTORS']);
+
+    expect(res.legacy).toBe(false);
+    expect(res.missingGroups).toEqual([]);
+    expect(res.entries).toHaveLength(1);
+    expect(res.entries[0].group).toBe('SELECTORS');
   });
 
-  it('hasBaseline returns false when no file exists', () => {
-    expect(hasBaseline(platform)).toBe(false);
+  it('reports groups absent from the file as missing', () => {
+    updateBaselineGroups(platform, { SELECTORS: [makeEntry({ matchCount: 3 })] });
+
+    const res = loadBaselineGroups(platform, ['SELECTORS', 'DEEP_RESEARCH_SELECTORS']);
+
+    expect(res.missingGroups).toEqual(['DEEP_RESEARCH_SELECTORS']);
   });
 
-  it('save + load roundtrip preserves data', () => {
-    const entries = [
-      makeEntry({ platform, name: 'a', matchCount: 5 }),
-      makeEntry({ platform, name: 'b', matchCount: 0 }),
-    ];
+  it('detects the legacy v1 array format', () => {
+    fs.writeFileSync(filePath, JSON.stringify([makeEntry({ matchCount: 3 })]));
 
-    saveBaseline(platform, entries);
-    expect(hasBaseline(platform)).toBe(true);
+    const res = loadBaselineGroups(platform, ['SELECTORS']);
 
-    const loaded = loadBaseline(platform);
-    expect(loaded).toHaveLength(2);
-    expect(loaded[0].name).toBe('a');
-    expect(loaded[0].matchCount).toBe(5);
-    expect(loaded[1].name).toBe('b');
-    expect(loaded[1].matchCount).toBe(0);
-  });
-
-  it('loadBaseline returns empty array when no file exists', () => {
-    expect(loadBaseline(platform)).toEqual([]);
+    expect(res.legacy).toBe(true);
+    expect(res.entries).toEqual([]);
   });
 });

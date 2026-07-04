@@ -2,9 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { classifyResults, type SelectorResult } from '../classifier';
 import type { BaselineComparison } from '../baseline';
 
-function makeResult(
-  overrides: Partial<SelectorResult> = {},
-): SelectorResult {
+function makeResult(overrides: Partial<SelectorResult> = {}): SelectorResult {
   return {
     platform: 'test',
     group: 'SELECTORS',
@@ -66,12 +64,13 @@ describe('classifyResults', () => {
   });
 
   it('returns empty arrays for empty input', () => {
-    const { pass, warn, fail, baselineIssues } = classifyResults([]);
+    const { pass, warn, fail, baselineBlocking, baselineAdvisory } = classifyResults([]);
 
     expect(pass).toHaveLength(0);
     expect(warn).toHaveLength(0);
     expect(fail).toHaveLength(0);
-    expect(baselineIssues).toHaveLength(0);
+    expect(baselineBlocking).toHaveLength(0);
+    expect(baselineAdvisory).toHaveLength(0);
   });
 
   it('handles single-selector group (no fallback) — pass', () => {
@@ -94,17 +93,66 @@ describe('classifyResults', () => {
     expect(fail).toHaveLength(1);
   });
 
-  it('includes baseline issues (lost) in result', () => {
+  it('buckets lost / new_selector / removed as BLOCKING baseline issues', () => {
     const results = [makeResult({ name: 'ok', index: 0, matchCount: 1 })];
     const baselineComparisons: BaselineComparison[] = [
-      { name: 'SELECTORS:turn[0]', baselineCount: 5, currentCount: 0, status: 'lost' },
-      { name: 'SELECTORS:ok[0]', baselineCount: 3, currentCount: 3, status: 'match' },
+      {
+        group: 'SELECTORS',
+        name: 'turn',
+        selector: '.t',
+        baselineCount: 5,
+        currentCount: 0,
+        status: 'lost',
+      },
+      {
+        group: 'SELECTORS',
+        name: 'fresh',
+        selector: '.f',
+        baselineCount: -1,
+        currentCount: 2,
+        status: 'new_selector',
+      },
+      {
+        group: 'SELECTORS',
+        name: 'gone',
+        selector: '.g',
+        baselineCount: 4,
+        currentCount: -1,
+        status: 'removed',
+      },
+      {
+        group: 'SELECTORS',
+        name: 'ok',
+        selector: '.o',
+        baselineCount: 3,
+        currentCount: 3,
+        status: 'match',
+      },
     ];
 
-    const { baselineIssues } = classifyResults(results, baselineComparisons);
+    const { baselineBlocking, baselineAdvisory } = classifyResults(results, baselineComparisons);
 
-    expect(baselineIssues).toHaveLength(1);
-    expect(baselineIssues[0].status).toBe('lost');
+    expect(baselineBlocking.map(b => b.status).sort()).toEqual(['lost', 'new_selector', 'removed']);
+    expect(baselineAdvisory).toHaveLength(0);
+  });
+
+  it('buckets degraded as ADVISORY (reported, not enforced)', () => {
+    const baselineComparisons: BaselineComparison[] = [
+      {
+        group: 'SELECTORS',
+        name: 'turn',
+        selector: '.t',
+        baselineCount: 5,
+        currentCount: 2,
+        status: 'degraded',
+      },
+    ];
+
+    const { baselineBlocking, baselineAdvisory } = classifyResults([], baselineComparisons);
+
+    expect(baselineBlocking).toHaveLength(0);
+    expect(baselineAdvisory).toHaveLength(1);
+    expect(baselineAdvisory[0].status).toBe('degraded');
   });
 
   it('handles multiple selector groups independently', () => {
