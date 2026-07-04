@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.6.0...v1.6.1) (2026-07-04)
+
+
+### Documentation
+
+* record the E2E redesign in ADR-016 and amend DES-015 ([#322](https://github.com/sho7650/obsidian-AI-exporter/issues/322)) ([6443a0a](https://github.com/sho7650/obsidian-AI-exporter/commit/6443a0a5df1c39a7664f371c5136f1fc1c37793a))
+
 ## [1.6.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.5.0...v1.6.0) (2026-07-04)
 
 
