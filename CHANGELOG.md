@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.10](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.9...v1.3.10) (2026-07-04)
+
+
+### Code Refactoring
+
+* derive platform metadata from a single registry (ADR-014) ([#305](https://github.com/sho7650/obsidian-AI-exporter/issues/305)) ([cbdef78](https://github.com/sho7650/obsidian-AI-exporter/commit/cbdef7877003a09ac499707d515835e059f23e9d))
+
 ## [1.3.9](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.8...v1.3.9) (2026-07-04)
 
 
