@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.14...v1.4.0) (2026-07-04)
+
+
+### Features
+
+* **e2e:** separate auth, stall, and dead-test-data states ([#315](https://github.com/sho7650/obsidian-AI-exporter/issues/315)) ([6c0754b](https://github.com/sho7650/obsidian-AI-exporter/commit/6c0754bc380efaf173e7bce93d5e91f080ef644a))
+
 ## [1.3.14](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.13...v1.3.14) (2026-07-04)
 
 
