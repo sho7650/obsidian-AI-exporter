@@ -1771,6 +1771,41 @@ describe('background/index', () => {
       expect(response.allSuccessful).toBe(true);
       expect(response.messagesAppended).toBe(2);
     });
+
+    it('memoizes the found path and skips re-scanning on subsequent appends', async () => {
+      mockGetSettings = vi.fn(() => Promise.resolve(appendSettings));
+      mockClient.getFile.mockImplementation((path: string) => {
+        if (path === 'AI/claude/old-title-abc12345.md') {
+          return Promise.resolve(existingContent);
+        }
+        return Promise.resolve(null); // direct path never exists
+      });
+      mockClient.listFiles.mockResolvedValue(['old-title-abc12345.md']);
+      mockClient.putFile.mockResolvedValue(undefined);
+
+      // First save: file is only findable via the ID scan
+      const firstResponse = vi.fn();
+      capturedListener(
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: appendNote },
+        validSender as chrome.runtime.MessageSender,
+        firstResponse
+      );
+      await vi.waitFor(() => expect(firstResponse).toHaveBeenCalled());
+      expect(mockClient.listFiles).toHaveBeenCalled();
+
+      // Second save: the memoized path must be tried directly — no directory scan
+      mockClient.listFiles.mockClear();
+      const secondResponse = vi.fn();
+      capturedListener(
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: appendNote },
+        validSender as chrome.runtime.MessageSender,
+        secondResponse
+      );
+      await vi.waitFor(() => expect(secondResponse).toHaveBeenCalled());
+      const response = secondResponse.mock.calls[0][0];
+      expect(response.allSuccessful).toBe(true);
+      expect(mockClient.listFiles).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleMessage rejection path', () => {

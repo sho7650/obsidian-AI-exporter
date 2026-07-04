@@ -42,6 +42,25 @@ function isClientError(client: ObsidianApiClient | { error: string }): client is
 }
 
 /**
+ * conversationId → vault path where the conversation's note was last found
+ * (append mode). Best-effort cache: after a calendar rollover the direct path
+ * misses on every save and the fallback directory scan re-runs each time —
+ * the memo turns that into a single GET. Service-worker restarts clear it;
+ * misses simply fall back to the scan.
+ */
+const appendPathMemo = new Map<string, string>();
+
+/** Bound memory: far above any realistic number of active conversations */
+const APPEND_MEMO_MAX_ENTRIES = 100;
+
+function rememberAppendPath(conversationId: string, path: string): void {
+  if (appendPathMemo.size >= APPEND_MEMO_MAX_ENTRIES && !appendPathMemo.has(conversationId)) {
+    appendPathMemo.clear();
+  }
+  appendPathMemo.set(conversationId, path);
+}
+
+/**
  * Try to append new messages to an existing file.
  * Returns a SaveResponse on success, or null to fall through to overwrite.
  */
@@ -58,8 +77,16 @@ async function tryAppendMode(
   }
 
   try {
-    const lookup = await lookupExistingFile(client, fullPath, resolvedPath, note, searchBasePath);
+    const lookup = await lookupExistingFile(
+      client,
+      fullPath,
+      resolvedPath,
+      note,
+      searchBasePath,
+      appendPathMemo.get(note.frontmatter.id)
+    );
     if (!lookup.found) return null;
+    rememberAppendPath(note.frontmatter.id, lookup.path);
 
     const appendResult = buildAppendContent(lookup.content, note, settings);
     if (appendResult !== null) {
