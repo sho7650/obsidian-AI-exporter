@@ -78,8 +78,8 @@ describe('sendMessage', () => {
     expect(result).toEqual({ success: true });
   });
 
-  it('handles saveToObsidian action', async () => {
-    const mockResponse = { success: true, filePath: '/path/to/file.md' };
+  it('handles saveToOutputs action', async () => {
+    const mockResponse = { allSuccessful: true, anySuccessful: true, results: [] };
     vi.mocked(chrome.runtime.sendMessage).mockImplementation(
       (message: unknown, callback?: (response: unknown) => void) => {
         if (callback) callback(mockResponse);
@@ -87,10 +87,11 @@ describe('sendMessage', () => {
     );
 
     const result = await sendMessage({
-      action: 'saveToObsidian',
+      action: 'saveToOutputs',
+      outputs: ['obsidian'],
       data: {} as Parameters<typeof sendMessage>[0] extends { data?: infer D } ? D : never,
     } as Parameters<typeof sendMessage>[0]);
-    expect(result).toEqual({ success: true, filePath: '/path/to/file.md' });
+    expect(result).toEqual(mockResponse);
   });
 });
 

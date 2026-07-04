@@ -219,20 +219,6 @@ describe('background/index', () => {
         });
       });
 
-      it('rejects saveToObsidian without data', () => {
-        const sendResponse = vi.fn();
-        capturedListener(
-          { action: 'saveToObsidian' },
-          validSender as chrome.runtime.MessageSender,
-          sendResponse
-        );
-
-        expect(sendResponse).toHaveBeenCalledWith({
-          success: false,
-          error: 'Invalid message content',
-        });
-      });
-
       it('responds instead of throwing when message property access throws', () => {
         const sendResponse = vi.fn();
         const poisonedMessage = {};
@@ -257,7 +243,7 @@ describe('background/index', () => {
       });
     });
 
-    describe('saveToObsidian validation', () => {
+    describe('note data validation', () => {
       const validNote: ObsidianNote = {
         fileName: 'test.md',
         body: '# Test',
@@ -277,7 +263,11 @@ describe('background/index', () => {
       it('rejects missing fileName', () => {
         const sendResponse = vi.fn();
         capturedListener(
-          { action: 'saveToObsidian', data: { ...validNote, fileName: undefined } },
+          {
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
+            data: { ...validNote, fileName: undefined },
+          },
           validSender as chrome.runtime.MessageSender,
           sendResponse
         );
@@ -291,7 +281,7 @@ describe('background/index', () => {
       it('rejects empty fileName', () => {
         const sendResponse = vi.fn();
         capturedListener(
-          { action: 'saveToObsidian', data: { ...validNote, fileName: '' } },
+          { action: 'saveToOutputs', outputs: ['obsidian'], data: { ...validNote, fileName: '' } },
           validSender as chrome.runtime.MessageSender,
           sendResponse
         );
@@ -305,7 +295,11 @@ describe('background/index', () => {
       it('rejects fileName over 200 chars', () => {
         const sendResponse = vi.fn();
         capturedListener(
-          { action: 'saveToObsidian', data: { ...validNote, fileName: 'a'.repeat(201) } },
+          {
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
+            data: { ...validNote, fileName: 'a'.repeat(201) },
+          },
           validSender as chrome.runtime.MessageSender,
           sendResponse
         );
@@ -319,7 +313,11 @@ describe('background/index', () => {
       it('rejects fileName with path traversal (DES-014 H-1)', () => {
         const sendResponse = vi.fn();
         capturedListener(
-          { action: 'saveToObsidian', data: { ...validNote, fileName: '../../etc/passwd' } },
+          {
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
+            data: { ...validNote, fileName: '../../etc/passwd' },
+          },
           validSender as chrome.runtime.MessageSender,
           sendResponse
         );
@@ -334,7 +332,8 @@ describe('background/index', () => {
         const sendResponse = vi.fn();
         capturedListener(
           {
-            action: 'saveToObsidian',
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
             data: { ...validNote, fileName: '%2e%2e%2fetc%2fpasswd' },
           },
           validSender as chrome.runtime.MessageSender,
@@ -351,7 +350,8 @@ describe('background/index', () => {
         const sendResponse = vi.fn();
         capturedListener(
           {
-            action: 'saveToObsidian',
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
             data: { fileName: 'test.md', body: 'content', contentHash: 'abc' },
           },
           validSender as chrome.runtime.MessageSender,
@@ -367,7 +367,11 @@ describe('background/index', () => {
       it('rejects body over 1MB', () => {
         const sendResponse = vi.fn();
         capturedListener(
-          { action: 'saveToObsidian', data: { ...validNote, body: 'a'.repeat(1024 * 1024 + 1) } },
+          {
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
+            data: { ...validNote, body: 'a'.repeat(1024 * 1024 + 1) },
+          },
           validSender as chrome.runtime.MessageSender,
           sendResponse
         );
@@ -382,7 +386,8 @@ describe('background/index', () => {
         const sendResponse = vi.fn();
         capturedListener(
           {
-            action: 'saveToObsidian',
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
             data: { ...validNote, frontmatter: { ...validNote.frontmatter, source: 'invalid' } },
           },
           validSender as chrome.runtime.MessageSender,
@@ -399,7 +404,8 @@ describe('background/index', () => {
         const sendResponse = vi.fn();
         capturedListener(
           {
-            action: 'saveToObsidian',
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
             data: {
               ...validNote,
               frontmatter: { ...validNote.frontmatter, tags: Array(51).fill('tag') },
@@ -419,7 +425,8 @@ describe('background/index', () => {
         const sendResponse = vi.fn();
         capturedListener(
           {
-            action: 'saveToObsidian',
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
             data: {
               ...validNote,
               frontmatter: { ...validNote.frontmatter, tags: [123, null] },
@@ -439,7 +446,8 @@ describe('background/index', () => {
         const sendResponse = vi.fn();
         capturedListener(
           {
-            action: 'saveToObsidian',
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
             data: {
               ...validNote,
               frontmatter: { ...validNote.frontmatter, tags: ['a'.repeat(101)] },
@@ -459,7 +467,8 @@ describe('background/index', () => {
         const sendResponse = vi.fn();
         capturedListener(
           {
-            action: 'saveToObsidian',
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
             data: {
               ...validNote,
               frontmatter: { ...validNote.frontmatter, tags: [''] },
@@ -479,7 +488,8 @@ describe('background/index', () => {
         const sendResponse = vi.fn();
         capturedListener(
           {
-            action: 'saveToObsidian',
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
             data: {
               ...validNote,
               frontmatter: { ...validNote.frontmatter, url: 'javascript:alert(1)' },
@@ -499,7 +509,8 @@ describe('background/index', () => {
         const sendResponse = vi.fn();
         capturedListener(
           {
-            action: 'saveToObsidian',
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
             data: {
               ...validNote,
               frontmatter: {
@@ -523,7 +534,8 @@ describe('background/index', () => {
         // This should NOT be rejected - it should proceed to save
         capturedListener(
           {
-            action: 'saveToObsidian',
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
             data: {
               ...validNote,
               frontmatter: { ...validNote.frontmatter, url: 'https://gemini.google.com/app/123' },
@@ -726,7 +738,7 @@ describe('background/index', () => {
     });
   });
 
-  describe('saveToObsidian handler', () => {
+  describe('obsidian save via saveToOutputs', () => {
     const validSender = { url: `chrome-extension://${chrome.runtime.id}/popup.html` };
     const validNote: ObsidianNote = {
       fileName: 'test.md',
@@ -750,14 +762,19 @@ describe('background/index', () => {
 
       const sendResponse = vi.fn();
       capturedListener(
-        { action: 'saveToObsidian', data: validNote },
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: validNote },
         validSender as chrome.runtime.MessageSender,
         sendResponse
       );
 
       await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
       expect(mockClient.putFile).toHaveBeenCalledWith('AI/Gemini/test.md', expect.any(String));
-      expect(sendResponse).toHaveBeenCalledWith({ success: true, isNewFile: true });
+      expect(sendResponse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allSuccessful: true,
+          results: [expect.objectContaining({ destination: 'obsidian', success: true })],
+        })
+      );
     });
 
     it('updates existing file', async () => {
@@ -766,13 +783,18 @@ describe('background/index', () => {
 
       const sendResponse = vi.fn();
       capturedListener(
-        { action: 'saveToObsidian', data: validNote },
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: validNote },
         validSender as chrome.runtime.MessageSender,
         sendResponse
       );
 
       await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
-      expect(sendResponse).toHaveBeenCalledWith({ success: true, isNewFile: false });
+      expect(sendResponse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allSuccessful: true,
+          results: [expect.objectContaining({ destination: 'obsidian', success: true })],
+        })
+      );
     });
 
     it('handles save errors', async () => {
@@ -781,13 +803,24 @@ describe('background/index', () => {
 
       const sendResponse = vi.fn();
       capturedListener(
-        { action: 'saveToObsidian', data: validNote },
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: validNote },
         validSender as chrome.runtime.MessageSender,
         sendResponse
       );
 
       await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
-      expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'Server error' });
+      expect(sendResponse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allSuccessful: false,
+          results: [
+            expect.objectContaining({
+              destination: 'obsidian',
+              success: false,
+              error: 'Server error',
+            }),
+          ],
+        })
+      );
     });
 
     it('returns error when API key not configured', async () => {
@@ -795,16 +828,24 @@ describe('background/index', () => {
 
       const sendResponse = vi.fn();
       capturedListener(
-        { action: 'saveToObsidian', data: validNote },
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: validNote },
         validSender as chrome.runtime.MessageSender,
         sendResponse
       );
 
       await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
-      expect(sendResponse).toHaveBeenCalledWith({
-        success: false,
-        error: 'API key not configured',
-      });
+      expect(sendResponse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allSuccessful: false,
+          results: [
+            expect.objectContaining({
+              destination: 'obsidian',
+              success: false,
+              error: 'API key not configured',
+            }),
+          ],
+        })
+      );
     });
 
     it('resolves date variables in vault path at save time (local time)', async () => {
@@ -818,7 +859,7 @@ describe('background/index', () => {
 
         const sendResponse = vi.fn();
         capturedListener(
-          { action: 'saveToObsidian', data: validNote },
+          { action: 'saveToOutputs', outputs: ['obsidian'], data: validNote },
           validSender as chrome.runtime.MessageSender,
           sendResponse
         );
@@ -844,7 +885,7 @@ describe('background/index', () => {
 
         const sendResponse = vi.fn();
         capturedListener(
-          { action: 'saveToObsidian', data: validNote },
+          { action: 'saveToOutputs', outputs: ['obsidian'], data: validNote },
           validSender as chrome.runtime.MessageSender,
           sendResponse
         );
@@ -857,111 +898,6 @@ describe('background/index', () => {
       } finally {
         vi.useRealTimers();
       }
-    });
-  });
-
-  describe('getExistingFile handler', () => {
-    const validSender = { url: `chrome-extension://${chrome.runtime.id}/popup.html` };
-
-    it('returns file content when exists', async () => {
-      mockClient.getFile.mockResolvedValue('# File Content');
-
-      const sendResponse = vi.fn();
-      capturedListener(
-        { action: 'getExistingFile', fileName: 'test.md', vaultPath: 'AI/Gemini' },
-        validSender as chrome.runtime.MessageSender,
-        sendResponse
-      );
-
-      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
-      expect(sendResponse).toHaveBeenCalledWith({ success: true, content: '# File Content' });
-    });
-
-    it('returns undefined content when file not found', async () => {
-      mockClient.getFile.mockResolvedValue(null);
-
-      const sendResponse = vi.fn();
-      capturedListener(
-        { action: 'getExistingFile', fileName: 'test.md' },
-        validSender as chrome.runtime.MessageSender,
-        sendResponse
-      );
-
-      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
-      expect(sendResponse).toHaveBeenCalledWith({ success: true, content: undefined });
-    });
-
-    it('returns error when API key not configured', async () => {
-      mockGetSettings = vi.fn(() => Promise.resolve({ ...defaultSettings, obsidianApiKey: '' }));
-
-      const sendResponse = vi.fn();
-      capturedListener(
-        { action: 'getExistingFile', fileName: 'test.md' },
-        validSender as chrome.runtime.MessageSender,
-        sendResponse
-      );
-
-      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
-      expect(sendResponse).toHaveBeenCalledWith({
-        success: false,
-        error: 'API key not configured',
-      });
-    });
-
-    it('rejects vaultPath exceeding MAX_VAULT_PATH_LENGTH', () => {
-      const sendResponse = vi.fn();
-      capturedListener(
-        {
-          action: 'getExistingFile',
-          fileName: 'test.md',
-          vaultPath: 'a'.repeat(201),
-        },
-        validSender as chrome.runtime.MessageSender,
-        sendResponse
-      );
-
-      expect(sendResponse).toHaveBeenCalledWith({
-        success: false,
-        error: 'Invalid message content',
-      });
-    });
-
-    it('handles getFile errors gracefully', async () => {
-      mockClient.getFile.mockRejectedValue(new Error('Network timeout'));
-
-      const sendResponse = vi.fn();
-      capturedListener(
-        { action: 'getExistingFile', fileName: 'test.md' },
-        validSender as chrome.runtime.MessageSender,
-        sendResponse
-      );
-
-      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
-      expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'Network timeout' });
-    });
-
-    it('rejects assembled path with traversal (SEC-04)', async () => {
-      // vaultPath and fileName individually pass validation, but combined they could traverse
-      // This tests the defense-in-depth check on the assembled fullPath
-      mockGetSettings = vi.fn(() =>
-        Promise.resolve({
-          ...defaultSettings,
-          vaultPath: 'AI/../../../etc',
-        })
-      );
-
-      const sendResponse = vi.fn();
-      capturedListener(
-        { action: 'getExistingFile', fileName: 'passwd', vaultPath: 'AI/../../../etc' },
-        validSender as chrome.runtime.MessageSender,
-        sendResponse
-      );
-
-      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
-      expect(sendResponse).toHaveBeenCalledWith({
-        success: false,
-        error: expect.stringContaining('Invalid'),
-      });
     });
   });
 
@@ -1695,16 +1631,15 @@ describe('background/index', () => {
 
       const sendResponse = vi.fn();
       capturedListener(
-        { action: 'saveToObsidian', data: appendNote },
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: appendNote },
         validSender as chrome.runtime.MessageSender,
         sendResponse
       );
 
       await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
       const response = sendResponse.mock.calls[0][0];
-      expect(response.success).toBe(true);
+      expect(response.allSuccessful).toBe(true);
       expect(response.messagesAppended).toBe(2);
-      expect(response.isNewFile).toBe(false);
     });
 
     it('returns messagesAppended: 0 when no new messages', async () => {
@@ -1717,14 +1652,14 @@ describe('background/index', () => {
 
       const sendResponse = vi.fn();
       capturedListener(
-        { action: 'saveToObsidian', data: appendNote },
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: appendNote },
         validSender as chrome.runtime.MessageSender,
         sendResponse
       );
 
       await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
       const response = sendResponse.mock.calls[0][0];
-      expect(response.success).toBe(true);
+      expect(response.allSuccessful).toBe(true);
       expect(response.messagesAppended).toBe(0);
     });
 
@@ -1737,15 +1672,14 @@ describe('background/index', () => {
 
       const sendResponse = vi.fn();
       capturedListener(
-        { action: 'saveToObsidian', data: appendNote },
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: appendNote },
         validSender as chrome.runtime.MessageSender,
         sendResponse
       );
 
       await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
       const response = sendResponse.mock.calls[0][0];
-      expect(response.success).toBe(true);
-      expect(response.isNewFile).toBe(true);
+      expect(response.allSuccessful).toBe(true);
       expect(response.messagesAppended).toBeUndefined();
     });
 
@@ -1757,15 +1691,14 @@ describe('background/index', () => {
 
       const sendResponse = vi.fn();
       capturedListener(
-        { action: 'saveToObsidian', data: appendNote },
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: appendNote },
         validSender as chrome.runtime.MessageSender,
         sendResponse
       );
 
       await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
       const response = sendResponse.mock.calls[0][0];
-      expect(response.success).toBe(true);
-      expect(response.isNewFile).toBe(true);
+      expect(response.allSuccessful).toBe(true);
     });
 
     it('skips append mode for deep-research type', async () => {
@@ -1779,15 +1712,14 @@ describe('background/index', () => {
 
       const sendResponse = vi.fn();
       capturedListener(
-        { action: 'saveToObsidian', data: deepResearchNote },
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: deepResearchNote },
         validSender as chrome.runtime.MessageSender,
         sendResponse
       );
 
       await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
       const response = sendResponse.mock.calls[0][0];
-      expect(response.success).toBe(true);
-      expect(response.isNewFile).toBe(true);
+      expect(response.allSuccessful).toBe(true);
       // Should NOT have messagesAppended (went through overwrite path)
       expect(response.messagesAppended).toBeUndefined();
     });
@@ -1802,15 +1734,14 @@ describe('background/index', () => {
 
       const sendResponse = vi.fn();
       capturedListener(
-        { action: 'saveToObsidian', data: appendNote },
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: appendNote },
         validSender as chrome.runtime.MessageSender,
         sendResponse
       );
 
       await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
       const response = sendResponse.mock.calls[0][0];
-      expect(response.success).toBe(true);
-      expect(response.isNewFile).toBe(true);
+      expect(response.allSuccessful).toBe(true);
     });
 
     it('uses ID scan when direct path has wrong ID', async () => {
@@ -1830,14 +1761,14 @@ describe('background/index', () => {
 
       const sendResponse = vi.fn();
       capturedListener(
-        { action: 'saveToObsidian', data: appendNote },
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: appendNote },
         validSender as chrome.runtime.MessageSender,
         sendResponse
       );
 
       await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
       const response = sendResponse.mock.calls[0][0];
-      expect(response.success).toBe(true);
+      expect(response.allSuccessful).toBe(true);
       expect(response.messagesAppended).toBe(2);
     });
   });

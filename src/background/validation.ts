@@ -11,7 +11,6 @@ import {
   MAX_FRONTMATTER_TITLE_LENGTH,
   MAX_TAGS_COUNT,
   MAX_TAG_LENGTH,
-  MAX_VAULT_PATH_LENGTH,
   ALLOWED_ORIGINS,
   VALID_MESSAGE_ACTIONS,
   VALID_OUTPUT_DESTINATIONS,
@@ -57,31 +56,6 @@ export function validateMessageContent(message: ExtensionMessage): boolean {
   // Validate action against whitelist (using centralized constants)
   if (!VALID_MESSAGE_ACTIONS.includes(message.action as (typeof VALID_MESSAGE_ACTIONS)[number])) {
     return false;
-  }
-
-  // Path traversal validation for getExistingFile action
-  if (message.action === 'getExistingFile') {
-    if (typeof message.fileName !== 'string') {
-      return false;
-    }
-    if (containsPathTraversal(message.fileName)) {
-      return false;
-    }
-    if (typeof message.vaultPath === 'string') {
-      if (containsPathTraversal(message.vaultPath)) {
-        return false;
-      }
-      if (message.vaultPath.length > MAX_VAULT_PATH_LENGTH) {
-        return false;
-      }
-    }
-  }
-
-  // Detailed validation for saveToObsidian action
-  if (message.action === 'saveToObsidian') {
-    if (!validateNoteData(message.data)) {
-      return false;
-    }
   }
 
   // Detailed validation for saveToOutputs action
