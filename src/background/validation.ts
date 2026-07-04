@@ -78,7 +78,7 @@ export function validateMessageContent(message: ExtensionMessage): boolean {
   }
 
   // Detailed validation for saveToObsidian action
-  if (message.action === 'saveToObsidian' && message.data) {
+  if (message.action === 'saveToObsidian') {
     if (!validateNoteData(message.data)) {
       return false;
     }
@@ -108,7 +108,12 @@ export function validateMessageContent(message: ExtensionMessage): boolean {
 /**
  * Validate note data structure
  */
-function validateNoteData(note: ObsidianNote): boolean {
+function validateNoteData(note: ObsidianNote | undefined): boolean {
+  // Messages arrive as unvalidated JSON: data may be absent despite the type
+  if (!note || typeof note !== 'object') {
+    return false;
+  }
+
   // Required field validation
   if (typeof note.fileName !== 'string' || typeof note.body !== 'string') {
     return false;
