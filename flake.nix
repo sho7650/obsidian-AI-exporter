@@ -92,6 +92,8 @@
           e2e-auth = app "e2e-auth" ''npx tsx e2e/auth/setup-profile.ts "$@"'';
           e2e-selectors = app "e2e-selectors" ''npx playwright test --config e2e/playwright.config.ts "$@"'';
           e2e-selectors-headed = app "e2e-selectors-headed" ''npx playwright test --config e2e/playwright.config.ts --headed "$@"'';
+          e2e-baseline-update = app "e2e-baseline-update" ''UPDATE_BASELINE=1 npx playwright test --config e2e/playwright.config.ts "$@"'';
+          e2e-gemini-pick-url = app "e2e-gemini-pick-url" ''npx tsx e2e/tools/gemini-pick-url.ts "$@"'';
           e2e-daemon = app "e2e-daemon" ''npx tsx e2e/daemon/daemon.ts "$@"'';
         };
     in
