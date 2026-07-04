@@ -90,12 +90,20 @@ Naming: Nix attribute names cannot contain `:`, so `npm run e2e:auth` maps to `n
 ```bash
 nix run .#e2e-auth                 # Manual login for all platforms
 nix run .#e2e-selectors            # Run selector validation
+nix run .#e2e-baseline-update      # Rewrite selector baselines from the live pages (only write path)
+nix run .#e2e-gemini-pick-url      # Pick a live Gemini conversation URL for .env.local
 nix run .#e2e-daemon -- start      # Start CDP daemon (headless Chrome + keep-alive)
 nix run .#e2e-daemon -- stop       # Stop CDP daemon
 nix run .#e2e-daemon -- status     # Check daemon health + open tabs
 ```
 
 Re-authentication workflow: `e2e-daemon -- stop` → `e2e-auth` → `e2e-daemon -- start`
+
+Dead test-conversation workflow (a `test_data_missing` failure or persistent Gemini stall):
+Gemini no longer exposes conversation links as hrefs, so run `e2e-gemini-pick-url` to open a
+conversation via the daemon and print its URL → update `*_CONV_URL` in `e2e/.env.local` →
+`e2e-baseline-update`. Baselines are per-machine (gitignored) and are written ONLY by the
+update command; zero-match selectors are rejected at update time.
 
 Load the extension in Chrome: `chrome://extensions` → Load unpacked → select `dist/` folder
 
