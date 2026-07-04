@@ -31,20 +31,22 @@ export interface ValidationReport {
   overallStatus: 'pass' | 'warn' | 'fail' | 'auth_expired';
 }
 
+export interface NotifyOptions {
+  /** State changed to a clean pass — send a short recovery note. */
+  recovered?: boolean;
+}
+
 /**
  * Send a health report to Obsidian.
- * Skips notification when overallStatus is 'pass'.
+ * WHETHER to notify is decided upstream (notify-policy, diff-based);
+ * this function always sends when called.
  */
 export async function notifyObsidian(
   report: ValidationReport,
-  config: NotificationConfig
+  config: NotificationConfig,
+  options: NotifyOptions = {}
 ): Promise<void> {
-  if (report.overallStatus === 'pass') {
-    console.log('[ObsidianReporter] All selectors passed. No notification needed.');
-    return;
-  }
-
-  const markdown = generateMarkdown(report);
+  const markdown = options.recovered ? generateRecoveryMarkdown(report) : generateMarkdown(report);
   const dateStr = report.timestamp.slice(0, 10);
   const fileName = `selector-health-${dateStr}.md`;
   const notePath = `${config.vaultPath}/${fileName}`;
@@ -80,11 +82,30 @@ const AUTH_LABELS: Readonly<Record<Exclude<AuthStatus, 'authenticated'>, string>
 };
 
 const AUTH_GUIDANCE: Readonly<Record<Exclude<AuthStatus, 'authenticated'>, string>> = {
-  auth_expired: "Run `npm run e2e:auth` to re-authenticate.",
+  auth_expired: 'Run `npm run e2e:auth` to re-authenticate.',
   unreachable: 'The site could not be reached; check network / service status.',
   test_data_missing:
     'The pinned test conversation no longer opens — refresh the `*_CONV_URL` value in `e2e/.env.local`.',
 };
+
+/** Short note for a transition back to a clean pass. */
+export function generateRecoveryMarkdown(report: ValidationReport): string {
+  const dateStr = report.timestamp.slice(0, 10);
+  return [
+    '---',
+    `date: "${report.timestamp}"`,
+    'status: recovered',
+    'tags: [selector-health, automated]',
+    '---',
+    '',
+    `# Selector Health Report - ${dateStr}`,
+    '',
+    '**✅ RECOVERED — all selectors pass again.**',
+    '',
+    `Platforms verified: ${report.platforms.map(p => p.platform).join(', ')}`,
+    '',
+  ].join('\n');
+}
 
 export function generateMarkdown(report: ValidationReport): string {
   const dateStr = report.timestamp.slice(0, 10);
@@ -176,7 +197,7 @@ export function generateMarkdown(report: ValidationReport): string {
         sections.push(
           '### 🚫 Baseline Contract Violations (FAIL)',
           '',
-          "Intentional selector changes must be recorded via `npm run e2e:baseline:update`.",
+          'Intentional selector changes must be recorded via `npm run e2e:baseline:update`.',
           '',
           '| Selector | Status | Baseline | Current |',
           '|----------|--------|----------|---------|'
