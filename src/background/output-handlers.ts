@@ -13,6 +13,7 @@ import type {
   OutputDestination,
   OutputResult,
   MultiOutputResponse,
+  OffscreenClipboardMessage,
 } from '../lib/types';
 
 /** Runtime type guard for offscreen clipboard response */
@@ -192,11 +193,12 @@ async function handleCopyToClipboard(
 
     await ensureOffscreenDocument();
 
-    const response: unknown = await chrome.runtime.sendMessage({
+    const clipboardMessage: OffscreenClipboardMessage = {
       action: 'clipboardWrite',
       target: 'offscreen',
       content,
-    });
+    };
+    const response: unknown = await chrome.runtime.sendMessage(clipboardMessage);
 
     scheduleOffscreenClose();
 

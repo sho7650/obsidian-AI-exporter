@@ -275,11 +275,11 @@ describe('content script messaging', () => {
     });
   });
 
-  describe('saveToObsidian', () => {
-    it('sends saveToObsidian action with note data', async () => {
+  describe('saveToOutputs', () => {
+    it('sends saveToOutputs action with note data', async () => {
       const mockSendMessage = vi.fn().mockResolvedValue({
-        success: true,
-        isNewFile: true,
+        allSuccessful: true,
+        results: [{ destination: 'obsidian', success: true }],
       });
 
       const note = {
@@ -298,26 +298,35 @@ describe('content script messaging', () => {
         },
       };
 
-      const result = await mockSendMessage({ action: 'saveToObsidian', data: note });
-
-      expect(mockSendMessage).toHaveBeenCalledWith({
-        action: 'saveToObsidian',
+      const result = await mockSendMessage({
+        action: 'saveToOutputs',
+        outputs: ['obsidian'],
         data: note,
       });
-      expect(result.success).toBe(true);
-      expect(result.isNewFile).toBe(true);
+
+      expect(mockSendMessage).toHaveBeenCalledWith({
+        action: 'saveToOutputs',
+        outputs: ['obsidian'],
+        data: note,
+      });
+      expect(result.allSuccessful).toBe(true);
+      expect(result.results[0].success).toBe(true);
     });
 
     it('handles save failure', async () => {
       const mockSendMessage = vi.fn().mockResolvedValue({
-        success: false,
-        error: 'Failed to save',
+        allSuccessful: false,
+        results: [{ destination: 'obsidian', success: false, error: 'Failed to save' }],
       });
 
-      const result = await mockSendMessage({ action: 'saveToObsidian', data: {} });
+      const result = await mockSendMessage({
+        action: 'saveToOutputs',
+        outputs: ['obsidian'],
+        data: {},
+      });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Failed to save');
+      expect(result.allSuccessful).toBe(false);
+      expect(result.results[0].error).toBe('Failed to save');
     });
   });
 });

@@ -125,39 +125,6 @@ export async function handleSave(
 }
 
 /**
- * Get existing file content from Obsidian
- */
-export async function handleGetFile(
-  settings: ExtensionSettings,
-  fileName: string,
-  vaultPath?: string
-): Promise<{ success: boolean; content?: string; error?: string }> {
-  const client = createObsidianClient(settings);
-  if (isClientError(client)) {
-    return { success: false, error: client.error };
-  }
-
-  try {
-    const path = vaultPath ? `${vaultPath}/${fileName}` : fileName;
-
-    if (containsPathTraversal(path)) {
-      return { success: false, error: 'Invalid file path' };
-    }
-
-    const content = await client.getFile(path);
-
-    if (content === null) {
-      return { success: true, content: undefined };
-    }
-
-    return { success: true, content };
-  } catch (error) {
-    console.error('[G2O Background] Get file failed:', error);
-    return { success: false, error: getErrorMessage(error) };
-  }
-}
-
-/**
  * Test connection to Obsidian REST API
  */
 export async function handleTestConnection(

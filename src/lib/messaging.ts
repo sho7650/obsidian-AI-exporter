@@ -3,12 +3,7 @@
  * Promise-based wrapper for chrome.runtime.sendMessage
  */
 
-import type {
-  ExtensionMessage,
-  ContentScriptSettings,
-  SaveResponse,
-  MultiOutputResponse,
-} from './types';
+import type { ExtensionMessage, ContentScriptSettings, MultiOutputResponse } from './types';
 
 /** User-friendly message for extension context invalidation */
 const CONTEXT_INVALIDATED_MESSAGE = 'Extension context invalidated. Please reload the page.';
@@ -19,9 +14,7 @@ const CONTEXT_INVALIDATED_MESSAGE = 'Extension context invalidated. Please reloa
 interface MessageResponseMap {
   getSettings: ContentScriptSettings;
   testConnection: { success: boolean; error?: string };
-  saveToObsidian: SaveResponse;
   saveToOutputs: MultiOutputResponse;
-  getExistingFile: string | null;
 }
 
 /**

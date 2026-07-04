@@ -239,11 +239,20 @@ export interface TemplateOptions {
  * Message types for chrome.runtime communication
  */
 export type ExtensionMessage =
-  | { action: 'saveToObsidian'; data: ObsidianNote }
   | { action: 'saveToOutputs'; data: ObsidianNote; outputs: OutputDestination[] }
-  | { action: 'getExistingFile'; fileName: string; vaultPath: string }
   | { action: 'getSettings' }
   | { action: 'testConnection' };
+
+/**
+ * Message sent from the background worker to the offscreen document.
+ * Kept separate from ExtensionMessage: the background listener routes
+ * `target: 'offscreen'` messages away before validation.
+ */
+export interface OffscreenClipboardMessage {
+  action: 'clipboardWrite';
+  target: 'offscreen';
+  content: string;
+}
 
 /**
  * Response from background service worker

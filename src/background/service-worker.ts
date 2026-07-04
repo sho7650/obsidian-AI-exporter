@@ -6,7 +6,7 @@
 import { getErrorMessage } from '../lib/error-utils';
 import { getSettings, migrateSettings } from '../lib/storage';
 import { validateSender, validateMessageContent } from './validation';
-import { handleSave, handleGetFile, handleTestConnection } from './obsidian-handlers';
+import { handleTestConnection } from './obsidian-handlers';
 import { handleMultiOutput } from './output-handlers';
 import type { ExtensionMessage, ContentScriptSettings, ExtensionSettings } from '../lib/types';
 
@@ -107,14 +107,8 @@ async function handleMessage(
   const settings = await getSettings();
 
   switch (message.action) {
-    case 'saveToObsidian':
-      return handleSave(settings, message.data);
-
     case 'saveToOutputs':
       return handleMultiOutput(message.data, message.outputs, settings);
-
-    case 'getExistingFile':
-      return handleGetFile(settings, message.fileName, message.vaultPath);
 
     case 'testConnection':
       return handleTestConnection(settings);

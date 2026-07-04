@@ -11,13 +11,7 @@
  */
 
 import { extractErrorMessage } from '../lib/error-utils';
-import type { ClipboardWriteResponse } from '../lib/types';
-
-interface ClipboardWriteMessage {
-  action: 'clipboardWrite';
-  target: 'offscreen';
-  content: string;
-}
+import type { ClipboardWriteResponse, OffscreenClipboardMessage } from '../lib/types';
 
 /**
  * Handle clipboard write request using document.execCommand
@@ -50,7 +44,7 @@ function handleClipboardWrite(content: string): boolean {
  */
 chrome.runtime.onMessage.addListener(
   (
-    message: ClipboardWriteMessage,
+    message: OffscreenClipboardMessage,
     sender: chrome.runtime.MessageSender,
     sendResponse: (response: ClipboardWriteResponse) => void
   ) => {
