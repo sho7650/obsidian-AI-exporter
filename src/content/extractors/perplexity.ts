@@ -11,7 +11,12 @@ import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { isHttpUrl } from '../../lib/validation';
 import type { ConversationMessage } from '../../lib/types';
-import { createFootnoteRef, escapeMarkdownLink, footnoteDefsToHtml } from './footnotes';
+import {
+  createFootnoteRef,
+  escapeMarkdownLink,
+  footnoteDefsToHtml,
+  transformCitations,
+} from './footnotes';
 import type { CitationTransformResult } from './footnotes';
 
 import { SELECTORS } from './selectors/perplexity';
@@ -141,33 +146,25 @@ function transformCitationsToFootnotes(
   html: string,
   messageIndex: number
 ): CitationTransformResult {
-  if (!html) {
-    return { html, footnotes: [] };
-  }
-
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-
-  // Return the original string untouched when there is nothing to transform,
-  // avoiding parse→serialize normalization differences for plain messages.
   const citationGroups = [
     SELECTORS.citation,
     SELECTORS.legacyCitationPill,
     SELECTORS.citationSpacer,
   ];
-  if (!citationGroups.some(group => doc.querySelector(group.join(', ')))) {
-    return { html, footnotes: [] };
-  }
 
-  const sources = collectCitationSources(doc, messageIndex);
-  removeCitationResidue(doc);
+  return transformCitations(html, {
+    hasCitations: doc => citationGroups.some(group => doc.querySelector(group.join(', '))),
+    collectFootnotes: doc => {
+      const sources = collectCitationSources(doc, messageIndex);
+      removeCitationResidue(doc);
 
-  const footnotes = [...sources.entries()].map(
-    ([url, source]) =>
-      `[^m${messageIndex}-${source.number}]: ` +
-      `[${escapeMarkdownLink(source.title)}](${toMarkdownSafeUrl(url)})`
-  );
-
-  return { html: doc.body.innerHTML, footnotes };
+      return [...sources.entries()].map(
+        ([url, source]) =>
+          `[^m${messageIndex}-${source.number}]: ` +
+          `[${escapeMarkdownLink(source.title)}](${toMarkdownSafeUrl(url)})`
+      );
+    },
+  });
 }
 
 /** Tagged element for DOM-order sorting */

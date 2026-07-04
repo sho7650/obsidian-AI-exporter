@@ -15,7 +15,7 @@
 import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import type { ConversationMessage } from '../../lib/types';
-import { createFootnoteRef, footnoteDefsToHtml } from './footnotes';
+import { createFootnoteRef, footnoteDefsToHtml, transformCitations } from './footnotes';
 import type { CitationTransformResult } from './footnotes';
 
 import { SELECTORS } from './selectors/notebooklm';
@@ -63,36 +63,35 @@ function transformCitationsToFootnotes(
   html: string,
   messageIndex: number
 ): CitationTransformResult {
-  if (!html) return { html: '', footnotes: [] };
+  return transformCitations(html, {
+    hasCitations: doc => doc.querySelector('button.citation-marker') !== null,
+    collectFootnotes: doc => {
+      const buttons = Array.from(doc.querySelectorAll('button.citation-marker'));
+      const footnoteByNumber = new Map<string, string>();
+      const order: string[] = [];
 
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const buttons = Array.from(doc.querySelectorAll('button.citation-marker'));
-  if (buttons.length === 0) return { html, footnotes: [] };
+      for (const button of buttons) {
+        if (isMoreCitationsButton(button)) {
+          button.remove();
+          continue;
+        }
+        const parsed = parseCitation(button);
+        if (!parsed) {
+          button.remove();
+          continue;
+        }
+        const label = `m${messageIndex}-${parsed.number}`;
+        button.replaceWith(createFootnoteRef(doc, label));
 
-  const footnoteByNumber = new Map<string, string>();
-  const order: string[] = [];
+        if (!footnoteByNumber.has(parsed.number)) {
+          footnoteByNumber.set(parsed.number, parsed.title);
+          order.push(parsed.number);
+        }
+      }
 
-  for (const button of buttons) {
-    if (isMoreCitationsButton(button)) {
-      button.remove();
-      continue;
-    }
-    const parsed = parseCitation(button);
-    if (!parsed) {
-      button.remove();
-      continue;
-    }
-    const label = `m${messageIndex}-${parsed.number}`;
-    button.replaceWith(createFootnoteRef(doc, label));
-
-    if (!footnoteByNumber.has(parsed.number)) {
-      footnoteByNumber.set(parsed.number, parsed.title);
-      order.push(parsed.number);
-    }
-  }
-
-  const footnotes = order.map(num => `[^m${messageIndex}-${num}]: ${footnoteByNumber.get(num)}`);
-  return { html: doc.body.innerHTML, footnotes };
+      return order.map(num => `[^m${messageIndex}-${num}]: ${footnoteByNumber.get(num)}`);
+    },
+  });
 }
 
 /**
