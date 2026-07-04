@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.14](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.13...v1.3.14) (2026-07-04)
+
+
+### Code Refactoring
+
+* **e2e:** make the selector baseline an enforced contract ([#313](https://github.com/sho7650/obsidian-AI-exporter/issues/313)) ([fe680c9](https://github.com/sho7650/obsidian-AI-exporter/commit/fe680c918d2805335cc8dd20e8df99f284537d57))
+
 ## [1.3.13](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.12...v1.3.13) (2026-07-04)
 
 
