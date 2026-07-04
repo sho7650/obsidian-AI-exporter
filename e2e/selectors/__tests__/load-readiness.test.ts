@@ -72,3 +72,39 @@ describe('decideLoadOutcome', () => {
     expect(d.reason).toMatch(/regression/i);
   });
 });
+
+describe('decideLoadOutcome stall escalation', () => {
+  const base = { platform: 'gemini', readyFound: false, loadingPresent: true };
+
+  it('skips while consecutive stalls are below the threshold', () => {
+    const d = decideLoadOutcome({ ...base, priorConsecutiveStalls: 0, maxConsecutiveStalls: 3 });
+    expect(d.action).toBe('skip');
+    expect(d.reason).toContain('1/3');
+  });
+
+  it('escalates to validate (-> FAIL) when the threshold is reached', () => {
+    const d = decideLoadOutcome({ ...base, priorConsecutiveStalls: 2, maxConsecutiveStalls: 3 });
+    expect(d.action).toBe('validate');
+    expect(d.reason).toContain('no longer treated as transient');
+  });
+
+  it('keeps escalating on subsequent stalled runs past the threshold', () => {
+    const d = decideLoadOutcome({ ...base, priorConsecutiveStalls: 5, maxConsecutiveStalls: 3 });
+    expect(d.action).toBe('validate');
+  });
+
+  it('still validates immediately when no loading indicator is present', () => {
+    const d = decideLoadOutcome({
+      ...base,
+      loadingPresent: false,
+      priorConsecutiveStalls: 0,
+      maxConsecutiveStalls: 3,
+    });
+    expect(d.action).toBe('validate');
+  });
+
+  it('defaults to legacy skip behavior when stall counts are not provided', () => {
+    const d = decideLoadOutcome(base);
+    expect(d.action).toBe('skip');
+  });
+});

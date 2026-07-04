@@ -61,24 +61,40 @@ export interface LoadOutcomeInput {
   readonly readyFound: boolean;
   /** Whether a loading indicator (spinner / empty-state) is still present. */
   readonly loadingPresent: boolean;
+  /** Consecutive stall-skips recorded BEFORE this run (stall-tracker). */
+  readonly priorConsecutiveStalls?: number;
+  /** Threshold at which a persistent stall stops being treated as transient. */
+  readonly maxConsecutiveStalls?: number;
 }
 
 /**
  * Decide whether to run selector validation or skip the test.
  *
  * - ready found                         -> validate (normal path)
- * - ready absent + loading indicator    -> skip (transient content stall)
- * - ready absent + no loading indicator -> validate (possible real regression,
- *   let the zero-match assertion FAIL so genuine DOM changes are caught)
+ * - ready absent + loading indicator    -> skip (transient content stall),
+ *   but only up to maxConsecutiveStalls in a row: a stall persisting run
+ *   after run is indistinguishable from a masked regression (or dead test
+ *   data) and escalates to validate -> the zero-match assertion FAILs
+ * - ready absent + no loading indicator -> validate (possible real regression)
  */
 export function decideLoadOutcome(input: LoadOutcomeInput): LoadDecision {
   if (input.readyFound) {
     return { action: 'validate', reason: `${input.platform}: ready selector found` };
   }
   if (input.loadingPresent) {
+    const max = input.maxConsecutiveStalls ?? Number.POSITIVE_INFINITY;
+    const thisStall = (input.priorConsecutiveStalls ?? 0) + 1;
+    if (thisStall >= max) {
+      return {
+        action: 'validate',
+        reason:
+          `${input.platform}: content stall persisted ${thisStall} consecutive runs — ` +
+          `no longer treated as transient (validating; expect FAIL until fixed)`,
+      };
+    }
     return {
       action: 'skip',
-      reason: `${input.platform}: content did not load (transient — loading indicator present)`,
+      reason: `${input.platform}: content did not load (transient — loading indicator present, stall ${thisStall}/${max})`,
     };
   }
   return {
