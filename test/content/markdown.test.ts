@@ -910,6 +910,29 @@ describe('convertDeepResearchContent', () => {
     expect(result).toContain('[^1]: XSS');
     expect(result).toContain('[^2]: Data');
   });
+
+  it('rejects non-http URL schemes not on any denylist (allowlist enforcement)', () => {
+    const html = '<p>Text</p>';
+    const links: DeepResearchLinks = {
+      sources: [
+        { index: 0, url: 'file:///etc/passwd', title: 'File', domain: 'localhost' },
+        { index: 1, url: 'mailto:a@b.com', title: 'Mail', domain: 'b.com' },
+        { index: 2, url: '  \tjavascript:alert(1)', title: 'Sneaky', domain: 'bad.com' },
+        { index: 3, url: 'https://safe.com', title: 'Safe', domain: 'safe.com' },
+      ],
+    };
+
+    const result = convertDeepResearchContent(html, links);
+
+    expect(result).not.toContain('file://');
+    expect(result).not.toContain('mailto:');
+    expect(result).not.toContain('javascript:');
+    // Non-http(s) sources fall back to title only
+    expect(result).toContain('[^1]: File');
+    expect(result).toContain('[^2]: Mail');
+    expect(result).toContain('[^3]: Sneaky');
+    expect(result).toContain('[^4]: [Safe](https://safe.com)');
+  });
 });
 
 describe('conversationToNote with Deep Research links', () => {

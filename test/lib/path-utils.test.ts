@@ -24,6 +24,11 @@ describe('containsPathTraversal', () => {
     expect(containsPathTraversal('D:\\Users')).toBe(true);
   });
 
+  it('detects Windows rooted and UNC paths', () => {
+    expect(containsPathTraversal('\\Windows\\System32')).toBe(true);
+    expect(containsPathTraversal('\\\\server\\share')).toBe(true);
+  });
+
   it('detects URL-encoded traversal', () => {
     // The current implementation only detects URL-encoded patterns with path separators
     expect(containsPathTraversal('%2e%2e%2f')).toBe(true);
