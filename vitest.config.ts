@@ -17,7 +17,6 @@ export default defineConfig({
         'src/lib/types.ts', // Type definitions only
         'src/popup/index.ts', // Has side effects on import, tested via patterns
         'src/content/index.ts', // Has side effects on import, tested via patterns
-        'src/offscreen/offscreen.ts', // Chrome-specific runtime, cannot test in jsdom
         'test/**/*.ts', // Test infrastructure should not count toward coverage
       ],
       // Final thresholds - achieved 88.5% statements
