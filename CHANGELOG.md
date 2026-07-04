@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.6](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.5...v1.3.6) (2026-07-04)
+
+
+### Bug Fixes
+
+* prevent TypeError in message validation for missing note data ([#297](https://github.com/sho7650/obsidian-AI-exporter/issues/297)) ([462af5a](https://github.com/sho7650/obsidian-AI-exporter/commit/462af5a0cc3d6ebbea6023e9d9002e2772cc8d0b))
+
 ## [1.3.5](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.4...v1.3.5) (2026-07-02)
 
 
