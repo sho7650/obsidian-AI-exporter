@@ -62,10 +62,10 @@ describe('architecture: platform SSOT (manifest <-> code)', () => {
     expect(registry, `registry must map ${id} to its host`).toContain(`'${host}'`);
     expect(new RegExp(`\\b${id}:`).test(registry), `registry must have a ${id} entry`).toBe(true);
 
-    // Extractor routing (content/index.ts): constructor map keyed by platform id
+    // Extractor routing (content/bootstrap.ts): constructor map keyed by platform id
     expect(
-      new RegExp(`\\b${id}: \\w+Extractor\\b`).test(read('src/content/index.ts')),
-      `content/index.ts must map ${id} to its extractor constructor`
+      new RegExp(`\\b${id}: \\w+Extractor\\b`).test(read('src/content/bootstrap.ts')),
+      `content/bootstrap.ts must map ${id} to its extractor constructor`
     ).toBe(true);
 
     // AIPlatform union (types.ts)
