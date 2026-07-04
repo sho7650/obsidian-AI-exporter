@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.7](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.6...v1.3.7) (2026-07-04)
+
+
+### Code Refactoring
+
+* remove dead message actions and type the offscreen channel ([#299](https://github.com/sho7650/obsidian-AI-exporter/issues/299)) ([921cfe2](https://github.com/sho7650/obsidian-AI-exporter/commit/921cfe20c673625f5beaa6e09712e54aff2b2c11))
+
 ## [1.3.6](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.5...v1.3.6) (2026-07-04)
 
 
