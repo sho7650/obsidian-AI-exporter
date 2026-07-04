@@ -41,8 +41,8 @@ const manifest = JSON.parse(read('src/manifest.json')) as Manifest;
 
 // Derive platform hosts from the SSOT (skip infrastructure hosts like 127.0.0.1).
 const platformHosts = manifest.content_scripts[0].matches
-  .map((m) => m.replace('https://', '').replace('/*', ''))
-  .filter((h) => !h.startsWith('127.'));
+  .map(m => m.replace('https://', '').replace('/*', ''))
+  .filter(h => !h.startsWith('127.'));
 
 describe('architecture: platform SSOT (manifest <-> code)', () => {
   it('every manifest platform host has a known AIPlatform id', () => {
@@ -51,22 +51,39 @@ describe('architecture: platform SSOT (manifest <-> code)', () => {
     }
   });
 
-  it.each(platformHosts)('host %s is consistent across manifest + code', (host) => {
+  it.each(platformHosts)('host %s is consistent across manifest + code', host => {
     const id = PLATFORM_IDS[host];
 
     // manifest host_permissions
     expect(manifest.host_permissions).toContain(`https://${host}/*`);
 
-    // ALLOWED_ORIGINS (constants.ts)
-    expect(read('src/lib/constants.ts')).toContain(`'https://${host}'`);
+    // PLATFORM_REGISTRY (platform-registry.ts) — the one code-side SSOT (ADR-014)
+    const registry = read('src/lib/platform-registry.ts');
+    expect(registry, `registry must map ${id} to its host`).toContain(`'${host}'`);
+    expect(new RegExp(`\\b${id}:`).test(registry), `registry must have a ${id} entry`).toBe(true);
 
-    // getExtractor() routing (content/index.ts)
-    expect(read('src/content/index.ts')).toContain(`hostname === '${host}'`);
+    // Extractor routing (content/index.ts): constructor map keyed by platform id
+    expect(
+      new RegExp(`\\b${id}: \\w+Extractor\\b`).test(read('src/content/index.ts')),
+      `content/index.ts must map ${id} to its extractor constructor`
+    ).toBe(true);
 
     // AIPlatform union (types.ts)
     const types = read('src/lib/types.ts');
     const union = /export type AIPlatform\s*=\s*([^;]+);/.exec(types);
     expect(union, 'AIPlatform union not found in types.ts').not.toBeNull();
     expect(union?.[1]).toContain(`'${id}'`);
+  });
+
+  it('constants.ts derives platform lists from the registry instead of hand-writing them', () => {
+    const constants = read('src/lib/constants.ts');
+    expect(constants).toContain(`from './platform-registry'`);
+    // No hand-maintained origin literals: origins must come from the registry
+    for (const host of platformHosts) {
+      expect(
+        constants.includes(`'https://${host}'`),
+        `constants.ts hand-writes origin for ${host} — derive it from PLATFORM_REGISTRY`
+      ).toBe(false);
+    }
   });
 });

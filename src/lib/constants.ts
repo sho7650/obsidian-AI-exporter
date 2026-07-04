@@ -6,6 +6,7 @@
  */
 
 import type { AIPlatform } from './types';
+import { PLATFORM_REGISTRY, ALL_PLATFORMS, platformOrigin } from './platform-registry';
 
 // ============================================================
 // String Length Limits
@@ -101,15 +102,10 @@ export const MUTATION_DEBOUNCE_DELAY = 100;
 
 /**
  * Allowed origins for content script messages (M-02)
- * Only these origins can send messages to the background worker
+ * Only these origins can send messages to the background worker.
+ * Derived from PLATFORM_REGISTRY (ADR-014).
  */
-export const ALLOWED_ORIGINS = [
-  'https://gemini.google.com',
-  'https://claude.ai',
-  'https://chatgpt.com',
-  'https://www.perplexity.ai',
-  'https://notebooklm.google.com',
-] as const;
+export const ALLOWED_ORIGINS: readonly string[] = ALL_PLATFORMS.map(platformOrigin);
 
 /**
  * Valid message actions for background worker (M-02)
@@ -123,9 +119,9 @@ export const VALID_MESSAGE_ACTIONS = ['getSettings', 'testConnection', 'saveToOu
 export const VALID_OUTPUT_DESTINATIONS = ['obsidian', 'file', 'clipboard'] as const;
 
 /**
- * Valid AI platform sources
+ * Valid AI platform sources. Derived from PLATFORM_REGISTRY (ADR-014).
  */
-export const VALID_SOURCES = ['gemini', 'claude', 'perplexity', 'chatgpt', 'notebooklm'] as const;
+export const VALID_SOURCES: readonly AIPlatform[] = ALL_PLATFORMS;
 
 /**
  * Valid message format options for template rendering
@@ -133,15 +129,12 @@ export const VALID_SOURCES = ['gemini', 'claude', 'perplexity', 'chatgpt', 'note
 export const VALID_MESSAGE_FORMATS = ['callout', 'plain', 'blockquote'] as const;
 
 /**
- * Human-readable display labels for AI platforms
+ * Human-readable display labels for AI platforms.
+ * Derived from PLATFORM_REGISTRY (ADR-014).
  */
-export const PLATFORM_LABELS: Record<AIPlatform, string> = {
-  gemini: 'Gemini',
-  claude: 'Claude',
-  chatgpt: 'ChatGPT',
-  perplexity: 'Perplexity',
-  notebooklm: 'NotebookLM',
-} as const;
+export const PLATFORM_LABELS: Record<AIPlatform, string> = Object.fromEntries(
+  ALL_PLATFORMS.map(platform => [platform, PLATFORM_REGISTRY[platform].label])
+) as Record<AIPlatform, string>;
 
 // ============================================================
 // Auto-Scroll Configuration (Gemini)

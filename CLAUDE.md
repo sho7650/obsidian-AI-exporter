@@ -196,18 +196,18 @@ source: gemini
 
 ## Adding New Platforms
 
-When adding a new platform extractor:
+When adding a new platform extractor (see [ADR-014](docs/adr/014-platform-registry-ssot.md)):
 
-1. Add platform to union types in `src/lib/types.ts` (`source`, `platform`)
-2. Add platform to `BaseExtractor` in `src/content/extractors/base.ts`
-3. Create new extractor class extending `BaseExtractor`
-4. Add routing in `src/content/index.ts` (`getExtractor()`)
+1. Add the platform to the `AIPlatform` union in `src/lib/types.ts`
+2. Add its entry (`host`, `label`) to `PLATFORM_REGISTRY` in `src/lib/platform-registry.ts` — `VALID_SOURCES`, `ALLOWED_ORIGINS`, and `PLATFORM_LABELS` derive from it automatically
+3. Create the extractor class extending `BaseExtractor`
+4. Add its constructor to `EXTRACTOR_CONSTRUCTORS` and root selectors to `PLATFORM_ROOT_SELECTORS` in `src/content/index.ts` (the compiler enforces both once the union grows)
 5. Update `waitForConversationContainer()` selectors if needed
-6. **Add origin to `ALLOWED_ORIGINS` in `src/background/service-worker.ts`** ← CRITICAL
-7. Update `src/manifest.json`:
+6. Update `src/manifest.json`:
    - `host_permissions`
    - `content_scripts.matches`
-8. Add DOM helpers and tests
+     (`test/arch/platform-ssot.test.ts` guards the manifest ⇄ registry seam)
+7. Add DOM helpers and tests
 
 ## Future Platforms
 
