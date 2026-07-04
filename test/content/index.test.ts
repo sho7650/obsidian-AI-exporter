@@ -1,332 +1,417 @@
 /**
- * Content script tests
+ * Content script bootstrap tests
  *
- * Tests the throttle function, waitForConversationContainer, and handleSync.
- * Note: The main initialize() function has side effects that run on import,
- * so we test the utility functions and mock the initialization behavior.
+ * Drives the REAL src/content/bootstrap.ts module (initialize, handleSync,
+ * getExtractor, startContentScript) with mocked ui/messaging layers and
+ * fixture DOM. The index.ts entry shim stays a 3-line side effect.
  */
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { ContentScriptSettings, MultiOutputResponse } from '../../src/lib/types';
+import {
+  loadFixture,
+  clearFixture,
+  createGeminiConversationDOM,
+  setGeminiLocation,
+  setNonGeminiLocation,
+  resetLocation,
+} from '../fixtures/dom-helpers';
 
-describe('content/index utilities', () => {
-  describe('throttle', () => {
-    // We need to test throttle indirectly since it's not exported
-    // But we can verify throttle behavior through integration testing
+vi.mock('../../src/content/ui', () => ({
+  injectSyncButton: vi.fn(),
+  setButtonLoading: vi.fn(),
+  showSuccessToast: vi.fn(),
+  showErrorToast: vi.fn(),
+  showWarningToast: vi.fn(),
+  showToast: vi.fn(),
+}));
 
-    beforeEach(() => {
+vi.mock('../../src/lib/messaging', () => ({
+  sendMessage: vi.fn(),
+}));
+
+import {
+  injectSyncButton,
+  setButtonLoading,
+  showSuccessToast,
+  showErrorToast,
+  showWarningToast,
+  showToast,
+} from '../../src/content/ui';
+import { sendMessage } from '../../src/lib/messaging';
+import {
+  initialize,
+  handleSync,
+  getExtractor,
+  startContentScript,
+} from '../../src/content/bootstrap';
+
+const baseSettings: ContentScriptSettings = {
+  obsidianUrl: 'http://127.0.0.1:27123',
+  vaultPath: 'AI/{platform}',
+  isApiKeyConfigured: true,
+  enableAutoScroll: false,
+  enableAppendMode: false,
+  enableToolContent: false,
+  outputOptions: { obsidian: true, file: false, clipboard: false },
+  templateOptions: {
+    includeId: true,
+    includeTitle: true,
+    includeTags: true,
+    includeSource: true,
+    includeDates: true,
+    includeMessageCount: true,
+    messageFormat: 'callout',
+    userCalloutType: 'QUESTION',
+    assistantCalloutType: 'NOTE',
+  },
+};
+
+const okSave: MultiOutputResponse = {
+  results: [{ destination: 'obsidian', success: true }],
+  allSuccessful: true,
+  anySuccessful: true,
+  messagesAppended: undefined,
+};
+
+/** Route mocked sendMessage responses by action */
+function mockMessaging(overrides: {
+  settings?: Partial<ContentScriptSettings>;
+  connection?: { success: boolean; error?: string };
+  save?: MultiOutputResponse;
+}): void {
+  vi.mocked(sendMessage).mockImplementation(message => {
+    switch ((message as { action: string }).action) {
+      case 'getSettings':
+        return Promise.resolve({ ...baseSettings, ...overrides.settings });
+      case 'testConnection':
+        return Promise.resolve(overrides.connection ?? { success: true });
+      case 'saveToOutputs':
+        return Promise.resolve(overrides.save ?? okSave);
+      default:
+        return Promise.reject(new Error('unexpected action'));
+    }
+  });
+}
+
+function loadGeminiConversation(): void {
+  setGeminiLocation('abc123def456');
+  loadFixture(
+    createGeminiConversationDOM([
+      { role: 'user', content: 'Hello Gemini' },
+      { role: 'assistant', content: '<p>Hi there!</p>' },
+    ])
+  );
+}
+
+describe('content/bootstrap', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    clearFixture();
+    resetLocation();
+  });
+
+  describe('getExtractor', () => {
+    it('returns the Gemini extractor on gemini.google.com', () => {
+      setGeminiLocation('abc123');
+      expect(getExtractor()?.platform).toBe('gemini');
+    });
+
+    it('returns null on unsupported hostnames', () => {
+      setNonGeminiLocation('example.com');
+      expect(getExtractor()).toBeNull();
+    });
+
+    it('rejects malicious subdomains embedding a platform hostname', () => {
+      setNonGeminiLocation('gemini.google.com.attacker.com');
+      expect(getExtractor()).toBeNull();
+    });
+  });
+
+  describe('initialize', () => {
+    it('skips initialization on unsupported pages', async () => {
+      setNonGeminiLocation('example.com');
+      await initialize();
+      expect(injectSyncButton).not.toHaveBeenCalled();
+    });
+
+    it('injects the sync button on a Gemini conversation page', async () => {
+      loadGeminiConversation();
+      await initialize();
+      expect(injectSyncButton).toHaveBeenCalledTimes(1);
+      expect(injectSyncButton).toHaveBeenCalledWith(expect.any(Function));
+    });
+  });
+
+  describe('conversation container waiting', () => {
+    it('initializes once the container appears via MutationObserver', async () => {
+      setGeminiLocation('abc123def456');
+      // Observation root (main) exists, but no conversation container yet
+      loadFixture('<main id="root"></main>');
+
+      const pending = initialize();
+      expect(injectSyncButton).not.toHaveBeenCalled();
+
+      // Container arrives later (lazy render)
+      document.querySelector('main')!.innerHTML = createGeminiConversationDOM([
+        { role: 'user', content: 'late' },
+      ]);
+
+      await pending;
+      expect(injectSyncButton).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls back to document.body observation without a platform root', async () => {
+      setGeminiLocation('abc123def456');
+      loadFixture('<div id="no-main"></div>'); // no <main>, no #app-container
+
+      const pending = initialize();
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        createGeminiConversationDOM([{ role: 'user', content: 'late' }])
+      );
+
+      await pending;
+      expect(injectSyncButton).toHaveBeenCalledTimes(1);
+    });
+
+    it('gives up waiting after the fallback timeout', async () => {
       vi.useFakeTimers();
-    });
+      try {
+        setGeminiLocation('abc123def456');
+        loadFixture('<main></main>'); // container never appears
 
-    afterEach(() => {
-      vi.useRealTimers();
-    });
+        const pending = initialize();
+        await vi.advanceTimersByTimeAsync(10_000);
+        await pending;
 
-    it('throttle pattern: first call executes immediately', async () => {
-      // Simulate throttle behavior
-      let callCount = 0;
-      let inThrottle = false;
-      const limit = 1000;
-
-      const throttledFn = () => {
-        if (!inThrottle) {
-          callCount++;
-          inThrottle = true;
-          setTimeout(() => (inThrottle = false), limit);
-        }
-      };
-
-      throttledFn();
-      expect(callCount).toBe(1);
-    });
-
-    it('throttle pattern: subsequent calls within limit are blocked', async () => {
-      let callCount = 0;
-      let inThrottle = false;
-      const limit = 1000;
-
-      const throttledFn = () => {
-        if (!inThrottle) {
-          callCount++;
-          inThrottle = true;
-          setTimeout(() => (inThrottle = false), limit);
-        }
-      };
-
-      throttledFn(); // Call 1 - executes
-      throttledFn(); // Call 2 - blocked
-      throttledFn(); // Call 3 - blocked
-
-      expect(callCount).toBe(1);
-    });
-
-    it('throttle pattern: call after limit expires executes', async () => {
-      let callCount = 0;
-      let inThrottle = false;
-      const limit = 1000;
-
-      const throttledFn = () => {
-        if (!inThrottle) {
-          callCount++;
-          inThrottle = true;
-          setTimeout(() => (inThrottle = false), limit);
-        }
-      };
-
-      throttledFn(); // Call 1 - executes
-      expect(callCount).toBe(1);
-
-      vi.advanceTimersByTime(1001); // Past the limit
-
-      throttledFn(); // Call 2 - executes
-      expect(callCount).toBe(2);
+        // Initialization still completes (button injected on a bare page)
+        expect(injectSyncButton).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
-  describe('waitForConversationContainer pattern', () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-      document.body.innerHTML = '';
+  describe('startContentScript', () => {
+    it('initializes immediately when the DOM is already ready', async () => {
+      loadGeminiConversation();
+      startContentScript();
+      await vi.waitFor(() => expect(injectSyncButton).toHaveBeenCalled());
     });
 
-    afterEach(() => {
-      vi.useRealTimers();
-      document.body.innerHTML = '';
-    });
+    it('waits for DOMContentLoaded while the document is loading', async () => {
+      loadGeminiConversation();
+      Object.defineProperty(document, 'readyState', {
+        value: 'loading',
+        configurable: true,
+      });
+      try {
+        startContentScript();
+        expect(injectSyncButton).not.toHaveBeenCalled();
 
-    it('resolves immediately if container already exists', async () => {
-      // Add container before checking
-      const container = document.createElement('div');
-      container.className = 'conversation-container';
-      document.body.appendChild(container);
-
-      // Simulate the check logic
-      const existing = document.querySelector('.conversation-container, [class*="conversation"]');
-      expect(existing).not.toBeNull();
-    });
-
-    it('detects container via class name pattern', () => {
-      const container = document.createElement('div');
-      container.className = 'my-conversation-panel';
-      document.body.appendChild(container);
-
-      const existing = document.querySelector('[class*="conversation"]');
-      expect(existing).not.toBeNull();
-    });
-
-    it('MutationObserver pattern detects dynamically added container', async () => {
-      let resolved = false;
-
-      // Create promise that resolves when container appears
-      const waitPromise = new Promise<void>(resolve => {
-        const observer = new MutationObserver((_mutations, obs) => {
-          const container = document.querySelector('.conversation-container');
-          if (container) {
-            obs.disconnect();
-            resolved = true;
-            resolve();
-          }
+        document.dispatchEvent(new Event('DOMContentLoaded'));
+        await vi.waitFor(() => expect(injectSyncButton).toHaveBeenCalled());
+      } finally {
+        Object.defineProperty(document, 'readyState', {
+          value: 'complete',
+          configurable: true,
         });
-
-        observer.observe(document.body, {
-          childList: true,
-          subtree: true,
-        });
-      });
-
-      expect(resolved).toBe(false);
-
-      // Simulate dynamic container addition
-      const container = document.createElement('div');
-      container.className = 'conversation-container';
-      document.body.appendChild(container);
-
-      await waitPromise;
-      expect(resolved).toBe(true);
+      }
     });
 
-    it('fallback timeout pattern resolves after 10 seconds', async () => {
-      let resolved = false;
-
-      const waitPromise = new Promise<void>(resolve => {
-        setTimeout(() => {
-          resolved = true;
-          resolve();
-        }, 10000);
+    it('logs initialization failures instead of throwing', async () => {
+      loadGeminiConversation();
+      vi.mocked(injectSyncButton).mockImplementation(() => {
+        throw new Error('inject failed');
       });
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      expect(resolved).toBe(false);
-
-      vi.advanceTimersByTime(10000);
-      await waitPromise;
-
-      expect(resolved).toBe(true);
+      startContentScript();
+      await vi.waitFor(() =>
+        expect(errorSpy).toHaveBeenCalledWith(
+          '[G2O] Content script initialization failed:',
+          expect.any(Error)
+        )
+      );
+      errorSpy.mockRestore();
     });
   });
 
-  describe('initialize behavior', () => {
-    it('rejects non-Gemini hostnames', () => {
-      // Use strict comparison to prevent substring attacks
-      const hostname = 'other.com';
-      const isGeminiPage = hostname === 'gemini.google.com';
-      expect(isGeminiPage).toBe(false);
-    });
-
-    it('accepts gemini.google.com hostname', () => {
-      const hostname = 'gemini.google.com';
-      const isGeminiPage = hostname === 'gemini.google.com';
-      expect(isGeminiPage).toBe(true);
-    });
-
-    it('rejects malicious subdomains containing gemini.google.com', () => {
-      // CodeQL: js/incomplete-url-substring-sanitization - ensure substring attacks are blocked
-      const hostname = 'evil-gemini.google.com.attacker.com';
-      const isGeminiPage = hostname === 'gemini.google.com';
-      expect(isGeminiPage).toBe(false);
-    });
-  });
-
-  describe('handleSync flow', () => {
-    // These test the expected flow without importing the actual module
-
-    it('checks for API key before proceeding', async () => {
-      const settings = { obsidianApiKey: '' };
-      const hasApiKey = Boolean(settings.obsidianApiKey);
-      expect(hasApiKey).toBe(false);
-    });
-
-    it('proceeds when API key is present', async () => {
-      const settings = { obsidianApiKey: 'test-key' };
-      const hasApiKey = Boolean(settings.obsidianApiKey);
-      expect(hasApiKey).toBe(true);
-    });
-
-    it('checks connection before extraction', async () => {
-      const connectionResult = { success: false, error: 'Connection failed' };
-      expect(connectionResult.success).toBe(false);
-    });
-
-    it('proceeds when connection succeeds', async () => {
-      const connectionResult = { success: true };
-      expect(connectionResult.success).toBe(true);
-    });
-
-    it('validates extraction result', async () => {
-      const validation = {
-        isValid: false,
-        errors: ['No messages found'],
-        warnings: [],
-      };
-      expect(validation.isValid).toBe(false);
-      expect(validation.errors.length).toBeGreaterThan(0);
-    });
-
-    it('handles warnings from extraction', async () => {
-      const result = {
-        success: true,
-        data: { messages: [] },
-        warnings: ['Some content may be truncated'],
-      };
-      expect(result.warnings?.length).toBeGreaterThan(0);
-    });
-
-    it('catches errors during sync', async () => {
-      const errorMessage = 'Network error';
-      const error = new Error(errorMessage);
-      expect(error.message).toBe(errorMessage);
-    });
-  });
-});
-
-describe('content script messaging', () => {
-  describe('getSettings', () => {
-    it('sends getSettings action to background', async () => {
-      const mockSendMessage = vi.fn().mockResolvedValue({
-        obsidianApiKey: 'test-key',
-        obsidianUrl: 'http://127.0.0.1:27123',
-        vaultPath: 'AI/Gemini',
+  describe('handleSync', () => {
+    it('shows an error when no output destination is enabled', async () => {
+      loadGeminiConversation();
+      mockMessaging({
+        settings: { outputOptions: { obsidian: false, file: false, clipboard: false } },
       });
 
-      const result = await mockSendMessage({ action: 'getSettings' });
+      await handleSync();
 
-      expect(mockSendMessage).toHaveBeenCalledWith({ action: 'getSettings' });
-      expect(result.obsidianApiKey).toBe('test-key');
-    });
-  });
-
-  describe('testConnection', () => {
-    it('sends testConnection action to background', async () => {
-      const mockSendMessage = vi.fn().mockResolvedValue({ success: true });
-
-      const result = await mockSendMessage({ action: 'testConnection' });
-
-      expect(mockSendMessage).toHaveBeenCalledWith({ action: 'testConnection' });
-      expect(result.success).toBe(true);
+      expect(showErrorToast).toHaveBeenCalledWith(
+        'Please select at least one output destination in settings'
+      );
+      expect(setButtonLoading).toHaveBeenLastCalledWith(false);
     });
 
-    it('handles connection failure', async () => {
-      const mockSendMessage = vi.fn().mockResolvedValue({
-        success: false,
-        error: 'Cannot connect to Obsidian',
+    it('shows an error when Obsidian is enabled without an API key', async () => {
+      loadGeminiConversation();
+      mockMessaging({ settings: { isApiKeyConfigured: false } });
+
+      await handleSync();
+
+      expect(showErrorToast).toHaveBeenCalledWith(
+        'Please configure your Obsidian API key in the extension settings'
+      );
+    });
+
+    it('shows the connection error when the connection test fails', async () => {
+      loadGeminiConversation();
+      mockMessaging({ connection: { success: false, error: 'Obsidian is not running' } });
+
+      await handleSync();
+
+      expect(showErrorToast).toHaveBeenCalledWith('Obsidian is not running');
+    });
+
+    it('skips the connection test when Obsidian output is disabled', async () => {
+      loadGeminiConversation();
+      mockMessaging({
+        settings: { outputOptions: { obsidian: false, file: true, clipboard: false } },
       });
 
-      const result = await mockSendMessage({ action: 'testConnection' });
+      await handleSync();
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Cannot connect to Obsidian');
+      const actions = vi
+        .mocked(sendMessage)
+        .mock.calls.map(call => (call[0] as { action: string }).action);
+      expect(actions).not.toContain('testConnection');
+      expect(showSuccessToast).toHaveBeenCalled();
     });
-  });
 
-  describe('saveToOutputs', () => {
-    it('sends saveToOutputs action with note data', async () => {
-      const mockSendMessage = vi.fn().mockResolvedValue({
-        allSuccessful: true,
-        results: [{ destination: 'obsidian', success: true }],
-      });
+    it('shows an error on unsupported pages', async () => {
+      setNonGeminiLocation('example.com');
+      mockMessaging({});
 
-      const note = {
-        fileName: 'test.md',
-        body: '# Test',
-        contentHash: 'abc123',
-        frontmatter: {
-          id: 'test-id',
-          title: 'Test',
-          source: 'gemini' as const,
-          url: 'https://gemini.google.com/app/123',
-          created: '2024-01-01',
-          modified: '2024-01-01',
-          tags: ['test'],
-          message_count: 2,
+      await handleSync();
+
+      expect(showErrorToast).toHaveBeenCalledWith('Not on a valid conversation page');
+    });
+
+    it('shows an error when the page has no extractable conversation', async () => {
+      setGeminiLocation('abc123def456');
+      loadFixture('<div id="empty"></div>');
+      mockMessaging({});
+
+      await handleSync();
+
+      expect(showErrorToast).toHaveBeenCalled();
+      expect(sendMessage).not.toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'saveToOutputs' })
+      );
+    });
+
+    it('extracts, saves, and shows success on the happy path', async () => {
+      loadGeminiConversation();
+      mockMessaging({});
+
+      await handleSync();
+
+      expect(sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'saveToOutputs',
+          outputs: ['obsidian'],
+          data: expect.objectContaining({ fileName: expect.stringMatching(/\.md$/) }),
+        })
+      );
+      expect(showSuccessToast).toHaveBeenCalledWith(expect.stringMatching(/\.md$/), true);
+      expect(setButtonLoading).toHaveBeenNthCalledWith(1, true);
+      expect(setButtonLoading).toHaveBeenLastCalledWith(false);
+    });
+
+    it('shows the appended-message toast when messages were appended', async () => {
+      loadGeminiConversation();
+      mockMessaging({ save: { ...okSave, messagesAppended: 2 } });
+
+      await handleSync();
+
+      expect(showToast).toHaveBeenCalledWith('2 new message(s) appended', 'success');
+    });
+
+    it('shows the no-new-messages toast when nothing was appended', async () => {
+      loadGeminiConversation();
+      mockMessaging({ save: { ...okSave, messagesAppended: 0 } });
+
+      await handleSync();
+
+      expect(showToast).toHaveBeenCalledWith(
+        'No new messages to append',
+        'info',
+        expect.any(Number)
+      );
+    });
+
+    it('shows a warning when only some outputs succeed', async () => {
+      loadGeminiConversation();
+      mockMessaging({
+        save: {
+          results: [
+            { destination: 'obsidian', success: true },
+            { destination: 'clipboard', success: false, error: 'copy failed' },
+          ],
+          allSuccessful: false,
+          anySuccessful: true,
         },
-      };
-
-      const result = await mockSendMessage({
-        action: 'saveToOutputs',
-        outputs: ['obsidian'],
-        data: note,
       });
 
-      expect(mockSendMessage).toHaveBeenCalledWith({
-        action: 'saveToOutputs',
-        outputs: ['obsidian'],
-        data: note,
-      });
-      expect(result.allSuccessful).toBe(true);
-      expect(result.results[0].success).toBe(true);
+      await handleSync();
+
+      expect(showWarningToast).toHaveBeenCalledWith(
+        'Saved to: obsidian. Failed: clipboard: copy failed'
+      );
     });
 
-    it('handles save failure', async () => {
-      const mockSendMessage = vi.fn().mockResolvedValue({
-        allSuccessful: false,
-        results: [{ destination: 'obsidian', success: false, error: 'Failed to save' }],
+    it('shows an error when every output fails', async () => {
+      loadGeminiConversation();
+      mockMessaging({
+        save: {
+          results: [{ destination: 'obsidian', success: false, error: 'disk full' }],
+          allSuccessful: false,
+          anySuccessful: false,
+        },
       });
 
-      const result = await mockSendMessage({
-        action: 'saveToOutputs',
-        outputs: ['obsidian'],
-        data: {},
+      await handleSync();
+
+      expect(showErrorToast).toHaveBeenCalledWith('disk full');
+    });
+
+    it('shows a generic error when failures carry no message', async () => {
+      loadGeminiConversation();
+      mockMessaging({
+        save: {
+          results: [{ destination: 'obsidian', success: false }],
+          allSuccessful: false,
+          anySuccessful: false,
+        },
       });
 
-      expect(result.allSuccessful).toBe(false);
-      expect(result.results[0].error).toBe('Failed to save');
+      await handleSync();
+
+      expect(showErrorToast).toHaveBeenCalledWith('Failed to save');
+    });
+
+    it('catches messaging errors and resets the button state', async () => {
+      loadGeminiConversation();
+      vi.mocked(sendMessage).mockRejectedValue(new Error('Extension context invalidated.'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await handleSync();
+
+      expect(showErrorToast).toHaveBeenCalledWith('Extension context invalidated.');
+      expect(setButtonLoading).toHaveBeenLastCalledWith(false);
+      errorSpy.mockRestore();
     });
   });
 });

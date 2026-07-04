@@ -15,11 +15,12 @@ export default defineConfig({
       exclude: [
         'src/**/*.d.ts',
         'src/lib/types.ts', // Type definitions only
-        'src/popup/index.ts', // Has side effects on import, tested via patterns
-        'src/content/index.ts', // Has side effects on import, tested via patterns
+        // Entry shims: import-time side effect only (a few lines each).
+        // All logic lives in popup/app.ts and content/bootstrap.ts, which ARE covered.
+        'src/popup/index.ts',
+        'src/content/index.ts',
         'test/**/*.ts', // Test infrastructure should not count toward coverage
       ],
-      // Final thresholds - achieved 88.5% statements
       thresholds: {
         statements: 85,
         branches: 75,

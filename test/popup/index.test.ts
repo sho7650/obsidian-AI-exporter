@@ -1,651 +1,439 @@
 /**
- * Popup settings tests
+ * Popup application tests
  *
- * Tests the popup UI initialization, form handling, and settings management.
- * Since popup/index.ts has DOM element references at module level,
- * we test the behavior patterns and component functions.
+ * Drives the REAL src/popup/app.ts module: initPopup() queries a fixture DOM,
+ * populates it from mocked storage, and wires the save/test flows. The
+ * index.ts entry shim stays a DOMContentLoaded one-liner.
  */
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import {
-  validateCalloutType,
-  validateVaultPath,
-  validateApiKey,
-  validateObsidianUrl,
-} from '../../src/lib/validation';
-import { getSettings, saveSettings } from '../../src/lib/storage';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { ExtensionSettings } from '../../src/lib/types';
 
-// Mock the storage module
 vi.mock('../../src/lib/storage', () => ({
   getSettings: vi.fn(),
   saveSettings: vi.fn(),
 }));
 
-describe('popup/index patterns', () => {
+vi.mock('../../src/lib/messaging', () => ({
+  sendMessage: vi.fn(),
+}));
+
+import { getSettings, saveSettings } from '../../src/lib/storage';
+import { sendMessage } from '../../src/lib/messaging';
+import { initPopup } from '../../src/popup/app';
+
+const VALID_API_KEY = 'a'.repeat(32);
+
+const storedSettings: ExtensionSettings = {
+  obsidianApiKey: VALID_API_KEY,
+  obsidianUrl: 'http://127.0.0.1:27123',
+  vaultPath: 'AI/Gemini',
+  enableAutoScroll: true,
+  enableAppendMode: false,
+  enableToolContent: false,
+  outputOptions: { obsidian: true, file: false, clipboard: true },
+  templateOptions: {
+    messageFormat: 'callout',
+    userCalloutType: 'QUESTION',
+    assistantCalloutType: 'NOTE',
+    includeQuestionHeaders: false,
+    includeId: true,
+    includeTitle: true,
+    includeTags: false,
+    includeSource: true,
+    includeDates: true,
+    includeMessageCount: true,
+    timezone: 'UTC',
+  },
+};
+
+const SWITCH_IDS = [
+  'outputObsidian',
+  'outputFile',
+  'outputClipboard',
+  'includeQuestionHeaders',
+  'includeId',
+  'includeTitle',
+  'includeTags',
+  'includeSource',
+  'includeDates',
+  'includeMessageCount',
+  'enableAutoScroll',
+  'enableAppendMode',
+  'enableToolContent',
+];
+
+function buildPopupDom(): void {
+  const switches = SWITCH_IDS.map(
+    id => `<input type="checkbox" id="${id}" role="switch" aria-checked="false" />`
+  ).join('\n');
+
+  document.body.innerHTML = `
+    <section id="obsidianSettings">
+      <div class="api-key-wrapper">
+        <input type="password" id="apiKey" />
+      </div>
+      <input type="text" id="obsidianUrl" />
+      <input type="text" id="vaultPath" />
+    </section>
+    ${switches}
+    <select id="messageFormat">
+      <option value="callout">callout</option>
+      <option value="plain">plain</option>
+      <option value="blockquote">blockquote</option>
+    </select>
+    <div id="calloutSettingsGroup">
+      <input type="text" id="userCallout" />
+      <input type="text" id="assistantCallout" />
+    </div>
+    <div id="timezoneGroup">
+      <select id="timezone"><option value="UTC">UTC</option></select>
+    </div>
+    <button id="testBtn"></button>
+    <button id="saveBtn"></button>
+    <div id="status" class="status"></div>
+  `;
+}
+
+function el<T extends HTMLElement>(id: string): T {
+  return document.getElementById(id) as T;
+}
+
+function statusEl(): HTMLDivElement {
+  return el<HTMLDivElement>('status');
+}
+
+async function initWithDefaults(): Promise<void> {
+  buildPopupDom();
+  vi.mocked(getSettings).mockResolvedValue(storedSettings);
+  await initPopup();
+}
+
+describe('popup/app', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    document.body.innerHTML = '';
-    document.head.innerHTML = '';
   });
 
-  afterEach(() => {
-    document.body.innerHTML = '';
-    document.head.innerHTML = '';
-  });
+  describe('initPopup', () => {
+    it('populates the form from stored settings', async () => {
+      await initWithDefaults();
 
-  describe('getMessage pattern', () => {
-    it('returns message from chrome.i18n', () => {
-      const message = chrome.i18n.getMessage('test_key');
-      // Mock returns the key as the message
-      expect(message).toBe('test_key');
+      expect(el<HTMLInputElement>('apiKey').value).toBe(VALID_API_KEY);
+      expect(el<HTMLInputElement>('obsidianUrl').value).toBe('http://127.0.0.1:27123');
+      expect(el<HTMLInputElement>('vaultPath').value).toBe('AI/Gemini');
+      expect(el<HTMLInputElement>('outputObsidian').checked).toBe(true);
+      expect(el<HTMLInputElement>('outputClipboard').checked).toBe(true);
+      expect(el<HTMLInputElement>('outputFile').checked).toBe(false);
+      expect(el<HTMLInputElement>('enableAutoScroll').checked).toBe(true);
+      expect(el<HTMLInputElement>('includeTags').checked).toBe(false);
+      expect(el<HTMLSelectElement>('messageFormat').value).toBe('callout');
     });
 
-    it('returns substitution-based message', () => {
-      const message = chrome.i18n.getMessage('test_key', 'value');
-      expect(message).toBe('test_key');
+    it('populates the timezone dropdown with IANA zones', async () => {
+      await initWithDefaults();
+
+      const timezone = el<HTMLSelectElement>('timezone');
+      expect(timezone.options.length).toBeGreaterThan(1);
+      expect(timezone.value).toBe('UTC');
     });
 
-    it('handles missing messages gracefully', () => {
-      // The mock returns the key itself when not found
-      const message = chrome.i18n.getMessage('nonexistent_key');
-      expect(typeof message).toBe('string');
-    });
-  });
+    it('syncs aria-checked with the populated checkbox state', async () => {
+      await initWithDefaults();
 
-  describe('initializeI18n pattern', () => {
-    it('translates elements with data-i18n attribute', () => {
-      document.body.innerHTML = '<span data-i18n="test_key">Default</span>';
-
-      document.querySelectorAll('[data-i18n]').forEach(element => {
-        const key = element.getAttribute('data-i18n');
-        if (key) {
-          const message = chrome.i18n.getMessage(key);
-          if (message && message !== key) {
-            element.textContent = message;
-          }
-        }
-      });
-
-      // The element is updated with the message
-      const span = document.querySelector('[data-i18n]');
-      expect(span).not.toBeNull();
+      expect(el<HTMLInputElement>('outputObsidian').getAttribute('aria-checked')).toBe('true');
+      expect(el<HTMLInputElement>('outputFile').getAttribute('aria-checked')).toBe('false');
     });
 
-    it('translates input placeholders with data-i18n-placeholder', () => {
-      document.body.innerHTML =
-        '<input data-i18n-placeholder="placeholder_key" placeholder="Default">';
+    it('keeps aria-checked in sync when a switch changes', async () => {
+      await initWithDefaults();
 
-      document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
-        const key = element.getAttribute('data-i18n-placeholder');
-        if (key && element instanceof HTMLInputElement) {
-          const message = chrome.i18n.getMessage(key);
-          if (message && message !== key) {
-            element.placeholder = message;
-          }
-        }
-      });
+      const toggle = el<HTMLInputElement>('outputFile');
+      toggle.checked = true;
+      toggle.dispatchEvent(new Event('change'));
 
-      const input = document.querySelector('[data-i18n-placeholder]') as HTMLInputElement;
-      expect(input).not.toBeNull();
+      expect(toggle.getAttribute('aria-checked')).toBe('true');
     });
 
-    it('updates document title from data-i18n attribute', () => {
-      document.head.innerHTML = '<title data-i18n="title_key">Default Title</title>';
+    it('applies defaults when stored settings have missing optional fields', async () => {
+      buildPopupDom();
+      const partial = {
+        ...storedSettings,
+        obsidianApiKey: '',
+        obsidianUrl: '',
+        outputOptions: undefined,
+        enableAutoScroll: undefined,
+        enableAppendMode: undefined,
+        enableToolContent: undefined,
+        templateOptions: { messageFormat: '', userCalloutType: '', assistantCalloutType: '' },
+      } as unknown as ExtensionSettings;
+      vi.mocked(getSettings).mockResolvedValue(partial);
 
-      const titleElement = document.querySelector('title');
-      if (titleElement) {
-        const key = titleElement.getAttribute('data-i18n');
-        if (key) {
-          const message = chrome.i18n.getMessage(key);
-          if (message && message !== key) {
-            document.title = message;
-          }
-        }
+      await initPopup();
+
+      expect(el<HTMLInputElement>('outputObsidian').checked).toBe(true); // default on
+      expect(el<HTMLInputElement>('outputFile').checked).toBe(false);
+      expect(el<HTMLInputElement>('enableAutoScroll').checked).toBe(false);
+      expect(el<HTMLInputElement>('obsidianUrl').value).toBe('http://127.0.0.1:27123');
+      expect(el<HTMLSelectElement>('messageFormat').value).toBe('callout');
+      expect(el<HTMLInputElement>('userCallout').value).toBe('QUESTION');
+      expect(el<HTMLInputElement>('assistantCallout').value).toBe('NOTE');
+      expect(el<HTMLInputElement>('includeId').checked).toBe(true); // ?? true default
+      expect(el<HTMLSelectElement>('timezone').value).toBe('UTC');
+    });
+
+    it('translates data-i18n elements when a translation exists', async () => {
+      buildPopupDom();
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        '<span id="i18nLabel" data-i18n="settings_title"></span>' +
+          '<input id="i18nInput" data-i18n-placeholder="settings_apiKeyPlaceholder" />'
+      );
+      // Ensure the data-i18n title is the FIRST <title> the app queries
+      document.querySelectorAll('title').forEach(t => t.remove());
+      document.head.insertAdjacentHTML('beforeend', '<title data-i18n="extName"></title>');
+      vi.mocked(chrome.i18n.getMessage).mockImplementation((key: string) => `T_${key}`);
+      vi.mocked(getSettings).mockResolvedValue(storedSettings);
+
+      try {
+        await initPopup();
+
+        expect(document.getElementById('i18nLabel')!.textContent).toBe('T_settings_title');
+        expect((document.getElementById('i18nInput') as HTMLInputElement).placeholder).toBe(
+          'T_settings_apiKeyPlaceholder'
+        );
+        expect(document.title).toBe('T_extName');
+      } finally {
+        vi.mocked(chrome.i18n.getMessage).mockImplementation((key: string) => key);
+        document.head.querySelector('title[data-i18n]')?.remove();
       }
+    });
 
-      expect(titleElement).not.toBeNull();
+    it('rejects when a required element is missing from the DOM', async () => {
+      buildPopupDom();
+      document.getElementById('saveBtn')!.remove();
+      vi.mocked(getSettings).mockResolvedValue(storedSettings);
+
+      await expect(initPopup()).rejects.toThrow('Missing element: #saveBtn');
+    });
+
+    it('does not repopulate the timezone dropdown on re-init', async () => {
+      await initWithDefaults();
+      const countAfterFirst = el<HTMLSelectElement>('timezone').options.length;
+
+      await initPopup(); // same DOM, second run hits the early-return guard
+
+      expect(el<HTMLSelectElement>('timezone').options.length).toBe(countAfterFirst);
+    });
+
+    it('shows an error status when settings cannot be loaded', async () => {
+      buildPopupDom();
+      vi.mocked(getSettings).mockRejectedValue(new Error('storage down'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await initPopup();
+
+      expect(statusEl().textContent).toBe('toast_error_connectionFailed');
+      expect(statusEl().className).toBe('status error');
+      errorSpy.mockRestore();
     });
   });
 
-  describe('populateForm pattern', () => {
-    beforeEach(() => {
-      document.body.innerHTML = `
-        <input id="apiKey" type="password">
-        <input id="obsidianUrl" type="url" value="http://127.0.0.1:27123">
-        <input id="vaultPath" type="text">
-        <select id="messageFormat">
-          <option value="callout">Callout</option>
-          <option value="plain">Plain</option>
-          <option value="blockquote">Blockquote</option>
-        </select>
-        <input id="userCallout" type="text">
-        <input id="assistantCallout" type="text">
-        <input id="includeId" type="checkbox">
-        <input id="includeTitle" type="checkbox">
-        <input id="includeTags" type="checkbox">
-        <input id="includeSource" type="checkbox">
-        <input id="includeDates" type="checkbox">
-        <input id="includeMessageCount" type="checkbox">
-        <input id="enableToolContent" type="checkbox">
-      `;
-    });
-
-    it('populates apiKey field', () => {
-      const apiKey = document.getElementById('apiKey') as HTMLInputElement;
-      const settings = { obsidianApiKey: 'test-key' };
-
-      apiKey.value = settings.obsidianApiKey || '';
-      expect(apiKey.value).toBe('test-key');
-    });
-
-    it('populates obsidianUrl field with default', () => {
-      const obsidianUrl = document.getElementById('obsidianUrl') as HTMLInputElement;
-      const settings = { obsidianUrl: 'http://127.0.0.1:27123' };
-
-      obsidianUrl.value = settings.obsidianUrl || 'http://127.0.0.1:27123';
-      expect(obsidianUrl.value).toBe('http://127.0.0.1:27123');
-    });
-
-    it('populates vaultPath field', () => {
-      const vaultPath = document.getElementById('vaultPath') as HTMLInputElement;
-      const settings = { vaultPath: 'AI/Gemini' };
-
-      vaultPath.value = settings.vaultPath || '';
-      expect(vaultPath.value).toBe('AI/Gemini');
-    });
-
-    it('populates messageFormat select', () => {
-      const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
-      const settings = { templateOptions: { messageFormat: 'blockquote' } };
-
-      messageFormat.value = settings.templateOptions.messageFormat || 'callout';
-      expect(messageFormat.value).toBe('blockquote');
-    });
-
-    it('populates callout type inputs', () => {
-      const userCallout = document.getElementById('userCallout') as HTMLInputElement;
-      const assistantCallout = document.getElementById('assistantCallout') as HTMLInputElement;
-      const settings = {
-        templateOptions: { userCalloutType: 'QUESTION', assistantCalloutType: 'NOTE' },
-      };
-
-      userCallout.value = settings.templateOptions.userCalloutType || 'QUESTION';
-      assistantCallout.value = settings.templateOptions.assistantCalloutType || 'NOTE';
-
-      expect(userCallout.value).toBe('QUESTION');
-      expect(assistantCallout.value).toBe('NOTE');
-    });
-
-    it('populates enableToolContent checkbox', () => {
-      const enableToolContent = document.getElementById('enableToolContent') as HTMLInputElement;
-      const settings = { enableToolContent: true };
-
-      enableToolContent.checked = settings.enableToolContent ?? false;
-      expect(enableToolContent.checked).toBe(true);
-    });
-
-    it('populates checkbox fields', () => {
-      const includeId = document.getElementById('includeId') as HTMLInputElement;
-      const includeTags = document.getElementById('includeTags') as HTMLInputElement;
-
-      const settings = {
-        templateOptions: { includeId: true, includeTags: false },
-      };
-
-      includeId.checked = settings.templateOptions.includeId ?? true;
-      includeTags.checked = settings.templateOptions.includeTags ?? true;
-
-      expect(includeId.checked).toBe(true);
-      expect(includeTags.checked).toBe(false);
-    });
-  });
-
-  describe('collectSettings pattern', () => {
-    beforeEach(() => {
-      document.body.innerHTML = `
-        <input id="apiKey" type="password" value="my-api-key">
-        <input id="obsidianUrl" type="url" value="http://127.0.0.1:27123">
-        <input id="vaultPath" type="text" value="AI/Gemini">
-        <select id="messageFormat">
-          <option value="callout" selected>Callout</option>
-        </select>
-        <input id="userCallout" type="text" value="QUESTION">
-        <input id="assistantCallout" type="text" value="NOTE">
-        <input id="includeId" type="checkbox" checked>
-        <input id="includeTitle" type="checkbox" checked>
-        <input id="includeTags" type="checkbox" checked>
-        <input id="includeSource" type="checkbox" checked>
-        <input id="includeDates" type="checkbox" checked>
-        <input id="includeMessageCount" type="checkbox" checked>
-        <input id="enableToolContent" type="checkbox" checked>
-      `;
-    });
-
-    it('collects all form values into settings object', () => {
-      const elements = {
-        apiKey: document.getElementById('apiKey') as HTMLInputElement,
-        obsidianUrl: document.getElementById('obsidianUrl') as HTMLInputElement,
-        vaultPath: document.getElementById('vaultPath') as HTMLInputElement,
-        messageFormat: document.getElementById('messageFormat') as HTMLSelectElement,
-        userCallout: document.getElementById('userCallout') as HTMLInputElement,
-        assistantCallout: document.getElementById('assistantCallout') as HTMLInputElement,
-        includeId: document.getElementById('includeId') as HTMLInputElement,
-        includeTitle: document.getElementById('includeTitle') as HTMLInputElement,
-        includeTags: document.getElementById('includeTags') as HTMLInputElement,
-        includeSource: document.getElementById('includeSource') as HTMLInputElement,
-        includeDates: document.getElementById('includeDates') as HTMLInputElement,
-        includeMessageCount: document.getElementById('includeMessageCount') as HTMLInputElement,
-      };
-
-      const templateOptions = {
-        messageFormat: elements.messageFormat.value as 'callout' | 'plain' | 'blockquote',
-        userCalloutType: elements.userCallout.value || 'QUESTION',
-        assistantCalloutType: elements.assistantCallout.value || 'NOTE',
-        includeId: elements.includeId.checked,
-        includeTitle: elements.includeTitle.checked,
-        includeTags: elements.includeTags.checked,
-        includeSource: elements.includeSource.checked,
-        includeDates: elements.includeDates.checked,
-        includeMessageCount: elements.includeMessageCount.checked,
-      };
-
-      const settings = {
-        obsidianApiKey: elements.apiKey.value.trim(),
-        obsidianUrl: elements.obsidianUrl.value.trim() || 'http://127.0.0.1:27123',
-        vaultPath: elements.vaultPath.value.trim(),
-        templateOptions,
-      };
-
-      expect(settings.obsidianApiKey).toBe('my-api-key');
-      expect(settings.obsidianUrl).toBe('http://127.0.0.1:27123');
-      expect(settings.vaultPath).toBe('AI/Gemini');
-      expect(settings.templateOptions.messageFormat).toBe('callout');
-    });
-
-    it('collectSettings includes enableToolContent', () => {
-      const enableToolContent = document.getElementById('enableToolContent') as HTMLInputElement;
-      expect(enableToolContent.checked).toBe(true);
-
-      const settings = {
-        enableToolContent: enableToolContent.checked,
-      };
-      expect(settings.enableToolContent).toBe(true);
-    });
-
-    it('trims whitespace from text inputs', () => {
-      const apiKey = document.getElementById('apiKey') as HTMLInputElement;
-      const vaultPath = document.getElementById('vaultPath') as HTMLInputElement;
-
-      apiKey.value = '  spaced-key  ';
-      vaultPath.value = '  AI/Path  ';
-
-      const settings = {
-        obsidianApiKey: apiKey.value.trim(),
-        vaultPath: vaultPath.value.trim(),
-      };
-
-      expect(settings.obsidianApiKey).toBe('spaced-key');
-      expect(settings.vaultPath).toBe('AI/Path');
-    });
-
-    it('uses default URL when empty', () => {
-      const obsidianUrl = document.getElementById('obsidianUrl') as HTMLInputElement;
-      obsidianUrl.value = '';
-
-      const urlValue = obsidianUrl.value.trim() || 'http://127.0.0.1:27123';
-      expect(urlValue).toBe('http://127.0.0.1:27123');
-    });
-  });
-
-  describe('handleSave validation', () => {
-    it('validates API key', () => {
-      const apiKey = 'valid-api-key-12345678901234567890';
-      const validated = validateApiKey(apiKey);
-      expect(validated).toBe(apiKey);
-    });
-
-    it('rejects empty API key', () => {
-      expect(() => validateApiKey('')).toThrow();
-    });
-
-    it('validates URL format', () => {
-      expect(validateObsidianUrl('http://127.0.0.1:27123')).toBe('http://127.0.0.1:27123');
-      expect(validateObsidianUrl('https://192.168.1.5:27123')).toBe('https://192.168.1.5:27123');
-      expect(() => validateObsidianUrl('not-a-url')).toThrow();
-    });
-
-    it('validates vault path', () => {
-      const vaultPath = 'AI/Gemini';
-      const validated = validateVaultPath(vaultPath);
-      expect(validated).toBe(vaultPath);
-    });
-
-    it('rejects invalid vault path', () => {
-      // Contains null character or other invalid characters
-      expect(() => validateVaultPath('/absolute/path')).toThrow();
-    });
-
-    it('validates callout types with defaults', () => {
-      expect(validateCalloutType('QUESTION', 'NOTE')).toBe('QUESTION');
-      expect(validateCalloutType('NOTE', 'QUESTION')).toBe('NOTE');
-      expect(validateCalloutType('TIP', 'NOTE')).toBe('TIP');
-      // Invalid types fall back to default
-      expect(validateCalloutType('INVALID', 'NOTE')).toBe('NOTE');
-      expect(validateCalloutType('', 'NOTE')).toBe('NOTE');
-    });
-  });
-
-  describe('handleTest pattern', () => {
-    it('checks for API key before testing', () => {
-      const settings = { obsidianApiKey: '' };
-      const hasApiKey = Boolean(settings.obsidianApiKey);
-      expect(hasApiKey).toBe(false);
-    });
-
-    it('sends testConnection message', async () => {
-      const mockSendMessage = vi.fn((message: unknown, callback: (response: unknown) => void) => {
-        callback({ success: true });
-      });
-
-      const result = await new Promise<{ success: boolean }>(resolve => {
-        mockSendMessage({ action: 'testConnection' }, response => {
-          resolve(response as { success: boolean });
-        });
-      });
-
-      expect(result.success).toBe(true);
-      expect(mockSendMessage).toHaveBeenCalledWith(
-        { action: 'testConnection' },
-        expect.any(Function)
-      );
-    });
-
-    it('handles connection failure', async () => {
-      const mockSendMessage = vi.fn((message: unknown, callback: (response: unknown) => void) => {
-        callback({ success: false, error: 'Connection failed' });
-      });
-
-      const result = await new Promise<{ success: boolean; error?: string }>(resolve => {
-        mockSendMessage({ action: 'testConnection' }, response => {
-          resolve(response as { success: boolean; error?: string });
-        });
-      });
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Connection failed');
-    });
-
-    it('handles runtime error', async () => {
-      // Simulate chrome.runtime.lastError
-      const error = new Error('Extension context invalidated');
-      expect(error.message).toBe('Extension context invalidated');
-    });
-  });
-
-  describe('showStatus pattern', () => {
-    beforeEach(() => {
-      document.body.innerHTML = '<div id="status" class="status"></div>';
-    });
-
-    it('shows success status', () => {
-      const status = document.getElementById('status') as HTMLDivElement;
-
-      status.textContent = 'Settings saved';
-      status.className = 'status success';
-
-      expect(status.textContent).toBe('Settings saved');
-      expect(status.classList.contains('success')).toBe(true);
-    });
-
-    it('shows error status', () => {
-      const status = document.getElementById('status') as HTMLDivElement;
-
-      status.textContent = 'Error occurred';
-      status.className = 'status error';
-
-      expect(status.textContent).toBe('Error occurred');
-      expect(status.classList.contains('error')).toBe(true);
-    });
-
-    it('shows warning status', () => {
-      const status = document.getElementById('status') as HTMLDivElement;
-
-      status.textContent = 'Warning message';
-      status.className = 'status warning';
-
-      expect(status.classList.contains('warning')).toBe(true);
-    });
-
-    it('shows info status', () => {
-      const status = document.getElementById('status') as HTMLDivElement;
-
-      status.textContent = 'Testing connection...';
-      status.className = 'status info';
-
-      expect(status.classList.contains('info')).toBe(true);
-    });
-
-    it('clears status', () => {
-      const status = document.getElementById('status') as HTMLDivElement;
-
-      status.textContent = 'Some status';
-      status.className = 'status error';
-
-      // Clear status
-      status.textContent = '';
-      status.className = 'status';
-
-      expect(status.textContent).toBe('');
-      expect(status.className).toBe('status');
-    });
-  });
-
-  describe('setupApiKeyToggle pattern', () => {
-    beforeEach(() => {
-      document.body.innerHTML = `
-        <div class="input-group">
-          <input id="apiKey" type="password" value="secret-key">
-        </div>
-      `;
-    });
-
-    it('creates toggle button', () => {
-      const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
-      const container = apiKeyInput.parentElement;
-
-      const toggleBtn = document.createElement('button');
-      toggleBtn.type = 'button';
-      toggleBtn.className = 'api-key-toggle';
-      toggleBtn.textContent = '👁️';
-
-      container?.appendChild(toggleBtn);
-
-      expect(container?.querySelector('.api-key-toggle')).not.toBeNull();
-    });
-
-    it('toggles input type on click', () => {
-      const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
-      const container = apiKeyInput.parentElement;
-
-      const toggleBtn = document.createElement('button');
-      toggleBtn.type = 'button';
-
-      toggleBtn.addEventListener('click', () => {
-        if (apiKeyInput.type === 'password') {
-          apiKeyInput.type = 'text';
-          toggleBtn.textContent = '🙈';
-        } else {
-          apiKeyInput.type = 'password';
-          toggleBtn.textContent = '👁️';
-        }
-      });
-
-      container?.appendChild(toggleBtn);
-
-      // Initial state
-      expect(apiKeyInput.type).toBe('password');
-
-      // First click - show
-      toggleBtn.click();
-      expect(apiKeyInput.type).toBe('text');
-      expect(toggleBtn.textContent).toBe('🙈');
-
-      // Second click - hide
-      toggleBtn.click();
-      expect(apiKeyInput.type).toBe('password');
-      expect(toggleBtn.textContent).toBe('👁️');
-    });
-
-    it('does nothing without parent container', () => {
-      const apiKeyInput = document.createElement('input');
-      apiKeyInput.id = 'orphanApiKey';
-      apiKeyInput.type = 'password';
-
-      // No parent element, should not throw
-      const container = apiKeyInput.parentElement;
-      expect(container).toBeNull();
-    });
-  });
-
-  describe('callout settings visibility', () => {
-    /** Replicates updateCalloutSettingsVisibility() from src/popup/index.ts */
-    function updateCalloutSettingsVisibility(
-      messageFormat: HTMLSelectElement,
-      calloutSettingsGroup: HTMLElement
-    ): void {
-      if (messageFormat.value === 'callout') {
-        calloutSettingsGroup.style.display = '';
-      } else {
-        calloutSettingsGroup.style.display = 'none';
-      }
-    }
-
-    beforeEach(() => {
-      document.body.innerHTML = `
-        <select id="messageFormat">
-          <option value="callout">Callout</option>
-          <option value="plain">Plain</option>
-          <option value="blockquote">Blockquote</option>
-        </select>
-        <div class="form-row" id="calloutSettingsGroup">
-          <input id="userCallout" type="text">
-          <input id="assistantCallout" type="text">
-        </div>
-      `;
-    });
-
-    it('hides callout settings group when format is plain', () => {
-      const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
-      const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
-
-      messageFormat.addEventListener('change', () =>
-        updateCalloutSettingsVisibility(messageFormat, group)
-      );
-
-      messageFormat.value = 'plain';
-      messageFormat.dispatchEvent(new Event('change'));
-
-      expect(group.style.display).toBe('none');
-    });
-
-    it('hides callout settings group when format is blockquote', () => {
-      const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
-      const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
-
-      messageFormat.addEventListener('change', () =>
-        updateCalloutSettingsVisibility(messageFormat, group)
-      );
-
-      messageFormat.value = 'blockquote';
-      messageFormat.dispatchEvent(new Event('change'));
-
-      expect(group.style.display).toBe('none');
-    });
-
-    it('shows callout settings group when format is callout', () => {
-      const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
-      const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
-
-      // Start hidden
-      group.style.display = 'none';
-
-      messageFormat.addEventListener('change', () =>
-        updateCalloutSettingsVisibility(messageFormat, group)
-      );
-
-      messageFormat.value = 'callout';
-      messageFormat.dispatchEvent(new Event('change'));
-
-      expect(group.style.display).toBe('');
-    });
-
-    it('syncs visibility on initial load when format is not callout', () => {
-      const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
-      const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
-
-      // Simulate restoring a non-callout format from settings
-      messageFormat.value = 'plain';
-      updateCalloutSettingsVisibility(messageFormat, group);
-
-      expect(group.style.display).toBe('none');
-    });
-
-    it('syncs visibility on initial load when format is callout', () => {
-      const messageFormat = document.getElementById('messageFormat') as HTMLSelectElement;
-      const group = document.getElementById('calloutSettingsGroup') as HTMLElement;
-
-      messageFormat.value = 'callout';
-      updateCalloutSettingsVisibility(messageFormat, group);
-
-      expect(group.style.display).toBe('');
-    });
-  });
-
-  describe('storage integration', () => {
-    it('calls getSettings on initialize', async () => {
+  describe('section visibility', () => {
+    it('disables the Obsidian section when Obsidian output is off', async () => {
+      buildPopupDom();
       vi.mocked(getSettings).mockResolvedValue({
-        obsidianApiKey: 'test-key',
-        obsidianUrl: 'http://127.0.0.1:27123',
-        vaultPath: 'AI/Gemini',
-        templateOptions: {
-          messageFormat: 'callout',
-          userCalloutType: 'QUESTION',
-          assistantCalloutType: 'NOTE',
-          includeId: true,
-          includeTitle: true,
-          includeTags: true,
-          includeSource: true,
-          includeDates: true,
-          includeMessageCount: true,
-        },
+        ...storedSettings,
+        outputOptions: { obsidian: false, file: true, clipboard: false },
       });
+      await initPopup();
 
-      const settings = await getSettings();
-
-      expect(getSettings).toHaveBeenCalled();
-      expect(settings.obsidianApiKey).toBe('test-key');
+      expect(el('obsidianSettings').classList.contains('disabled')).toBe(true);
     });
 
-    it('calls saveSettings on save', async () => {
-      vi.mocked(saveSettings).mockResolvedValue();
-
-      await saveSettings({
-        obsidianApiKey: 'new-key',
-        obsidianUrl: 'https://127.0.0.1:28000',
-        vaultPath: 'New/Path',
-        templateOptions: {
-          messageFormat: 'plain',
-          userCalloutType: 'QUESTION',
-          assistantCalloutType: 'NOTE',
-          includeId: true,
-          includeTitle: true,
-          includeTags: true,
-          includeSource: true,
-          includeDates: true,
-          includeMessageCount: true,
-        },
+    it('re-enables the Obsidian section when the toggle is switched on', async () => {
+      buildPopupDom();
+      vi.mocked(getSettings).mockResolvedValue({
+        ...storedSettings,
+        outputOptions: { obsidian: false, file: true, clipboard: false },
       });
+      await initPopup();
 
+      const toggle = el<HTMLInputElement>('outputObsidian');
+      toggle.checked = true;
+      toggle.dispatchEvent(new Event('change'));
+
+      expect(el('obsidianSettings').classList.contains('disabled')).toBe(false);
+    });
+
+    it('hides callout settings for non-callout formats', async () => {
+      await initWithDefaults();
+
+      const format = el<HTMLSelectElement>('messageFormat');
+      format.value = 'plain';
+      format.dispatchEvent(new Event('change'));
+
+      expect(el('calloutSettingsGroup').style.display).toBe('none');
+    });
+
+    it('hides the timezone group when dates are excluded', async () => {
+      await initWithDefaults();
+
+      const includeDates = el<HTMLInputElement>('includeDates');
+      includeDates.checked = false;
+      includeDates.dispatchEvent(new Event('change'));
+
+      expect(el('timezoneGroup').style.display).toBe('none');
+    });
+  });
+
+  describe('API key visibility toggle', () => {
+    it('appends a toggle button that reveals and hides the key', async () => {
+      await initWithDefaults();
+
+      const toggleBtn = document.querySelector<HTMLButtonElement>('.api-key-toggle');
+      expect(toggleBtn).not.toBeNull();
+
+      const apiKey = el<HTMLInputElement>('apiKey');
+      expect(apiKey.type).toBe('password');
+
+      toggleBtn!.click();
+      expect(apiKey.type).toBe('text');
+
+      toggleBtn!.click();
+      expect(apiKey.type).toBe('password');
+    });
+  });
+
+  describe('save flow', () => {
+    it('saves collected settings and shows a success status', async () => {
+      await initWithDefaults();
+      vi.mocked(saveSettings).mockResolvedValue(undefined);
+
+      el<HTMLInputElement>('vaultPath').value = '  AI/Claude  ';
+      el<HTMLButtonElement>('saveBtn').click();
+
+      await vi.waitFor(() => expect(saveSettings).toHaveBeenCalled());
+      expect(saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          obsidianApiKey: VALID_API_KEY,
+          vaultPath: 'AI/Claude',
+          outputOptions: { obsidian: true, file: false, clipboard: true },
+        })
+      );
+      expect(statusEl().textContent).toBe('status_settingsSaved');
+      expect(statusEl().className).toBe('status success');
+      expect(el<HTMLButtonElement>('saveBtn').disabled).toBe(false);
+    });
+
+    it('rejects saving when no output destination is selected', async () => {
+      await initWithDefaults();
+
+      for (const id of ['outputObsidian', 'outputFile', 'outputClipboard']) {
+        el<HTMLInputElement>(id).checked = false;
+      }
+      el<HTMLButtonElement>('saveBtn').click();
+
+      await vi.waitFor(() => expect(statusEl().textContent).toBe('error_noOutputSelected'));
+      expect(saveSettings).not.toHaveBeenCalled();
+    });
+
+    it('rejects an API key shorter than the security minimum', async () => {
+      await initWithDefaults();
+
+      el<HTMLInputElement>('apiKey').value = 'short';
+      el<HTMLButtonElement>('saveBtn').click();
+
+      await vi.waitFor(() => expect(statusEl().className).toBe('status error'));
+      expect(statusEl().textContent).toContain('too short');
+      expect(saveSettings).not.toHaveBeenCalled();
+    });
+
+    it('skips Obsidian validation when Obsidian output is disabled', async () => {
+      buildPopupDom();
+      vi.mocked(getSettings).mockResolvedValue({
+        ...storedSettings,
+        obsidianApiKey: '',
+        outputOptions: { obsidian: false, file: true, clipboard: false },
+      });
+      vi.mocked(saveSettings).mockResolvedValue(undefined);
+      await initPopup();
+
+      el<HTMLButtonElement>('saveBtn').click();
+
+      await vi.waitFor(() => expect(saveSettings).toHaveBeenCalled());
+      expect(statusEl().textContent).toBe('status_settingsSaved');
+    });
+
+    it('shows an error status when persisting settings fails', async () => {
+      await initWithDefaults();
+      vi.mocked(saveSettings).mockRejectedValue(new Error('quota exceeded'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      el<HTMLButtonElement>('saveBtn').click();
+
+      await vi.waitFor(() => expect(statusEl().className).toBe('status error'));
+      expect(statusEl().textContent).toBe('toast_error_saveFailed');
+      expect(el<HTMLButtonElement>('saveBtn').disabled).toBe(false);
+      errorSpy.mockRestore();
+    });
+  });
+
+  describe('test connection flow', () => {
+    it('saves settings then reports a successful connection', async () => {
+      await initWithDefaults();
+      vi.mocked(saveSettings).mockResolvedValue(undefined);
+      vi.mocked(sendMessage).mockResolvedValue({ success: true });
+
+      el<HTMLButtonElement>('testBtn').click();
+
+      await vi.waitFor(() => expect(statusEl().textContent).toBe('status_connectionSuccess'));
       expect(saveSettings).toHaveBeenCalled();
+      expect(sendMessage).toHaveBeenCalledWith({ action: 'testConnection' });
+      expect(el<HTMLButtonElement>('testBtn').disabled).toBe(false);
+    });
+
+    it('reports the backend error when the connection test fails', async () => {
+      await initWithDefaults();
+      vi.mocked(saveSettings).mockResolvedValue(undefined);
+      vi.mocked(sendMessage).mockResolvedValue({ success: false, error: 'Invalid API key' });
+
+      el<HTMLButtonElement>('testBtn').click();
+
+      await vi.waitFor(() => expect(statusEl().textContent).toBe('Invalid API key'));
+      expect(statusEl().className).toBe('status error');
+    });
+
+    it('warns and skips the test when no API key is entered', async () => {
+      await initWithDefaults();
+
+      el<HTMLInputElement>('apiKey').value = '';
+      el<HTMLButtonElement>('testBtn').click();
+
+      await vi.waitFor(() => expect(statusEl().textContent).toBe('toast_error_noApiKey'));
+      expect(statusEl().className).toBe('status warning');
+      expect(sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('rejects invalid Obsidian settings before testing', async () => {
+      await initWithDefaults();
+
+      el<HTMLInputElement>('obsidianUrl').value = 'ftp://example.com';
+      el<HTMLButtonElement>('testBtn').click();
+
+      await vi.waitFor(() => expect(statusEl().className).toBe('status error'));
+      expect(sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('shows the thrown message when the test itself errors', async () => {
+      await initWithDefaults();
+      vi.mocked(saveSettings).mockResolvedValue(undefined);
+      vi.mocked(sendMessage).mockRejectedValue(new Error('port closed'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      el<HTMLButtonElement>('testBtn').click();
+
+      await vi.waitFor(() => expect(statusEl().textContent).toBe('port closed'));
+      expect(statusEl().className).toBe('status error');
+      errorSpy.mockRestore();
     });
   });
 });
