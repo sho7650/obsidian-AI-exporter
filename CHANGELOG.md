@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.9](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.8...v1.3.9) (2026-07-04)
+
+
+### Bug Fixes
+
+* harden URL scheme and path traversal validation ([#302](https://github.com/sho7650/obsidian-AI-exporter/issues/302)) ([372de0d](https://github.com/sho7650/obsidian-AI-exporter/commit/372de0dfd0281c4926470102464a4aff89d04b11))
+
 ## [1.3.8](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.3.7...v1.3.8) (2026-07-04)
 
 
