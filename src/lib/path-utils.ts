@@ -18,8 +18,8 @@ export function containsPathTraversal(path: string): boolean {
   // ../ or ..\ : .. before path separator
   // ..$   : trailing ..
   if (/(?:^|[\\/])\.\.(?:[\\/]|$)/.test(path)) return true;
-  // Detect absolute paths
-  if (path.startsWith('/') || /^[a-zA-Z]:/.test(path)) return true;
+  // Detect absolute paths, including Windows rooted (\foo) and UNC (\\server) forms
+  if (path.startsWith('/') || path.startsWith('\\') || /^[a-zA-Z]:/.test(path)) return true;
   // Detect URL-encoded .. combined with path separators
   if (/(?:^|%2f|%5c)%2e%2e(?:%2f|%5c|$)/i.test(path)) return true;
   return false;

@@ -15,6 +15,7 @@
 
 import { htmlToMarkdown } from './markdown-rules';
 import { buildSourceMap } from '../lib/source-map';
+import { isHttpUrl } from '../lib/validation';
 import { escapeMarkdownLink } from './extractors/footnotes';
 import type { DeepResearchLinks, DeepResearchSource } from '../lib/types';
 
@@ -30,19 +31,15 @@ const STANDALONE_CITATION_PATTERN =
   /<sup[^>]*?data-turn-source-index="(\d+)"[^>]*?>[\s\S]*?<\/sup>/gi;
 
 /**
- * Sanitize URL to remove dangerous schemes
+ * Sanitize URL for use in footnote links.
+ *
+ * Allowlist (http/https via isHttpUrl) rather than a scheme denylist:
+ * denylists miss unlisted schemes (file:, mailto:, about:, ...) and are
+ * bypassable with whitespace or casing tricks.
  */
 function sanitizeUrl(url: string): string {
-  const dangerousSchemes = ['javascript:', 'data:', 'vbscript:', 'blob:'];
-  const lowerUrl = url.toLowerCase().trim();
-
-  for (const scheme of dangerousSchemes) {
-    if (lowerUrl.startsWith(scheme)) {
-      return ''; // Return empty for dangerous URLs
-    }
-  }
-
-  return url;
+  const trimmed = url.trim();
+  return isHttpUrl(trimmed) ? trimmed : '';
 }
 
 /**
