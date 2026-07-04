@@ -29,12 +29,6 @@ export interface ClassificationResult {
   warn: WarnDetail[];
   /** All selectors failed — includes the primary's metadata */
   fail: SelectorResult[];
-  /**
-   * All non-match baseline comparisons (blocking + advisory).
-   * Kept for the legacy report pipeline; removed once the reporter
-   * consumes the split buckets directly.
-   */
-  baselineIssues: BaselineComparison[];
   /** lost / new_selector / removed — must fail the run (baseline contract) */
   baselineBlocking: BaselineComparison[];
   /** degraded — reported for observability, not enforced */
@@ -85,5 +79,5 @@ export function classifyResults(
   const baselineBlocking = baselineIssues.filter(c => c.status !== 'degraded');
   const baselineAdvisory = baselineIssues.filter(c => c.status === 'degraded');
 
-  return { pass, warn, fail, baselineIssues, baselineBlocking, baselineAdvisory };
+  return { pass, warn, fail, baselineBlocking, baselineAdvisory };
 }

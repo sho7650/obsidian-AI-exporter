@@ -1,15 +1,17 @@
 /**
  * Custom Playwright Reporter: sends Obsidian notifications after test completion.
  *
- * Replaces the broken globalTeardown approach (which could not read report.json
- * because Playwright writes it AFTER teardown). This reporter collects test
- * results directly via onTestEnd() and sends the notification in onEnd().
+ * Collects per-target detail from the JSON attachment each test emits
+ * (test.info().attach — the official structured-data channel) and builds a
+ * full-fidelity report: real classification objects, per-target failures,
+ * stall skips, and auth/test-data states. Replaces the v1 annotation-count
+ * transport that reduced everything to four integers.
  *
  * @see docs/adr/006-custom-reporter-for-obsidian-notification.md
  * @see docs/design/DES-015-live-selector-validation.md
  */
 
-import type { Reporter, TestCase, TestResult, FullResult } from '@playwright/test/reporter';
+import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
@@ -28,14 +30,14 @@ class ObsidianReporter implements Reporter {
     this.platformMap = processTestResult(this.platformMap, {
       platform,
       status: result.status,
-      annotations: result.annotations,
+      attachments: result.attachments,
     });
   }
 
-  async onEnd(_result: FullResult): Promise<void> {
+  async onEnd(): Promise<void> {
     const report = buildValidationReport(this.platformMap, process.env.TIMEZONE);
 
-    // Save timestamped JSON report
+    // Save timestamped JSON report (full detail — real objects, no placeholders)
     const resultsDir = path.join(import.meta.dirname, '..', 'results');
     try {
       if (!fs.existsSync(resultsDir)) {

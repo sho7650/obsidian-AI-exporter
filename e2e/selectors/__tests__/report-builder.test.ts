@@ -1,240 +1,262 @@
 import { describe, it, expect } from 'vitest';
-import type { PlatformReport } from '../notifier';
 import {
-  extractPlatform,
-  parseAnnotationCounts,
-  detectSkipReason,
+  parseDetailAttachment,
   processTestResult,
   buildValidationReport,
+  ATTACHMENT_NAME,
+  type TargetDetail,
   type TestEndInput,
 } from '../report-builder';
+import type { PlatformReport } from '../notifier';
+import type { SelectorResult, WarnDetail } from '../classifier';
+import type { BaselineComparison } from '../baseline';
 
-// --- Factory helpers ---
-
-function makeAnnotations(
-  counts: { pass?: number; warn?: number; fail?: number; baseline_issues?: number } = {},
-): Array<{ type: string; description: string }> {
-  return [
-    { type: 'pass', description: String(counts.pass ?? 0) },
-    { type: 'warn', description: String(counts.warn ?? 0) },
-    { type: 'fail', description: String(counts.fail ?? 0) },
-    { type: 'baseline_issues', description: String(counts.baseline_issues ?? 0) },
-  ];
-}
-
-function makeInput(overrides: Partial<TestEndInput> = {}): TestEndInput {
+function makeSelectorResult(overrides: Partial<SelectorResult> = {}): SelectorResult {
   return {
     platform: 'gemini',
-    status: 'passed',
-    annotations: makeAnnotations({ pass: 5 }),
+    group: 'SELECTORS',
+    name: 'turn',
+    selector: '.turn',
+    index: 0,
+    matchCount: 3,
     ...overrides,
   };
 }
 
-// --- Tests ---
+function makeComparison(overrides: Partial<BaselineComparison> = {}): BaselineComparison {
+  return {
+    group: 'SELECTORS',
+    name: 'turn',
+    selector: '.turn',
+    baselineCount: 3,
+    currentCount: 3,
+    status: 'match',
+    ...overrides,
+  };
+}
 
-describe('extractPlatform', () => {
-  it('converts title to lowercase', () => {
-    expect(extractPlatform('Gemini')).toBe('gemini');
+function makeDetail(overrides: Partial<TargetDetail> = {}): TargetDetail {
+  return {
+    platform: 'gemini',
+    target: 'gemini_conv',
+    mode: 'validate',
+    authStatus: 'authenticated',
+    classification: {
+      pass: [makeSelectorResult()],
+      warn: [],
+      fail: [],
+      baselineBlocking: [],
+      baselineAdvisory: [],
+    },
+    ...overrides,
+  };
+}
+
+function inputFor(
+  detail: TargetDetail | undefined,
+  status: TestEndInput['status'] = 'passed'
+): TestEndInput {
+  return {
+    platform: detail?.platform ?? 'gemini',
+    status,
+    attachments: detail
+      ? [
+          {
+            name: ATTACHMENT_NAME,
+            contentType: 'application/json',
+            body: Buffer.from(JSON.stringify(detail)),
+          },
+        ]
+      : [],
+  };
+}
+
+describe('parseDetailAttachment', () => {
+  it('parses the g2o detail attachment body', () => {
+    const detail = makeDetail();
+    const parsed = parseDetailAttachment(inputFor(detail).attachments);
+    expect(parsed?.target).toBe('gemini_conv');
+    expect(parsed?.classification?.pass).toHaveLength(1);
   });
 
-  it('passes through already-lowercase title', () => {
-    expect(extractPlatform('claude')).toBe('claude');
+  it('returns undefined when the attachment is absent', () => {
+    expect(parseDetailAttachment([])).toBeUndefined();
   });
 
-  it('returns "unknown" for empty string', () => {
-    expect(extractPlatform('')).toBe('unknown');
-  });
-});
-
-describe('parseAnnotationCounts', () => {
-  it('extracts all four counts from annotations', () => {
-    const annotations = makeAnnotations({ pass: 5, warn: 2, fail: 0, baseline_issues: 1 });
-    expect(parseAnnotationCounts(annotations)).toEqual({
-      pass: 5,
-      warn: 2,
-      fail: 0,
-      baselineIssues: 1,
-    });
-  });
-
-  it('returns zeros for empty annotations', () => {
-    expect(parseAnnotationCounts([])).toEqual({
-      pass: 0,
-      warn: 0,
-      fail: 0,
-      baselineIssues: 0,
-    });
-  });
-
-  it('returns zero when description is undefined', () => {
-    const annotations = [{ type: 'pass' }]; // no description
-    expect(parseAnnotationCounts(annotations)).toEqual({
-      pass: 0,
-      warn: 0,
-      fail: 0,
-      baselineIssues: 0,
-    });
-  });
-});
-
-describe('detectSkipReason', () => {
-  it('detects AUTH_EXPIRED from skip annotation', () => {
-    const annotations = [
-      { type: 'skip', description: 'gemini: AUTH_EXPIRED — run \'npm run e2e:auth\' to re-login' },
-    ];
-    expect(detectSkipReason(annotations)).toBe('auth_expired');
-  });
-
-  it('detects unreachable from skip annotation', () => {
-    const annotations = [{ type: 'skip', description: 'gemini: site unreachable' }];
-    expect(detectSkipReason(annotations)).toBe('unreachable');
-  });
-
-  it('returns null when no skip annotation exists', () => {
-    const annotations = makeAnnotations({ pass: 5 });
-    expect(detectSkipReason(annotations)).toBeNull();
-  });
-
-  it('returns null for skip with unrecognized reason', () => {
-    const annotations = [{ type: 'skip', description: 'some other reason' }];
-    expect(detectSkipReason(annotations)).toBeNull();
+  it('returns undefined for a malformed body instead of throwing', () => {
+    const parsed = parseDetailAttachment([
+      { name: ATTACHMENT_NAME, contentType: 'application/json', body: Buffer.from('not json') },
+    ]);
+    expect(parsed).toBeUndefined();
   });
 });
 
 describe('processTestResult', () => {
-  it('creates a new platform entry from empty map', () => {
-    const input = makeInput({ platform: 'gemini', annotations: makeAnnotations({ pass: 5, warn: 1 }) });
-    const result = processTestResult(new Map(), input);
+  it('merges classifications from both targets of a platform with REAL objects', () => {
+    const conv = makeDetail({
+      target: 'gemini_conv',
+      classification: {
+        pass: [makeSelectorResult({ name: 'a' })],
+        warn: [],
+        fail: [],
+        baselineBlocking: [],
+        baselineAdvisory: [makeComparison({ status: 'degraded' })],
+      },
+    });
+    const dr = makeDetail({
+      target: 'gemini_dr',
+      classification: {
+        pass: [makeSelectorResult({ name: 'b' }), makeSelectorResult({ name: 'c' })],
+        warn: [],
+        fail: [],
+        baselineBlocking: [makeComparison({ status: 'lost', currentCount: 0 })],
+        baselineAdvisory: [],
+      },
+    });
 
-    expect(result.has('gemini')).toBe(true);
-    const report = result.get('gemini')!;
-    expect(report.authStatus).toBe('authenticated');
-    expect(report.classification?.pass).toHaveLength(5);
-    expect(report.classification?.warn).toHaveLength(1);
+    let map: ReadonlyMap<string, PlatformReport> = new Map();
+    map = processTestResult(map, inputFor(conv));
+    map = processTestResult(map, inputFor(dr, 'failed'));
+
+    const gemini = map.get('gemini')!;
+    const c = gemini.classification!;
+    expect(c.pass).toHaveLength(3);
+    expect(c.pass.map(p => p.name).sort()).toEqual(['a', 'b', 'c']);
+    expect(c.baselineBlocking).toHaveLength(1);
+    expect(c.baselineBlocking[0].status).toBe('lost');
+    expect(c.baselineAdvisory).toHaveLength(1);
+    expect(gemini.failedTargets).toEqual(['gemini_dr']);
   });
 
-  it('merges counts for same platform across multiple tests', () => {
-    const first = makeInput({ platform: 'gemini', annotations: makeAnnotations({ pass: 5, warn: 1 }) });
-    const second = makeInput({ platform: 'gemini', annotations: makeAnnotations({ pass: 3, fail: 2 }) });
+  it('records auth_expired from the detail of a skipped target', () => {
+    const detail = makeDetail({
+      authStatus: 'auth_expired',
+      skipReason: 'gemini: AUTH_EXPIRED — run e2e:auth',
+      classification: undefined,
+    });
 
-    let map = processTestResult(new Map(), first);
-    map = processTestResult(map, second);
+    const map = processTestResult(new Map(), inputFor(detail, 'skipped'));
 
-    const report = map.get('gemini')!;
-    expect(report.classification?.pass).toHaveLength(8);
-    expect(report.classification?.warn).toHaveLength(1);
-    expect(report.classification?.fail).toHaveLength(2);
+    expect(map.get('gemini')!.authStatus).toBe('auth_expired');
   });
 
-  it('sets authStatus and clears classification on skipped test', () => {
-    const input: TestEndInput = {
-      platform: 'gemini',
-      status: 'skipped',
-      annotations: [{ type: 'skip', description: 'gemini: AUTH_EXPIRED — run \'npm run e2e:auth\' to re-login' }],
-    };
-    const result = processTestResult(new Map(), input);
+  it('records test_data_missing from a failed target', () => {
+    const detail = makeDetail({
+      authStatus: 'test_data_missing',
+      classification: undefined,
+    });
 
-    const report = result.get('gemini')!;
-    expect(report.authStatus).toBe('auth_expired');
-    expect(report.classification).toBeUndefined();
+    const map = processTestResult(new Map(), inputFor(detail, 'failed'));
+
+    expect(map.get('gemini')!.authStatus).toBe('test_data_missing');
   });
 
-  it('does not mutate the original map (immutability)', () => {
-    const original: ReadonlyMap<string, PlatformReport> = new Map();
-    const input = makeInput();
-    const result = processTestResult(original, input);
+  it('records stall skips with their target', () => {
+    const detail = makeDetail({
+      skipReason: 'gemini: content did not load (transient — loading indicator present, stall 2/3)',
+      classification: undefined,
+    });
 
-    expect(original.size).toBe(0);
-    expect(result.size).toBe(1);
-    expect(result).not.toBe(original);
+    const map = processTestResult(new Map(), inputFor(detail, 'skipped'));
+
+    const gemini = map.get('gemini')!;
+    expect(gemini.stallSkips).toEqual(['gemini_conv']);
+    expect(gemini.authStatus).toBe('authenticated');
   });
 
-  it('handles unreachable skip reason', () => {
-    const input: TestEndInput = {
+  it('marks a failed target even when the detail attachment is missing (crash before attach)', () => {
+    const map = processTestResult(new Map(), {
       platform: 'chatgpt',
-      status: 'skipped',
-      annotations: [{ type: 'skip', description: 'chatgpt: site unreachable' }],
-    };
-    const result = processTestResult(new Map(), input);
+      status: 'failed',
+      attachments: [],
+    });
 
-    expect(result.get('chatgpt')!.authStatus).toBe('unreachable');
-    expect(result.get('chatgpt')!.classification).toBeUndefined();
+    expect(map.get('chatgpt')!.failedTargets).toEqual(['chatgpt']);
   });
 });
 
-describe('buildValidationReport', () => {
-  function makePlatformMap(
-    entries: Array<{ platform: string; authStatus?: string; pass?: number; warn?: number; fail?: number }>,
-  ): Map<string, PlatformReport> {
-    const map = new Map<string, PlatformReport>();
-    for (const e of entries) {
-      if (e.authStatus === 'auth_expired' || e.authStatus === 'unreachable') {
-        map.set(e.platform, {
-          platform: e.platform,
-          authStatus: e.authStatus,
-          classification: undefined,
-        });
-      } else {
-        map.set(e.platform, {
-          platform: e.platform,
-          authStatus: 'authenticated',
-          classification: {
-            pass: new Array(e.pass ?? 0).fill(null),
-            warn: new Array(e.warn ?? 0).fill(null),
-            fail: new Array(e.fail ?? 0).fill(null),
-            baselineIssues: [],
-          },
-        });
-      }
-    }
-    return map;
+describe('buildValidationReport overallStatus', () => {
+  function reportFor(inputs: TestEndInput[]): ReturnType<typeof buildValidationReport> {
+    let map: ReadonlyMap<string, PlatformReport> = new Map();
+    for (const input of inputs) map = processTestResult(map, input);
+    return buildValidationReport(map, 'UTC');
   }
 
-  it('returns "pass" when all platforms pass', () => {
-    const map = makePlatformMap([
-      { platform: 'gemini', pass: 5 },
-      { platform: 'claude', pass: 3 },
-    ]);
-    const report = buildValidationReport(map);
+  it('is pass when everything is clean', () => {
+    const report = reportFor([inputFor(makeDetail())]);
     expect(report.overallStatus).toBe('pass');
-    expect(report.platforms).toHaveLength(2);
-    expect(report.timestamp).toBeTruthy();
   });
 
-  it('returns "fail" when any platform has failures', () => {
-    const map = makePlatformMap([
-      { platform: 'gemini', pass: 5, fail: 1 },
-      { platform: 'claude', pass: 3 },
+  it('is fail when any Playwright test failed (even without detail)', () => {
+    const report = reportFor([
+      { platform: 'chatgpt', status: 'failed', attachments: [] },
+      inputFor(makeDetail()),
     ]);
-    expect(buildValidationReport(map).overallStatus).toBe('fail');
+    expect(report.overallStatus).toBe('fail');
   });
 
-  it('returns "auth_expired" when no fail but auth expired', () => {
-    const map = makePlatformMap([
-      { platform: 'gemini', authStatus: 'auth_expired' },
-      { platform: 'claude', pass: 3 },
-    ]);
-    expect(buildValidationReport(map).overallStatus).toBe('auth_expired');
+  it('is fail on baseline blocking violations', () => {
+    const detail = makeDetail({
+      classification: {
+        pass: [],
+        warn: [],
+        fail: [],
+        baselineBlocking: [makeComparison({ status: 'new_selector', baselineCount: -1 })],
+        baselineAdvisory: [],
+      },
+    });
+    expect(reportFor([inputFor(detail, 'failed')]).overallStatus).toBe('fail');
   });
 
-  it('returns "warn" when only warnings exist', () => {
-    const map = makePlatformMap([
-      { platform: 'gemini', pass: 5, warn: 1 },
-      { platform: 'claude', pass: 3 },
-    ]);
-    expect(buildValidationReport(map).overallStatus).toBe('warn');
+  it('is fail on dead primaries (warn entries)', () => {
+    const warnDetail: WarnDetail = {
+      failedPrimary: makeSelectorResult({ matchCount: 0 }),
+      workingFallback: makeSelectorResult({ index: 1 }),
+    };
+    const detail = makeDetail({
+      classification: {
+        pass: [],
+        warn: [warnDetail],
+        fail: [],
+        baselineBlocking: [],
+        baselineAdvisory: [],
+      },
+    });
+    expect(reportFor([inputFor(detail, 'failed')]).overallStatus).toBe('fail');
   });
 
-  it('"fail" takes priority over "auth_expired"', () => {
-    const map = makePlatformMap([
-      { platform: 'gemini', pass: 3, fail: 1 },
-      { platform: 'claude', authStatus: 'auth_expired' },
-    ]);
-    expect(buildValidationReport(map).overallStatus).toBe('fail');
+  it('is fail on test_data_missing', () => {
+    const detail = makeDetail({ authStatus: 'test_data_missing', classification: undefined });
+    expect(reportFor([inputFor(detail, 'failed')]).overallStatus).toBe('fail');
   });
 
-  it('returns "pass" for empty map', () => {
-    expect(buildValidationReport(new Map()).overallStatus).toBe('pass');
+  it('is auth_expired when a session died and nothing failed harder', () => {
+    const detail = makeDetail({
+      authStatus: 'auth_expired',
+      skipReason: 'AUTH_EXPIRED',
+      classification: undefined,
+    });
+    expect(reportFor([inputFor(detail, 'skipped')]).overallStatus).toBe('auth_expired');
+  });
+
+  it('is warn on advisory-only degradation', () => {
+    const detail = makeDetail({
+      classification: {
+        pass: [makeSelectorResult()],
+        warn: [],
+        fail: [],
+        baselineBlocking: [],
+        baselineAdvisory: [makeComparison({ status: 'degraded', currentCount: 1 })],
+      },
+    });
+    expect(reportFor([inputFor(detail)]).overallStatus).toBe('warn');
+  });
+
+  it('is warn on a stall skip (transient, but visible)', () => {
+    const detail = makeDetail({
+      skipReason: 'stall 1/3 — transient',
+      classification: undefined,
+    });
+    expect(reportFor([inputFor(detail, 'skipped')]).overallStatus).toBe('warn');
   });
 });

@@ -1,8 +1,11 @@
 /**
  * Pure functions for building ValidationReport from Playwright test results.
  *
- * Extracted from the Reporter class for unit-testability.
- * All functions are side-effect-free and operate on immutable inputs.
+ * Detail transport: each test attaches its full result (classification with
+ * real objects, auth status, skip reason) as a JSON attachment via
+ * test.info().attach() — the official Playwright channel for structured
+ * data. This replaces the v1 annotation counts, which collapsed everything
+ * to four integers and made saved reports arrays of nulls.
  */
 
 import type { AuthStatus } from './auth-check';
@@ -10,11 +13,36 @@ import type { ClassificationResult } from './classifier';
 import type { PlatformReport, ValidationReport } from './notifier';
 import { formatDateWithTimezone } from '../../src/lib/date-utils';
 
+/** Attachment name carrying the per-target detail JSON. */
+export const ATTACHMENT_NAME = 'g2o-detail';
+
+/** Per-target detail attached by the spec at every exit point. */
+export interface TargetDetail {
+  platform: string;
+  /** Ready-key of the validated target (e.g. gemini_conv, gemini_dr). */
+  target: string;
+  mode: 'validate' | 'update';
+  authStatus: AuthStatus;
+  /** Present when the target was skipped (auth, unreachable, stall). */
+  skipReason?: string;
+  /** Baseline usability at validation time (validate mode only). */
+  baselineState?: 'ok' | 'legacy' | 'missing_groups';
+  /** Present when validation ran. */
+  classification?: ClassificationResult;
+}
+
+export interface AttachmentLike {
+  name: string;
+  contentType: string;
+  body?: Buffer;
+  path?: string;
+}
+
 /** Minimal input extracted from Playwright's onTestEnd callback. */
 export interface TestEndInput {
   platform: string;
   status: 'passed' | 'failed' | 'skipped' | 'timedOut' | 'interrupted';
-  annotations: ReadonlyArray<{ type: string; description?: string }>;
+  attachments: ReadonlyArray<AttachmentLike>;
 }
 
 /**
@@ -26,42 +54,49 @@ export function extractPlatform(parentTitle: string): string {
   return trimmed || 'unknown';
 }
 
-/**
- * Parse annotation counts from a test result's annotations array.
- * Returns {pass, warn, fail, baselineIssues} as integers (defaults to 0).
- */
-export function parseAnnotationCounts(
-  annotations: ReadonlyArray<{ type: string; description?: string }>
-): { pass: number; warn: number; fail: number; baselineIssues: number } {
-  const getCount = (type: string): number => {
-    const ann = annotations.find(a => a.type === type);
-    if (!ann?.description) return 0;
-    const parsed = parseInt(ann.description, 10);
-    return Number.isNaN(parsed) ? 0 : parsed;
-  };
+/** Parse the g2o detail attachment; undefined when absent or malformed. */
+export function parseDetailAttachment(
+  attachments: ReadonlyArray<AttachmentLike>
+): TargetDetail | undefined {
+  const attachment = attachments.find(a => a.name === ATTACHMENT_NAME);
+  if (!attachment?.body) return undefined;
+  try {
+    return JSON.parse(attachment.body.toString('utf-8')) as TargetDetail;
+  } catch {
+    return undefined;
+  }
+}
 
+const AUTH_SEVERITY: Readonly<Record<AuthStatus, number>> = {
+  authenticated: 0,
+  unreachable: 1,
+  auth_expired: 2,
+  test_data_missing: 3,
+};
+
+function worseAuthStatus(a: AuthStatus, b: AuthStatus): AuthStatus {
+  return AUTH_SEVERITY[b] > AUTH_SEVERITY[a] ? b : a;
+}
+
+function mergeClassification(
+  existing: ClassificationResult | undefined,
+  incoming: ClassificationResult
+): ClassificationResult {
+  if (!existing) return incoming;
   return {
-    pass: getCount('pass'),
-    warn: getCount('warn'),
-    fail: getCount('fail'),
-    baselineIssues: getCount('baseline_issues'),
+    pass: [...existing.pass, ...incoming.pass],
+    warn: [...existing.warn, ...incoming.warn],
+    fail: [...existing.fail, ...incoming.fail],
+    baselineBlocking: [...existing.baselineBlocking, ...incoming.baselineBlocking],
+    baselineAdvisory: [...existing.baselineAdvisory, ...incoming.baselineAdvisory],
   };
 }
 
-/**
- * Detect skip reason from annotations.
- * Returns 'auth_expired' | 'unreachable' | null.
- */
-export function detectSkipReason(
-  annotations: ReadonlyArray<{ type: string; description?: string }>
-): 'auth_expired' | 'unreachable' | null {
-  const skipAnn = annotations.find(a => a.type === 'skip');
-  if (!skipAnn?.description) return null;
-
-  if (skipAnn.description.includes('AUTH_EXPIRED')) return 'auth_expired';
-  if (skipAnn.description.includes('unreachable')) return 'unreachable';
-  return null;
-}
+const FAILED_STATUSES: ReadonlySet<TestEndInput['status']> = new Set([
+  'failed',
+  'timedOut',
+  'interrupted',
+]);
 
 /**
  * Process a single test result and merge into the platform map.
@@ -72,50 +107,50 @@ export function processTestResult(
   input: TestEndInput
 ): Map<string, PlatformReport> {
   const newMap = new Map(platformMap);
-  const { platform, status, annotations } = input;
+  const detail = parseDetailAttachment(input.attachments);
 
-  // Handle skipped tests
-  if (status === 'skipped') {
-    const skipReason = detectSkipReason(annotations);
-    const authStatus: AuthStatus = skipReason ?? 'authenticated';
-    newMap.set(platform, {
-      platform,
-      authStatus,
-      classification: undefined,
-    });
-    return newMap;
+  const existing = newMap.get(input.platform);
+  const report: PlatformReport = {
+    platform: input.platform,
+    authStatus: existing?.authStatus ?? 'authenticated',
+    classification: existing?.classification,
+    failedTargets: [...(existing?.failedTargets ?? [])],
+    stallSkips: [...(existing?.stallSkips ?? [])],
+  };
+
+  const targetName = detail?.target ?? input.platform;
+
+  if (FAILED_STATUSES.has(input.status)) {
+    report.failedTargets.push(targetName);
+  }
+  if (detail) {
+    report.authStatus = worseAuthStatus(report.authStatus, detail.authStatus);
+    if (
+      input.status === 'skipped' &&
+      detail.skipReason !== undefined &&
+      detail.authStatus === 'authenticated'
+    ) {
+      // Authenticated skip = content stall (auth/unreachable skips carry
+      // their own authStatus and are tracked via that field instead)
+      report.stallSkips.push(targetName);
+    }
+    if (detail.classification) {
+      report.classification = mergeClassification(existing?.classification, detail.classification);
+    }
   }
 
-  // Parse annotation counts
-  const counts = parseAnnotationCounts(annotations);
-
-  // Get or create platform entry
-  const existing = newMap.get(platform);
-  const existingClassification = existing?.classification;
-
-  // Merge counts using placeholder arrays (notifier reads .length only)
-  const classification: ClassificationResult = {
-    pass: [...(existingClassification?.pass ?? []), ...new Array<null>(counts.pass).fill(null)],
-    warn: [...(existingClassification?.warn ?? []), ...new Array<null>(counts.warn).fill(null)],
-    fail: [...(existingClassification?.fail ?? []), ...new Array<null>(counts.fail).fill(null)],
-    baselineIssues: [
-      ...(existingClassification?.baselineIssues ?? []),
-      ...new Array<null>(counts.baselineIssues).fill(null),
-    ],
-  } as ClassificationResult;
-
-  newMap.set(platform, {
-    platform,
-    authStatus: existing?.authStatus ?? ('authenticated' as AuthStatus),
-    classification,
-  });
-
+  newMap.set(input.platform, report);
   return newMap;
 }
 
 /**
  * Build the final ValidationReport from accumulated platform data.
+ *
  * overallStatus priority: fail > auth_expired > warn > pass.
+ * fail includes: any failed Playwright test (even without detail),
+ * test_data_missing, zero-match failures, dead primaries (warn entries),
+ * and baseline contract violations. warn covers advisory degradation and
+ * transient stall skips.
  */
 export function buildValidationReport(
   platformMap: ReadonlyMap<string, PlatformReport>,
@@ -124,9 +159,19 @@ export function buildValidationReport(
   const platforms = [...platformMap.values()];
   const timestamp = formatDateWithTimezone(new Date(), timezone ?? 'UTC');
 
-  const hasFail = platforms.some(p => p.classification && p.classification.fail.length > 0);
+  const hasFail = platforms.some(
+    p =>
+      p.failedTargets.length > 0 ||
+      p.authStatus === 'test_data_missing' ||
+      (p.classification !== undefined &&
+        (p.classification.fail.length > 0 ||
+          p.classification.warn.length > 0 ||
+          p.classification.baselineBlocking.length > 0))
+  );
   const hasAuthExpired = platforms.some(p => p.authStatus === 'auth_expired');
-  const hasWarn = platforms.some(p => p.classification && p.classification.warn.length > 0);
+  const hasWarn = platforms.some(
+    p => p.stallSkips.length > 0 || (p.classification?.baselineAdvisory.length ?? 0) > 0
+  );
 
   let overallStatus: ValidationReport['overallStatus'];
   if (hasFail) overallStatus = 'fail';

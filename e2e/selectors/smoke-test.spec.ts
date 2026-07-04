@@ -34,6 +34,19 @@ import {
 import { classifyResults, type SelectorResult } from './classifier';
 import { waitForReadyWithRetry, decideLoadOutcome } from './load-readiness';
 import { getConsecutiveStalls, recordStall, resetStalls } from './stall-tracker';
+import { ATTACHMENT_NAME, type TargetDetail } from './report-builder';
+
+/**
+ * Attach the per-target detail JSON for ObsidianReporter.
+ * test.info().attach is the official channel for structured data between
+ * a test and a custom reporter (result.attachments in onTestEnd).
+ */
+async function attachDetail(detail: TargetDetail): Promise<void> {
+  await test.info().attach(ATTACHMENT_NAME, {
+    body: JSON.stringify(detail),
+    contentType: 'application/json',
+  });
+}
 
 dotenv.config({ path: path.join(import.meta.dirname, '..', '.env.local') });
 
@@ -109,17 +122,25 @@ async function runPlatformValidation(
   try {
     // Auth pre-flight
     const authStatus: AuthStatus = await checkAuthStatus(page, platform, url!);
+    const mode: TargetDetail['mode'] = process.env.UPDATE_BASELINE === '1' ? 'update' : 'validate';
 
     if (authStatus === 'unreachable') {
-      test.skip(true, `${platform}: site unreachable`);
+      const reason = `${platform}: site unreachable`;
+      await attachDetail({ platform, target: readyKey, mode, authStatus, skipReason: reason });
+      test.skip(true, reason);
       return;
     }
     if (authStatus === 'auth_expired') {
-      test.skip(true, `${platform}: AUTH_EXPIRED — run 'npm run e2e:auth' to re-login`);
+      const reason = `${platform}: AUTH_EXPIRED — run 'npm run e2e:auth' to re-login`;
+      await attachDetail({ platform, target: readyKey, mode, authStatus, skipReason: reason });
+      test.skip(true, reason);
       return;
     }
     // Session is fine but the pinned conversation no longer opens: this is
     // dead test data, not an auth problem — fail loudly with the fix.
+    if (authStatus === 'test_data_missing') {
+      await attachDetail({ platform, target: readyKey, mode, authStatus });
+    }
     expect(
       authStatus,
       `${platform}: authenticated but the conversation URL did not open (${url}) — ` +
@@ -172,6 +193,13 @@ async function runPlatformValidation(
         );
         if (decision.action === 'skip') {
           recordStall(readyKey);
+          await attachDetail({
+            platform,
+            target: readyKey,
+            mode,
+            authStatus,
+            skipReason: decision.reason,
+          });
           test.skip(true, decision.reason);
           return;
         }
@@ -189,8 +217,11 @@ async function runPlatformValidation(
 
     // Baseline contract (v2): explicit update mode writes; normal mode enforces.
     const groupNames = Object.keys(selectorGroups);
-    const updateMode = process.env.UPDATE_BASELINE === '1';
+    const updateMode = mode === 'update';
     let baselineComparisons: BaselineComparison[] = [];
+
+    let baselineState: TargetDetail['baselineState'] = 'ok';
+    let missingGroups: string[] = [];
 
     if (updateMode) {
       const grouped: Record<string, SelectorResult[]> = {};
@@ -203,29 +234,39 @@ async function runPlatformValidation(
       console.log(`${platform}: baseline updated for groups: ${groupNames.join(', ')}`);
     } else {
       const loaded = loadBaselineGroups(platform, groupNames);
-      expect(
-        loaded.legacy,
-        `${platform}: baseline file is legacy v1 — run 'npm run e2e:baseline:update'`
-      ).toBe(false);
-      expect(
-        loaded.missingGroups,
-        `${platform}: no baseline for group(s) ${loaded.missingGroups.join(', ')} — run 'npm run e2e:baseline:update'`
-      ).toEqual([]);
-      baselineComparisons = compareWithBaseline(allResults, loaded.entries);
+      if (loaded.legacy) {
+        baselineState = 'legacy';
+      } else if (loaded.missingGroups.length > 0) {
+        baselineState = 'missing_groups';
+        missingGroups = loaded.missingGroups;
+      } else {
+        baselineComparisons = compareWithBaseline(allResults, loaded.entries);
+      }
     }
 
     // Classify
     const classified = classifyResults(allResults, baselineComparisons);
 
-    // Record in annotations for ObsidianReporter to read
-    test
-      .info()
-      .annotations.push(
-        { type: 'pass', description: String(classified.pass.length) },
-        { type: 'warn', description: String(classified.warn.length) },
-        { type: 'fail', description: String(classified.fail.length) },
-        { type: 'baseline_issues', description: String(classified.baselineIssues.length) }
-      );
+    // Attach the full detail for ObsidianReporter BEFORE asserting, so a
+    // failing assertion still leaves a complete record in the report.
+    await attachDetail({
+      platform,
+      target: readyKey,
+      mode,
+      authStatus,
+      baselineState,
+      classification: classified,
+    });
+
+    // Assert: the baseline itself must be usable before its diff means anything
+    expect(
+      baselineState,
+      `${platform}: baseline file is legacy v1 — run 'npm run e2e:baseline:update'`
+    ).not.toBe('legacy');
+    expect(
+      baselineState,
+      `${platform}: no baseline for group(s) ${missingGroups.join(', ')} — run 'npm run e2e:baseline:update'`
+    ).not.toBe('missing_groups');
 
     // Assert: zero-match selector names always fail
     expect(
