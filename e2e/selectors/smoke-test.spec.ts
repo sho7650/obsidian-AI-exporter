@@ -33,6 +33,7 @@ import {
 } from './baseline';
 import { classifyResults, type SelectorResult } from './classifier';
 import { waitForReadyWithRetry, decideLoadOutcome } from './load-readiness';
+import { getConsecutiveStalls, recordStall, resetStalls } from './stall-tracker';
 
 dotenv.config({ path: path.join(import.meta.dirname, '..', '.env.local') });
 
@@ -68,6 +69,8 @@ const LOADING_SELECTORS: Readonly<Record<string, string>> = {
 const READY_MAX_ATTEMPTS = 3;
 /** Per-attempt wait for the ready selector. */
 const READY_TIMEOUT_MS = 15_000;
+/** Consecutive stall-skips before a stall is treated as a real failure. */
+const MAX_CONSECUTIVE_STALLS = 3;
 
 // --- Helper Functions ---
 
@@ -115,6 +118,14 @@ async function runPlatformValidation(
       test.skip(true, `${platform}: AUTH_EXPIRED — run 'npm run e2e:auth' to re-login`);
       return;
     }
+    // Session is fine but the pinned conversation no longer opens: this is
+    // dead test data, not an auth problem — fail loudly with the fix.
+    expect(
+      authStatus,
+      `${platform}: authenticated but the conversation URL did not open (${url}) — ` +
+        `the pinned test conversation is gone or its URL is invalid; ` +
+        `refresh the *_CONV_URL / *_DR_URL value in e2e/.env.local`
+    ).not.toBe('test_data_missing');
 
     // Wait for page ready, retrying with a reload between attempts. Live SPAs
     // (notably Gemini) intermittently stall while fetching conversation history,
@@ -147,14 +158,25 @@ async function runPlatformValidation(
             )) > 0
           : false;
 
-        const decision = decideLoadOutcome({ platform, readyFound, loadingPresent });
+        // A stall that persists MAX_CONSECUTIVE_STALLS runs in a row stops
+        // being "transient" and falls through to validation (-> FAIL).
+        const decision = decideLoadOutcome({
+          platform,
+          readyFound,
+          loadingPresent,
+          priorConsecutiveStalls: getConsecutiveStalls(readyKey),
+          maxConsecutiveStalls: MAX_CONSECUTIVE_STALLS,
+        });
         console.warn(
           `${platform}: ready selector '${readySelector}' not found — ${decision.reason}`
         );
         if (decision.action === 'skip') {
+          recordStall(readyKey);
           test.skip(true, decision.reason);
           return;
         }
+      } else {
+        resetStalls(readyKey);
       }
     }
 
@@ -220,6 +242,18 @@ async function runPlatformValidation(
           `${b.group}:${b.name} [${b.status}] ${b.baselineCount} -> ${b.currentCount} (${b.selector})`
       ),
       `${platform}: baseline contract violations — if the selector change is intentional, run 'npm run e2e:baseline:update'`
+    ).toEqual([]);
+
+    // Assert: a dead primary selector fails even while a fallback carries it.
+    // The extension still works via the fallback, but a primary that stays
+    // broken silently rots — fix the primary or promote the fallback.
+    expect(
+      classified.warn.map(
+        w =>
+          `${w.failedPrimary.group}:${w.failedPrimary.name} primary '${w.failedPrimary.selector}' ` +
+          `has 0 matches (fallback '${w.workingFallback.selector}' carrying)`
+      ),
+      `${platform}: dead primary selectors — fix the primary or promote the working fallback in src/content/extractors/selectors/`
     ).toEqual([]);
   } finally {
     await page.close();
