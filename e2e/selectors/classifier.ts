@@ -29,7 +29,16 @@ export interface ClassificationResult {
   warn: WarnDetail[];
   /** All selectors failed — includes the primary's metadata */
   fail: SelectorResult[];
+  /**
+   * All non-match baseline comparisons (blocking + advisory).
+   * Kept for the legacy report pipeline; removed once the reporter
+   * consumes the split buckets directly.
+   */
   baselineIssues: BaselineComparison[];
+  /** lost / new_selector / removed — must fail the run (baseline contract) */
+  baselineBlocking: BaselineComparison[];
+  /** degraded — reported for observability, not enforced */
+  baselineAdvisory: BaselineComparison[];
 }
 
 /**
@@ -41,7 +50,7 @@ export interface ClassificationResult {
  */
 export function classifyResults(
   results: readonly SelectorResult[],
-  baselineComparisons: readonly BaselineComparison[] = [],
+  baselineComparisons: readonly BaselineComparison[] = []
 ): ClassificationResult {
   const byName = new Map<string, SelectorResult[]>();
   for (const r of results) {
@@ -57,12 +66,12 @@ export function classifyResults(
 
   for (const [, items] of byName) {
     const primary = items[0];
-    const anyMatch = items.some((i) => i.matchCount > 0);
+    const anyMatch = items.some(i => i.matchCount > 0);
 
     if (primary.matchCount > 0) {
       pass.push(primary);
     } else if (anyMatch) {
-      const fallback = items.find((i) => i.matchCount > 0)!;
+      const fallback = items.find(i => i.matchCount > 0)!;
       warn.push({
         failedPrimary: primary,
         workingFallback: fallback,
@@ -72,7 +81,9 @@ export function classifyResults(
     }
   }
 
-  const baselineIssues = baselineComparisons.filter((c) => c.status !== 'match');
+  const baselineIssues = baselineComparisons.filter(c => c.status !== 'match');
+  const baselineBlocking = baselineIssues.filter(c => c.status !== 'degraded');
+  const baselineAdvisory = baselineIssues.filter(c => c.status === 'degraded');
 
-  return { pass, warn, fail, baselineIssues };
+  return { pass, warn, fail, baselineIssues, baselineBlocking, baselineAdvisory };
 }

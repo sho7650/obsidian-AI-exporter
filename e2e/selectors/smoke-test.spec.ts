@@ -25,7 +25,12 @@ import {
 } from '../../src/content/extractors/selectors';
 import type { SelectorGroup } from '../../src/content/extractors/selectors/types';
 import { checkAuthStatus, type AuthStatus } from './auth-check';
-import { hasBaseline, saveBaseline, loadBaseline, compareWithBaseline } from './baseline';
+import {
+  loadBaselineGroups,
+  updateBaselineGroups,
+  compareWithBaseline,
+  type BaselineComparison,
+} from './baseline';
 import { classifyResults, type SelectorResult } from './classifier';
 import { waitForReadyWithRetry, decideLoadOutcome } from './load-readiness';
 
@@ -160,14 +165,31 @@ async function runPlatformValidation(
       allResults.push(...results);
     }
 
-    // Baseline comparison
-    let baselineComparisons;
-    if (hasBaseline(platform)) {
-      const baseline = loadBaseline(platform);
-      baselineComparisons = compareWithBaseline(allResults, baseline);
+    // Baseline contract (v2): explicit update mode writes; normal mode enforces.
+    const groupNames = Object.keys(selectorGroups);
+    const updateMode = process.env.UPDATE_BASELINE === '1';
+    let baselineComparisons: BaselineComparison[] = [];
+
+    if (updateMode) {
+      const grouped: Record<string, SelectorResult[]> = {};
+      for (const result of allResults) {
+        (grouped[result.group] ??= []).push(result);
+      }
+      // Throws (and fails this test) on zero-match entries: a broken page
+      // state must never be recorded as the contract.
+      updateBaselineGroups(platform, grouped);
+      console.log(`${platform}: baseline updated for groups: ${groupNames.join(', ')}`);
     } else {
-      saveBaseline(platform, allResults);
-      console.log(`${platform}: baseline saved (first run)`);
+      const loaded = loadBaselineGroups(platform, groupNames);
+      expect(
+        loaded.legacy,
+        `${platform}: baseline file is legacy v1 — run 'npm run e2e:baseline:update'`
+      ).toBe(false);
+      expect(
+        loaded.missingGroups,
+        `${platform}: no baseline for group(s) ${loaded.missingGroups.join(', ')} — run 'npm run e2e:baseline:update'`
+      ).toEqual([]);
+      baselineComparisons = compareWithBaseline(allResults, loaded.entries);
     }
 
     // Classify
@@ -183,11 +205,22 @@ async function runPlatformValidation(
         { type: 'baseline_issues', description: String(classified.baselineIssues.length) }
       );
 
-    // Assert
+    // Assert: zero-match selector names always fail
     expect(
       classified.fail,
       `${platform}: selectors with zero matches: ${classified.fail.map(f => `${f.group}:${f.name}`).join(', ')}`
     ).toHaveLength(0);
+
+    // Assert: baseline contract violations fail (lost / new_selector / removed).
+    // new_selector and removed mean the code and the baseline diverged —
+    // intentional selector changes must be recorded via 'npm run e2e:baseline:update'.
+    expect(
+      classified.baselineBlocking.map(
+        b =>
+          `${b.group}:${b.name} [${b.status}] ${b.baselineCount} -> ${b.currentCount} (${b.selector})`
+      ),
+      `${platform}: baseline contract violations — if the selector change is intentional, run 'npm run e2e:baseline:update'`
+    ).toEqual([]);
   } finally {
     await page.close();
   }
