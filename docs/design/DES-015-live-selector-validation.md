@@ -1,5 +1,17 @@
 # DES-015: ライブサイト セレクタ検証システム
 
+> **⚠️ 2026-07-04 改訂 — [ADR-016](../adr/016-e2e-baseline-contract-and-reporting.md) により挙動が大きく変更**
+>
+> 本書の以下の記述は v1 の設計であり、現行実装とは異なる:
+>
+> - **ベースライン**: 「初回実行時に保存し乖離を検知する」→ v2 では `npm run e2e:baseline:update` だけが書き込み、`lost` / `new_selector` / `removed` は **FAIL**(0 件セレクタは記録拒否、グループ単位で更新)
+> - **判定**: WARN(primary 死亡)は記録のみ → **FAIL**。認証切れとは別に **`test_data_missing`**(固定テスト会話の死)を FAIL として区別。stall skip は 3 連続で FAIL 昇格
+> - **レポート**: annotation の件数伝送 → `test.info().attach()` による完全詳細 JSON(レポートにセレクタ単位の実データが残る)
+> - **通知**: 「WARN/FAIL が 1 つでもあれば毎回通知」→ **前回から状態が変化したときのみ通知**(回復時は短い recovered ノート)
+> - **運用**: テスト会話 URL の更新は `npm run e2e:gemini:pick-url` → `.env.local` 更新 → `e2e:baseline:update`(CLAUDE.md「Dead test-conversation workflow」参照)
+>
+> アーキテクチャ全体(daemon / auth / Playwright spec / classifier / reporter の構成)は本書のまま有効。
+
 ## Context
 
 **Problem**: 4 つの AI プラットフォーム (Gemini, Claude, ChatGPT, Perplexity) は頻繁に DOM を更新する。現在の fixture テストは静的 HTML に基づいており、ライブサイトの変更を検知できない。手動での 4 サイト巡回は時間がかかり、確実性も担保できない。
