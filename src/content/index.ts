@@ -27,21 +27,38 @@ import {
   MUTATION_DEBOUNCE_DELAY,
 } from '../lib/constants';
 import type {
+  AIPlatform,
   ContentScriptSettings,
   ObsidianNote,
   OutputDestination,
   OutputResult,
   MultiOutputResponse,
 } from '../lib/types';
+import { platformForHost } from '../lib/platform-registry';
 import { throttle } from '../lib/throttle';
 
-/** Platform-specific main content container selectors for optimized observation */
-const PLATFORM_ROOT_SELECTORS: Record<string, string[]> = {
-  'gemini.google.com': ['main', '#app-container'],
-  'claude.ai': ['main', '#__next'],
-  'chatgpt.com': ['main', '#__next'],
-  'www.perplexity.ai': ['main', '#__next'],
-  'notebooklm.google.com': ['main', '#app-container'],
+/**
+ * Platform-specific main content container selectors for optimized observation.
+ * Keyed by AIPlatform so the compiler enforces an entry per platform (ADR-014).
+ */
+const PLATFORM_ROOT_SELECTORS: Record<AIPlatform, string[]> = {
+  gemini: ['main', '#app-container'],
+  claude: ['main', '#__next'],
+  chatgpt: ['main', '#__next'],
+  perplexity: ['main', '#__next'],
+  notebooklm: ['main', '#app-container'],
+};
+
+/**
+ * Extractor constructors per platform. Lives here (not in the lib registry)
+ * so lib/ stays free of content-layer imports (ADR-014).
+ */
+const EXTRACTOR_CONSTRUCTORS: Record<AIPlatform, new () => IConversationExtractor> = {
+  gemini: GeminiExtractor,
+  claude: ClaudeExtractor,
+  chatgpt: ChatGPTExtractor,
+  perplexity: PerplexityExtractor,
+  notebooklm: NotebookLMExtractor,
 };
 
 /** Conversation container selectors to detect when content is ready */
@@ -53,8 +70,8 @@ const CONVERSATION_CONTAINER_SELECTOR =
  * Falls back to document.body if no platform-specific root is found
  */
 function getObservationRoot(): Element {
-  const hostname = window.location.hostname;
-  const selectors = PLATFORM_ROOT_SELECTORS[hostname];
+  const platform = platformForHost(window.location.hostname);
+  const selectors = platform ? PLATFORM_ROOT_SELECTORS[platform] : undefined;
 
   if (selectors) {
     for (const selector of selectors) {
@@ -135,26 +152,10 @@ function waitForConversationContainer(): Promise<void> {
  * @see CodeQL: js/incomplete-url-substring-sanitization
  */
 function getExtractor(): IConversationExtractor | null {
-  const hostname = window.location.hostname;
-
-  // Strict comparison prevents attacks like "evil-gemini.google.com.attacker.com"
-  if (hostname === 'gemini.google.com') {
-    return new GeminiExtractor();
-  }
-  if (hostname === 'claude.ai') {
-    return new ClaudeExtractor();
-  }
-  if (hostname === 'chatgpt.com') {
-    return new ChatGPTExtractor();
-  }
-  if (hostname === 'www.perplexity.ai') {
-    return new PerplexityExtractor();
-  }
-  if (hostname === 'notebooklm.google.com') {
-    return new NotebookLMExtractor();
-  }
-
-  return null;
+  // platformForHost uses strict hostname equality, which prevents attacks
+  // like "evil-gemini.google.com.attacker.com"
+  const platform = platformForHost(window.location.hostname);
+  return platform ? new EXTRACTOR_CONSTRUCTORS[platform]() : null;
 }
 
 // Initialize when DOM is ready
