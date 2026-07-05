@@ -259,7 +259,12 @@ function displaySaveResults(
       showToast('No new messages to append', 'info', INFO_TOAST_DURATION);
     }
   } else if (saveResult.allSuccessful) {
-    showSuccessToast(fileName, true);
+    // A filename collision may have forced an alternative name (issue #327):
+    // show the name the note was actually saved under.
+    const savedAs = saveResult.results.find(
+      (r: OutputResult) => r.destination === 'obsidian'
+    )?.savedAs;
+    showSuccessToast(savedAs ?? fileName, true);
   } else if (saveResult.anySuccessful) {
     const successList = saveResult.results
       .filter((r: OutputResult) => r.success)

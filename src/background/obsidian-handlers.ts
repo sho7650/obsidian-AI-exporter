@@ -14,6 +14,8 @@ import {
   getSearchBasePath,
 } from '../lib/path-utils';
 import { lookupExistingFile, buildAppendContent } from '../lib/append-utils';
+import { collisionSuffix, candidateFileName } from '../lib/filename-collision';
+import { parseFrontmatter } from '../lib/frontmatter-parser';
 import { validateObsidianUrl } from '../lib/validation';
 import type { ExtensionSettings, ObsidianNote, SaveResponse } from '../lib/types';
 
@@ -139,16 +141,75 @@ export async function handleSave(
     );
     if (appendResult) return appendResult;
 
-    const existingContent = await client.getFile(fullPath);
-    const isNewFile = existingContent === null;
-    const content = generateNoteContent(note, settings);
-    await client.putFile(fullPath, content);
+    const target = await resolveCollisionFreePath(client, resolvedPath, note);
+    if ('error' in target) {
+      return { success: false, error: target.error };
+    }
 
-    return { success: true, isNewFile };
+    const content = generateNoteContent(note, settings);
+    await client.putFile(target.path, content);
+
+    return {
+      success: true,
+      isNewFile: target.isNewFile,
+      ...(target.renamed && { savedAs: target.fileName }),
+    };
   } catch (error) {
     console.error('[G2O Background] Save failed:', error);
     return { success: false, error: getErrorMessage(error) };
   }
+}
+
+/** Probe attempts: original + hash suffix + a few counters for hash collisions */
+const MAX_COLLISION_ATTEMPTS = 10;
+
+interface WritableTarget {
+  path: string;
+  fileName: string;
+  isNewFile: boolean;
+  /** True when the original name was occupied by a different conversation */
+  renamed: boolean;
+}
+
+/**
+ * Find a path this note may be written to without clobbering a DIFFERENT
+ * conversation (issue #327: identically-titled conversations, e.g.
+ * Perplexity repeating tasks, silently overwrote each other).
+ *
+ * A file is writable when it does not exist, or when its frontmatter id
+ * matches this note's id (same conversation being re-saved). Files whose
+ * frontmatter cannot be parsed are treated as foreign and protected.
+ * Alternative names are deterministic per conversation (hash of its id),
+ * so re-saves always land on the same file.
+ */
+async function resolveCollisionFreePath(
+  client: ObsidianApiClient,
+  resolvedPath: string,
+  note: ObsidianNote
+): Promise<WritableTarget | { error: string }> {
+  const suffix = collisionSuffix(note.frontmatter.id);
+
+  for (let attempt = 0; attempt < MAX_COLLISION_ATTEMPTS; attempt++) {
+    const fileName = candidateFileName(note.fileName, suffix, attempt);
+    const path = resolvedPath ? `${resolvedPath}/${fileName}` : fileName;
+
+    const existing = await client.getFile(path);
+    if (existing === null) {
+      return { path, fileName, isNewFile: true, renamed: attempt > 0 };
+    }
+    const parsed = parseFrontmatter(existing);
+    if (parsed?.fields.id === note.frontmatter.id) {
+      return { path, fileName, isNewFile: false, renamed: attempt > 0 };
+    }
+    // Occupied by a different conversation (or an unparseable/foreign file):
+    // never overwrite — try the next deterministic candidate.
+  }
+
+  return {
+    error:
+      `filename collision: could not find a free name for '${note.fileName}' ` +
+      `after ${MAX_COLLISION_ATTEMPTS} attempts`,
+  };
 }
 
 /**

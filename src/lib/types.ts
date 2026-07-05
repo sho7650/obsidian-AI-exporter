@@ -138,6 +138,11 @@ export interface OutputResult {
   error?: string;
   /** Number of messages appended (Obsidian append mode only) */
   messagesAppended?: number;
+  /**
+   * Actual file name used when the intended name was occupied by a
+   * DIFFERENT conversation (filename collision safeguard, issue #327).
+   */
+  savedAs?: string;
 }
 
 /**
@@ -262,6 +267,8 @@ export interface SaveResponse {
   error?: string;
   isNewFile?: boolean;
   messagesAppended?: number;
+  /** Actual file name when a collision forced an alternative (issue #327) */
+  savedAs?: string;
 }
 
 /**
