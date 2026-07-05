@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.6.1...v1.6.2) (2026-07-05)
+
+
+### Bug Fixes
+
+* repair rotted selectors against the live 2026-07 DOMs ([#325](https://github.com/sho7650/obsidian-AI-exporter/issues/325)) ([9bf36c7](https://github.com/sho7650/obsidian-AI-exporter/commit/9bf36c73d55dead0887341c11e75a955e7737a0c))
+
 ## [1.6.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.6.0...v1.6.1) (2026-07-04)
 
 
