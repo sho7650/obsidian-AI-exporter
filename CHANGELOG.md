@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.6.3...v1.7.0) (2026-07-05)
+
+
+### Features
+
+* support Gemini Gem conversations with correct per-conversation ids ([#332](https://github.com/sho7650/obsidian-AI-exporter/issues/332)) ([f32015d](https://github.com/sho7650/obsidian-AI-exporter/commit/f32015d2293e224fd812a9307baba73f78604d44)), closes [#331](https://github.com/sho7650/obsidian-AI-exporter/issues/331)
+
 ## [1.6.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.6.2...v1.6.3) (2026-07-05)
 
 
