@@ -74,7 +74,7 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 
 ### Gemini
 
-1. Open a conversation on [gemini.google.com](https://gemini.google.com)
+1. Open a conversation on [gemini.google.com](https://gemini.google.com) (regular chats and Gem conversations are both supported)
 2. Click the purple "Sync" button in the bottom-right corner
 3. The conversation will be exported based on your selected output method:
    - **Obsidian** (default): Saved directly to your vault via Local REST API

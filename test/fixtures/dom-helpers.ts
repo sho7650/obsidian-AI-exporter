@@ -94,6 +94,29 @@ export function setGeminiLocation(conversationId: string): void {
 }
 
 /**
+ * Set window.location for a Gemini Gem conversation.
+ * Gem URLs have TWO path segments: /gem/{gemId}/{conversationId};
+ * a freshly opened Gem chat sits at /gem/{gemId} (pass conversationId='').
+ */
+export function setGeminiGemLocation(gemId: string, conversationId = ''): void {
+  const pathname = conversationId ? `/gem/${gemId}/${conversationId}` : `/gem/${gemId}`;
+  Object.defineProperty(window, 'location', {
+    value: {
+      hostname: 'gemini.google.com',
+      pathname,
+      href: `https://gemini.google.com${pathname}`,
+      origin: 'https://gemini.google.com',
+      protocol: 'https:',
+      host: 'gemini.google.com',
+      search: '',
+      hash: '',
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
+/**
  * Set window.location for non-Gemini URL
  */
 export function setNonGeminiLocation(hostname: string, pathname = '/'): void {

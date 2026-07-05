@@ -132,13 +132,25 @@ export class GeminiExtractor extends BaseExtractor {
   }
 
   /**
-   * Get conversation ID from URL
-   * URL format: https://gemini.google.com/app/{conversationId}
-   *          or https://gemini.google.com/gem/{conversationId}
+   * Get conversation ID from URL.
+   *
+   * URL formats (issue #331):
+   *   https://gemini.google.com/app/{conversationId}
+   *   https://gemini.google.com/gem/{gemId}/{conversationId}
+   *
+   * Gem URLs carry TWO ids; the conversation id is the SECOND segment.
+   * The first segment is the Gem's own id, shared by every conversation
+   * of that Gem — using it would give all of them the same note id and
+   * let them overwrite each other. A freshly opened Gem chat sits at
+   * /gem/{gemId} with no conversation yet: return null so the caller
+   * falls back to a timestamp id, same as a fresh /app chat.
    */
   getConversationId(): string | null {
-    const match = window.location.pathname.match(/\/(app|gem)\/([a-f0-9]+)/i);
-    return match ? match[2] : null;
+    const path = window.location.pathname;
+    const gem = path.match(/\/gem\/[a-f0-9]+\/([a-f0-9]+)/i);
+    if (gem) return gem[1];
+    const app = path.match(/\/app\/([a-f0-9]+)/i);
+    return app ? app[1] : null;
   }
 
   /**

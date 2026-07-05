@@ -196,7 +196,7 @@ source: gemini
 
 ## Supported Platforms
 
-- **Gemini** (`gemini.google.com`): Conversations and Deep Research reports
+- **Gemini** (`gemini.google.com`): Conversations, Deep Research reports, and Gem conversations (`/gem/{gemId}/{conversationId}` — the conversation id is the second path segment)
 - **Claude** (`claude.ai`): Conversations, Extended Thinking, and Artifacts with inline citations
 - **ChatGPT** (`chatgpt.com`): Conversations (including custom GPTs via `/g/` URLs)
 - **Perplexity** (`www.perplexity.ai`): Conversations
