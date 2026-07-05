@@ -85,6 +85,15 @@ const READY_TIMEOUT_MS = 15_000;
 /** Consecutive stall-skips before a stall is treated as a real failure. */
 const MAX_CONSECUTIVE_STALLS = 3;
 
+/**
+ * The extension runs in desktop Chrome, so selectors must be validated
+ * against the DESKTOP DOM. At the CDP daemon's default window size (~800px)
+ * ChatGPT serves its mobile-web fallback (?mweb_fallback=1) whose DOM lacks
+ * section[data-turn-id], and Gemini switches to is-mobile layouts —
+ * validating those would test the wrong site.
+ */
+const DESKTOP_VIEWPORT = { width: 1440, height: 900 } as const;
+
 // --- Helper Functions ---
 
 async function validateSelectors(
@@ -120,6 +129,8 @@ async function runPlatformValidation(
 
   const page = await context.newPage();
   try {
+    await page.setViewportSize(DESKTOP_VIEWPORT);
+
     // Auth pre-flight
     const authStatus: AuthStatus = await checkAuthStatus(page, platform, url!);
     const mode: TargetDetail['mode'] = process.env.UPDATE_BASELINE === '1' ? 'update' : 'validate';

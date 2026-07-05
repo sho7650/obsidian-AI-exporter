@@ -35,8 +35,10 @@ export const SELECTORS = {
   ],
 
   // User message wrapper (for date extraction)
+  // 2026-07: py-2.5 became py-[var(--msg-bubble-py,...)] on the live site,
+  // killing the old .pl-2.5.py-2.5 primary (baseline contract caught it)
   userWrapper: [
-    '.rounded-xl.pl-2\\.5.py-2\\.5', // Style attribute (HIGH)
+    '.bg-bg-300.rounded-xl', // Style composite (HIGH)
     '.bg-bg-300', // Tailwind (MEDIUM)
     '[class*="bg-bg-300"]', // Partial match (MEDIUM)
   ],
@@ -49,9 +51,10 @@ export const SELECTORS = {
   ],
 
   // Markdown content selectors
+  // 2026-07: .progressive-markdown disappeared from the live site (removed
+  // under the zero-match baseline contract)
   markdownContent: [
     '.standard-markdown', // Semantic (HIGH)
-    '.progressive-markdown', // Semantic (HIGH)
     '[class*="markdown"]', // Partial match (MEDIUM)
   ],
 
@@ -90,9 +93,10 @@ export const DEEP_RESEARCH_SELECTORS = {
   ],
 
   // Inline citation links
+  // 2026-07: the group/tag class moved from a wrapper onto the <a> itself
   inlineCitation: [
     'span.inline-flex a[href^="http"]', // Structure (HIGH)
-    '.group\\/tag a[href]', // Class (MEDIUM)
+    'a[class~="group/tag"][href^="http"]', // Class on the anchor (MEDIUM)
     'a[target="_blank"][href^="http"]', // Attribute (MEDIUM)
   ],
 } as const satisfies SelectorGroup;
