@@ -6,7 +6,7 @@
 import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { extractErrorMessage } from '../../lib/error-utils';
-import { MAX_CONVERSATION_TITLE_LENGTH, SCROLL_TIMEOUT } from '../../lib/constants';
+import { SCROLL_TIMEOUT } from '../../lib/constants';
 import { ensureAllElementsLoaded, type ScrollResult } from '../../lib/scroll-manager';
 import type {
   SyncSettings,
@@ -142,19 +142,13 @@ export class GeminiExtractor extends BaseExtractor {
   }
 
   /**
-   * Get conversation title from top bar, first user query, or sidebar
+   * Get conversation title from the first user query.
+   *
+   * Gemini stopped rendering a conversation-title element by 2026-03 (the
+   * old top-bar selector group never matched again), so the first query has
+   * been the de-facto title source ever since; the dead path was removed.
    */
   getTitle(): string {
-    // Priority 1: Top bar title ([data-test-id="conversation-title"] or sidebar)
-    const topBarTitle = this.queryWithFallback<HTMLElement>(SELECTORS.conversationTitle);
-    if (topBarTitle?.textContent) {
-      const title = this.sanitizeText(topBarTitle.textContent);
-      if (title) {
-        return title.substring(0, MAX_CONVERSATION_TITLE_LENGTH);
-      }
-    }
-
-    // Priority 2: First user query text
     return this.getFirstMessageTitle(SELECTORS.queryTextLine, 'Untitled Gemini Conversation');
   }
 

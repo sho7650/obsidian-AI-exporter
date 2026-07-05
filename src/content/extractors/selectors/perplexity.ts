@@ -10,9 +10,11 @@ import type { SelectorGroup } from './types';
 
 export const SELECTORS = {
   // User query text
+  // 2026-07: the bubble class bg-offset became bg-subtle; the group/query
+  // ancestor is the stabler anchor
   userQuery: [
     'span.select-text', // Semantic (HIGH)
-    'div.bg-offset.rounded-2xl span.select-text', // Style (MEDIUM)
+    'div[class~="group/query"] span.select-text', // Query container (MEDIUM)
   ],
 
   // Assistant response content container
@@ -26,10 +28,13 @@ export const SELECTORS = {
     '.prose', // Fallback (LOW)
   ],
 
-  // Deep Research report card container
+  // Deep Research report card container. Matches generic raised panels too;
+  // the extractor only tags a card as a report when deepResearchProse is
+  // found inside it (perplexity.ts collectTaggedElements).
+  // 2026-07: the border-borderMain token disappeared site-wide (removed
+  // under the zero-match baseline contract).
   deepResearchCard: [
     'div.bg-raised.rounded-lg', // Style (HIGH)
-    'div.border-borderMain.bg-raised', // Alternative (MEDIUM)
   ],
 
   // Prose content within a Deep Research report card (max-w-none distinguishes it)

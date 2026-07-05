@@ -28,13 +28,10 @@ export const SELECTORS = {
     '.model-response-text',
   ],
 
-  // Conversation title (top bar + sidebar)
-  conversationTitle: [
-    '[data-test-id="conversation-title"]',
-    '.conversation-title.gds-title-m',
-    '.conversation-title',
-    '[class*="conversation-title"]',
-  ],
+  // NOTE: the former conversationTitle group was removed 2026-07. No
+  // conversation-title element has existed in Gemini's DOM since at least
+  // 2026-03 (the v1 baseline recorded 0 matches from day one); titles come
+  // from the first user query (see GeminiExtractor.getTitle).
 
   // Scroll container for lazy-load detection
   // infinite-scroller (data-test-id="chat-history-container") is the actual

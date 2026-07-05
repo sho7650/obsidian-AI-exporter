@@ -356,23 +356,17 @@ describe('ChatGPTExtractor', () => {
       expect(messages.length).toBe(2);
     });
 
-    it('conversationTurn legacy fallback (article[data-turn-id])', async () => {
+    it('no longer matches the retired article-based DOM (removed 2026-07)', async () => {
+      // The 2026-03-era <article> variants matched nothing on the live site
+      // by 2026-07 and were removed under the zero-match baseline contract.
       setChatGPTLocation('test-123');
       loadFixture(`
         <article data-turn-id="turn-1" data-turn="user">
-          <div data-message-author-role="user">
-            <div class="whitespace-pre-wrap">Legacy user message</div>
-          </div>
-        </article>
-        <article data-turn-id="turn-2" data-turn="assistant">
-          <div data-message-author-role="assistant">
-            <div class="markdown prose">Legacy response</div>
-          </div>
+          <div class="whitespace-pre-wrap">Legacy user message</div>
         </article>
       `);
       const result = await extractor.extract();
-      expect(result.success).toBe(true);
-      expect(result.data?.messages.length).toBe(2);
+      expect(result.success).toBe(false);
     });
 
     it('userMessage primary selector ([data-message-author-role])', async () => {

@@ -94,14 +94,6 @@ describe('GeminiExtractor', () => {
       expect(extractor.getTitle().length).toBe(100);
     });
 
-    it('falls back to sidebar title', () => {
-      setGeminiLocation('test123');
-      loadFixture(`
-        <div class="conversation-title">Sidebar Title</div>
-      `);
-      expect(extractor.getTitle()).toBe('Sidebar Title');
-    });
-
     it('returns default title when nothing found', () => {
       setGeminiLocation('test123');
       loadFixture('<div>Empty page</div>');
@@ -116,46 +108,23 @@ describe('GeminiExtractor', () => {
       expect(extractor.getTitle()).toBe('Multiple spaces');
     });
 
-    it('extracts title from data-test-id="conversation-title" element', () => {
-      setGeminiLocation('test123');
-      loadFixture(`
-        <span data-test-id="conversation-title" class="gds-title-m">Top Bar Title</span>
-      `);
-      expect(extractor.getTitle()).toBe('Top Bar Title');
-    });
-
-    it('data-test-id="conversation-title" takes priority over query text', () => {
+    it('ignores legacy conversation-title elements (dead path removed 2026-07)', () => {
+      // Gemini stopped rendering conversation-title by 2026-03; the first
+      // user query has been the de-facto title source ever since.
       setGeminiLocation('test123');
       loadFixture(`
         <span data-test-id="conversation-title" class="gds-title-m">Top Bar Title</span>
         <p class="query-text-line">Query text</p>
       `);
-      expect(extractor.getTitle()).toBe('Top Bar Title');
+      expect(extractor.getTitle()).toBe('Query text');
     });
 
-    it('falls back to query text when conversation-title is empty', () => {
-      setGeminiLocation('test123');
-      loadFixture(`
-        <span data-test-id="conversation-title" class="gds-title-m">   </span>
-        <p class="query-text-line">Query text fallback</p>
-      `);
-      expect(extractor.getTitle()).toBe('Query text fallback');
-    });
-
-    it('falls back to query text when no conversation-title element', () => {
+    it('uses query text as the title source', () => {
       setGeminiLocation('test123');
       loadFixture(`
         <p class="query-text-line">Query text fallback</p>
       `);
       expect(extractor.getTitle()).toBe('Query text fallback');
-    });
-
-    it('sanitizes whitespace in top bar title', () => {
-      setGeminiLocation('test123');
-      loadFixture(`
-        <span data-test-id="conversation-title" class="gds-title-m">  Spaced   Title  </span>
-      `);
-      expect(extractor.getTitle()).toBe('Spaced Title');
     });
   });
 
@@ -1115,12 +1084,10 @@ describe('GeminiExtractor', () => {
       `);
       loadFixture(scrollableHTML);
 
-      let turnCounter = 1;
       mockScrollContainer(1000, () => {
         // Keep adding assistant-only turns (never stabilizes)
         const scroller = document.querySelector('infinite-scroller');
         if (!scroller) return;
-        turnCounter++;
         scroller.insertAdjacentHTML(
           'afterbegin',
           `<div class="conversation-container">
