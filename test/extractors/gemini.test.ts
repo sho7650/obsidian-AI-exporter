@@ -11,6 +11,7 @@ import {
   loadFixture,
   clearFixture,
   setGeminiLocation,
+  setGeminiGemLocation,
   setNonGeminiLocation,
   createGeminiConversationDOM,
   createGeminiScrollableDOM,
@@ -73,6 +74,43 @@ describe('GeminiExtractor', () => {
     it('returns null when no ID in path', () => {
       setNonGeminiLocation('gemini.google.com', '/settings');
       expect(extractor.getConversationId()).toBeNull();
+    });
+
+    // Gemini Gems (issue #331): /gem/{gemId}/{conversationId} — the
+    // conversation id is the SECOND segment; the first is the Gem's id,
+    // shared by every conversation of that Gem.
+    it('extracts the CONVERSATION id (second segment) from a Gem URL', () => {
+      setGeminiGemLocation('60d5b0d7ce06', '221ddad4c4c30f69');
+      expect(extractor.getConversationId()).toBe('221ddad4c4c30f69');
+    });
+
+    it('returns null for a fresh Gem chat (/gem/{gemId} only, no conversation yet)', () => {
+      setGeminiGemLocation('60d5b0d7ce06');
+      expect(extractor.getConversationId()).toBeNull();
+    });
+
+    it('two conversations of the same Gem get DIFFERENT ids', () => {
+      setGeminiGemLocation('60d5b0d7ce06', '221ddad4c4c30f69');
+      const first = extractor.getConversationId();
+      setGeminiGemLocation('60d5b0d7ce06', 'a9e20a2fa59abb8a');
+      const second = extractor.getConversationId();
+      expect(first).not.toBe(second);
+    });
+
+    it('extract() on a Gem page uses the conversation id, not the Gem id', async () => {
+      setGeminiGemLocation('60d5b0d7ce06', '221ddad4c4c30f69');
+      loadFixture(
+        createGeminiConversationDOM([
+          { role: 'user', content: 'Hello Gem' },
+          { role: 'assistant', content: '<p>Hi!</p>' },
+        ])
+      );
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.id).toBe('221ddad4c4c30f69');
+      expect(result.data?.id).not.toContain('60d5b0d7ce06');
     });
   });
 
