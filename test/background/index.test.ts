@@ -5,6 +5,7 @@
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import type { ObsidianNote } from '../../src/lib/types';
+import { generateHash } from '../../src/lib/hash';
 
 // Mock client instance - defined at module level
 const mockClient = {
@@ -756,6 +757,101 @@ describe('background/index', () => {
       },
     };
 
+    describe('filename collision safeguard (issue #327)', () => {
+      const suffix = generateHash('test-id');
+      const collisionPath = `AI/Gemini/test-${suffix}.md`;
+      const otherConversation = '---\nid: other_id\n---\nSomeone else';
+      const send = (sendResponse: ReturnType<typeof vi.fn>) =>
+        capturedListener(
+          { action: 'saveToOutputs', outputs: ['obsidian'], data: validNote },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+      it('saves a DIFFERENT conversation under a collision-free name instead of overwriting', async () => {
+        mockClient.getFile.mockImplementation((path: string) =>
+          Promise.resolve(path === 'AI/Gemini/test.md' ? otherConversation : null)
+        );
+        mockClient.putFile.mockResolvedValue(undefined);
+
+        const sendResponse = vi.fn();
+        send(sendResponse);
+
+        await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+        expect(mockClient.putFile).toHaveBeenCalledTimes(1);
+        expect(mockClient.putFile).toHaveBeenCalledWith(collisionPath, expect.any(String));
+        expect(sendResponse).toHaveBeenCalledWith(
+          expect.objectContaining({
+            allSuccessful: true,
+            results: [
+              expect.objectContaining({
+                destination: 'obsidian',
+                success: true,
+                savedAs: `test-${suffix}.md`,
+              }),
+            ],
+          })
+        );
+      });
+
+      it('still overwrites the SAME conversation at its original path (no savedAs)', async () => {
+        mockClient.getFile.mockImplementation((path: string) =>
+          Promise.resolve(path === 'AI/Gemini/test.md' ? '---\nid: test-id\n---\nMine' : null)
+        );
+        mockClient.putFile.mockResolvedValue(undefined);
+
+        const sendResponse = vi.fn();
+        send(sendResponse);
+
+        await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+        expect(mockClient.putFile).toHaveBeenCalledWith('AI/Gemini/test.md', expect.any(String));
+        const result = sendResponse.mock.calls[0][0].results[0];
+        expect(result.savedAs).toBeUndefined();
+      });
+
+      it('re-saves land on the SAME collision-free name (deterministic)', async () => {
+        mockClient.getFile.mockImplementation((path: string) => {
+          if (path === 'AI/Gemini/test.md') return Promise.resolve(otherConversation);
+          if (path === collisionPath) return Promise.resolve('---\nid: test-id\n---\nMine');
+          return Promise.resolve(null);
+        });
+        mockClient.putFile.mockResolvedValue(undefined);
+
+        const sendResponse = vi.fn();
+        send(sendResponse);
+
+        await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+        expect(mockClient.putFile).toHaveBeenCalledWith(collisionPath, expect.any(String));
+      });
+
+      it('protects existing files whose frontmatter cannot be parsed', async () => {
+        mockClient.getFile.mockImplementation((path: string) =>
+          Promise.resolve(path === 'AI/Gemini/test.md' ? 'Just a hand-written note' : null)
+        );
+        mockClient.putFile.mockResolvedValue(undefined);
+
+        const sendResponse = vi.fn();
+        send(sendResponse);
+
+        await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+        expect(mockClient.putFile).toHaveBeenCalledWith(collisionPath, expect.any(String));
+      });
+
+      it('fails with a clear error when no collision-free name is found', async () => {
+        mockClient.getFile.mockResolvedValue(otherConversation); // every candidate occupied
+        mockClient.putFile.mockResolvedValue(undefined);
+
+        const sendResponse = vi.fn();
+        send(sendResponse);
+
+        await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+        expect(mockClient.putFile).not.toHaveBeenCalled();
+        const result = sendResponse.mock.calls[0][0].results[0];
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('collision');
+      });
+    });
+
     it('saves new file successfully', async () => {
       mockClient.getFile.mockResolvedValue(null);
       mockClient.putFile.mockResolvedValue(undefined);
@@ -777,8 +873,8 @@ describe('background/index', () => {
       );
     });
 
-    it('updates existing file', async () => {
-      mockClient.getFile.mockResolvedValue('# Old Content');
+    it('updates existing file (same conversation id)', async () => {
+      mockClient.getFile.mockResolvedValue('---\nid: test-id\n---\n# Old Content');
       mockClient.putFile.mockResolvedValue(undefined);
 
       const sendResponse = vi.fn();

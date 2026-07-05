@@ -330,6 +330,21 @@ describe('content/bootstrap', () => {
       expect(setButtonLoading).toHaveBeenLastCalledWith(false);
     });
 
+    it('shows the ACTUAL file name when a collision forced a rename (issue #327)', async () => {
+      loadGeminiConversation();
+      mockMessaging({
+        save: {
+          results: [{ destination: 'obsidian', success: true, savedAs: 'hello-a1b2c3d4.md' }],
+          allSuccessful: true,
+          anySuccessful: true,
+        },
+      });
+
+      await handleSync();
+
+      expect(showSuccessToast).toHaveBeenCalledWith('hello-a1b2c3d4.md', true);
+    });
+
     it('shows the appended-message toast when messages were appended', async () => {
       loadGeminiConversation();
       mockMessaging({ save: { ...okSave, messagesAppended: 2 } });
