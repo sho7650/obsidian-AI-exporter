@@ -78,6 +78,11 @@ function settings(overrides: Partial<SyncSettings> = {}): SyncSettings {
   return { enableAutoScroll: true, ...overrides } as SyncSettings;
 }
 
+/** Plain text of a message body via the DOM (avoids regex HTML stripping). */
+function plainText(html: string): string {
+  return new DOMParser().parseFromString(html, 'text/html').body.textContent?.trim() ?? '';
+}
+
 describe('ChatGPTExtractor auto-scroll (virtualization)', () => {
   let extractor: ChatGPTExtractor;
 
@@ -109,7 +114,7 @@ describe('ChatGPTExtractor auto-scroll (virtualization)', () => {
 
     expect(result.success).toBe(true);
     expect(result.data?.messages).toHaveLength(8);
-    expect(result.data?.messages.map(m => m.content.replace(/<[^>]+>/g, '').trim())).toEqual([
+    expect(result.data?.messages.map(m => plainText(m.content))).toEqual([
       'Q1',
       'A1',
       'Q2',
