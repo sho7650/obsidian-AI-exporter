@@ -263,5 +263,17 @@
   },
   "settings_imageVaultPathHelp": {
     "message": "書き出した画像の保存フォルダ。{platform} や日付トークンが使えます。"
+  },
+  "settings_flattenLargeCallouts": {
+    "message": "長いメッセージを平坦化（Obsidian）"
+  },
+  "settings_flattenHelp": {
+    "message": "非常に長いメッセージをプレーンテキストにして Obsidian のハングを回避"
+  },
+  "settings_maxCalloutLines": {
+    "message": "平坦化のしきい値（行数）"
+  },
+  "settings_maxCalloutLinesHelp": {
+    "message": "この行数を超えるメッセージはプレーンテキストで保存されます（Obsidian のみ）。"
   }
 }

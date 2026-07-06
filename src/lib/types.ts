@@ -226,6 +226,15 @@ export interface SyncSettings {
    * note's wikilink embeds need only the filename regardless of this folder.
    */
   imageVaultPath: string;
+  /**
+   * Obsidian-only: flatten callouts longer than {@link maxCalloutLines} to
+   * plain text when saving to the vault. A very long message rendered as one
+   * giant callout can hang Obsidian's renderer; downloaded markdown is
+   * unaffected. Default true.
+   */
+  flattenLargeCallouts: boolean;
+  /** Line threshold for {@link flattenLargeCallouts}. Default 200. */
+  maxCalloutLines: number;
 }
 
 /**

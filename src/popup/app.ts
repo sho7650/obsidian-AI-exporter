@@ -15,7 +15,11 @@ import {
   validateApiKey,
   validateObsidianUrl,
 } from '../lib/validation';
-import { DEFAULT_OBSIDIAN_URL, VALID_MESSAGE_FORMATS } from '../lib/constants';
+import {
+  DEFAULT_OBSIDIAN_URL,
+  DEFAULT_MAX_CALLOUT_LINES,
+  VALID_MESSAGE_FORMATS,
+} from '../lib/constants';
 import { getMessage } from '../lib/i18n';
 import { sendMessage } from '../lib/messaging';
 
@@ -95,6 +99,8 @@ function queryElements() {
     enableToolContent: getElement<HTMLInputElement>('enableToolContent'),
     enableImageExport: getElement<HTMLInputElement>('enableImageExport'),
     imageVaultPath: getElement<HTMLInputElement>('imageVaultPath'),
+    flattenLargeCallouts: getElement<HTMLInputElement>('flattenLargeCallouts'),
+    maxCalloutLines: getElement<HTMLInputElement>('maxCalloutLines'),
     timezone: getElement<HTMLSelectElement>('timezone'),
     timezoneGroup: getElement<HTMLElement>('timezoneGroup'),
     testBtn: getElement<HTMLButtonElement>('testBtn'),
@@ -142,6 +148,8 @@ function populateForm(settings: ExtensionSettings): void {
   elements.enableToolContent.checked = settings.enableToolContent ?? false;
   elements.enableImageExport.checked = settings.enableImageExport ?? true;
   elements.imageVaultPath.value = settings.imageVaultPath || '';
+  elements.flattenLargeCallouts.checked = settings.flattenLargeCallouts ?? true;
+  elements.maxCalloutLines.value = String(settings.maxCalloutLines ?? DEFAULT_MAX_CALLOUT_LINES);
 
   // Update Obsidian settings section visibility
   updateObsidianSettingsVisibility();
@@ -368,7 +376,16 @@ function collectSettings(): ExtensionSettings {
     enableToolContent: elements.enableToolContent.checked,
     enableImageExport: elements.enableImageExport.checked,
     imageVaultPath: elements.imageVaultPath.value.trim() || 'AI/{platform}/images',
+    flattenLargeCallouts: elements.flattenLargeCallouts.checked,
+    maxCalloutLines: parseCalloutLines(elements.maxCalloutLines.value),
   };
+}
+
+/** Parse the max-callout-lines input, clamping to a sane positive range. */
+function parseCalloutLines(raw: string): number {
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) return DEFAULT_MAX_CALLOUT_LINES;
+  return Math.min(n, 100000);
 }
 
 /**

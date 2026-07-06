@@ -368,6 +368,22 @@
     "message": "Vault folder for exported images. Supports {platform} and date tokens.",
     "description": "Help text for image vault folder input"
   },
+  "settings_flattenLargeCallouts": {
+    "message": "Flatten long messages (Obsidian)",
+    "description": "Label for flatten-large-callouts toggle"
+  },
+  "settings_flattenHelp": {
+    "message": "Very long messages become plain text to avoid Obsidian hangs",
+    "description": "Help text for flatten toggle"
+  },
+  "settings_maxCalloutLines": {
+    "message": "Flatten threshold (lines)",
+    "description": "Label for max callout lines input"
+  },
+  "settings_maxCalloutLinesHelp": {
+    "message": "Messages longer than this many lines are saved as plain text (Obsidian only).",
+    "description": "Help text for max callout lines input"
+  },
 
   "toast_appended": {
     "message": "$COUNT$ new message(s) appended",

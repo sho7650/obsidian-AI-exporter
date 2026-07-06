@@ -141,6 +141,27 @@
                     <span class="slider" aria-hidden="true"></span>
                   </span>
                 </label>
+                <label class="toggle-row">
+                  <span class="toggle-icon">📐</span>
+                  <span class="toggle-label">
+                    <span data-i18n="settings_flattenLargeCallouts"
+                      >Flatten long messages (Obsidian)</span
+                    >
+                    <span class="toggle-sublabel" data-i18n="settings_flattenHelp">
+                      Very long messages become plain text to avoid Obsidian hangs
+                    </span>
+                  </span>
+                  <span class="toggle-switch">
+                    <input
+                      type="checkbox"
+                      id="flattenLargeCallouts"
+                      role="switch"
+                      aria-checked="true"
+                      checked
+                    />
+                    <span class="slider" aria-hidden="true"></span>
+                  </span>
+                </label>
               </div>
             </section>
 
@@ -205,6 +226,16 @@
                 <p class="help" data-i18n="settings_imageVaultPathHelp">
                   Vault folder for exported images. Supports the same {platform} and date tokens.
                   Images are embedded by filename, so any folder works.
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label for="maxCalloutLines" data-i18n="settings_maxCalloutLines"
+                  >Flatten threshold (lines)</label
+                >
+                <input type="number" id="maxCalloutLines" min="1" step="10" value="200" />
+                <p class="help" data-i18n="settings_maxCalloutLinesHelp">
+                  Messages longer than this many lines are saved as plain text (Obsidian only).
                 </p>
               </div>
             </section>

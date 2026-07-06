@@ -13,7 +13,7 @@ import type {
   TemplateOptions,
   OutputOptions,
 } from './types';
-import { DEFAULT_OBSIDIAN_URL } from './constants';
+import { DEFAULT_OBSIDIAN_URL, DEFAULT_MAX_CALLOUT_LINES } from './constants';
 
 const DEFAULT_TEMPLATE_OPTIONS: TemplateOptions = {
   includeId: true,
@@ -48,6 +48,8 @@ const DEFAULT_SYNC_SETTINGS: SyncSettings = {
   enableToolContent: false,
   enableImageExport: true,
   imageVaultPath: 'AI/{platform}/images',
+  flattenLargeCallouts: true,
+  maxCalloutLines: DEFAULT_MAX_CALLOUT_LINES,
 };
 
 const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -85,6 +87,8 @@ export async function getSettings(): Promise<ExtensionSettings> {
       'enableAppendMode',
       'enableToolContent',
       'enableImageExport',
+      'flattenLargeCallouts',
+      'maxCalloutLines',
     ] as const;
     const scalars = Object.fromEntries(
       scalarKeys.map(key => [key, stored[key] ?? DEFAULT_SYNC_SETTINGS[key]])
@@ -134,6 +138,8 @@ export async function saveSettings(settings: Partial<ExtensionSettings>): Promis
       'enableAppendMode',
       'enableToolContent',
       'enableImageExport',
+      'flattenLargeCallouts',
+      'maxCalloutLines',
     ] as const;
     for (const key of PASS_THROUGH_KEYS) {
       if (settings[key] !== undefined) {

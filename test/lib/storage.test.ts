@@ -47,6 +47,8 @@ describe('storage', () => {
       expect(settings.templateOptions.messageFormat).toBe('callout');
       expect(settings.enableImageExport).toBe(true);
       expect(settings.imageVaultPath).toBe('AI/{platform}/images');
+      expect(settings.flattenLargeCallouts).toBe(true);
+      expect(settings.maxCalloutLines).toBe(200);
     });
 
     it('persists image export settings via saveSettings', async () => {

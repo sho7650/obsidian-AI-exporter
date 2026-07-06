@@ -15,6 +15,7 @@ import {
 } from '../lib/path-utils';
 import { lookupExistingFile, buildAppendContent } from '../lib/append-utils';
 import { resolveImagesForObsidian, stripImagePlaceholders } from '../lib/image-output';
+import { flattenLargeCallouts } from '../lib/callout-flatten';
 import { base64ToBytes } from '../lib/image-utils';
 import { collisionSuffix, candidateFileName } from '../lib/filename-collision';
 import { parseFrontmatter } from '../lib/frontmatter-parser';
@@ -43,6 +44,17 @@ function createObsidianClient(settings: ExtensionSettings): ObsidianApiClient | 
  */
 function isClientError(client: ObsidianApiClient | { error: string }): client is { error: string } {
   return 'error' in client;
+}
+
+/**
+ * Obsidian-only: flatten oversized callouts to plain text when enabled.
+ * A huge single callout can hang Obsidian's renderer; downloaded markdown keeps
+ * its callouts, so this runs only on the vault-save path.
+ */
+function maybeFlatten(content: string, settings: ExtensionSettings): string {
+  return settings.flattenLargeCallouts
+    ? flattenLargeCallouts(content, settings.maxCalloutLines)
+    : content;
 }
 
 /**
@@ -94,7 +106,7 @@ async function tryAppendMode(
 
     const appendResult = buildAppendContent(lookup.content, note, settings);
     if (appendResult !== null) {
-      await client.putFile(lookup.path, appendResult.content);
+      await client.putFile(lookup.path, maybeFlatten(appendResult.content, settings));
       return { success: true, isNewFile: false, messagesAppended: appendResult.messagesAppended };
     }
     return { success: true, isNewFile: false, messagesAppended: 0 };
@@ -154,7 +166,8 @@ export async function handleSave(
     }
 
     const saveNote = await prepareNoteImages(client, settings, note, templateVariables);
-    const content = generateNoteContent(saveNote, settings);
+    const flattenedBody = maybeFlatten(saveNote.body, settings);
+    const content = generateNoteContent({ ...saveNote, body: flattenedBody }, settings);
     await client.putFile(target.path, content);
 
     return {

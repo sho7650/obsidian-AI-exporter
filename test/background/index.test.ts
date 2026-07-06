@@ -34,6 +34,8 @@ const defaultSettings = {
   },
   enableImageExport: true,
   imageVaultPath: 'AI/{platform}/images',
+  flattenLargeCallouts: true,
+  maxCalloutLines: 200,
 };
 
 let mockGetSettings = vi.fn(() => Promise.resolve(defaultSettings));
@@ -1538,6 +1540,86 @@ describe('background/index', () => {
       const savedContent = mockClient.putFile.mock.calls[0][1] as string;
       expect(savedContent).not.toContain('g2o-image://');
       expect(savedContent).not.toContain('![[');
+    });
+  });
+
+  describe('callout flattening (Obsidian only, issue: large-callout hang)', () => {
+    const sender = { url: `chrome-extension://${chrome.runtime.id}/popup.html` };
+    const bigCalloutBody = [
+      '> [!QUESTION] User',
+      ...Array.from({ length: 8 }, (_, i) => `> line ${i}`),
+    ].join('\n');
+    const note: ObsidianNote = {
+      fileName: 'big.md',
+      body: bigCalloutBody,
+      contentHash: 'h',
+      images: [],
+      frontmatter: {
+        id: 'big',
+        title: 'Big',
+        source: 'gemini',
+        url: 'https://gemini.google.com/app/big',
+        created: '2026-01-01',
+        modified: '2026-01-01',
+        tags: ['ai-conversation', 'gemini'],
+        message_count: 1,
+      },
+    };
+
+    beforeEach(() => {
+      mockGetSettings = vi.fn(() =>
+        Promise.resolve({ ...defaultSettings, flattenLargeCallouts: true, maxCalloutLines: 5 })
+      );
+    });
+
+    function save(outputs: string[]): ReturnType<typeof vi.fn> {
+      const sendResponse = vi.fn();
+      capturedListener(
+        { action: 'saveToOutputs', data: note, outputs },
+        sender as chrome.runtime.MessageSender,
+        sendResponse
+      );
+      return sendResponse;
+    }
+
+    it('flattens a callout longer than the threshold when saving to Obsidian', async () => {
+      mockClient.getFile.mockResolvedValue(null);
+      mockClient.putFile.mockResolvedValue(undefined);
+      const sendResponse = save(['obsidian']);
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+      const saved = mockClient.putFile.mock.calls[0][1] as string;
+      expect(saved).toContain('**User:**');
+      expect(saved).not.toContain('> [!QUESTION] User');
+    });
+
+    it('does NOT flatten for the download (file) output — callouts are kept', async () => {
+      vi.mocked(chrome.downloads.download).mockImplementation((_o, cb) => {
+        cb?.(1);
+        return 1 as unknown as ReturnType<typeof chrome.downloads.download>;
+      });
+      const sendResponse = save(['file']);
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+      const url = (
+        vi.mocked(chrome.downloads.download).mock.calls[0][0] as chrome.downloads.DownloadOptions
+      ).url;
+      const content = atob(url.split('base64,')[1]);
+      expect(content).toContain('> [!QUESTION] User'); // callout preserved in download
+      expect(content).not.toContain('**User:**');
+    });
+
+    it('leaves the callout intact when the toggle is off', async () => {
+      mockGetSettings = vi.fn(() =>
+        Promise.resolve({ ...defaultSettings, flattenLargeCallouts: false, maxCalloutLines: 5 })
+      );
+      mockClient.getFile.mockResolvedValue(null);
+      mockClient.putFile.mockResolvedValue(undefined);
+      const sendResponse = save(['obsidian']);
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+      const saved = mockClient.putFile.mock.calls[0][1] as string;
+      expect(saved).toContain('> [!QUESTION] User');
     });
   });
 
