@@ -248,5 +248,32 @@
   },
   "settings_toolContentHelp": {
     "message": "Claude の Web 検索やツール結果も保存する"
+  },
+  "settings_enableImageExport": {
+    "message": "画像を書き出す"
+  },
+  "settings_imageExportHelp": {
+    "message": "生成された画像を保存する（Obsidian・ファイルダウンロード）"
+  },
+  "settings_imageVaultPath": {
+    "message": "画像フォルダ"
+  },
+  "settings_imageVaultPathPlaceholder": {
+    "message": "AI/{platform}/images"
+  },
+  "settings_imageVaultPathHelp": {
+    "message": "書き出した画像の保存フォルダ。{platform} や日付トークンが使えます。"
+  },
+  "settings_flattenLargeCallouts": {
+    "message": "長いメッセージを平坦化（Obsidian）"
+  },
+  "settings_flattenHelp": {
+    "message": "非常に長いメッセージをプレーンテキストにして Obsidian のハングを回避"
+  },
+  "settings_maxCalloutLines": {
+    "message": "平坦化のしきい値（行数）"
+  },
+  "settings_maxCalloutLinesHelp": {
+    "message": "この行数を超えるメッセージはプレーンテキストで保存されます（Obsidian のみ）。"
   }
 }

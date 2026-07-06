@@ -14,9 +14,7 @@ describe('sanitizeHtml', () => {
 
     it('keeps allowed attributes', () => {
       const html = '<a href="https://example.com" title="Link">Click</a>';
-      expect(sanitizeHtml(html)).toBe(
-        '<a href="https://example.com" title="Link">Click</a>'
-      );
+      expect(sanitizeHtml(html)).toBe('<a href="https://example.com" title="Link">Click</a>');
     });
 
     it('keeps class attribute', () => {
@@ -38,27 +36,19 @@ describe('sanitizeHtml', () => {
     });
 
     it('removes event handlers', () => {
-      expect(sanitizeHtml('<div onclick="alert(1)">Content</div>')).toBe(
-        '<div>Content</div>'
-      );
+      expect(sanitizeHtml('<div onclick="alert(1)">Content</div>')).toBe('<div>Content</div>');
     });
 
     it('removes javascript: URLs', () => {
-      expect(sanitizeHtml('<a href="javascript:alert(1)">Click</a>')).toBe(
-        '<a>Click</a>'
-      );
+      expect(sanitizeHtml('<a href="javascript:alert(1)">Click</a>')).toBe('<a>Click</a>');
     });
 
     it('removes nested XSS', () => {
-      expect(sanitizeHtml('<div><script>alert(1)</script>Safe</div>')).toBe(
-        '<div>Safe</div>'
-      );
+      expect(sanitizeHtml('<div><script>alert(1)</script>Safe</div>')).toBe('<div>Safe</div>');
     });
 
     it('removes onerror handlers', () => {
-      expect(sanitizeHtml('<img src="x" onerror="alert(1)">')).not.toContain(
-        'onerror'
-      );
+      expect(sanitizeHtml('<img src="x" onerror="alert(1)">')).not.toContain('onerror');
     });
   });
 
@@ -70,43 +60,49 @@ describe('sanitizeHtml', () => {
 
   describe('enforces attribute restrictions', () => {
     it('removes general data-* attributes', () => {
-      expect(sanitizeHtml('<div data-id="secret">Content</div>')).toBe(
-        '<div>Content</div>'
-      );
+      expect(sanitizeHtml('<div data-id="secret">Content</div>')).toBe('<div>Content</div>');
     });
 
     it('keeps data-turn-source-index attribute (Deep Research citations)', () => {
       // This attribute is explicitly allowed for inline citation processing
-      expect(
-        sanitizeHtml('<sup data-turn-source-index="5">1</sup>')
-      ).toBe('<sup data-turn-source-index="5">1</sup>');
+      expect(sanitizeHtml('<sup data-turn-source-index="5">1</sup>')).toBe(
+        '<sup data-turn-source-index="5">1</sup>'
+      );
     });
 
     it('keeps data-turn-source-index in source-footnote structure', () => {
-      const html =
-        '<source-footnote><sup data-turn-source-index="1">1</sup></source-footnote>';
+      const html = '<source-footnote><sup data-turn-source-index="1">1</sup></source-footnote>';
       const result = sanitizeHtml(html);
       expect(result).toContain('data-turn-source-index="1"');
     });
 
     it('keeps data-math attribute on div (Gemini KaTeX math blocks)', () => {
-      expect(
-        sanitizeHtml('<div data-math="\\frac{a}{b}">KaTeX content</div>')
-      ).toBe('<div data-math="\\frac{a}{b}">KaTeX content</div>');
+      expect(sanitizeHtml('<div data-math="\\frac{a}{b}">KaTeX content</div>')).toBe(
+        '<div data-math="\\frac{a}{b}">KaTeX content</div>'
+      );
     });
 
     it('keeps data-math attribute on span (Gemini KaTeX inline math)', () => {
-      expect(
-        sanitizeHtml('<span data-math="x^2">KaTeX content</span>')
-      ).toBe('<span data-math="x^2">KaTeX content</span>');
+      expect(sanitizeHtml('<span data-math="x^2">KaTeX content</span>')).toBe(
+        '<span data-math="x^2">KaTeX content</span>'
+      );
+    });
+
+    it('keeps data-g2o-image marker attribute on img (image placeholder)', () => {
+      const result = sanitizeHtml('<img data-g2o-image="img-1" alt="（AI 生成）">');
+      expect(result).toContain('data-g2o-image="img-1"');
+      expect(result).toContain('alt="（AI 生成）"');
+    });
+
+    it('strips blob: src from images (blob URLs are not resolvable in the note)', () => {
+      const result = sanitizeHtml('<img src="blob:https://gemini.google.com/abc" alt="x">');
+      expect(result).not.toContain('blob:');
     });
 
     it('keeps id attributes (allowed by DOMPurify profile)', () => {
       // Note: USE_PROFILES: { html: true } allows id attribute by default
       // ALLOWED_ATTR adds to the profile, doesn't restrict it
-      expect(sanitizeHtml('<div id="test">Content</div>')).toBe(
-        '<div id="test">Content</div>'
-      );
+      expect(sanitizeHtml('<div id="test">Content</div>')).toBe('<div id="test">Content</div>');
     });
   });
 

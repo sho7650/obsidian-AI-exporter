@@ -8,11 +8,13 @@ import { sanitizeHtml } from '../../lib/sanitize';
 import { extractErrorMessage } from '../../lib/error-utils';
 import { SCROLL_TIMEOUT } from '../../lib/constants';
 import { ensureAllElementsLoaded, type ScrollResult } from '../../lib/scroll-manager';
+import { fetchImageAsBase64 } from '../image-capture';
 import type {
   SyncSettings,
   ExtractionResult,
   ConversationMessage,
   DeepResearchSource,
+  ExtractedImage,
 } from '../../lib/types';
 
 import { SELECTORS, DEEP_RESEARCH_SELECTORS, COMPUTED_SELECTORS } from './selectors/gemini';
@@ -23,11 +25,23 @@ export class GeminiExtractor extends BaseExtractor {
   /** Whether auto-scroll is enabled (set from settings before extract()) */
   enableAutoScroll = false;
 
+  /** Whether generated images are captured (set from settings before extract()) */
+  enableImageExport = true;
+
+  /**
+   * Generated-image capture state, populated (sync) while extractMessages()
+   * rewrites `<img>` into markers and drained (async) in extract(). Reset at
+   * the start of every extract() so re-runs never carry stale ids.
+   */
+  private imageIdCounter = 0;
+  private pendingImages: Array<{ id: string; src: string; alt: string }> = [];
+
   /**
    * Apply user settings: enable/disable auto-scroll
    */
   applySettings(settings: SyncSettings): void {
     this.enableAutoScroll = settings.enableAutoScroll ?? false;
+    this.enableImageExport = settings.enableImageExport ?? true;
   }
 
   /**
@@ -59,13 +73,25 @@ export class GeminiExtractor extends BaseExtractor {
       const deepResearchResult = this.tryExtractDeepResearch();
       if (deepResearchResult) return deepResearchResult;
 
+      // Reset per-extraction image state before extractMessages() populates it.
+      this.imageIdCounter = 0;
+      this.pendingImages = [];
+
       const scrollResult = await this.runAutoScroll();
 
       console.info(`[G2O] Extracting ${this.platformLabel} conversation`);
       const messages = this.extractMessages();
       const conversationId = this.getConversationId() || `${this.platform}-${Date.now()}`;
       const title = this.getTitle();
-      const result = this.buildConversationResult(messages, conversationId, title, this.platform);
+      const baseResult = this.buildConversationResult(
+        messages,
+        conversationId,
+        title,
+        this.platform
+      );
+
+      // Fetch captured generated images (blob → base64) and attach to the data.
+      const result = await this.attachImages(baseResult);
 
       if (scrollResult && !scrollResult.fullyLoaded && !scrollResult.skipped) {
         const warning =
@@ -273,14 +299,74 @@ export class GeminiExtractor extends BaseExtractor {
 
   /**
    * Extract model response content (HTML for markdown conversion)
-   * All HTML is sanitized via DOMPurify to prevent XSS (NEW-01)
+   * All HTML is sanitized via DOMPurify to prevent XSS (NEW-01).
+   * Generated `<img>` elements are rewritten to `data-g2o-image` markers and
+   * their blob URLs recorded for async capture (see collectPendingImages).
    */
   private extractModelResponseContent(element: Element): string {
-    const contentEl = this.queryWithFallback<HTMLElement>(SELECTORS.modelResponseContent, element);
-    if (contentEl) {
-      return sanitizeHtml(contentEl.innerHTML);
+    const contentEl =
+      this.queryWithFallback<HTMLElement>(SELECTORS.modelResponseContent, element) ??
+      (element as HTMLElement);
+    return sanitizeHtml(this.replaceGeneratedImages(contentEl));
+  }
+
+  /**
+   * Return the element's innerHTML with every generated `<img>` replaced by a
+   * `<img data-g2o-image="img-N">` marker. Each replaced image's blob URL and
+   * alt text are recorded in {@link pendingImages} for later async capture.
+   * Operates on a clone so the live DOM is never mutated.
+   */
+  private replaceGeneratedImages(element: HTMLElement): string {
+    if (!element.querySelector(COMPUTED_SELECTORS.generatedImage)) {
+      return element.innerHTML;
     }
-    // Final fallback: element's HTML
-    return sanitizeHtml(element.innerHTML);
+
+    const clone = element.cloneNode(true) as HTMLElement;
+    const imgs = clone.querySelectorAll<HTMLImageElement>(COMPUTED_SELECTORS.generatedImage);
+    imgs.forEach(img => {
+      // Image export disabled: drop the generated image so a src-less <img>
+      // does not leak an empty `![]()` link into the note.
+      if (!this.enableImageExport) {
+        img.remove();
+        return;
+      }
+
+      const src = img.getAttribute('src') ?? '';
+      if (!src) return;
+      const id = `img-${++this.imageIdCounter}`;
+      const alt = img.getAttribute('alt') ?? '';
+      this.pendingImages.push({ id, src, alt });
+
+      const marker = clone.ownerDocument.createElement('img');
+      marker.setAttribute('data-g2o-image', id);
+      if (alt) marker.setAttribute('alt', alt);
+      img.replaceWith(marker);
+    });
+
+    return clone.innerHTML;
+  }
+
+  /**
+   * Attach captured images to a successful extraction result (immutably).
+   * Failed fetches are skipped; their markers remain in the body and are
+   * resolved away per output destination.
+   */
+  private async attachImages(result: ExtractionResult): Promise<ExtractionResult> {
+    if (!result.success || !result.data) return result;
+    const images = await this.collectPendingImages();
+    return { ...result, data: { ...result.data, images } };
+  }
+
+  /**
+   * Drain {@link pendingImages}, fetching each blob URL as base64 in the page
+   * context. Sequential to avoid overwhelming the page; a handful of images.
+   */
+  private async collectPendingImages(): Promise<ExtractedImage[]> {
+    const images: ExtractedImage[] = [];
+    for (const pending of this.pendingImages) {
+      const image = await fetchImageAsBase64(pending.src, pending.id, pending.alt);
+      if (image) images.push(image);
+    }
+    return images;
   }
 }

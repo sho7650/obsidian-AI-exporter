@@ -5,7 +5,7 @@
  * or plain text format. Also handles tool-use content rendering.
  */
 
-import { htmlToMarkdown, escapeAngleBrackets } from './markdown-rules';
+import { htmlToMarkdown, escapeUserText } from './markdown-rules';
 import { PLATFORM_LABELS } from '../lib/constants';
 import type { AIPlatform, TemplateOptions } from '../lib/types';
 
@@ -19,12 +19,13 @@ const QUESTION_HEADER_MAX_LENGTH = 60;
  * Strip markdown-significant characters that could corrupt heading structure
  * if left unclosed after truncation (issue #203).
  *
- * Removes: backticks, asterisks, underscores, tildes, square brackets.
+ * Removes: backticks, asterisks, underscores, tildes, square brackets, and
+ * `$` (so a pasted `$var` never renders as math inside the heading).
  * These are harmless to remove from a TOC header label.
  * @internal Exported for testing
  */
 export function stripMarkdownChars(text: string): string {
-  return text.replace(/[`*_~[\]]/g, '');
+  return text.replace(/[`*_~[\]$]/g, '');
 }
 
 /**
@@ -65,8 +66,9 @@ export function formatMessage(
   options: TemplateOptions,
   source: AIPlatform
 ): string {
-  // Convert HTML to Markdown for assistant messages; escape angle brackets for user messages
-  const markdown = role === 'assistant' ? htmlToMarkdown(content) : escapeAngleBrackets(content);
+  // Convert HTML to Markdown for assistant messages; escape angle brackets and
+  // `$` (Obsidian math) for user messages, which are plain pasted text.
+  const markdown = role === 'assistant' ? htmlToMarkdown(content) : escapeUserText(content);
   const assistantLabel = PLATFORM_LABELS[source];
 
   let formatted: string;

@@ -2,7 +2,9 @@
 
 ## Status
 
-Proposed
+Accepted (v2.0.0) — implemented for Gemini generated images. See
+"Implementation Notes (v2.0.0)" below for where the shipped design deviates
+from the original proposal.
 
 ## Context
 
@@ -65,8 +67,42 @@ Images are fetched as binary data in the background service worker, uploaded to 
 - **Large conversations with many images**: Could cause timeout or memory pressure. Mitigation: concurrency limit + per-image size cap.
 - **CORS/CSP blocking image fetch**: Some platforms may restrict image downloads. Mitigation: fetch from background SW using host_permissions.
 
+## Implementation Notes (v2.0.0)
+
+The investigation in `docs/investigation/gemini-image-dom-structure.md` found
+that Gemini's generated images use **blob: URLs** that are origin- and
+context-scoped: the background service worker cannot fetch them (Method A's
+"background SW fetches images" step is impossible for blob URLs). The shipped
+implementation therefore adopts **Option 4** from that investigation and
+deviates from this ADR's original proposal as follows:
+
+1. **Capture location** — images are fetched as base64 **in the content script**
+   (same origin as the page), before DOMPurify strips the blob `src`. The bytes
+   travel to the background as base64 over `chrome.runtime.sendMessage`.
+2. **Placeholder** — the content script emits a destination-agnostic
+   `![alt](g2o-image://{id})` placeholder; the background resolves it per
+   destination.
+3. **Three output destinations** (not Obsidian-only):
+   - **Obsidian** — image written to the vault via `putBinaryFile`; body uses
+     an Obsidian **wikilink embed `![[filename]]`** (chosen over `![](path)`
+     because Obsidian resolves attachments by name, independent of the folder).
+   - **File download** — markdown plus each image as **separate files**; body
+     references the image filename only.
+   - **Clipboard** — image placeholders are stripped; no image is copied.
+4. **Opt-in default** — `enableImageExport` defaults to **true** (the feature
+   was explicitly requested); a per-image 10MB cap and a ≤20 images/note bound
+   guard against abuse.
+5. **Scope** — Gemini generated images only in v1. Append mode strips
+   placeholders (image handling deferred); other platforms and ZIP packaging
+   are future work.
+
+The `putBinaryFile` Content-Type is the image's own MIME type (e.g. `image/png`)
+rather than `application/octet-stream`.
+
 ## References
 
 - GitHub Issue: #186
+- Investigation: `docs/investigation/gemini-image-dom-structure.md`
+- Design: `docs/design/DES-017-image-sync.md`
 - Obsidian Local REST API: [coddingtonbear/obsidian-local-rest-api](https://github.com/coddingtonbear/obsidian-local-rest-api)
 - Obsidian attachment docs: [help.obsidian.md/attachments](https://help.obsidian.md/attachments)

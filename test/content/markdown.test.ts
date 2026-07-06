@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   htmlToMarkdown,
   escapeAngleBrackets,
+  escapeUserText,
   generateFileName,
   generateContentHash,
   conversationToNote,
@@ -9,6 +10,56 @@ import {
 } from '../../src/content/markdown';
 import { sanitizeHtml } from '../../src/lib/sanitize';
 import type { ConversationData, TemplateOptions, DeepResearchLinks } from '../../src/lib/types';
+
+describe('escapeUserText — math dollar escaping (Obsidian hang fix)', () => {
+  it('escapes $ so shell/YAML text is not parsed as math', () => {
+    expect(escapeUserText('TMP=$(mktemp)')).toBe('TMP=\\$(mktemp)');
+    expect(escapeUserText('${S3_ACCESS_KEY}')).toBe('\\${S3_ACCESS_KEY}');
+  });
+
+  it('escapes doubled $$ (compose escaping) as two literal dollars', () => {
+    expect(escapeUserText('cat "$$TMP"')).toBe('cat "\\$\\$TMP"');
+  });
+
+  it('still escapes angle brackets like escapeAngleBrackets', () => {
+    expect(escapeUserText('a > b')).toBe('a \\> b');
+  });
+
+  it('preserves $ inside fenced code blocks', () => {
+    const input = '```\n$x = 1\n```';
+    expect(escapeUserText(input)).toBe(input);
+  });
+
+  it('preserves $ inside inline code', () => {
+    expect(escapeUserText('use `$HOME` now')).toBe('use `$HOME` now');
+  });
+});
+
+describe('escapeAngleBrackets — leaves $ untouched (assistant math preserved)', () => {
+  it('does not escape $ so KaTeX math survives', () => {
+    expect(escapeAngleBrackets('$$E = mc^2$$')).toBe('$$E = mc^2$$');
+    expect(escapeAngleBrackets('inline $x^2$ math')).toBe('inline $x^2$ math');
+  });
+});
+
+describe('htmlToMarkdown — image placeholders', () => {
+  it('converts a data-g2o-image marker to a g2o-image placeholder link', () => {
+    const md = htmlToMarkdown('<img data-g2o-image="img-1" alt="（AI 生成）">');
+    expect(md).toContain('![（AI 生成）](g2o-image://img-1)');
+  });
+
+  it('handles a marker with no alt text', () => {
+    const md = htmlToMarkdown('<img data-g2o-image="img-2">');
+    expect(md).toContain('![](g2o-image://img-2)');
+  });
+
+  it('places the placeholder on its own line within surrounding content', () => {
+    const md = htmlToMarkdown('<p>Before</p><img data-g2o-image="img-3" alt="a"><p>After</p>');
+    expect(md).toContain('![a](g2o-image://img-3)');
+    expect(md).toContain('Before');
+    expect(md).toContain('After');
+  });
+});
 
 describe('htmlToMarkdown', () => {
   describe('basic formatting', () => {
@@ -452,6 +503,30 @@ describe('conversationToNote', () => {
     userCalloutType: 'QUESTION',
     assistantCalloutType: 'NOTE',
   };
+
+  it('attaches captured images to the note', () => {
+    const dataWithImages: ConversationData = {
+      ...mockData,
+      messages: [
+        { id: 'msg1', role: 'user', content: 'draw', index: 0 },
+        {
+          id: 'msg2',
+          role: 'assistant',
+          content: '<p>Here</p><img data-g2o-image="img-1" alt="（AI 生成）">',
+          index: 1,
+        },
+      ],
+      images: [{ id: 'img-1', mimeType: 'image/png', data: 'UE5H', alt: '（AI 生成）' }],
+    };
+    const note = conversationToNote(dataWithImages, defaultOptions);
+    expect(note.images).toEqual(dataWithImages.images);
+    expect(note.body).toContain('![（AI 生成）](g2o-image://img-1)');
+  });
+
+  it('attaches an empty images array when the conversation has none', () => {
+    const note = conversationToNote(mockData, defaultOptions);
+    expect(note.images).toEqual([]);
+  });
 
   it('generates frontmatter with required fields', () => {
     const note = conversationToNote(mockData, defaultOptions);

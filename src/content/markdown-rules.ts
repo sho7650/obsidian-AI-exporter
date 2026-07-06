@@ -14,12 +14,20 @@ const BLOCKQUOTE_PREFIX_PATTERN = /^(\s*>\s*)+/;
 const INLINE_CODE_SPLIT_PATTERN = /(`[^`]+`)/;
 /** Angle brackets, including backslash-escaped forms (`\<`, `\>`). */
 const ANGLE_BRACKET_PATTERN = /\\[<>]|[<>]/g;
+/**
+ * Angle brackets plus `$`. Used for user text so pasted shell/YAML (`$VAR`,
+ * `$$TMP`) is not parsed by Obsidian as `$...$` / `$$...$$` math — dozens of
+ * stray `$` otherwise create giant "math" spans that blank the note and hang
+ * the KaTeX/MathJax renderer.
+ */
+const ANGLE_BRACKET_DOLLAR_PATTERN = /\\[<>]|[<>$]/g;
 
 /**
- * Escape angle brackets in a single line of Markdown text.
- * Preserves blockquote markers and inline code segments.
+ * Escape special characters in a single line of Markdown text, preserving
+ * blockquote markers and inline code segments. `pattern` selects which
+ * characters are escaped.
  */
-function escapeAngleBracketsInLine(line: string): string {
+function escapeSpecialCharsInLine(line: string, pattern: RegExp): string {
   // 1. Extract blockquote prefix (preserve as-is)
   const bqMatch = line.match(BLOCKQUOTE_PREFIX_PATTERN);
   const prefix = bqMatch ? bqMatch[0] : '';
@@ -28,12 +36,12 @@ function escapeAngleBracketsInLine(line: string): string {
   // 2. Split by inline code segments (capture group → odd indices are code)
   const parts = rest.split(INLINE_CODE_SPLIT_PATTERN);
 
-  // 3. Escape angle brackets in non-code segments.
+  // 3. Escape target characters in non-code segments.
   //    Also handle \< and \> (backslash+angle) to prevent incomplete escaping (CodeQL js/incomplete-sanitization).
   const escaped = parts
     .map((part, i) => {
       if (i % 2 === 1) return part; // inline code — preserve
-      return part.replace(ANGLE_BRACKET_PATTERN, match => {
+      return part.replace(pattern, match => {
         if (match.length === 2) {
           // \< or \> → escaped backslash + escaped angle bracket
           return '\\\\' + '\\' + match[1];
@@ -47,13 +55,10 @@ function escapeAngleBracketsInLine(line: string): string {
 }
 
 /**
- * Escape angle brackets in Markdown text for safe Obsidian rendering.
- * Preserves brackets inside fenced code blocks, inline code, and
- * blockquote markers.
- *
- * CommonMark §2.4: \< and \> are valid backslash escapes.
+ * Escape target characters across Markdown text, skipping fenced code blocks
+ * (where the characters are already literal in Obsidian).
  */
-export function escapeAngleBrackets(text: string): string {
+function escapeByLine(text: string, pattern: RegExp): string {
   const lines = text.split('\n');
   let inFencedBlock = false;
 
@@ -67,10 +72,30 @@ export function escapeAngleBrackets(text: string): string {
 
     if (inFencedBlock) return line;
 
-    return escapeAngleBracketsInLine(line);
+    return escapeSpecialCharsInLine(line, pattern);
   });
 
   return result.join('\n');
+}
+
+/**
+ * Escape angle brackets in Markdown text for safe Obsidian rendering.
+ * Preserves brackets inside fenced code blocks, inline code, and
+ * blockquote markers. Leaves `$` untouched so assistant KaTeX math survives.
+ *
+ * CommonMark §2.4: \< and \> are valid backslash escapes.
+ */
+export function escapeAngleBrackets(text: string): string {
+  return escapeByLine(text, ANGLE_BRACKET_PATTERN);
+}
+
+/**
+ * Escape user-message text for safe Obsidian rendering: angle brackets AND
+ * `$`. User prompts are plain text that frequently contains pasted shell/YAML
+ * `$`, which must not be interpreted as math. Fenced/inline code is preserved.
+ */
+export function escapeUserText(text: string): string {
+  return escapeByLine(text, ANGLE_BRACKET_DOLLAR_PATTERN);
 }
 
 // ============================================================
@@ -166,6 +191,24 @@ turndown.addRule('inlineCode', {
   },
   replacement: content => {
     return `\`${content}\``;
+  },
+});
+
+// Custom rule for image placeholders.
+// Converts <img data-g2o-image="ID" alt="A"> to a stable placeholder link
+// `![A](g2o-image://ID)`, resolved per output destination in the background
+// (Obsidian embed, downloaded file, or stripped for clipboard). Emitted on its
+// own paragraph so the image renders as a block, not inline with prose.
+turndown.addRule('g2oImage', {
+  filter: node => {
+    return node.nodeName === 'IMG' && (node as HTMLElement).hasAttribute('data-g2o-image');
+  },
+  replacement: (_content, node) => {
+    const el = node as HTMLElement;
+    const id = el.getAttribute('data-g2o-image');
+    if (!id) return '';
+    const alt = el.getAttribute('alt') ?? '';
+    return `\n\n![${alt}](g2o-image://${id})\n\n`;
   },
 });
 

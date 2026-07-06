@@ -27,6 +27,17 @@ export const FILENAME_ID_SUFFIX_LENGTH = 8;
 /** Maximum length for a code block language hint (characters) */
 export const MAX_LANG_HINT_LENGTH = 30;
 
+/**
+ * Default line threshold for the Obsidian-only "flatten large callouts"
+ * setting. Obsidian decorates every blockquote line, so a very long message
+ * (e.g. a pasted document) rendered as one giant callout makes the note render
+ * pathologically slowly and can hang the app; flattening such callouts to plain
+ * text renders in linear time. 200 keeps normal messages and long AI answers as
+ * callouts, while document-sized pastes fall back to plain text. Downloaded
+ * markdown is unaffected (this is an Obsidian-rendering issue only).
+ */
+export const DEFAULT_MAX_CALLOUT_LINES = 200;
+
 // ============================================================
 // Validation Limits
 // ============================================================
@@ -67,6 +78,12 @@ export const DEFAULT_API_TIMEOUT = 5000;
 
 /** Maximum content size for API requests (1MB) */
 export const MAX_CONTENT_SIZE = 1024 * 1024;
+
+/** Maximum number of images accepted per note (DoS guard). */
+export const MAX_IMAGES_PER_NOTE = 20;
+
+/** Maximum base64 length for a single image's data (~10MB binary + overhead). */
+export const MAX_IMAGE_DATA_LENGTH = 14 * 1024 * 1024;
 
 // ============================================================
 // UI Timing

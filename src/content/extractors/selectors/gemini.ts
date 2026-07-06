@@ -33,6 +33,11 @@ export const SELECTORS = {
   // 2026-03 (the v1 baseline recorded 0 matches from day one); titles come
   // from the first user query (see GeminiExtractor.getTitle).
 
+  // AI-generated images inside a model response. Gemini wraps each generated
+  // image in a <generated-image>/<single-image> component; the <img> carries a
+  // blob: (or googleusercontent) src and alt="（AI 生成）".
+  generatedImage: ['generated-image img[src]', 'single-image img[src]', 'img.image[src]'],
+
   // Scroll container for lazy-load detection
   // infinite-scroller (data-test-id="chat-history-container") is the actual
   // scrollable element (overflow-y: scroll). It fires onScrolledTopPastThreshold
@@ -89,6 +94,7 @@ export const DEEP_RESEARCH_LINK_SELECTORS = {
  */
 export const COMPUTED_SELECTORS = {
   conversationTurn: SELECTORS.conversationTurn.join(','),
+  generatedImage: SELECTORS.generatedImage.join(','),
   sourceListItem: DEEP_RESEARCH_LINK_SELECTORS.sourceListItem.join(','),
   sourceTitle: DEEP_RESEARCH_LINK_SELECTORS.sourceTitle.join(','),
   sourceDomain: DEEP_RESEARCH_LINK_SELECTORS.sourceDomain.join(','),

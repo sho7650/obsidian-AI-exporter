@@ -45,6 +45,20 @@ describe('storage', () => {
       expect(settings.obsidianUrl).toBe('http://127.0.0.1:27123');
       expect(settings.vaultPath).toBe('AI/{platform}');
       expect(settings.templateOptions.messageFormat).toBe('callout');
+      expect(settings.enableImageExport).toBe(true);
+      expect(settings.imageVaultPath).toBe('AI/{platform}/images');
+      expect(settings.flattenLargeCallouts).toBe(true);
+      expect(settings.maxCalloutLines).toBe(200);
+    });
+
+    it('persists image export settings via saveSettings', async () => {
+      await saveSettings({ enableImageExport: false, imageVaultPath: 'Attachments/{platform}' });
+      expect(chrome.storage.sync.set).toHaveBeenCalledWith({
+        settings: expect.objectContaining({
+          enableImageExport: false,
+          imageVaultPath: 'Attachments/{platform}',
+        }),
+      });
     });
 
     it('returns stored secure settings from local storage', async () => {

@@ -13,7 +13,7 @@ import type {
   TemplateOptions,
   OutputOptions,
 } from './types';
-import { DEFAULT_OBSIDIAN_URL } from './constants';
+import { DEFAULT_OBSIDIAN_URL, DEFAULT_MAX_CALLOUT_LINES } from './constants';
 
 const DEFAULT_TEMPLATE_OPTIONS: TemplateOptions = {
   includeId: true,
@@ -46,6 +46,10 @@ const DEFAULT_SYNC_SETTINGS: SyncSettings = {
   enableAutoScroll: false,
   enableAppendMode: false,
   enableToolContent: false,
+  enableImageExport: true,
+  imageVaultPath: 'AI/{platform}/images',
+  flattenLargeCallouts: true,
+  maxCalloutLines: DEFAULT_MAX_CALLOUT_LINES,
 };
 
 const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -66,32 +70,37 @@ export async function getSettings(): Promise<ExtensionSettings> {
       chrome.storage.sync.get('settings'),
     ]);
 
+    const stored = syncResult.settings ?? {};
+
     // Migrate legacy obsidianPort → obsidianUrl
-    const storedUrl = syncResult.settings?.obsidianUrl;
-    const legacyPort = syncResult.settings?.obsidianPort;
     const obsidianUrl =
-      storedUrl ??
-      (legacyPort ? `http://127.0.0.1:${legacyPort}` : DEFAULT_SYNC_SETTINGS.obsidianUrl);
+      stored.obsidianUrl ??
+      (stored.obsidianPort
+        ? `http://127.0.0.1:${stored.obsidianPort}`
+        : DEFAULT_SYNC_SETTINGS.obsidianUrl);
+
+    // Scalar fields fall back to their defaults when absent.
+    const scalarKeys = [
+      'vaultPath',
+      'imageVaultPath',
+      'enableAutoScroll',
+      'enableAppendMode',
+      'enableToolContent',
+      'enableImageExport',
+      'flattenLargeCallouts',
+      'maxCalloutLines',
+    ] as const;
+    const scalars = Object.fromEntries(
+      scalarKeys.map(key => [key, stored[key] ?? DEFAULT_SYNC_SETTINGS[key]])
+    ) as Pick<SyncSettings, (typeof scalarKeys)[number]>;
 
     return {
       obsidianApiKey:
         localResult.secureSettings?.obsidianApiKey ?? DEFAULT_SECURE_SETTINGS.obsidianApiKey,
       obsidianUrl,
-      vaultPath: syncResult.settings?.vaultPath ?? DEFAULT_SYNC_SETTINGS.vaultPath,
-      templateOptions: {
-        ...DEFAULT_TEMPLATE_OPTIONS,
-        ...syncResult.settings?.templateOptions,
-      },
-      outputOptions: {
-        ...DEFAULT_OUTPUT_OPTIONS,
-        ...syncResult.settings?.outputOptions,
-      },
-      enableAutoScroll:
-        syncResult.settings?.enableAutoScroll ?? DEFAULT_SYNC_SETTINGS.enableAutoScroll,
-      enableAppendMode:
-        syncResult.settings?.enableAppendMode ?? DEFAULT_SYNC_SETTINGS.enableAppendMode,
-      enableToolContent:
-        syncResult.settings?.enableToolContent ?? DEFAULT_SYNC_SETTINGS.enableToolContent,
+      templateOptions: { ...DEFAULT_TEMPLATE_OPTIONS, ...stored.templateOptions },
+      outputOptions: { ...DEFAULT_OUTPUT_OPTIONS, ...stored.outputOptions },
+      ...scalars,
     };
   } catch (error) {
     console.error('[G2O] Failed to get settings:', error);
@@ -118,13 +127,24 @@ export async function saveSettings(settings: Partial<ExtensionSettings>): Promis
       });
     }
 
-    // Save non-sensitive data to sync storage
+    // Save non-sensitive data to sync storage. Simple scalar fields pass
+    // through directly; templateOptions/outputOptions merge with defaults.
     const syncData: Partial<SyncSettings> = {};
-    if (settings.obsidianUrl !== undefined) {
-      syncData.obsidianUrl = settings.obsidianUrl;
-    }
-    if (settings.vaultPath !== undefined) {
-      syncData.vaultPath = settings.vaultPath;
+    const PASS_THROUGH_KEYS = [
+      'obsidianUrl',
+      'vaultPath',
+      'imageVaultPath',
+      'enableAutoScroll',
+      'enableAppendMode',
+      'enableToolContent',
+      'enableImageExport',
+      'flattenLargeCallouts',
+      'maxCalloutLines',
+    ] as const;
+    for (const key of PASS_THROUGH_KEYS) {
+      if (settings[key] !== undefined) {
+        (syncData[key] as SyncSettings[typeof key]) = settings[key] as SyncSettings[typeof key];
+      }
     }
     if (settings.templateOptions !== undefined) {
       syncData.templateOptions = {
@@ -139,15 +159,6 @@ export async function saveSettings(settings: Partial<ExtensionSettings>): Promis
         ...currentSync.outputOptions,
         ...settings.outputOptions,
       };
-    }
-    if (settings.enableAutoScroll !== undefined) {
-      syncData.enableAutoScroll = settings.enableAutoScroll;
-    }
-    if (settings.enableAppendMode !== undefined) {
-      syncData.enableAppendMode = settings.enableAppendMode;
-    }
-    if (settings.enableToolContent !== undefined) {
-      syncData.enableToolContent = settings.enableToolContent;
     }
 
     if (Object.keys(syncData).length > 0) {

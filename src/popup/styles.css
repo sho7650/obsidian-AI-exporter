@@ -161,7 +161,8 @@ select {
 }
 
 input[type='url'],
-#vaultPath {
+#vaultPath,
+#imageVaultPath {
   font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', monospace;
   font-size: 12px;
 }
