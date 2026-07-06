@@ -169,6 +169,24 @@ turndown.addRule('inlineCode', {
   },
 });
 
+// Custom rule for image placeholders.
+// Converts <img data-g2o-image="ID" alt="A"> to a stable placeholder link
+// `![A](g2o-image://ID)`, resolved per output destination in the background
+// (Obsidian embed, downloaded file, or stripped for clipboard). Emitted on its
+// own paragraph so the image renders as a block, not inline with prose.
+turndown.addRule('g2oImage', {
+  filter: node => {
+    return node.nodeName === 'IMG' && (node as HTMLElement).hasAttribute('data-g2o-image');
+  },
+  replacement: (_content, node) => {
+    const el = node as HTMLElement;
+    const id = el.getAttribute('data-g2o-image');
+    if (!id) return '';
+    const alt = el.getAttribute('alt') ?? '';
+    return `\n\n![${alt}](g2o-image://${id})\n\n`;
+  },
+});
+
 // Custom rule for footnote reference placeholders
 // Converts <span data-footnote-ref="N">REF</span> to [^N]
 turndown.addRule('footnoteRef', {

@@ -2,7 +2,17 @@
 
 **Issue:** #186-1
 **ADR:** [008-image-sync-strategy.md](../adr/008-image-sync-strategy.md)
-**Status:** Draft
+**Status:** Superseded by implementation (v2.0.0)
+
+> **Note:** This draft predates the blob-URL investigation. The shipped v2.0.0
+> design differs materially — see "Implementation Notes (v2.0.0)" in ADR-008.
+> Key deviations: images are captured as base64 **in the content script** (not
+> fetched in the background SW); the note uses Obsidian **wikilink embeds
+> `![[filename]]`** (not relative `![](path)`); output diverges across
+> **Obsidian / file download / clipboard**; the placeholder is a
+> `g2o-image://` scheme link (not the double-brace `G2O_IMG` form below); and
+> `enableImageExport` defaults to **true**. Authoritative source files: `src/lib/image-utils.ts`,
+> `src/content/image-capture.ts`, `src/lib/image-output.ts`.
 
 ---
 

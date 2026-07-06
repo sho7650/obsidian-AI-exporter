@@ -93,6 +93,8 @@ function queryElements() {
     enableAutoScroll: getElement<HTMLInputElement>('enableAutoScroll'),
     enableAppendMode: getElement<HTMLInputElement>('enableAppendMode'),
     enableToolContent: getElement<HTMLInputElement>('enableToolContent'),
+    enableImageExport: getElement<HTMLInputElement>('enableImageExport'),
+    imageVaultPath: getElement<HTMLInputElement>('imageVaultPath'),
     timezone: getElement<HTMLSelectElement>('timezone'),
     timezoneGroup: getElement<HTMLElement>('timezoneGroup'),
     testBtn: getElement<HTMLButtonElement>('testBtn'),
@@ -138,6 +140,8 @@ function populateForm(settings: ExtensionSettings): void {
   elements.enableAutoScroll.checked = settings.enableAutoScroll ?? false;
   elements.enableAppendMode.checked = settings.enableAppendMode ?? false;
   elements.enableToolContent.checked = settings.enableToolContent ?? false;
+  elements.enableImageExport.checked = settings.enableImageExport ?? true;
+  elements.imageVaultPath.value = settings.imageVaultPath || '';
 
   // Update Obsidian settings section visibility
   updateObsidianSettingsVisibility();
@@ -362,6 +366,8 @@ function collectSettings(): ExtensionSettings {
     enableAutoScroll: elements.enableAutoScroll.checked,
     enableAppendMode: elements.enableAppendMode.checked,
     enableToolContent: elements.enableToolContent.checked,
+    enableImageExport: elements.enableImageExport.checked,
+    imageVaultPath: elements.imageVaultPath.value.trim() || 'AI/{platform}/images',
   };
 }
 

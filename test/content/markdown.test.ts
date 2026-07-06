@@ -10,6 +10,25 @@ import {
 import { sanitizeHtml } from '../../src/lib/sanitize';
 import type { ConversationData, TemplateOptions, DeepResearchLinks } from '../../src/lib/types';
 
+describe('htmlToMarkdown — image placeholders', () => {
+  it('converts a data-g2o-image marker to a g2o-image placeholder link', () => {
+    const md = htmlToMarkdown('<img data-g2o-image="img-1" alt="（AI 生成）">');
+    expect(md).toContain('![（AI 生成）](g2o-image://img-1)');
+  });
+
+  it('handles a marker with no alt text', () => {
+    const md = htmlToMarkdown('<img data-g2o-image="img-2">');
+    expect(md).toContain('![](g2o-image://img-2)');
+  });
+
+  it('places the placeholder on its own line within surrounding content', () => {
+    const md = htmlToMarkdown('<p>Before</p><img data-g2o-image="img-3" alt="a"><p>After</p>');
+    expect(md).toContain('![a](g2o-image://img-3)');
+    expect(md).toContain('Before');
+    expect(md).toContain('After');
+  });
+});
+
 describe('htmlToMarkdown', () => {
   describe('basic formatting', () => {
     it('converts paragraphs', () => {
@@ -452,6 +471,30 @@ describe('conversationToNote', () => {
     userCalloutType: 'QUESTION',
     assistantCalloutType: 'NOTE',
   };
+
+  it('attaches captured images to the note', () => {
+    const dataWithImages: ConversationData = {
+      ...mockData,
+      messages: [
+        { id: 'msg1', role: 'user', content: 'draw', index: 0 },
+        {
+          id: 'msg2',
+          role: 'assistant',
+          content: '<p>Here</p><img data-g2o-image="img-1" alt="（AI 生成）">',
+          index: 1,
+        },
+      ],
+      images: [{ id: 'img-1', mimeType: 'image/png', data: 'UE5H', alt: '（AI 生成）' }],
+    };
+    const note = conversationToNote(dataWithImages, defaultOptions);
+    expect(note.images).toEqual(dataWithImages.images);
+    expect(note.body).toContain('![（AI 生成）](g2o-image://img-1)');
+  });
+
+  it('attaches an empty images array when the conversation has none', () => {
+    const note = conversationToNote(mockData, defaultOptions);
+    expect(note.images).toEqual([]);
+  });
 
   it('generates frontmatter with required fields', () => {
     const note = conversationToNote(mockData, defaultOptions);

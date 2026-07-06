@@ -215,6 +215,30 @@ export class ObsidianApiClient {
   }
 
   /**
+   * Create or update a binary file in the vault (e.g. an image).
+   * @param path - Path relative to vault root
+   * @param data - Raw bytes to write
+   * @param contentType - MIME type (e.g. "image/png")
+   */
+  async putBinaryFile(path: string, data: Uint8Array, contentType: string): Promise<void> {
+    const encodedPath = encodeURIComponent(path);
+    const response = await this.fetchWithTimeout(`${this.baseUrl}/vault/${encodedPath}`, {
+      method: 'PUT',
+      headers: {
+        ...this.getHeaders(),
+        'Content-Type': contentType,
+      },
+      // Uint8Array is a valid BufferSource body; the cast placates the DOM
+      // lib's narrower BodyInit typing across ArrayBufferLike variants.
+      body: data as BodyInit,
+    });
+
+    if (!response.ok) {
+      throw this.createError(response.status, `Failed to save image: ${response.statusText}`);
+    }
+  }
+
+  /**
    * List files in a vault directory.
    * Uses GET /vault/{directory}/ endpoint.
    * Returns empty array if directory doesn't exist (404).

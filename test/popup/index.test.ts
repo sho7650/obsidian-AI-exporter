@@ -27,9 +27,11 @@ const storedSettings: ExtensionSettings = {
   obsidianApiKey: VALID_API_KEY,
   obsidianUrl: 'http://127.0.0.1:27123',
   vaultPath: 'AI/Gemini',
+  imageVaultPath: 'AI/Gemini/images',
   enableAutoScroll: true,
   enableAppendMode: false,
   enableToolContent: false,
+  enableImageExport: true,
   outputOptions: { obsidian: true, file: false, clipboard: true },
   templateOptions: {
     messageFormat: 'callout',
@@ -60,6 +62,7 @@ const SWITCH_IDS = [
   'enableAutoScroll',
   'enableAppendMode',
   'enableToolContent',
+  'enableImageExport',
 ];
 
 function buildPopupDom(): void {
@@ -74,6 +77,7 @@ function buildPopupDom(): void {
       </div>
       <input type="text" id="obsidianUrl" />
       <input type="text" id="vaultPath" />
+      <input type="text" id="imageVaultPath" />
     </section>
     ${switches}
     <select id="messageFormat">

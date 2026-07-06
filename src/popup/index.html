@@ -122,6 +122,25 @@
                     <span class="slider" aria-hidden="true"></span>
                   </span>
                 </label>
+                <label class="toggle-row">
+                  <span class="toggle-icon">🖼️</span>
+                  <span class="toggle-label">
+                    <span data-i18n="settings_enableImageExport">Export images</span>
+                    <span class="toggle-sublabel" data-i18n="settings_imageExportHelp">
+                      Save generated images (Obsidian vault and file download)
+                    </span>
+                  </span>
+                  <span class="toggle-switch">
+                    <input
+                      type="checkbox"
+                      id="enableImageExport"
+                      role="switch"
+                      aria-checked="true"
+                      checked
+                    />
+                    <span class="slider" aria-hidden="true"></span>
+                  </span>
+                </label>
               </div>
             </section>
 
@@ -172,6 +191,20 @@
                   Use {platform} for source (gemini, claude, chatgpt, perplexity, notebooklm) and
                   {YYYY} {YY} {MM} {DD} for the save date (local time). Example:
                   AI/{platform}/{YYYY}/{MM}
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label for="imageVaultPath" data-i18n="settings_imageVaultPath">Image Folder</label>
+                <input
+                  type="text"
+                  id="imageVaultPath"
+                  data-i18n-placeholder="settings_imageVaultPathPlaceholder"
+                  placeholder="AI/{platform}/images"
+                />
+                <p class="help" data-i18n="settings_imageVaultPathHelp">
+                  Vault folder for exported images. Supports the same {platform} and date tokens.
+                  Images are embedded by filename, so any folder works.
                 </p>
               </div>
             </section>

@@ -11,12 +11,14 @@ import {
   MAX_FRONTMATTER_TITLE_LENGTH,
   MAX_TAGS_COUNT,
   MAX_TAG_LENGTH,
+  MAX_IMAGES_PER_NOTE,
+  MAX_IMAGE_DATA_LENGTH,
   ALLOWED_ORIGINS,
   VALID_MESSAGE_ACTIONS,
   VALID_OUTPUT_DESTINATIONS,
   VALID_SOURCES,
 } from '../lib/constants';
-import type { ExtensionMessage, ObsidianNote } from '../lib/types';
+import type { ExtensionMessage, ExtractedImage, ObsidianNote } from '../lib/types';
 import { containsPathTraversal } from '../lib/path-utils';
 import { isHttpUrl } from '../lib/validation';
 
@@ -109,41 +111,72 @@ function validateNoteData(note: ObsidianNote | undefined): boolean {
   }
 
   // Frontmatter validation (DES-014 M-8: fail hard when missing)
-  if (!note.frontmatter) {
+  if (!validateFrontmatter(note.frontmatter)) {
     return false;
   }
 
+  // Validate attached images (content scripts are semi-trusted; cap count/size)
+  if (note.images !== undefined && !validateImages(note.images)) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Validate note frontmatter: title/source/tags/url within limits and schemes.
+ */
+function validateFrontmatter(frontmatter: ObsidianNote['frontmatter'] | undefined): boolean {
+  if (!frontmatter) {
+    return false;
+  }
   if (
-    typeof note.frontmatter.title !== 'string' ||
-    note.frontmatter.title.length > MAX_FRONTMATTER_TITLE_LENGTH
+    typeof frontmatter.title !== 'string' ||
+    frontmatter.title.length > MAX_FRONTMATTER_TITLE_LENGTH
   ) {
     return false;
   }
   if (
-    typeof note.frontmatter.source !== 'string' ||
-    !VALID_SOURCES.includes(note.frontmatter.source as (typeof VALID_SOURCES)[number])
+    typeof frontmatter.source !== 'string' ||
+    !VALID_SOURCES.includes(frontmatter.source as (typeof VALID_SOURCES)[number])
   ) {
     return false;
   }
-  if (!Array.isArray(note.frontmatter.tags) || note.frontmatter.tags.length > MAX_TAGS_COUNT) {
+  if (!Array.isArray(frontmatter.tags) || frontmatter.tags.length > MAX_TAGS_COUNT) {
     return false;
   }
-  // Validate individual tag values: must be strings within length limit
   if (
-    !note.frontmatter.tags.every(
+    !frontmatter.tags.every(
       (t: unknown) => typeof t === 'string' && t.length > 0 && t.length <= MAX_TAG_LENGTH
     )
   ) {
     return false;
   }
-
-  // Validate frontmatter URL scheme (prevent javascript: or data: injection)
-  if (typeof note.frontmatter.url !== 'string') {
+  // Validate URL scheme (prevent javascript: or data: injection)
+  if (typeof frontmatter.url !== 'string') {
     return false;
   }
-  if (note.frontmatter.url.length > 0 && !isHttpUrl(note.frontmatter.url)) {
+  return frontmatter.url.length === 0 || isHttpUrl(frontmatter.url);
+}
+
+/**
+ * Validate attached image data (DoS guard). Content scripts are semi-trusted,
+ * so bound the image count and per-image base64 size, and require well-formed
+ * string fields on each entry.
+ */
+function validateImages(images: unknown): boolean {
+  if (!Array.isArray(images) || images.length > MAX_IMAGES_PER_NOTE) {
     return false;
   }
-
-  return true;
+  return images.every((image: Partial<ExtractedImage> | null | undefined) => {
+    return (
+      !!image &&
+      typeof image === 'object' &&
+      typeof image.id === 'string' &&
+      typeof image.mimeType === 'string' &&
+      typeof image.alt === 'string' &&
+      typeof image.data === 'string' &&
+      image.data.length <= MAX_IMAGE_DATA_LENGTH
+    );
+  });
 }

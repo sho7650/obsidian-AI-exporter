@@ -8,6 +8,26 @@
 export type AIPlatform = 'gemini' | 'claude' | 'perplexity' | 'chatgpt' | 'notebooklm';
 
 /**
+ * An image captured from a conversation (e.g. a Gemini-generated image).
+ *
+ * Image bytes are captured in the content script (blob: URLs are origin- and
+ * context-scoped and cannot be fetched from the background service worker), so
+ * they travel to the background as base64 over structured-clone message passing.
+ */
+export interface ExtractedImage {
+  /** Stable id, unique within the conversation (e.g. "img-1") */
+  readonly id: string;
+  /** MIME type, e.g. "image/png" */
+  readonly mimeType: string;
+  /** Base64-encoded image bytes (no `data:` prefix) */
+  readonly data: string;
+  /** Alt text from the DOM (e.g. "（AI 生成）") */
+  readonly alt: string;
+  /** Original blob/URL (diagnostic only; not resolvable outside the page) */
+  readonly sourceUrl?: string;
+}
+
+/**
  * Represents a single message in a conversation
  */
 export interface ConversationMessage {
@@ -37,6 +57,8 @@ export interface ConversationData {
   /** Deep Research link information (optional) */
   links?: DeepResearchLinks;
   messages: ConversationMessage[];
+  /** Images captured from the conversation (e.g. Gemini-generated images) */
+  images?: ExtractedImage[];
   extractedAt: Date;
   metadata: ConversationMetadata;
 }
@@ -94,6 +116,12 @@ export interface ObsidianNote {
   frontmatter: NoteFrontmatter;
   body: string;
   contentHash: string;
+  /**
+   * Images referenced by `g2o-image://{id}` placeholders in {@link body}.
+   * Resolved per output destination in the background (Obsidian embed,
+   * downloaded file, or stripped for clipboard).
+   */
+  images?: ExtractedImage[];
 }
 
 /**
@@ -189,6 +217,15 @@ export interface SyncSettings {
   enableAppendMode: boolean;
   /** Include tool-use / intermediate content (e.g., web search results) */
   enableToolContent: boolean;
+  /** Export conversation images (Obsidian vault + file download). */
+  enableImageExport: boolean;
+  /**
+   * Vault-relative folder for exported images. Supports the same template
+   * tokens as {@link vaultPath} (`{platform}`, `{YYYY}`, …). Default
+   * `AI/{platform}/images`. Obsidian resolves attachments by filename, so the
+   * note's wikilink embeds need only the filename regardless of this folder.
+   */
+  imageVaultPath: string;
 }
 
 /**

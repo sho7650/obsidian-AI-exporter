@@ -7,6 +7,7 @@
 import { extractErrorMessage } from '../lib/error-utils';
 import { generateNoteContent } from '../lib/note-generator';
 import { handleSave } from './obsidian-handlers';
+import { resolveImagesForFile, stripImagePlaceholders } from '../lib/image-output';
 import type {
   ExtensionSettings,
   ObsidianNote,
@@ -15,6 +16,11 @@ import type {
   MultiOutputResponse,
   OffscreenClipboardMessage,
 } from '../lib/types';
+
+/** Note filename without its `.md` extension — the base for image filenames. */
+function noteBaseName(fileName: string): string {
+  return fileName.replace(/\.md$/i, '');
+}
 
 /** Runtime type guard for offscreen clipboard response */
 function isClipboardWriteResponse(value: unknown): value is { success: boolean; error?: string } {
@@ -132,47 +138,62 @@ function stringToBase64(str: string): string {
 }
 
 /**
- * Download note as file
+ * Download a data URL as a file. Resolves with an error message on failure,
+ * or null on success.
+ */
+function downloadDataUrl(url: string, filename: string): Promise<string | null> {
+  return new Promise(resolve => {
+    chrome.downloads.download({ url, filename, saveAs: false, conflictAction: 'uniquify' }, id => {
+      if (chrome.runtime.lastError) {
+        resolve(chrome.runtime.lastError.message ?? 'Download failed');
+      } else if (id === undefined) {
+        resolve('Download failed');
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+/**
+ * Download note as a file, plus each captured image as a separate file.
+ * The markdown references images by filename only (issue #186).
  */
 async function handleDownloadToFile(
   note: ObsidianNote,
   settings: ExtensionSettings
 ): Promise<OutputResult> {
   try {
-    const content = generateNoteContent(note, settings);
-    const filename = note.fileName;
+    const images = settings.enableImageExport ? (note.images ?? []) : [];
+    const { body, files } =
+      images.length > 0
+        ? resolveImagesForFile(note.body, images, noteBaseName(note.fileName))
+        : { body: stripImagePlaceholders(note.body), files: [] };
 
-    // Use data URL (Service Worker doesn't support Blob/URL.createObjectURL)
-    const base64Content = stringToBase64(content);
-    const dataUrl = `data:text/markdown;charset=utf-8;base64,${base64Content}`;
+    const content = generateNoteContent({ ...note, body }, settings);
+    const mdError = await downloadDataUrl(
+      `data:text/markdown;charset=utf-8;base64,${stringToBase64(content)}`,
+      note.fileName
+    );
+    if (mdError) {
+      return { destination: 'file', success: false, error: mdError };
+    }
 
-    return new Promise(resolve => {
-      chrome.downloads.download(
-        {
-          url: dataUrl,
-          filename,
-          saveAs: false,
-          conflictAction: 'uniquify',
-        },
-        downloadId => {
-          if (chrome.runtime.lastError) {
-            resolve({
-              destination: 'file',
-              success: false,
-              error: chrome.runtime.lastError.message,
-            });
-          } else if (downloadId === undefined) {
-            resolve({
-              destination: 'file',
-              success: false,
-              error: 'Download failed',
-            });
-          } else {
-            resolve({ destination: 'file', success: true });
-          }
-        }
+    for (const file of files) {
+      const imgError = await downloadDataUrl(
+        `data:${file.mimeType};base64,${file.data}`,
+        file.fileName
       );
-    });
+      if (imgError) {
+        return {
+          destination: 'file',
+          success: false,
+          error: `Image download failed (${file.fileName}): ${imgError}`,
+        };
+      }
+    }
+
+    return { destination: 'file', success: true };
   } catch (error) {
     return {
       destination: 'file',
@@ -190,7 +211,10 @@ async function handleCopyToClipboard(
   settings: ExtensionSettings
 ): Promise<OutputResult> {
   try {
-    const content = generateNoteContent(note, settings);
+    // Clipboard output never references images: strip any placeholders so the
+    // copied markdown stays clean (issue #186).
+    const clipboardNote = { ...note, body: stripImagePlaceholders(note.body) };
+    const content = generateNoteContent(clipboardNote, settings);
 
     await ensureOffscreenDocument();
 

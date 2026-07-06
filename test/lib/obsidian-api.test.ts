@@ -253,6 +253,35 @@ describe('ObsidianApiClient', () => {
     });
   });
 
+  describe('putBinaryFile', () => {
+    it('PUTs binary bytes with the given content type', async () => {
+      mockFetch.mockResolvedValue({ ok: true, status: 200 });
+      const bytes = new Uint8Array([0x50, 0x4e, 0x47]);
+
+      await client.putBinaryFile('AI/gemini/images/a-img-1.png', bytes, 'image/png');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://127.0.0.1:27123/vault/AI%2Fgemini%2Fimages%2Fa-img-1.png',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: {
+            Authorization: 'Bearer test-api-key',
+            'Content-Type': 'image/png',
+          },
+          body: bytes,
+        })
+      );
+    });
+
+    it('throws error for failed response', async () => {
+      mockFetch.mockResolvedValue({ ok: false, status: 500, statusText: 'Server Error' });
+
+      await expect(
+        client.putBinaryFile('x.png', new Uint8Array([1]), 'image/png')
+      ).rejects.toMatchObject({ status: 500 });
+    });
+  });
+
   describe('listFiles', () => {
     it('returns file list for existing directory', async () => {
       mockFetch.mockResolvedValue({

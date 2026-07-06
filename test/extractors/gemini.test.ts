@@ -222,6 +222,110 @@ describe('GeminiExtractor', () => {
     });
   });
 
+  describe('extract — generated images', () => {
+    const IMG_HTML = (src: string) =>
+      `<p>Here is your image.</p>` +
+      `<div class="attachment-container generated-images"><generated-image><single-image>` +
+      `<div class="image-container"><button class="image-button">` +
+      `<img class="image" alt="（AI 生成）" src="${src}"></button></div>` +
+      `</single-image></generated-image></div>`;
+
+    function mockImageFetch(bytes: Uint8Array, type = 'image/png'): void {
+      const blob = {
+        size: bytes.byteLength,
+        type,
+        arrayBuffer: () => Promise.resolve(bytes.buffer),
+      } as unknown as Blob;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({ ok: true, blob: () => Promise.resolve(blob) })
+      );
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('captures a generated image as base64 and rewrites it to a marker', async () => {
+      setGeminiLocation('imgconv1');
+      mockImageFetch(new Uint8Array([0x50, 0x4e, 0x47])); // "PNG"
+      loadFixture(
+        createGeminiConversationDOM([
+          { role: 'user', content: 'draw a cat' },
+          { role: 'assistant', content: IMG_HTML('blob:https://gemini.google.com/abc') },
+        ])
+      );
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.images).toHaveLength(1);
+      expect(result.data?.images?.[0]).toMatchObject({
+        id: 'img-1',
+        mimeType: 'image/png',
+        data: 'UE5H',
+        alt: '（AI 生成）',
+      });
+      // The assistant message HTML carries the placeholder marker, not the blob URL.
+      const assistant = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistant?.content).toContain('data-g2o-image="img-1"');
+      expect(assistant?.content).not.toContain('blob:');
+    });
+
+    it('numbers images sequentially across multiple responses', async () => {
+      setGeminiLocation('imgconv2');
+      mockImageFetch(new Uint8Array([1, 2, 3]));
+      loadFixture(
+        createGeminiConversationDOM([
+          { role: 'user', content: 'first' },
+          { role: 'assistant', content: IMG_HTML('blob:https://gemini.google.com/a') },
+          { role: 'user', content: 'second' },
+          {
+            role: 'assistant',
+            content:
+              IMG_HTML('blob:https://gemini.google.com/b') +
+              IMG_HTML('blob:https://gemini.google.com/c'),
+          },
+        ])
+      );
+
+      const result = await extractor.extract();
+
+      expect(result.data?.images?.map(i => i.id)).toEqual(['img-1', 'img-2', 'img-3']);
+    });
+
+    it('keeps the note usable when an image fetch fails (marker without image)', async () => {
+      setGeminiLocation('imgconv3');
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+      loadFixture(
+        createGeminiConversationDOM([
+          { role: 'user', content: 'draw' },
+          { role: 'assistant', content: IMG_HTML('blob:https://gemini.google.com/x') },
+        ])
+      );
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.images).toHaveLength(0);
+      const assistant = result.data?.messages.find(m => m.role === 'assistant');
+      expect(assistant?.content).toContain('data-g2o-image="img-1"');
+    });
+
+    it('leaves conversations without images unaffected', async () => {
+      setGeminiLocation('noimg');
+      loadFixture(
+        createGeminiConversationDOM([
+          { role: 'user', content: 'hi' },
+          { role: 'assistant', content: '<p>hello</p>' },
+        ])
+      );
+
+      const result = await extractor.extract();
+      expect(result.data?.images).toHaveLength(0);
+    });
+  });
+
   describe('extract', () => {
     it('returns successful result with full conversation data', async () => {
       setGeminiLocation('abc123def456');

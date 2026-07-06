@@ -68,6 +68,12 @@ export const DEFAULT_API_TIMEOUT = 5000;
 /** Maximum content size for API requests (1MB) */
 export const MAX_CONTENT_SIZE = 1024 * 1024;
 
+/** Maximum number of images accepted per note (DoS guard). */
+export const MAX_IMAGES_PER_NOTE = 20;
+
+/** Maximum base64 length for a single image's data (~10MB binary + overhead). */
+export const MAX_IMAGE_DATA_LENGTH = 14 * 1024 * 1024;
+
 // ============================================================
 // UI Timing
 // ============================================================

@@ -12,6 +12,7 @@ const mockClient = {
   testConnection: vi.fn(),
   getFile: vi.fn(),
   putFile: vi.fn(),
+  putBinaryFile: vi.fn(),
   listFiles: vi.fn(),
 };
 
@@ -31,6 +32,8 @@ const defaultSettings = {
     userCalloutType: 'QUESTION' as const,
     assistantCalloutType: 'NOTE' as const,
   },
+  enableImageExport: true,
+  imageVaultPath: 'AI/{platform}/images',
 };
 
 let mockGetSettings = vi.fn(() => Promise.resolve(defaultSettings));
@@ -48,6 +51,7 @@ vi.mock('../../src/lib/obsidian-api', () => ({
     testConnection = mockClient.testConnection;
     getFile = mockClient.getFile;
     putFile = mockClient.putFile;
+    putBinaryFile = mockClient.putBinaryFile;
     listFiles = mockClient.listFiles;
   },
   isObsidianApiError: (error: unknown) => {
@@ -68,6 +72,7 @@ describe('background/index', () => {
     mockClient.testConnection.mockReset();
     mockClient.getFile.mockReset();
     mockClient.putFile.mockReset();
+    mockClient.putBinaryFile.mockReset();
     mockClient.listFiles.mockReset();
     mockGetSettings = vi.fn(() => Promise.resolve(defaultSettings));
 
@@ -85,6 +90,7 @@ describe('background/index', () => {
         testConnection = mockClient.testConnection;
         getFile = mockClient.getFile;
         putFile = mockClient.putFile;
+        putBinaryFile = mockClient.putBinaryFile;
         listFiles = mockClient.listFiles;
       },
       isObsidianApiError: (error: unknown) => {
@@ -305,6 +311,66 @@ describe('background/index', () => {
           sendResponse
         );
 
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('accepts a note with well-formed images', () => {
+        const sendResponse = vi.fn();
+        mockClient.getFile.mockResolvedValue(null);
+        mockClient.putFile.mockResolvedValue(undefined);
+        mockClient.putBinaryFile.mockResolvedValue(undefined);
+        capturedListener(
+          {
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
+            data: {
+              ...validNote,
+              images: [{ id: 'img-1', mimeType: 'image/png', data: 'UE5H', alt: 'a' }],
+            },
+          },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+        // Well-formed → passes validation (async save proceeds, not rejected synchronously)
+        expect(sendResponse).not.toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('rejects more than the maximum number of images', () => {
+        const sendResponse = vi.fn();
+        const images = Array.from({ length: 21 }, (_, i) => ({
+          id: `img-${i}`,
+          mimeType: 'image/png',
+          data: 'UE5H',
+          alt: 'a',
+        }));
+        capturedListener(
+          { action: 'saveToOutputs', outputs: ['obsidian'], data: { ...validNote, images } },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('rejects a malformed image entry', () => {
+        const sendResponse = vi.fn();
+        capturedListener(
+          {
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
+            data: { ...validNote, images: [{ id: 'img-1', mimeType: 'image/png' }] },
+          },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
         expect(sendResponse).toHaveBeenCalledWith({
           success: false,
           error: 'Invalid message content',
@@ -1372,6 +1438,106 @@ describe('background/index', () => {
       const fileResult = response.results.find(r => r.destination === 'file');
       expect(fileResult?.success).toBe(false);
       expect(fileResult?.error).toBe('Download failed');
+    });
+  });
+
+  describe('image export (issue #186)', () => {
+    const sender = { url: `chrome-extension://${chrome.runtime.id}/popup.html` };
+    const imageNote: ObsidianNote = {
+      fileName: 'img-note.md',
+      body: 'Here is the image.\n\n![（AI 生成）](g2o-image://img-1)',
+      contentHash: 'hash',
+      images: [{ id: 'img-1', mimeType: 'image/png', data: 'UE5H', alt: '（AI 生成）' }],
+      frontmatter: {
+        id: 'imgconv',
+        title: 'Image Note',
+        source: 'gemini',
+        url: 'https://gemini.google.com/app/imgconv',
+        created: '2026-01-01',
+        modified: '2026-01-01',
+        tags: ['ai-conversation', 'gemini'],
+        message_count: 2,
+      },
+    };
+
+    function save(outputs: string[]): ReturnType<typeof vi.fn> {
+      const sendResponse = vi.fn();
+      capturedListener(
+        { action: 'saveToOutputs', data: imageNote, outputs },
+        sender as chrome.runtime.MessageSender,
+        sendResponse
+      );
+      return sendResponse;
+    }
+
+    it('obsidian: writes image binary to the vault and embeds a wikilink', async () => {
+      mockClient.getFile.mockResolvedValue(null); // fresh file
+      mockClient.putFile.mockResolvedValue(undefined);
+      mockClient.putBinaryFile.mockResolvedValue(undefined);
+
+      const sendResponse = save(['obsidian']);
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+      expect(mockClient.putBinaryFile).toHaveBeenCalledWith(
+        'AI/gemini/images/img-note-img-1.png',
+        expect.any(Uint8Array),
+        'image/png'
+      );
+      const savedContent = mockClient.putFile.mock.calls[0][1] as string;
+      expect(savedContent).toContain('![[img-note-img-1.png]]');
+      expect(savedContent).not.toContain('g2o-image://');
+    });
+
+    it('file: downloads the markdown and each image as separate files', async () => {
+      // Reset any download impl left by earlier tests (clearAllMocks keeps impl).
+      vi.mocked(chrome.downloads.download).mockImplementation((_options, callback) => {
+        callback?.(1);
+        return 1 as unknown as ReturnType<typeof chrome.downloads.download>;
+      });
+
+      const sendResponse = save(['file']);
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+      const urls = vi
+        .mocked(chrome.downloads.download)
+        .mock.calls.map(call => (call[0] as chrome.downloads.DownloadOptions).url);
+      const names = vi
+        .mocked(chrome.downloads.download)
+        .mock.calls.map(call => (call[0] as chrome.downloads.DownloadOptions).filename);
+
+      expect(urls.some(u => u?.startsWith('data:text/markdown'))).toBe(true);
+      expect(urls.some(u => u?.startsWith('data:image/png;base64,UE5H'))).toBe(true);
+      expect(names).toContain('img-note-img-1.png');
+    });
+
+    it('clipboard: strips image placeholders entirely', async () => {
+      vi.mocked(chrome.runtime.sendMessage).mockResolvedValue({ success: true });
+
+      const sendResponse = save(['clipboard']);
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+      const clipboardCall = vi
+        .mocked(chrome.runtime.sendMessage)
+        .mock.calls.find(call => (call[0] as { action?: string }).action === 'clipboardWrite');
+      const content = (clipboardCall?.[0] as { content: string }).content;
+      expect(content).not.toContain('g2o-image://');
+      expect(content).not.toContain('![[');
+    });
+
+    it('obsidian: image export disabled strips placeholders and writes no binary', async () => {
+      mockGetSettings = vi.fn(() =>
+        Promise.resolve({ ...defaultSettings, enableImageExport: false })
+      );
+      mockClient.getFile.mockResolvedValue(null);
+      mockClient.putFile.mockResolvedValue(undefined);
+
+      const sendResponse = save(['obsidian']);
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+      expect(mockClient.putBinaryFile).not.toHaveBeenCalled();
+      const savedContent = mockClient.putFile.mock.calls[0][1] as string;
+      expect(savedContent).not.toContain('g2o-image://');
+      expect(savedContent).not.toContain('![[');
     });
   });
 

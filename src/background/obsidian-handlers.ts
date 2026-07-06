@@ -14,6 +14,8 @@ import {
   getSearchBasePath,
 } from '../lib/path-utils';
 import { lookupExistingFile, buildAppendContent } from '../lib/append-utils';
+import { resolveImagesForObsidian, stripImagePlaceholders } from '../lib/image-output';
+import { base64ToBytes } from '../lib/image-utils';
 import { collisionSuffix, candidateFileName } from '../lib/filename-collision';
 import { parseFrontmatter } from '../lib/frontmatter-parser';
 import { validateObsidianUrl } from '../lib/validation';
@@ -131,10 +133,15 @@ export async function handleSave(
       return { success: false, error: 'Invalid file path' };
     }
 
+    // Append mode does not handle images yet (v1): strip any image placeholders
+    // from the appended content so no dangling `g2o-image://` tokens are written.
+    const appendNote = note.body.includes('g2o-image://')
+      ? { ...note, body: stripImagePlaceholders(note.body) }
+      : note;
     const appendResult = await tryAppendMode(
       client,
       settings,
-      note,
+      appendNote,
       fullPath,
       resolvedPath,
       searchBasePath
@@ -146,7 +153,8 @@ export async function handleSave(
       return { success: false, error: target.error };
     }
 
-    const content = generateNoteContent(note, settings);
+    const saveNote = await prepareNoteImages(client, settings, note, templateVariables);
+    const content = generateNoteContent(saveNote, settings);
     await client.putFile(target.path, content);
 
     return {
@@ -158,6 +166,42 @@ export async function handleSave(
     console.error('[G2O Background] Save failed:', error);
     return { success: false, error: getErrorMessage(error) };
   }
+}
+
+/**
+ * For a fresh (non-append) save, write captured images to the vault and return
+ * a note whose body embeds them via `![[filename]]` wikilinks. When image
+ * export is disabled or there are no images, image placeholders are stripped.
+ * Image-write failures are logged but never block the note (DES-017 principle).
+ */
+async function prepareNoteImages(
+  client: ObsidianApiClient,
+  settings: ExtensionSettings,
+  note: ObsidianNote,
+  templateVariables: Record<string, string>
+): Promise<ObsidianNote> {
+  const images = settings.enableImageExport ? (note.images ?? []) : [];
+  if (images.length === 0) {
+    return note.body.includes('g2o-image://')
+      ? { ...note, body: stripImagePlaceholders(note.body) }
+      : note;
+  }
+
+  const baseName = note.fileName.replace(/\.md$/i, '');
+  const { body, files } = resolveImagesForObsidian(note.body, images, baseName);
+
+  const imageDir = resolvePathTemplate(settings.imageVaultPath, templateVariables);
+  for (const file of files) {
+    const path = imageDir ? `${imageDir}/${file.fileName}` : file.fileName;
+    if (containsPathTraversal(path)) continue;
+    try {
+      await client.putBinaryFile(path, base64ToBytes(file.data), file.mimeType);
+    } catch (error) {
+      console.warn('[G2O Background] Image write failed:', file.fileName, error);
+    }
+  }
+
+  return { ...note, body };
 }
 
 /** Probe attempts: original + hash suffix + a few counters for hash collisions */

@@ -196,11 +196,21 @@ source: gemini
 
 ## Supported Platforms
 
-- **Gemini** (`gemini.google.com`): Conversations, Deep Research reports, and Gem conversations (`/gem/{gemId}/{conversationId}` — the conversation id is the second path segment)
+- **Gemini** (`gemini.google.com`): Conversations, Deep Research reports, Gem conversations (`/gem/{gemId}/{conversationId}` — the conversation id is the second path segment), and generated images (see Image Export below)
 - **Claude** (`claude.ai`): Conversations, Extended Thinking, and Artifacts with inline citations
 - **ChatGPT** (`chatgpt.com`): Conversations (including custom GPTs via `/g/` URLs)
 - **Perplexity** (`www.perplexity.ai`): Conversations
 - **NotebookLM** (`notebooklm.google.com`): Chat conversations with source citations
+
+## Image Export
+
+Gemini-generated images are exported alongside the conversation ([ADR-008](docs/adr/008-image-sync-strategy.md), issue #186). Because Gemini uses blob: URLs that only the page context can read, images are captured as base64 **in the content script** (`src/content/image-capture.ts`) before sanitization, and each generated `<img>` is rewritten to a `data-g2o-image` marker. `conversationToNote()` emits a destination-agnostic placeholder `![alt](g2o-image://{id})`; the background resolves it per output (`src/lib/image-output.ts`):
+
+- **Obsidian**: image written to the vault (`putBinaryFile`) under `imageVaultPath` (default `AI/{platform}/images`, template tokens supported); body uses a wikilink embed `![[filename]]`.
+- **File download**: markdown + each image as separate files; body references the filename only.
+- **Clipboard**: placeholders stripped; no image copied.
+
+Controlled by the `enableImageExport` setting (default on). Append mode strips placeholders (image handling deferred). Guards: ≤20 images/note, ≤10MB/image.
 
 ## Adding New Platforms
 

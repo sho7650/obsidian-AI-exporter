@@ -102,5 +102,6 @@ export function conversationToNote(data: ConversationData, options: TemplateOpti
     frontmatter,
     body,
     contentHash,
+    images: data.images ?? [],
   };
 }
