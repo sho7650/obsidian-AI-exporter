@@ -20,7 +20,22 @@ import {
   MAX_CONVERSATION_TITLE_LENGTH,
   MAX_DEEP_RESEARCH_TITLE_LENGTH,
   PLATFORM_LABELS,
+  SCROLL_TIMEOUT,
 } from '../../lib/constants';
+import { accumulateWhileScrolling, type HarvestEntry } from '../../lib/scroll-manager';
+
+/**
+ * Per-platform configuration for accumulating a virtualized conversation
+ * (ADR-017). Platforms whose DOM windows/evicts turns return this from
+ * getScrollConfig() so the base extract() flow scrolls up and harvests each
+ * window instead of reading the DOM once.
+ */
+export interface ScrollConfig {
+  /** Scroll container selectors, priority order (HIGH → LOW). */
+  readonly container: readonly string[];
+  /** Harvest the currently-mounted window as keyed messages, in DOM order. */
+  harvest(): HarvestEntry<ConversationMessage>[];
+}
 
 /**
  * Abstract base class for conversation extractors
@@ -28,6 +43,9 @@ import {
  */
 export abstract class BaseExtractor implements IConversationExtractor {
   abstract readonly platform: AIPlatform;
+
+  /** Whether to auto-scroll to load lazily-rendered history (set from settings). */
+  enableAutoScroll = false;
 
   abstract canExtract(): boolean;
   abstract getConversationId(): string | null;
@@ -68,10 +86,14 @@ export abstract class BaseExtractor implements IConversationExtractor {
       }
 
       console.info(`[G2O] Extracting ${this.platformLabel} conversation`);
-      const messages = this.extractMessages();
+      const { messages, warning } = await this.collectMessages();
       const conversationId = this.getConversationId() || `${this.platform}-${Date.now()}`;
       const title = this.getTitle();
-      return this.buildConversationResult(messages, conversationId, title, this.platform);
+      const result = this.buildConversationResult(messages, conversationId, title, this.platform);
+      if (warning && result.success) {
+        return { ...result, warnings: [...(result.warnings ?? []), warning] };
+      }
+      return result;
     } catch (error) {
       console.error(`[G2O] ${this.platformLabel} extraction error:`, error);
       return {
@@ -101,6 +123,50 @@ export abstract class BaseExtractor implements IConversationExtractor {
    */
   protected isDeepResearchVisible(): boolean {
     return false;
+  }
+
+  /**
+   * Hook: auto-scroll configuration for virtualized platforms (ADR-017).
+   * Return null (default) for platforms that render all turns eagerly or that
+   * handle scrolling in their own extract() override (Gemini).
+   */
+  protected getScrollConfig(): ScrollConfig | null {
+    return null;
+  }
+
+  /**
+   * Collect conversation messages, auto-scrolling first when the platform is
+   * virtualized and the user enabled auto-scroll. Falls back to a single-pass
+   * extractMessages() when disabled, unconfigured, or the container is missing.
+   */
+  protected async collectMessages(): Promise<{
+    messages: ConversationMessage[];
+    warning?: string;
+  }> {
+    const config = this.getScrollConfig();
+    if (!this.enableAutoScroll || !config) {
+      return { messages: this.extractMessages() };
+    }
+
+    const container = this.queryWithFallback<HTMLElement>(config.container);
+    if (!container) {
+      console.info('[G2O] No scroll container found, skipping auto-scroll');
+      return { messages: this.extractMessages() };
+    }
+
+    const result = await accumulateWhileScrolling(container, () => config.harvest());
+    // Re-index into contiguous conversation order after de-duplication.
+    const messages = result.items.map((message, index) => ({ ...message, index }));
+
+    if (result.fullyLoaded || result.skipped) {
+      return { messages };
+    }
+    return {
+      messages,
+      warning:
+        `Auto-scroll timed out after ${SCROLL_TIMEOUT / 1000}s. ` +
+        `Some earlier messages may be missing (${result.itemCount} turns loaded).`,
+    };
   }
 
   // ========== Settings ==========

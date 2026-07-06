@@ -37,4 +37,16 @@ export const SELECTORS = {
     '.markdown.prose', // Semantic (HIGH)
     '.markdown-new-styling', // Style (MEDIUM)
   ],
+
+  // Scroll container for virtualized-conversation auto-scroll (ADR-017).
+  // ChatGPT windows/evicts turns; the thread scroller carries data-scroll-root
+  // and uses the `not-print:overflow-y-auto` token. IMPORTANT: the sidebar <nav>
+  // also has `flex-1 flex-col overflow-y-auto` (plain, scrollTop 0), so a
+  // class-only `overflow-y-auto` selector picks the nav and skips auto-scroll
+  // (verified live 2026-07). Anchor on data-scroll-root; the `not-print:` prefix
+  // uniquely distinguishes the thread scroller from the nav.
+  scrollContainer: [
+    '[data-scroll-root]', // Semantic scroll root (HIGH)
+    '[class*="not-print:overflow-y-auto"]', // Thread-only overflow token (MEDIUM)
+  ],
 } as const satisfies SelectorGroup;

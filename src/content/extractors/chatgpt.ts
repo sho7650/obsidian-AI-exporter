@@ -7,9 +7,11 @@
  * @see docs/design/DES-003-chatgpt-extractor.md
  */
 
-import { BaseExtractor } from './base';
+import { BaseExtractor, type ScrollConfig } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
-import type { ConversationMessage } from '../../lib/types';
+import { generateHash } from '../../lib/hash';
+import type { HarvestEntry } from '../../lib/scroll-manager';
+import type { ConversationMessage, SyncSettings } from '../../lib/types';
 
 import { SELECTORS } from './selectors/chatgpt';
 
@@ -21,6 +23,13 @@ import { SELECTORS } from './selectors/chatgpt';
  */
 export class ChatGPTExtractor extends BaseExtractor {
   readonly platform = 'chatgpt';
+
+  /**
+   * Apply user settings: enable/disable auto-scroll for virtualized history.
+   */
+  applySettings(settings: SyncSettings): void {
+    this.enableAutoScroll = settings.enableAutoScroll ?? false;
+  }
 
   // ========== Platform Detection ==========
 
@@ -88,12 +97,7 @@ export class ChatGPTExtractor extends BaseExtractor {
 
     // Process each turn
     turns.forEach((turn, index) => {
-      // Determine role from data-turn attribute or data-message-author-role
-      const turnRole = turn.getAttribute('data-turn');
-      const messageEl = turn.querySelector('[data-message-author-role]');
-      const authorRole = messageEl?.getAttribute('data-message-author-role');
-
-      const role = turnRole || authorRole;
+      const role = this.turnRole(turn);
 
       if (role === 'user') {
         const content = this.extractUserContent(turn);
@@ -120,6 +124,66 @@ export class ChatGPTExtractor extends BaseExtractor {
     });
 
     return messages;
+  }
+
+  /**
+   * Determine a turn's role from data-turn or a nested data-message-author-role.
+   */
+  private turnRole(turn: Element): string | null {
+    const turnRole = turn.getAttribute('data-turn');
+    const authorRole = turn
+      .querySelector('[data-message-author-role]')
+      ?.getAttribute('data-message-author-role');
+    return turnRole || authorRole || null;
+  }
+
+  /**
+   * Auto-scroll config: ChatGPT virtualizes the conversation (ADR-017).
+   */
+  protected getScrollConfig(): ScrollConfig {
+    return {
+      container: SELECTORS.scrollContainer,
+      harvest: () => this.harvestWindow(),
+    };
+  }
+
+  /**
+   * Harvest the currently-mounted window as keyed messages.
+   *
+   * Keyed by the turn's stable uuid (data-turn-id, then data-message-id),
+   * hashing content only as a last resort, so turns de-duplicate correctly as
+   * scroll windows overlap.
+   */
+  private harvestWindow(): HarvestEntry<ConversationMessage>[] {
+    const entries: HarvestEntry<ConversationMessage>[] = [];
+    const turns = this.queryAllWithFallback<HTMLElement>(SELECTORS.conversationTurn);
+
+    turns.forEach(turn => {
+      const role = this.turnRole(turn);
+      if (role !== 'user' && role !== 'assistant') return;
+
+      const content =
+        role === 'user' ? this.extractUserContent(turn) : this.extractAssistantContent(turn);
+      if (!content) return;
+
+      const key =
+        turn.getAttribute('data-turn-id') ??
+        turn.querySelector('[data-message-id]')?.getAttribute('data-message-id') ??
+        `${role}-${generateHash(content)}`;
+
+      entries.push({
+        key,
+        value: {
+          id: key,
+          role,
+          content,
+          htmlContent: role === 'assistant' ? content : undefined,
+          index: 0, // re-indexed after accumulation
+        },
+      });
+    });
+
+    return entries;
   }
 
   /**

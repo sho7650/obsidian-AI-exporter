@@ -7,9 +7,11 @@
  * @see docs/design/DES-002-claude-extractor.md
  */
 
-import { BaseExtractor } from './base';
+import { BaseExtractor, type ScrollConfig } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { htmlToMarkdownRaw } from '../markdown-rules';
+import { generateHash } from '../../lib/hash';
+import type { HarvestEntry } from '../../lib/scroll-manager';
 import type { ConversationMessage, DeepResearchSource, SyncSettings } from '../../lib/types';
 import { SELECTORS, DEEP_RESEARCH_SELECTORS, JOINED_SELECTORS } from './selectors/claude';
 
@@ -25,10 +27,11 @@ export class ClaudeExtractor extends BaseExtractor {
   enableToolContent = false;
 
   /**
-   * Apply user settings: enable/disable tool content extraction
+   * Apply user settings: enable/disable tool content extraction and auto-scroll
    */
   applySettings(settings: SyncSettings): void {
     this.enableToolContent = settings.enableToolContent ?? false;
+    this.enableAutoScroll = settings.enableAutoScroll ?? false;
   }
 
   // ========== Platform Detection ==========
@@ -102,25 +105,7 @@ export class ClaudeExtractor extends BaseExtractor {
    * @see FR-002 in design document
    */
   extractMessages(): ConversationMessage[] {
-    // Collect all message elements
-    const allElements: Array<{ element: Element; type: 'user' | 'assistant' }> = [];
-
-    // Find user messages (skip nested content inside assistant responses)
-    const userMessages = this.queryAllWithFallback<HTMLElement>(SELECTORS.userMessage);
-    userMessages.forEach(el => {
-      const assistantParent = el.closest('.font-claude-response, [class*="font-claude-response"]');
-      if (!assistantParent) {
-        allElements.push({ element: el, type: 'user' });
-      }
-    });
-
-    // Find assistant responses
-    const assistantResponses = this.queryAllWithFallback<HTMLElement>(SELECTORS.assistantResponse);
-    assistantResponses.forEach(el => {
-      allElements.push({ element: el, type: 'assistant' });
-    });
-
-    const sortedElements = this.sortByDomPosition(allElements);
+    const sortedElements = this.collectSortedElements();
 
     // Pre-extract tool content keyed by message ID (matches buildMessagesFromElements format)
     const toolContentById = new Map<string, string>();
@@ -146,6 +131,89 @@ export class ClaudeExtractor extends BaseExtractor {
       const tc = toolContentById.get(msg.id);
       return tc ? { ...msg, toolContent: tc } : msg;
     });
+  }
+
+  /**
+   * Collect user/assistant message elements in DOM order.
+   *
+   * User messages nested inside an assistant response (e.g. quoted content) are
+   * skipped. Shared by extractMessages() (single pass) and harvestWindow()
+   * (per-scroll-window pass for virtualized conversations).
+   */
+  private collectSortedElements(): Array<{ element: Element; type: 'user' | 'assistant' }> {
+    const allElements: Array<{ element: Element; type: 'user' | 'assistant' }> = [];
+
+    const userMessages = this.queryAllWithFallback<HTMLElement>(SELECTORS.userMessage);
+    userMessages.forEach(el => {
+      const assistantParent = el.closest('.font-claude-response, [class*="font-claude-response"]');
+      if (!assistantParent) {
+        allElements.push({ element: el, type: 'user' });
+      }
+    });
+
+    const assistantResponses = this.queryAllWithFallback<HTMLElement>(SELECTORS.assistantResponse);
+    assistantResponses.forEach(el => {
+      allElements.push({ element: el, type: 'assistant' });
+    });
+
+    return this.sortByDomPosition(allElements);
+  }
+
+  /**
+   * Auto-scroll config: Claude virtualizes the conversation (ADR-017).
+   */
+  protected getScrollConfig(): ScrollConfig {
+    return {
+      container: SELECTORS.scrollContainer,
+      harvest: () => this.harvestWindow(),
+    };
+  }
+
+  /**
+   * Harvest the currently-mounted window as keyed messages.
+   *
+   * The key is the virtual-row `data-index` (stable per turn across windows),
+   * falling back to a content hash when the wrapper is absent, so turns are
+   * de-duplicated correctly as windows overlap during scrolling.
+   */
+  private harvestWindow(): HarvestEntry<ConversationMessage>[] {
+    const entries: HarvestEntry<ConversationMessage>[] = [];
+    this.collectSortedElements().forEach(item => {
+      const content =
+        item.type === 'user'
+          ? this.extractUserContent(item.element)
+          : this.extractAssistantContent(item.element);
+      if (!content) return;
+
+      const key = this.turnKey(item.element, item.type, content);
+      const message: ConversationMessage = {
+        id: key,
+        role: item.type,
+        content,
+        htmlContent: item.type === 'assistant' ? content : undefined,
+        index: 0, // re-indexed after accumulation
+      };
+
+      if (this.enableToolContent && item.type === 'assistant') {
+        const tc = this.extractToolContentFromElement(item.element);
+        if (tc) {
+          entries.push({ key, value: { ...message, toolContent: tc } });
+          return;
+        }
+      }
+      entries.push({ key, value: message });
+    });
+    return entries;
+  }
+
+  /**
+   * Stable per-turn key for de-duplication across scroll windows.
+   * Prefers the virtual-list `data-index`; hashes content otherwise.
+   */
+  private turnKey(element: Element, type: 'user' | 'assistant', content: string): string {
+    const dataIndex = element.closest('[data-index]')?.getAttribute('data-index');
+    if (dataIndex) return `idx-${dataIndex}`;
+    return `${type}-${generateHash(content)}`;
   }
 
   /**
