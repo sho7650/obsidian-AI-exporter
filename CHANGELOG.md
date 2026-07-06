@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.7.1...v2.0.0) (2026-07-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* image export is on by default, so saved notes now embed generated images and extra image files are written to the vault / downloaded. Set enableImageExport=false to restore the previous text-only output.
+
+### Features
+
+* export Gemini generated images to Obsidian, files, and clipboard ([#186](https://github.com/sho7650/obsidian-AI-exporter/issues/186)) ([#336](https://github.com/sho7650/obsidian-AI-exporter/issues/336)) ([f442578](https://github.com/sho7650/obsidian-AI-exporter/commit/f4425783fa3762ede5a044764e6f0abc59b56f6b))
+
 ## [1.7.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.7.0...v1.7.1) (2026-07-06)
 
 
