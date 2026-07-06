@@ -20,7 +20,7 @@ import type {
 import { formatDateWithTimezone } from '../lib/date-utils';
 
 // Re-exports (preserve existing import paths)
-export { htmlToMarkdown, escapeAngleBrackets } from './markdown-rules';
+export { htmlToMarkdown, escapeAngleBrackets, escapeUserText } from './markdown-rules';
 export { convertDeepResearchContent } from './markdown-deep-research';
 
 /**

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   htmlToMarkdown,
   escapeAngleBrackets,
+  escapeUserText,
   generateFileName,
   generateContentHash,
   conversationToNote,
@@ -9,6 +10,37 @@ import {
 } from '../../src/content/markdown';
 import { sanitizeHtml } from '../../src/lib/sanitize';
 import type { ConversationData, TemplateOptions, DeepResearchLinks } from '../../src/lib/types';
+
+describe('escapeUserText — math dollar escaping (Obsidian hang fix)', () => {
+  it('escapes $ so shell/YAML text is not parsed as math', () => {
+    expect(escapeUserText('TMP=$(mktemp)')).toBe('TMP=\\$(mktemp)');
+    expect(escapeUserText('${S3_ACCESS_KEY}')).toBe('\\${S3_ACCESS_KEY}');
+  });
+
+  it('escapes doubled $$ (compose escaping) as two literal dollars', () => {
+    expect(escapeUserText('cat "$$TMP"')).toBe('cat "\\$\\$TMP"');
+  });
+
+  it('still escapes angle brackets like escapeAngleBrackets', () => {
+    expect(escapeUserText('a > b')).toBe('a \\> b');
+  });
+
+  it('preserves $ inside fenced code blocks', () => {
+    const input = '```\n$x = 1\n```';
+    expect(escapeUserText(input)).toBe(input);
+  });
+
+  it('preserves $ inside inline code', () => {
+    expect(escapeUserText('use `$HOME` now')).toBe('use `$HOME` now');
+  });
+});
+
+describe('escapeAngleBrackets — leaves $ untouched (assistant math preserved)', () => {
+  it('does not escape $ so KaTeX math survives', () => {
+    expect(escapeAngleBrackets('$$E = mc^2$$')).toBe('$$E = mc^2$$');
+    expect(escapeAngleBrackets('inline $x^2$ math')).toBe('inline $x^2$ math');
+  });
+});
 
 describe('htmlToMarkdown — image placeholders', () => {
   it('converts a data-g2o-image marker to a g2o-image placeholder link', () => {
