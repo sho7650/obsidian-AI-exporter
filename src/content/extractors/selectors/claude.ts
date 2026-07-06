@@ -64,6 +64,16 @@ export const SELECTORS = {
     '.text-text-500.text-xs', // Tailwind (MEDIUM)
     '[class*="text-text-500"]', // Partial match (LOW)
   ],
+
+  // Scroll container for virtualized-conversation auto-scroll (ADR-017).
+  // Claude windows/evicts turns; this is the overflow-y-auto element that
+  // scrolls the message list (observed live 2026-07: the div also carries
+  // overflow-x-hidden, flex-1, and [scrollbar-gutter:stable]).
+  scrollContainer: [
+    '.overflow-y-auto.overflow-x-hidden.flex-1', // Composite (HIGH)
+    '.overflow-y-auto.overflow-x-hidden', // Style pair (MEDIUM)
+    'div[class*="overflow-y-auto"]', // Partial match (LOW)
+  ],
 } as const satisfies SelectorGroup;
 
 /**

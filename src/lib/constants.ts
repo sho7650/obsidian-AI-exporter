@@ -168,3 +168,24 @@ export const SCROLL_STABILITY_THRESHOLD = 3;
 
 /** Brief pause after re-arm scroll to bottom before scrolling back to top (milliseconds) */
 export const SCROLL_REARM_DELAY = 200;
+
+// ============================================================
+// Auto-Scroll Configuration (virtualized platforms — Claude, ChatGPT)
+// ============================================================
+//
+// Claude and ChatGPT virtualize the conversation (windowing): only a small
+// moving window of turns is ever mounted and off-screen turns are evicted
+// (ADR-017). Unlike Gemini's accumulate-and-stay infinite-scroller, we cannot
+// scroll to the top once and read everything — we must scroll up in steps and
+// harvest each window, accumulating turns by a stable key.
+
+/** Pause after each upward scroll step before harvesting the newly-mounted window (ms) */
+export const SCROLL_ACCUMULATE_POLL_INTERVAL = 400;
+
+/** Fraction of the container's clientHeight to scroll up per step; <1 keeps
+ *  windows overlapping so no virtualized turn slips between two harvests. */
+export const SCROLL_ACCUMULATE_STEP_FACTOR = 0.6;
+
+/** Floor for the per-step scroll distance (px). Guards environments where
+ *  clientHeight reads 0 (e.g. jsdom, which has no layout engine). */
+export const SCROLL_ACCUMULATE_MIN_STEP = 400;

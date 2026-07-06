@@ -22,9 +22,6 @@ import { SELECTORS, DEEP_RESEARCH_SELECTORS, COMPUTED_SELECTORS } from './select
 export class GeminiExtractor extends BaseExtractor {
   readonly platform = 'gemini';
 
-  /** Whether auto-scroll is enabled (set from settings before extract()) */
-  enableAutoScroll = false;
-
   /** Whether generated images are captured (set from settings before extract()) */
   enableImageExport = true;
 
