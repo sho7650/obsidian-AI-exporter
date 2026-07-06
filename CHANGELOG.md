@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.0.0...v2.1.0) (2026-07-06)
+
+
+### Features
+
+* add auto-scroll for virtualized Claude and ChatGPT conversations ([#338](https://github.com/sho7650/obsidian-AI-exporter/issues/338)) ([8be01e8](https://github.com/sho7650/obsidian-AI-exporter/commit/8be01e86e905cfcfad57494fef2228f8033c4d30))
+
 ## [2.0.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v1.7.1...v2.0.0) (2026-07-06)
 
 
