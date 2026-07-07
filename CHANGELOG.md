@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.1.0...v2.2.0) (2026-07-07)
+
+
+### Features
+
+* add optional filename naming schemes (title-id / title-date) ([#340](https://github.com/sho7650/obsidian-AI-exporter/issues/340)) ([ebcb4d5](https://github.com/sho7650/obsidian-AI-exporter/commit/ebcb4d5ca84ddd7601c4c150779248f712be51be))
+
 ## [2.1.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.0.0...v2.1.0) (2026-07-06)
 
 
