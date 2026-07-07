@@ -89,6 +89,10 @@ function buildPopupDom(): void {
       <option value="plain">plain</option>
       <option value="blockquote">blockquote</option>
     </select>
+    <select id="filenameScheme">
+      <option value="title-id">title-id</option>
+      <option value="title-date">title-date</option>
+    </select>
     <div id="calloutSettingsGroup">
       <input type="text" id="userCallout" />
       <input type="text" id="assistantCallout" />
@@ -330,6 +334,21 @@ describe('popup/app', () => {
       expect(statusEl().textContent).toBe('status_settingsSaved');
       expect(statusEl().className).toBe('status success');
       expect(el<HTMLButtonElement>('saveBtn').disabled).toBe(false);
+    });
+
+    it('collects the selected filename scheme into templateOptions (#328)', async () => {
+      await initWithDefaults();
+      vi.mocked(saveSettings).mockResolvedValue(undefined);
+
+      el<HTMLSelectElement>('filenameScheme').value = 'title-date';
+      el<HTMLButtonElement>('saveBtn').click();
+
+      await vi.waitFor(() => expect(saveSettings).toHaveBeenCalled());
+      expect(saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          templateOptions: expect.objectContaining({ filenameScheme: 'title-date' }),
+        })
+      );
     });
 
     it('rejects saving when no output destination is selected', async () => {

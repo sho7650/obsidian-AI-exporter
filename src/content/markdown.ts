@@ -16,25 +16,53 @@ import type {
   ObsidianNote,
   NoteFrontmatter,
   TemplateOptions,
+  FilenameScheme,
 } from '../lib/types';
 import { formatDateWithTimezone } from '../lib/date-utils';
+import { getDateVariables } from '../lib/path-utils';
 
 // Re-exports (preserve existing import paths)
 export { htmlToMarkdown, escapeAngleBrackets, escapeUserText } from './markdown-rules';
 export { convertDeepResearchContent } from './markdown-deep-research';
 
 /**
- * Generate sanitized filename from title
+ * Generate a sanitized note filename from the title, per the chosen scheme.
+ *
+ * The title is always slugified (lowercased, non-alphanumeric runs \u2192 `-`,
+ * CJK/Hangul preserved) and truncated. The suffix depends on `scheme`:
+ * - `title-id`   \u2192 the first 8 chars of the conversation id (default).
+ * - `title-date` \u2192 the local `YYYY-MM-DD` of `date` (save date), matching the
+ *   vault-path date tokens.
+ *
+ * @param title           Conversation title.
+ * @param conversationId  Raw conversation id (used by the `title-id` scheme).
+ * @param scheme          Naming scheme (default `title-id`).
+ * @param date            Date for the `title-date` scheme (default: now).
  */
-export function generateFileName(title: string, conversationId: string): string {
-  const sanitized = title
-    .toLowerCase()
-    .replace(/[^a-z0-9\u3000-\u9fff\uac00-\ud7af]+/g, '-') // Keep Japanese/Korean chars
-    .replace(/^-+|-+$/g, '')
-    .substring(0, MAX_FILENAME_BASE_LENGTH);
+export function generateFileName(
+  title: string,
+  conversationId: string,
+  scheme: FilenameScheme = 'title-id',
+  date: Date = new Date()
+): string {
+  const slug =
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9\u3000-\u9fff\uac00-\ud7af]+/g, '-') // Keep Japanese/Korean chars
+      .replace(/^-+|-+$/g, '')
+      .substring(0, MAX_FILENAME_BASE_LENGTH) || 'conversation';
 
-  const idSuffix = conversationId.substring(0, FILENAME_ID_SUFFIX_LENGTH);
-  return `${sanitized || 'conversation'}-${idSuffix}.md`;
+  const suffix =
+    scheme === 'title-date'
+      ? dateSuffix(date)
+      : conversationId.substring(0, FILENAME_ID_SUFFIX_LENGTH);
+  return `${slug}-${suffix}.md`;
+}
+
+/** Local `YYYY-MM-DD` suffix for the `title-date` scheme. */
+function dateSuffix(date: Date): string {
+  const { YYYY, MM, DD } = getDateVariables(date);
+  return `${YYYY}-${MM}-${DD}`;
 }
 
 /**
@@ -94,7 +122,7 @@ export function conversationToNote(data: ConversationData, options: TemplateOpti
   }
 
   // Generate filename and content hash
-  const fileName = generateFileName(data.title, data.id);
+  const fileName = generateFileName(data.title, data.id, options.filenameScheme);
   const contentHash = generateContentHash(body);
 
   return {

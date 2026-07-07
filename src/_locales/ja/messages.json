@@ -43,6 +43,18 @@
   "settings_vaultPathHelp": {
     "message": "{platform} はプラットフォーム名（gemini, claude, chatgpt, perplexity, notebooklm）、{YYYY} {YY} {MM} {DD} は保存時のローカル日付に置換されます。例: AI/{platform}/{YYYY}/{MM}"
   },
+  "settings_filenameScheme": {
+    "message": "ファイル名スキーム"
+  },
+  "settings_filenameScheme_titleId": {
+    "message": "タイトル + 会話 ID"
+  },
+  "settings_filenameScheme_titleDate": {
+    "message": "タイトル + 保存日"
+  },
+  "settings_filenameSchemeHelp": {
+    "message": "ノートのファイル名の付け方: title-id（例: my-chat-a1b2c3d4）または title-date（例: my-chat-2026-07-07）。衝突回避の安全策は引き続き適用されます。"
+  },
   "settings_messageFormat": {
     "message": "メッセージ形式"
   },

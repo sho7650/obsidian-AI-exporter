@@ -43,4 +43,14 @@ describe('generateHash', () => {
     const hashes2 = inputs.map(generateHash);
     expect(hashes1).toEqual(hashes2);
   });
+
+  it('always returns exactly 8 lowercase hex chars — never a sign (INT_MIN safety)', () => {
+    // Guards against a signed-overflow regression: the internal 32-bit hash can
+    // reach -2147483648, whose abs must still render as clean hex (no '-'),
+    // since the value feeds filename collision suffixes and dedup keys.
+    for (let i = 0; i < 5000; i++) {
+      const out = generateHash(`fuzz-${i}-${i * 7919}-${String.fromCharCode(i % 65535)}`);
+      expect(out).toMatch(/^[0-9a-f]{8}$/);
+    }
+  });
 });

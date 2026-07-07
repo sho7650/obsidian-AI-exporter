@@ -84,6 +84,7 @@ function queryElements() {
     obsidianUrl: getElement<HTMLInputElement>('obsidianUrl'),
     vaultPath: getElement<HTMLInputElement>('vaultPath'),
     messageFormat: getElement<HTMLSelectElement>('messageFormat'),
+    filenameScheme: getElement<HTMLSelectElement>('filenameScheme'),
     calloutSettingsGroup: getElement<HTMLElement>('calloutSettingsGroup'),
     userCallout: getElement<HTMLInputElement>('userCallout'),
     assistantCallout: getElement<HTMLInputElement>('assistantCallout'),
@@ -161,6 +162,7 @@ function populateForm(settings: ExtensionSettings): void {
 
   const { templateOptions } = settings;
   elements.messageFormat.value = templateOptions.messageFormat || 'callout';
+  elements.filenameScheme.value = templateOptions.filenameScheme || 'title-id';
   elements.userCallout.value = templateOptions.userCalloutType || 'QUESTION';
   elements.assistantCallout.value = templateOptions.assistantCalloutType || 'NOTE';
   updateCalloutSettingsVisibility();
@@ -361,6 +363,7 @@ function collectSettings(): ExtensionSettings {
     includeDates: elements.includeDates.checked,
     includeMessageCount: elements.includeMessageCount.checked,
     timezone: elements.timezone.value || undefined,
+    filenameScheme: elements.filenameScheme.value === 'title-date' ? 'title-date' : 'title-id',
   };
 
   const outputOptions = collectOutputOptions();

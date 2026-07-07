@@ -110,6 +110,20 @@ describe('storage', () => {
       expect(settings.templateOptions.includeId).toBe(true); // default preserved
     });
 
+    it('defaults filenameScheme to title-id (#328)', async () => {
+      const settings = await getSettings();
+      expect(settings.templateOptions.filenameScheme).toBe('title-id');
+    });
+
+    it('round-trips a stored title-date filenameScheme (#328)', async () => {
+      vi.mocked(chrome.storage.sync.get).mockResolvedValue({
+        settings: { templateOptions: { filenameScheme: 'title-date' } },
+      });
+      const settings = await getSettings();
+      expect(settings.templateOptions.filenameScheme).toBe('title-date');
+      expect(settings.templateOptions.messageFormat).toBe('callout'); // default preserved
+    });
+
     it('returns default enableToolContent false when empty', async () => {
       const settings = await getSettings();
       expect(settings.enableToolContent).toBe(false);

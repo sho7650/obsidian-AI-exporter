@@ -26,6 +26,7 @@ const DEFAULT_TEMPLATE_OPTIONS: TemplateOptions = {
   userCalloutType: 'QUESTION',
   assistantCalloutType: 'NOTE',
   includeQuestionHeaders: false,
+  filenameScheme: 'title-id',
 };
 
 const DEFAULT_OUTPUT_OPTIONS: OutputOptions = {
