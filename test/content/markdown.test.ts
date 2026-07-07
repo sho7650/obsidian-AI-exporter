@@ -457,6 +457,35 @@ describe('generateFileName', () => {
   });
 });
 
+describe('generateFileName — naming scheme (#328)', () => {
+  const DATE = new Date(2026, 6, 5); // 2026-07-05, local time
+
+  it('defaults to the title-id scheme when scheme is omitted', () => {
+    expect(generateFileName('Hello World', 'abc123def456')).toBe('hello-world-abc123de.md');
+  });
+
+  it("'title-id' scheme uses the 8-char conversation id suffix", () => {
+    expect(generateFileName('Hello World', 'abc123def456', 'title-id')).toBe(
+      'hello-world-abc123de.md'
+    );
+  });
+
+  it("'title-date' scheme uses the local YYYY-MM-DD suffix instead of the id", () => {
+    expect(generateFileName('Top 5 Headlines', 'abc123def456', 'title-date', DATE)).toBe(
+      'top-5-headlines-2026-07-05.md'
+    );
+  });
+
+  it("'title-date' still sanitizes the title and applies the empty fallback", () => {
+    expect(generateFileName('', 'abc123def456', 'title-date', DATE)).toBe(
+      'conversation-2026-07-05.md'
+    );
+    expect(generateFileName('Test: Special!', 'abc123def456', 'title-date', DATE)).toBe(
+      'test-special-2026-07-05.md'
+    );
+  });
+});
+
 describe('generateContentHash', () => {
   it('returns consistent hash', () => {
     const content = 'test content';
@@ -526,6 +555,33 @@ describe('conversationToNote', () => {
   it('attaches an empty images array when the conversation has none', () => {
     const note = conversationToNote(mockData, defaultOptions);
     expect(note.images).toEqual([]);
+  });
+
+  it('uses the title-id filename scheme by default (#328)', () => {
+    const note = conversationToNote(mockData, defaultOptions);
+    expect(note.fileName).toBe('test-conversation-conv123.md');
+  });
+
+  it('uses the title-date filename scheme when configured (#328)', () => {
+    const note = conversationToNote(mockData, { ...defaultOptions, filenameScheme: 'title-date' });
+    expect(note.fileName).toMatch(/^test-conversation-\d{4}-\d{2}-\d{2}\.md$/);
+  });
+
+  it('never leaks a DOM-derived per-message id into the filename or frontmatter id', () => {
+    // ConversationMessage.id is now sourced from page-controlled DOM attributes
+    // (data-turn-id, data-index). This invariant guards it from ever reaching a
+    // sink: the filename derives from data.id and the frontmatter id is
+    // `${source}_${data.id}` — never message.id.
+    const evil = '../../etc/passwd"><script>';
+    const data: ConversationData = {
+      ...mockData,
+      messages: [{ id: evil, role: 'user', content: 'hi', index: 0 }],
+    };
+    const note = conversationToNote(data, defaultOptions);
+    expect(note.fileName).not.toContain('etc');
+    expect(note.fileName).not.toContain('script');
+    expect(note.frontmatter.id).toBe('gemini_conv123');
+    expect(note.frontmatter.id).not.toContain(evil);
   });
 
   it('generates frontmatter with required fields', () => {

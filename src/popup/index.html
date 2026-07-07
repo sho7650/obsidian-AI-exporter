@@ -216,6 +216,24 @@
               </div>
 
               <div class="form-group">
+                <label for="filenameScheme" data-i18n="settings_filenameScheme"
+                  >Filename Scheme</label
+                >
+                <select id="filenameScheme">
+                  <option value="title-id" data-i18n="settings_filenameScheme_titleId">
+                    Title + conversation ID
+                  </option>
+                  <option value="title-date" data-i18n="settings_filenameScheme_titleDate">
+                    Title + save date
+                  </option>
+                </select>
+                <p class="help" data-i18n="settings_filenameSchemeHelp">
+                  How note filenames are built: title-id (e.g. my-chat-a1b2c3d4) or title-date (e.g.
+                  my-chat-2026-07-07). The collision safeguard still applies.
+                </p>
+              </div>
+
+              <div class="form-group">
                 <label for="imageVaultPath" data-i18n="settings_imageVaultPath">Image Folder</label>
                 <input
                   type="text"

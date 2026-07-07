@@ -57,6 +57,22 @@
     "message": "Use {platform} for source (gemini, claude, chatgpt, perplexity, notebooklm) and {YYYY} {YY} {MM} {DD} for the save date (local time). Example: AI/{platform}/{YYYY}/{MM}",
     "description": "Help text explaining template variables for vault path"
   },
+  "settings_filenameScheme": {
+    "message": "Filename Scheme",
+    "description": "Label for the note filename naming scheme select"
+  },
+  "settings_filenameScheme_titleId": {
+    "message": "Title + conversation ID",
+    "description": "Filename scheme option: slug plus conversation id suffix"
+  },
+  "settings_filenameScheme_titleDate": {
+    "message": "Title + save date",
+    "description": "Filename scheme option: slug plus save date suffix"
+  },
+  "settings_filenameSchemeHelp": {
+    "message": "How note filenames are built: title-id (e.g. my-chat-a1b2c3d4) or title-date (e.g. my-chat-2026-07-07). The collision safeguard still applies.",
+    "description": "Help text for the filename scheme select"
+  },
   "settings_messageFormat": {
     "message": "Message Format",
     "description": "Label for message format select"

@@ -255,6 +255,13 @@ export interface ContentScriptSettings extends SyncSettings {
 }
 
 /**
+ * Note filename naming scheme (issue #328).
+ * - `title-id`   — `{slug}-{conversationId[:8]}.md` (default, current behavior)
+ * - `title-date` — `{slug}-{YYYY}-{MM}-{DD}.md` using the local save date
+ */
+export type FilenameScheme = 'title-id' | 'title-date';
+
+/**
  * Template customization options
  */
 export interface TemplateOptions {
@@ -284,6 +291,8 @@ export interface TemplateOptions {
   includeQuestionHeaders?: boolean;
   /** IANA timezone for created/modified dates (e.g., 'Asia/Tokyo'). Defaults to 'UTC'. */
   timezone?: string;
+  /** Note filename naming scheme (issue #328). Defaults to `title-id`. */
+  filenameScheme?: FilenameScheme;
 }
 
 /**
