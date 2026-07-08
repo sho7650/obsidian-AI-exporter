@@ -1,6 +1,6 @@
 # Obsidian AI Exporter
 
-Chrome Extension that exports AI conversations from Google Gemini, Claude AI, ChatGPT, and Perplexity to Obsidian via the Local REST API.
+Chrome Extension that exports AI conversations from Google Gemini, Claude AI, ChatGPT, Perplexity, and NotebookLM to Obsidian via the Local REST API.
 
 [日本語版はこちら](README.ja.md)
 
@@ -9,19 +9,24 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 
 ## Features
 
-- **Multi-platform support**: Export from Google Gemini, Claude AI, ChatGPT, and Perplexity
+- **Multi-platform support**: Export from Google Gemini, Claude AI, ChatGPT, Perplexity, and NotebookLM
 - **One-click export**: Floating "Sync" button on supported AI pages
 - **Multiple output options**: Save to Obsidian, download as file, or copy to clipboard
 - **Deep Research support**: Export Gemini Deep Research, Claude Extended Thinking, and Perplexity Deep Research reports
 - **Artifact support**: Extract Claude Artifacts with inline citations and sources
-- **Configurable timezone**: Set timezone for frontmatter dates (created/modified)
-- **Tool content support**: Optionally include Claude's web search results and tool activity as collapsible `[!ABSTRACT]` callouts
+- **Image export**: Gemini-generated images are saved alongside the conversation — embedded in your vault, downloaded as files, or stripped for clipboard
+- **Source citations**: NotebookLM chat citations are exported as footnotes
+- **Auto-scroll**: Automatically loads all messages in long conversations, including virtualized (windowed) Claude and ChatGPT threads
 - **Append mode**: Only new messages are added to existing notes
+- **Filename schemes**: Choose `title-id` (default) or `title-date` naming for exported notes
+- **Vault path templates**: Organize with `{platform}` and date tokens (`{YYYY}`, `{MM}`, …) for auto-sorting
+- **Filename collision safety**: Never overwrites a note belonging to a different conversation
+- **Tool content support**: Optionally include Claude's web search results and tool activity as collapsible `[!ABSTRACT]` callouts
 - **Question headers (optional)**: Prepend a `## ` heading (first 60 chars of the question) before each user message for TOC navigation in long conversations
+- **Large-callout flattening**: Optionally flatten very long messages to plain text when saving to Obsidian, avoiding renderer slowdowns
+- **Configurable timezone**: Set timezone for frontmatter dates (created/modified)
 - **Obsidian callouts**: Formatted output with `[!QUESTION]` and `[!NOTE]` callouts
 - **YAML frontmatter**: Metadata including title, source, URL, dates, and tags
-- **Auto-scroll**: Automatically loads all messages in long Gemini conversations
-- **Platform-based organization**: Use `{platform}` template in vault path for auto-sorting
 - **Configurable**: Customizable vault path, template options, and frontmatter fields
 - **Localized**: English and Japanese UI support
 
@@ -81,6 +86,8 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
    - **File**: Downloaded as a Markdown file
    - **Clipboard**: Copied to clipboard for pasting anywhere
 
+Gemini-generated images are captured and exported automatically (see [Image Export](#image-export)).
+
 ### Claude
 
 1. Open a conversation on [claude.ai](https://claude.ai)
@@ -89,7 +96,7 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 
 ### ChatGPT
 
-1. Open a conversation on [chatgpt.com](https://chatgpt.com)
+1. Open a conversation on [chatgpt.com](https://chatgpt.com) (regular chats and custom GPTs via `/g/` URLs are both supported)
 2. Click the purple "Sync" button in the bottom-right corner
 3. The conversation will be exported with the same output options as Gemini
 
@@ -196,6 +203,41 @@ The report content with original headings...
 Detailed analysis sections...
 ```
 
+## Vault Path & Filenames
+
+### Vault Path Templates
+
+The **Vault Path** setting supports template tokens that are resolved at save time, so notes can be auto-organized. The default is `AI/{platform}`.
+
+| Token        | Resolves to                                                              |
+| ------------ | ------------------------------------------------------------------------ |
+| `{platform}` | Source name (`gemini`, `claude`, `chatgpt`, `perplexity`, `notebooklm`)  |
+| `{YYYY}`     | 4-digit year, local time (e.g. `2026`)                                   |
+| `{YY}`       | 2-digit year, local time (e.g. `26`)                                     |
+| `{MM}`       | 2-digit month, zero-padded (e.g. `07`)                                   |
+| `{DD}`       | 2-digit day, zero-padded (e.g. `08`)                                     |
+
+Example: `AI/{platform}/{YYYY}/{MM}` sorts notes into per-month folders. Date tokens use your local time zone. In append mode, existing conversations continue updating their original file even after the month rolls over.
+
+### Filename Schemes
+
+Choose how exported note filenames are built (Advanced Settings → **Filename scheme**):
+
+- **`title-id`** (default): `{title}-{conversationId}.md` — stable across renames of the conversation.
+- **`title-date`**: `{title}-{YYYY}-{MM}-{DD}.md` — uses the local save date.
+
+If the intended filename is already occupied by a *different* conversation, the extension writes to a safe alternative name instead of overwriting it.
+
+## Image Export
+
+Gemini-generated images are exported alongside the conversation (enabled by default; toggle with **Export images** in Advanced Settings). Because Gemini serves images from `blob:` URLs that only the page can read, each image is captured as base64 in the content script and resolved per output destination:
+
+- **Obsidian**: images are written to your vault under **Image Folder** (default `AI/{platform}/images`, supports the same template tokens as the vault path); the note body embeds them with `![[filename]]` wikilinks.
+- **File download**: the Markdown file and each image are downloaded as separate files.
+- **Clipboard**: image placeholders are stripped (no binary is copied).
+
+Guards: up to 20 images per note and 10 MB per image. Append mode strips image placeholders (image handling in append mode is deferred).
+
 ## Development
 
 The dev environment is provisioned by Nix (see [ADR-010](docs/adr/010-nix-only-dev-environment.md)). With `direnv` and `nix-direnv` installed, entering the directory loads the environment automatically; otherwise run `nix develop`.
@@ -243,7 +285,10 @@ Obsidian Local REST API (default: http://127.0.0.1:27123)
 | `src/content/extractors/claude.ts` | Claude conversation & Artifact extractor |
 | `src/content/extractors/chatgpt.ts` | ChatGPT conversation extractor |
 | `src/content/extractors/perplexity.ts` | Perplexity conversation extractor |
+| `src/content/extractors/notebooklm.ts` | NotebookLM chat & source-citation extractor |
+| `src/content/image-capture.ts` | Captures Gemini-generated images as base64 in the page context |
 | `src/background/` | Service worker for API communication |
+| `src/lib/image-output.ts` | Resolves image placeholders per output destination |
 | `src/popup/` | Settings UI |
 | `src/lib/` | Shared utilities and types |
 

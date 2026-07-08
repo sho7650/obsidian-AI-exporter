@@ -44,6 +44,18 @@ If `$ARGUMENTS` does NOT start with a `type:` prefix (or is empty), auto-detect 
 | UI-only changes (popup, CSS) | `ui` |
 | Mixed categories | Use the type covering the most impactful files; default to `feat` if new functionality exists, otherwise `chore` |
 
+### Documentation sync check (suggestion only)
+
+If the detected type is `feat` or the change set contains a **breaking / user-facing**
+change (new platform, new setting, changed output behavior), and `README.md` /
+`README.ja.md` are **not** already part of this change set, note it and suggest:
+
+> This looks like a user-facing change but the READMEs aren't updated. Consider running
+> `/sync-docs` first to keep the docs in sync.
+
+This is a **suggestion only** — do not run `/sync-docs` automatically and do not block the
+release. Proceed with the release regardless of the user's choice.
+
 ---
 
 ## Step 3: Generate commit message
