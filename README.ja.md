@@ -1,6 +1,6 @@
 # Obsidian AI Exporter
 
-Google Gemini、Claude AI、ChatGPT、Perplexity の会話を Obsidian に保存する Chrome 拡張機能です。Local REST API を使用してローカル環境で動作します。
+Google Gemini、Claude AI、ChatGPT、Perplexity、NotebookLM の会話を Obsidian に保存する Chrome 拡張機能です。Local REST API を使用してローカル環境で動作します。
 
 [English version](README.md)
 
@@ -9,19 +9,24 @@ Google Gemini、Claude AI、ChatGPT、Perplexity の会話を Obsidian に保存
 
 ## 機能
 
-- **マルチプラットフォーム対応**: Google Gemini、Claude AI、ChatGPT、Perplexity からエクスポート
+- **マルチプラットフォーム対応**: Google Gemini、Claude AI、ChatGPT、Perplexity、NotebookLM からエクスポート
 - **ワンクリック保存**: 対応 AI ページに表示される「Sync」ボタンで即座に保存
 - **複数の出力オプション**: Obsidian への保存、ファイルダウンロード、クリップボードへコピー
 - **Deep Research 対応**: Gemini Deep Research、Claude Extended Thinking、Perplexity Deep Research レポートを保存
 - **Artifact 対応**: Claude Artifacts をインライン引用とソース付きで抽出
-- **タイムゾーン設定**: フロントマターの日時（created/modified）にタイムゾーンを指定可能
-- **ツールコンテンツ対応**: Claude の Web 検索結果やツール活動を折りたたみ可能な `[!ABSTRACT]` コールアウトとして保存（オプション）
+- **画像エクスポート**: Gemini が生成した画像を会話と一緒に保存 — vault への埋め込み、ファイルダウンロード、クリップボード時は除去
+- **ソース引用**: NotebookLM のチャット引用を footnote 形式でエクスポート
+- **自動スクロール**: 長い会話で全メッセージを自動的に読み込み。仮想化（windowing）された Claude・ChatGPT のスレッドにも対応
 - **追記モード**: 既存ノートには新しいメッセージのみを追加
+- **ファイル名スキーム**: エクスポートするノートの命名を `title-id`（デフォルト）または `title-date` から選択
+- **Vault パステンプレート**: `{platform}` と日付トークン（`{YYYY}`、`{MM}` など）で自動分類
+- **ファイル名衝突対策**: 別の会話に属するノートを絶対に上書きしない
+- **ツールコンテンツ対応**: Claude の Web 検索結果やツール活動を折りたたみ可能な `[!ABSTRACT]` コールアウトとして保存（オプション）
 - **質問見出し（オプション）**: 長い会話で目次から飛べるように、各ユーザーメッセージの前に `## ` 見出し（質問冒頭60文字）を追加
+- **長大コールアウトの平坦化**: Obsidian 保存時に非常に長いメッセージをプレーンテキスト化し、レンダラーの遅延を回避（オプション）
+- **タイムゾーン設定**: フロントマターの日時（created/modified）にタイムゾーンを指定可能
 - **Obsidian コールアウト**: `[!QUESTION]` と `[!NOTE]` による見やすいフォーマット
 - **YAML フロントマター**: タイトル、ソース、URL、日時、タグなどのメタデータを自動生成
-- **自動スクロール**: Gemini の長い会話で全メッセージを自動的に読み込み
-- **プラットフォーム別整理**: Vault パスに `{platform}` テンプレートを使用して自動分類
 - **カスタマイズ可能**: 保存先パス、テンプレート、フロントマターの設定が可能
 - **多言語対応**: 英語・日本語 UI をサポート
 
@@ -81,6 +86,8 @@ Google Gemini、Claude AI、ChatGPT、Perplexity の会話を Obsidian に保存
    - **ファイル**: Markdown ファイルとしてダウンロード
    - **クリップボード**: クリップボードにコピー（どこにでも貼り付け可能）
 
+Gemini が生成した画像は自動的に捕捉・エクスポートされます（[画像エクスポート](#画像エクスポート)を参照）。
+
 ### Claude
 
 1. [claude.ai](https://claude.ai) で会話を開く
@@ -89,7 +96,7 @@ Google Gemini、Claude AI、ChatGPT、Perplexity の会話を Obsidian に保存
 
 ### ChatGPT
 
-1. [chatgpt.com](https://chatgpt.com) で会話を開く
+1. [chatgpt.com](https://chatgpt.com) で会話を開く（通常のチャットと `/g/` URL のカスタム GPT の両方に対応）
 2. 右下に表示される紫色の「Sync」ボタンをクリック
 3. Gemini と同じ出力オプションで会話がエクスポートされます
 
@@ -196,6 +203,41 @@ message_count: 1
 詳細な分析セクション...
 ```
 
+## Vault パスとファイル名
+
+### Vault パステンプレート
+
+**Vault Path** 設定は保存時に解決されるテンプレートトークンに対応しており、ノートを自動整理できます。デフォルトは `AI/{platform}` です。
+
+| トークン     | 解決される値                                                             |
+| ------------ | ------------------------------------------------------------------------ |
+| `{platform}` | ソース名（`gemini`、`claude`、`chatgpt`、`perplexity`、`notebooklm`）     |
+| `{YYYY}`     | 4桁の年（ローカル時間、例: `2026`）                                       |
+| `{YY}`       | 2桁の年（ローカル時間、例: `26`）                                         |
+| `{MM}`       | 2桁のゼロ埋め月（例: `07`）                                               |
+| `{DD}`       | 2桁のゼロ埋め日（例: `08`）                                               |
+
+例: `AI/{platform}/{YYYY}/{MM}` は月別フォルダにノートを振り分けます。日付トークンはローカルのタイムゾーンを使用します。追記モードでは、月をまたいでも既存の会話は元のファイルを更新し続けます。
+
+### ファイル名スキーム
+
+エクスポートするノートのファイル名の組み立て方を選べます（詳細設定 → **ファイル名スキーム**）:
+
+- **`title-id`**（デフォルト）: `{title}-{会話ID}.md` — 会話タイトルが変わっても安定。
+- **`title-date`**: `{title}-{YYYY}-{MM}-{DD}.md` — ローカルの保存日を使用。
+
+意図したファイル名が**別の**会話に既に使われている場合、拡張機能は上書きせず安全な代替名で保存します。
+
+## 画像エクスポート
+
+Gemini が生成した画像は会話と一緒にエクスポートされます（デフォルトで有効。詳細設定の **画像をエクスポート** で切り替え）。Gemini はページ側でしか読めない `blob:` URL で画像を配信するため、各画像はコンテンツスクリプト内で base64 として捕捉され、出力先ごとに解決されます:
+
+- **Obsidian**: 画像は **画像フォルダ**（デフォルト `AI/{platform}/images`、vault パスと同じテンプレートトークンに対応）配下の vault に書き込まれ、本文は `![[filename]]` ウィキリンクで埋め込みます。
+- **ファイルダウンロード**: Markdown ファイルと各画像を別々のファイルとしてダウンロードします。
+- **クリップボード**: 画像プレースホルダは除去されます（バイナリはコピーされません）。
+
+ガード: 1ノートあたり最大20画像、1画像あたり最大10MB。追記モードでは画像プレースホルダを除去します（追記モードでの画像処理は今後対応）。
+
 ## 開発
 
 開発環境は Nix が管理します（[ADR-010](docs/adr/010-nix-only-dev-environment.md) 参照）。`direnv` + `nix-direnv` を入れていればディレクトリ移動時に自動で環境が読み込まれます。そうでない場合は `nix develop` を実行してください。
@@ -243,7 +285,10 @@ Obsidian Local REST API (デフォルト: http://127.0.0.1:27123)
 | `src/content/extractors/claude.ts` | Claude 会話 & Artifact 抽出 |
 | `src/content/extractors/chatgpt.ts` | ChatGPT 会話抽出 |
 | `src/content/extractors/perplexity.ts` | Perplexity 会話抽出 |
+| `src/content/extractors/notebooklm.ts` | NotebookLM チャット & ソース引用抽出 |
+| `src/content/image-capture.ts` | Gemini 生成画像をページコンテキストで base64 捕捉 |
 | `src/background/` | API 通信用のサービスワーカー |
+| `src/lib/image-output.ts` | 出力先ごとに画像プレースホルダを解決 |
 | `src/popup/` | 設定 UI |
 | `src/lib/` | 共有ユーティリティと型定義 |
 
