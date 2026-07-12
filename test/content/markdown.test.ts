@@ -314,6 +314,13 @@ describe('htmlToMarkdown', () => {
         const result = htmlToMarkdown(`<span data-math="${latex}">x</span>`);
         expect(result).toBe(`$${latex}$`);
       });
+
+      it('escapes backslashes before $ so a preceding \\ cannot re-open math', () => {
+        // data-math value is `\a$b`: the backslash must be escaped first, else the
+        // inserted `\` before `$` pairs with it and leaves the $ unescaped.
+        const result = htmlToMarkdown('<span data-math="\\a$b">x</span>');
+        expect(result).toBe('\\\\a\\$b');
+      });
     });
   });
 

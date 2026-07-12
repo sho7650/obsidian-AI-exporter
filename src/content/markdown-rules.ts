@@ -247,11 +247,13 @@ turndown.addRule('footnoteDef', {
  * Multi-line LaTeX is left intact — real KaTeX inline formulas (e.g. matrices
  * with `\\` row breaks) legitimately span lines.
  *
- * On fallback, `$` is escaped to `\$` so the plain text is not re-parsed as math.
+ * On fallback, backslashes are escaped first, then `$` → `\$`, so the plain
+ * text is not re-parsed as math (escaping the escape character prevents a
+ * preceding `\` from pairing with the inserted one and re-opening a delimiter).
  */
 function formatMath(latex: string, display: boolean): string {
   if (latex.length > MAX_MATH_LENGTH || latex.includes('$')) {
-    const plain = latex.replace(/\$/g, '\\$');
+    const plain = latex.replace(/\\/g, '\\\\').replace(/\$/g, '\\$');
     return display ? `\n${plain}\n` : plain;
   }
   return display ? `\n$$\n${latex}\n$$\n` : `$${latex}$`;
