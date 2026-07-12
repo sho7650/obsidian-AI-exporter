@@ -6,7 +6,7 @@
  */
 
 import TurndownService from 'turndown';
-import { MAX_LANG_HINT_LENGTH } from '../lib/constants';
+import { MAX_LANG_HINT_LENGTH, MAX_MATH_LENGTH } from '../lib/constants';
 
 /** Leading blockquote prefix (one or more `> ` markers) to preserve as-is. */
 const BLOCKQUOTE_PREFIX_PATTERN = /^(\s*>\s*)+/;
@@ -238,6 +238,27 @@ turndown.addRule('footnoteDef', {
   },
 });
 
+/**
+ * Render a page-derived LaTeX value as Markdown math, or fall back to plain
+ * text when the value would degrade or break Obsidian's math rendering:
+ * - longer than {@link MAX_MATH_LENGTH} (malformed/abusive input), or
+ * - contains a literal `$` (breaks the `$…$` / `$$…$$` delimiters).
+ *
+ * Multi-line LaTeX is left intact — real KaTeX inline formulas (e.g. matrices
+ * with `\\` row breaks) legitimately span lines.
+ *
+ * On fallback, backslashes are escaped first, then `$` → `\$`, so the plain
+ * text is not re-parsed as math (escaping the escape character prevents a
+ * preceding `\` from pairing with the inserted one and re-opening a delimiter).
+ */
+function formatMath(latex: string, display: boolean): string {
+  if (latex.length > MAX_MATH_LENGTH || latex.includes('$')) {
+    const plain = latex.replace(/\\/g, '\\\\').replace(/\$/g, '\\$');
+    return display ? `\n${plain}\n` : plain;
+  }
+  return display ? `\n$$\n${latex}\n$$\n` : `$${latex}$`;
+}
+
 // Custom rule for display math blocks (Gemini KaTeX: <div data-math="...">)
 turndown.addRule('mathBlock', {
   filter: node => {
@@ -246,7 +267,7 @@ turndown.addRule('mathBlock', {
   replacement: (_content, node) => {
     const latex = (node as HTMLElement).getAttribute('data-math');
     if (!latex) return _content;
-    return `\n$$\n${latex}\n$$\n`;
+    return formatMath(latex, true);
   },
 });
 
@@ -262,7 +283,7 @@ turndown.addRule('mathInline', {
   replacement: (_content, node) => {
     const latex = (node as HTMLElement).getAttribute('data-math');
     if (!latex) return _content;
-    return `$${latex}$`;
+    return formatMath(latex, false);
   },
 });
 

@@ -13,6 +13,7 @@ import {
   MAX_TAG_LENGTH,
   MAX_IMAGES_PER_NOTE,
   MAX_IMAGE_DATA_LENGTH,
+  MAX_TOTAL_IMAGE_DATA_LENGTH,
   ALLOWED_ORIGINS,
   VALID_MESSAGE_ACTIONS,
   VALID_OUTPUT_DESTINATIONS,
@@ -21,6 +22,7 @@ import {
 import type { ExtensionMessage, ExtractedImage, ObsidianNote } from '../lib/types';
 import { containsPathTraversal } from '../lib/path-utils';
 import { isHttpUrl } from '../lib/validation';
+import { isAllowedImageMime, isLikelyBase64 } from '../lib/image-utils';
 
 /**
  * Validate message sender (M-02)
@@ -161,22 +163,33 @@ function validateFrontmatter(frontmatter: ObsidianNote['frontmatter'] | undefine
 
 /**
  * Validate attached image data (DoS guard). Content scripts are semi-trusted,
- * so bound the image count and per-image base64 size, and require well-formed
- * string fields on each entry.
+ * so bound the image count, per-image base64 size, and combined base64 size,
+ * restrict MIME types to a shared allow-list, and require each entry to carry
+ * well-formed base64 data.
  */
 function validateImages(images: unknown): boolean {
   if (!Array.isArray(images) || images.length > MAX_IMAGES_PER_NOTE) {
     return false;
   }
-  return images.every((image: Partial<ExtractedImage> | null | undefined) => {
-    return (
+  let totalDataLength = 0;
+  for (const image of images as Array<Partial<ExtractedImage> | null | undefined>) {
+    const wellFormed =
       !!image &&
       typeof image === 'object' &&
       typeof image.id === 'string' &&
       typeof image.mimeType === 'string' &&
       typeof image.alt === 'string' &&
       typeof image.data === 'string' &&
-      image.data.length <= MAX_IMAGE_DATA_LENGTH
-    );
-  });
+      image.data.length <= MAX_IMAGE_DATA_LENGTH &&
+      isAllowedImageMime(image.mimeType) &&
+      isLikelyBase64(image.data);
+    if (!wellFormed) {
+      return false;
+    }
+    totalDataLength += image.data.length;
+    if (totalDataLength > MAX_TOTAL_IMAGE_DATA_LENGTH) {
+      return false;
+    }
+  }
+  return true;
 }

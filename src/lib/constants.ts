@@ -85,6 +85,22 @@ export const MAX_IMAGES_PER_NOTE = 20;
 /** Maximum base64 length for a single image's data (~10MB binary + overhead). */
 export const MAX_IMAGE_DATA_LENGTH = 14 * 1024 * 1024;
 
+/**
+ * Maximum combined base64 length across all images in one note (DoS guard).
+ * Independent of the per-image and per-count caps: 20 × 14 MiB would otherwise
+ * let a single message reach ~280 MiB. 48 MiB (~36 MB binary) comfortably fits
+ * a realistic Gemini image set while bounding worker memory.
+ */
+export const MAX_TOTAL_IMAGE_DATA_LENGTH = 48 * 1024 * 1024;
+
+/**
+ * Maximum length of a single LaTeX formula rendered into `$…$` / `$$…$$`.
+ * Page-derived `data-math` values above this fall back to plain text so a
+ * malicious or malformed formula cannot degrade Obsidian's math rendering.
+ * Real KaTeX expressions are well under 1000 characters.
+ */
+export const MAX_MATH_LENGTH = 1000;
+
 // ============================================================
 // UI Timing
 // ============================================================

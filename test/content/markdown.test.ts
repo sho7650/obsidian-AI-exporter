@@ -9,6 +9,7 @@ import {
   convertDeepResearchContent,
 } from '../../src/content/markdown';
 import { sanitizeHtml } from '../../src/lib/sanitize';
+import { MAX_MATH_LENGTH } from '../../src/lib/constants';
 import type { ConversationData, TemplateOptions, DeepResearchLinks } from '../../src/lib/types';
 
 describe('escapeUserText — math dollar escaping (Obsidian hang fix)', () => {
@@ -274,6 +275,52 @@ describe('htmlToMarkdown', () => {
       expect(result).toContain('Before');
       expect(result).toContain('$$\nE = mc^2\n$$');
       expect(result).toContain('After');
+    });
+
+    describe('size limit & fallback (M-2)', () => {
+      it('keeps a formula exactly at the length limit as math', () => {
+        const latex = 'a'.repeat(MAX_MATH_LENGTH);
+        const result = htmlToMarkdown(`<span data-math="${latex}">x</span>`);
+        expect(result).toBe(`$${latex}$`);
+      });
+
+      it('falls back to plain text for an oversized inline formula', () => {
+        const latex = 'a'.repeat(MAX_MATH_LENGTH + 1);
+        const result = htmlToMarkdown(`<span data-math="${latex}">x</span>`);
+        expect(result).not.toContain('$');
+        expect(result).toContain(latex);
+      });
+
+      it('falls back to plain text for an oversized display formula', () => {
+        const latex = 'b'.repeat(MAX_MATH_LENGTH + 1);
+        const result = htmlToMarkdown(`<div data-math="${latex}">x</div>`);
+        expect(result).not.toContain('$$');
+        expect(result).toContain(latex);
+      });
+
+      it('escapes a literal $ in an inline value instead of emitting math', () => {
+        const result = htmlToMarkdown('<span data-math="a$b">x</span>');
+        expect(result).toBe('a\\$b');
+      });
+
+      it('escapes literal $ in a display value instead of emitting a math block', () => {
+        const result = htmlToMarkdown('<div data-math="a$$b">x</div>');
+        expect(result).not.toContain('$$\na');
+        expect(result).toContain('a\\$\\$b');
+      });
+
+      it('keeps multi-line inline LaTeX as math (real KaTeX matrices span lines)', () => {
+        const latex = '\\det\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}';
+        const result = htmlToMarkdown(`<span data-math="${latex}">x</span>`);
+        expect(result).toBe(`$${latex}$`);
+      });
+
+      it('escapes backslashes before $ so a preceding \\ cannot re-open math', () => {
+        // data-math value is `\a$b`: the backslash must be escaped first, else the
+        // inserted `\` before `$` pairs with it and leaves the $ unescaped.
+        const result = htmlToMarkdown('<span data-math="\\a$b">x</span>');
+        expect(result).toBe('\\\\a\\$b');
+      });
     });
   });
 
