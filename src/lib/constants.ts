@@ -93,6 +93,14 @@ export const MAX_IMAGE_DATA_LENGTH = 14 * 1024 * 1024;
  */
 export const MAX_TOTAL_IMAGE_DATA_LENGTH = 48 * 1024 * 1024;
 
+/**
+ * Maximum length of a single LaTeX formula rendered into `$…$` / `$$…$$`.
+ * Page-derived `data-math` values above this fall back to plain text so a
+ * malicious or malformed formula cannot degrade Obsidian's math rendering.
+ * Real KaTeX expressions are well under 1000 characters.
+ */
+export const MAX_MATH_LENGTH = 1000;
+
 // ============================================================
 // UI Timing
 // ============================================================
