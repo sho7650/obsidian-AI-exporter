@@ -115,6 +115,52 @@ describe('storage', () => {
       expect(settings.templateOptions.filenameScheme).toBe('title-id');
     });
 
+    it('normalizes corrupted sync values to defaults (L-1)', async () => {
+      vi.mocked(chrome.storage.sync.get).mockResolvedValue({
+        settings: {
+          maxCalloutLines: 'not-a-number',
+          enableAppendMode: 'yes',
+          templateOptions: { messageFormat: 'weird' },
+        },
+      });
+
+      const settings = await getSettings();
+      expect(settings.maxCalloutLines).toBe(200);
+      expect(settings.enableAppendMode).toBe(false);
+      expect(settings.templateOptions.messageFormat).toBe('callout');
+    });
+
+    it('falls back to the legacy sync API key before migration completes (L-2)', async () => {
+      // Simulate the race: migration has not yet moved the key to local storage.
+      vi.mocked(chrome.storage.local.get).mockResolvedValue({ secureSettings: undefined });
+      vi.mocked(chrome.storage.sync.get).mockResolvedValue({
+        settings: { obsidianApiKey: 'legacy-sync-key' },
+      });
+
+      const settings = await getSettings();
+      expect(settings.obsidianApiKey).toBe('legacy-sync-key');
+    });
+
+    it('prefers the migrated local API key over any legacy sync value (L-2)', async () => {
+      vi.mocked(chrome.storage.local.get).mockResolvedValue({
+        secureSettings: { obsidianApiKey: 'local-key' },
+      });
+      vi.mocked(chrome.storage.sync.get).mockResolvedValue({
+        settings: { obsidianApiKey: 'legacy-sync-key' },
+      });
+
+      const settings = await getSettings();
+      expect(settings.obsidianApiKey).toBe('local-key');
+    });
+
+    it('returns an empty API key when neither store has one (L-2)', async () => {
+      vi.mocked(chrome.storage.local.get).mockResolvedValue({ secureSettings: undefined });
+      vi.mocked(chrome.storage.sync.get).mockResolvedValue({ settings: {} });
+
+      const settings = await getSettings();
+      expect(settings.obsidianApiKey).toBe('');
+    });
+
     it('round-trips a stored title-date filenameScheme (#328)', async () => {
       vi.mocked(chrome.storage.sync.get).mockResolvedValue({
         settings: { templateOptions: { filenameScheme: 'title-date' } },
