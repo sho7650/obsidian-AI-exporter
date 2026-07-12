@@ -379,6 +379,96 @@ describe('background/index', () => {
         });
       });
 
+      it('rejects images whose combined base64 size exceeds the total cap', () => {
+        const sendResponse = vi.fn();
+        // One ~13 MiB base64 string reused across 4 entries: each is under the
+        // per-image cap (14 MiB) but the sum (~52 MiB) exceeds the 48 MiB total.
+        const big = 'A'.repeat(13 * 1024 * 1024); // valid base64 charset, length % 4 === 0
+        const images = Array.from({ length: 4 }, (_, i) => ({
+          id: `img-${i}`,
+          mimeType: 'image/png',
+          data: big,
+          alt: 'a',
+        }));
+        capturedListener(
+          { action: 'saveToOutputs', outputs: ['obsidian'], data: { ...validNote, images } },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('rejects an image with a MIME type outside the allow-list', () => {
+        const sendResponse = vi.fn();
+        capturedListener(
+          {
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
+            data: {
+              ...validNote,
+              images: [{ id: 'img-1', mimeType: 'image/tiff', data: 'UE5H', alt: 'a' }],
+            },
+          },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('rejects an image with malformed base64 data', () => {
+        const sendResponse = vi.fn();
+        capturedListener(
+          {
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
+            // '@@@@' is length % 4 === 0 but contains non-base64 characters.
+            data: {
+              ...validNote,
+              images: [{ id: 'img-1', mimeType: 'image/png', data: '@@@@', alt: 'a' }],
+            },
+          },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+        expect(sendResponse).toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
+      it('accepts multiple valid images within the total cap', () => {
+        const sendResponse = vi.fn();
+        mockClient.getFile.mockResolvedValue(null);
+        mockClient.putFile.mockResolvedValue(undefined);
+        mockClient.putBinaryFile.mockResolvedValue(undefined);
+        capturedListener(
+          {
+            action: 'saveToOutputs',
+            outputs: ['obsidian'],
+            data: {
+              ...validNote,
+              images: [
+                { id: 'img-1', mimeType: 'image/png', data: 'UE5H', alt: 'a' },
+                { id: 'img-2', mimeType: 'image/jpeg', data: 'AAAA', alt: 'b' },
+                { id: 'img-3', mimeType: 'image/webp', data: 'BBBB', alt: 'c' },
+              ],
+            },
+          },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+        expect(sendResponse).not.toHaveBeenCalledWith({
+          success: false,
+          error: 'Invalid message content',
+        });
+      });
+
       it('rejects fileName with path traversal (DES-014 H-1)', () => {
         const sendResponse = vi.fn();
         capturedListener(

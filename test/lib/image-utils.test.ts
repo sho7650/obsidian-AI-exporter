@@ -4,6 +4,9 @@ import {
   base64ToBytes,
   bytesToBase64,
   MAX_IMAGE_SIZE_BYTES,
+  ALLOWED_IMAGE_MIME_TYPES,
+  isAllowedImageMime,
+  isLikelyBase64,
 } from '../../src/lib/image-utils';
 
 describe('mimeToExtension', () => {
@@ -64,5 +67,59 @@ describe('bytesToBase64', () => {
 describe('MAX_IMAGE_SIZE_BYTES', () => {
   it('is a positive limit (10MB)', () => {
     expect(MAX_IMAGE_SIZE_BYTES).toBe(10 * 1024 * 1024);
+  });
+});
+
+describe('ALLOWED_IMAGE_MIME_TYPES', () => {
+  it('is the SSOT allow-list derived from the MIME→extension map', () => {
+    expect(ALLOWED_IMAGE_MIME_TYPES.has('image/png')).toBe(true);
+    expect(ALLOWED_IMAGE_MIME_TYPES.has('image/jpeg')).toBe(true);
+    expect(ALLOWED_IMAGE_MIME_TYPES.has('image/webp')).toBe(true);
+    expect(ALLOWED_IMAGE_MIME_TYPES.has('image/svg+xml')).toBe(true);
+    // Every allowed type maps to a non-empty extension (SSOT parity)
+    for (const mime of ALLOWED_IMAGE_MIME_TYPES) {
+      expect(mimeToExtension(mime).length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('isAllowedImageMime', () => {
+  it('accepts allow-listed types', () => {
+    expect(isAllowedImageMime('image/png')).toBe(true);
+    expect(isAllowedImageMime('image/jpeg')).toBe(true);
+  });
+
+  it('normalizes case and strips parameters', () => {
+    expect(isAllowedImageMime('IMAGE/PNG')).toBe(true);
+    expect(isAllowedImageMime('image/jpeg; charset=binary')).toBe(true);
+    expect(isAllowedImageMime('  image/webp  ')).toBe(true);
+  });
+
+  it('rejects types outside the allow-list', () => {
+    expect(isAllowedImageMime('image/tiff')).toBe(false);
+    expect(isAllowedImageMime('application/pdf')).toBe(false);
+    expect(isAllowedImageMime('')).toBe(false);
+    expect(isAllowedImageMime('text/html')).toBe(false);
+  });
+});
+
+describe('isLikelyBase64', () => {
+  it('accepts well-formed base64 strings', () => {
+    expect(isLikelyBase64('UE5H')).toBe(true); // "PNG"
+    expect(isLikelyBase64('AAAA')).toBe(true);
+    expect(isLikelyBase64('aGVsbG8=')).toBe(true); // "hello"
+    expect(isLikelyBase64('YWI=')).toBe(true);
+    expect(isLikelyBase64('')).toBe(true); // empty is a valid (0-length) payload
+  });
+
+  it('rejects strings with non-base64 characters', () => {
+    expect(isLikelyBase64('@@@@')).toBe(false);
+    expect(isLikelyBase64('not valid!!')).toBe(false);
+    expect(isLikelyBase64('AA AA')).toBe(false);
+  });
+
+  it('rejects strings whose length is not a multiple of 4', () => {
+    expect(isLikelyBase64('ABC')).toBe(false);
+    expect(isLikelyBase64('AAAAA')).toBe(false);
   });
 });
