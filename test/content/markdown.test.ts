@@ -309,11 +309,10 @@ describe('htmlToMarkdown', () => {
         expect(result).toContain('a\\$\\$b');
       });
 
-      it('falls back for an inline formula containing a newline', () => {
-        const result = htmlToMarkdown('<span data-math="a&#10;b">x</span>');
-        expect(result.startsWith('$')).toBe(false);
-        expect(result).toContain('a');
-        expect(result).toContain('b');
+      it('keeps multi-line inline LaTeX as math (real KaTeX matrices span lines)', () => {
+        const latex = '\\det\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}';
+        const result = htmlToMarkdown(`<span data-math="${latex}">x</span>`);
+        expect(result).toBe(`$${latex}$`);
       });
     });
   });

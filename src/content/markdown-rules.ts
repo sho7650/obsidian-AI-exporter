@@ -242,14 +242,15 @@ turndown.addRule('footnoteDef', {
  * Render a page-derived LaTeX value as Markdown math, or fall back to plain
  * text when the value would degrade or break Obsidian's math rendering:
  * - longer than {@link MAX_MATH_LENGTH} (malformed/abusive input), or
- * - contains a literal `$` (breaks the `$…$` / `$$…$$` delimiters), or
- * - (inline only) contains a newline, which cannot live inside `$…$`.
+ * - contains a literal `$` (breaks the `$…$` / `$$…$$` delimiters).
+ *
+ * Multi-line LaTeX is left intact — real KaTeX inline formulas (e.g. matrices
+ * with `\\` row breaks) legitimately span lines.
  *
  * On fallback, `$` is escaped to `\$` so the plain text is not re-parsed as math.
  */
 function formatMath(latex: string, display: boolean): string {
-  const breaksDelimiter = latex.includes('$') || (!display && /[\r\n]/.test(latex));
-  if (latex.length > MAX_MATH_LENGTH || breaksDelimiter) {
+  if (latex.length > MAX_MATH_LENGTH || latex.includes('$')) {
     const plain = latex.replace(/\$/g, '\\$');
     return display ? `\n${plain}\n` : plain;
   }
