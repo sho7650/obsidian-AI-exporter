@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.2.2...v2.2.3) (2026-07-12)
+
+
+### Bug Fixes
+
+* harden image, math, settings, and migration input handling ([#346](https://github.com/sho7650/obsidian-AI-exporter/issues/346)) ([a42a592](https://github.com/sho7650/obsidian-AI-exporter/commit/a42a59248cb2d25f8ce3c0d48f2ea4d80dcc2d37))
+
 ## [2.2.2](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.2.1...v2.2.2) (2026-07-12)
 
 
