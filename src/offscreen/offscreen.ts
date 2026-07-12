@@ -48,8 +48,11 @@ chrome.runtime.onMessage.addListener(
     sender: chrome.runtime.MessageSender,
     sendResponse: (response: ClipboardWriteResponse) => void
   ) => {
-    // Security: Only accept messages from the background service worker
-    // sender.tab is undefined for background context, defined for content scripts
+    // Security: only accept messages from this extension's own non-content-script
+    // contexts (service worker or popup). `sender.tab` is undefined for those and
+    // defined for content scripts, so this rejects any page-injected sender. In
+    // practice only the background worker sends `clipboardWrite`; the action +
+    // `target === 'offscreen'` gate below scopes it further.
     if (sender.id !== chrome.runtime.id || sender.tab !== undefined) {
       return false;
     }
