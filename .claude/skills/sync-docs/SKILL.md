@@ -1,14 +1,14 @@
 ---
 name: sync-docs
-description: Detect user-facing feature drift and update README.md + README.ja.md in lockstep. Use when features have shipped but the READMEs are stale, or before a release. Docs-only — never touches src/.
-version: 1.0.0
+description: Detect user-facing feature drift and update README.md + README.ja.md and the Chrome Web Store descriptions in lockstep. Use when features have shipped but the docs are stale, or before a release. Docs-only — never touches src/.
+version: 1.1.0
 ---
 
 # sync-docs
 
-Keeps the user-facing documentation (`README.md` and `README.ja.md`) in sync with the
-features that have actually shipped. This skill **only edits documentation** — it never
-modifies `src/`, tests, or configuration.
+Keeps the user-facing documentation (`README.md`, `README.ja.md`, and the Chrome Web Store
+descriptions in `docs/store/`) in sync with the features that have actually shipped. This
+skill **only edits documentation** — it never modifies `src/`, tests, or configuration.
 
 ## When to use
 
@@ -19,11 +19,12 @@ modifies `src/`, tests, or configuration.
 
 ## Absolute rules
 
-- **Docs only.** Edit `README.md`, `README.ja.md`, and (if needed) `docs/`. Never edit
-  `src/`, tests, `manifest.json`, or build config.
+- **Docs only.** Edit `README.md`, `README.ja.md`, the store descriptions in `docs/store/`,
+  and (if needed) `docs/`. Never edit `src/`, tests, `manifest.json`, or build config.
 - **EN/JA parity is mandatory.** Every change to `README.md` must have an equivalent
-  change in `README.ja.md`, and vice versa. The two files must stay structurally parallel
-  (same sections, same order, same tables).
+  change in `README.ja.md`, and vice versa. The same rule applies to the store pair
+  (`docs/store/description_en.md` ⇄ `docs/store/description_ja.md`). Each language pair must
+  stay structurally parallel (same sections, same order, same tables/bullets).
 - **Verify before done.** Report what changed and prove the docs still format cleanly.
 - Follow the project rules in `CLAUDE.md`: work on a branch, never commit secrets, no
   scope creep.
@@ -32,8 +33,11 @@ modifies `src/`, tests, or configuration.
 
 ### 1. Establish the "documented" baseline
 
-Read both READMEs and list the features they currently describe (Features bullets,
-Usage subsections, settings mentioned, supported platforms).
+Read both READMEs **and** both store descriptions (`docs/store/description_en.md`,
+`docs/store/description_ja.md`) and list the features they currently describe (Features
+bullets, Usage subsections, settings mentioned, supported platforms). The store
+descriptions are a terser, Chrome-Web-Store-formatted subset — they drift the same way and
+must be checked every run.
 
 ### 2. Establish the "shipped" reality
 
@@ -70,6 +74,15 @@ style:
 - Keep tone concise and factual; mirror the English wording in natural Japanese (see
   `feedback_english_messages` applies to commits/PRs, not README.ja.md content).
 
+Then update the store descriptions (`docs/store/description_en.md` +
+`docs/store/description_ja.md`) in the same lockstep for **user-facing** drift only:
+
+- These follow the Chrome Web Store layout (WHAT IT DOES / THREE EXPORT OPTIONS / KEY
+  FEATURES / PRIVACY FIRST / REQUIREMENTS / HOW TO USE). Add or reword `KEY FEATURES`
+  bullets (`• ...`) to match; keep them shorter and more marketing-toned than the README.
+- New platform → also update the tagline, WHAT IT DOES host list, and HOW TO USE step 1.
+- Keep EN/JA bullets 1:1 and in the same order.
+
 ### 5. Verify
 
 - `nix run .#format-check` (or `npm run format:check`) — the READMEs must pass Prettier.
@@ -85,8 +98,15 @@ style:
   don't expect byte-equality.)
 - Confirm every internal anchor link (`#image-export`, `#画像エクスポート`, ADR links)
   resolves to a heading that exists.
+- Store parity: `docs/store/description_en.md` and `description_ja.md` must have the same
+  number of `•` bullets in each section, in the same order. Compare the bullet counts:
+
+  ```bash
+  grep -c '^•' docs/store/description_en.md docs/store/description_ja.md
+  ```
 
 ### 6. Report
 
-Summarize: which features were added to the docs, EN + JA both updated, format-check result.
-Do **not** commit or push — leave that to the user or `/release`.
+Summarize: which features were added to the docs, README EN + JA and store EN + JA all
+updated, format-check and store-parity results. Do **not** commit or push — leave that to
+the user or `/release`.

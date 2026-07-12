@@ -13,12 +13,14 @@ Google Gemini（gemini.google.com）、Claude AI（claude.ai）、ChatGPT（chat
 • YAML フロントマター付きの整形された Markdown
 • Q&A ブロックに Obsidian コールアウト構文（正しい AI 名を表示）
 • Deep Research（Gemini、Perplexity）と Extended Thinking / Artifacts（Claude）に対応
+• 画像エクスポート - Gemini 生成画像を vault に埋め込み・ファイルとしてダウンロード・クリップボードでは除去
 • フロントマター日時のタイムゾーン設定
 • LaTeX 数式の保存（$$...$$・$...$）- 全プラットフォーム対応
 • Web 検索結果を折りたたみ可能なコールアウトとして保存（Claude）
 • 追記モード - 既存ノートに新しいメッセージのみ追加
 • 質問見出し（`## `）オプション - 長い会話で目次ナビゲーション可能
-• Gemini の長い会話の自動スクロール
+• 長い会話の自動スクロール - 仮想化（ウィンドウ化）された Claude・ChatGPT スレッドにも対応
+• ファイル名スキーム - title-id（デフォルト）または title-date を選択、衝突時の上書き防止付き
 • {platform} テンプレート変数によるプラットフォーム別整理
 • Obsidian REST API への HTTPS 接続をサポート
 • API URL、保存先パス、メッセージ形式、フロントマターフィールドをカスタマイズ可能
