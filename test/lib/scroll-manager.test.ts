@@ -49,17 +49,26 @@ function createVirtualList(opts: {
   windowSize: number;
   clientHeight?: number;
   startAtTop?: boolean;
+  /**
+   * Initial scrollTop as a fraction of maxScroll (1 = bottom, default). Use a
+   * value < 1 to model Sync starting with the view scrolled up, so the newest
+   * turn is below the fold and not in the initially-mounted window.
+   */
+  startFraction?: number;
 }): {
   container: HTMLElement;
   harvest: () => Array<{ key: string; value: string }>;
 } {
   const { total, windowSize } = opts;
   const clientHeight = opts.clientHeight ?? 900;
-  const maxScroll = 10_000;
+  // A conversation that fits entirely in one window has no scroll range.
+  const fits = total <= windowSize;
+  const maxScroll = fits ? 0 : 10_000;
   const items = Array.from({ length: total }, (_, i) => ({ key: `k${i}`, value: `v${i}` }));
 
   const container = document.createElement('div');
-  let scrollTop = opts.startAtTop ? 0 : maxScroll;
+  const startFraction = opts.startAtTop ? 0 : (opts.startFraction ?? 1);
+  let scrollTop = Math.round(maxScroll * startFraction);
   Object.defineProperty(container, 'scrollTop', {
     get: () => scrollTop,
     set: (v: number) => {
@@ -75,7 +84,7 @@ function createVirtualList(opts: {
 
   const maxStart = Math.max(0, total - windowSize);
   const harvest = () => {
-    const frac = scrollTop / maxScroll; // 1 at bottom, 0 at top
+    const frac = maxScroll === 0 ? 0 : scrollTop / maxScroll; // 1 at bottom, 0 at top
     const start = Math.round(frac * maxStart);
     return items.slice(start, start + windowSize);
   };
@@ -99,6 +108,26 @@ describe('accumulateWhileScrolling', () => {
     expect(result.itemCount).toBe(12);
     // Ordered from first turn to last.
     expect(result.items).toEqual(Array.from({ length: 12 }, (_, i) => `v${i}`));
+  });
+
+  it('captures the newest turn even when Sync starts scrolled up (issue #348)', async () => {
+    // The view is scrolled up on Sync, so the last turn (v19) is below the fold
+    // and not in the initially-mounted window. Upward-only accumulation would
+    // never reach it; the engine must seed at the bottom first.
+    const { container, harvest } = createVirtualList({
+      total: 20,
+      windowSize: 6,
+      startFraction: 0.5,
+    });
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.itemCount).toBe(20);
+    expect(result.items).toEqual(Array.from({ length: 20 }, (_, i) => `v${i}`));
+    // The regression: the final turn must be present.
+    expect(result.items[result.items.length - 1]).toBe('v19');
   });
 
   it('skips scrolling when the container starts at the top (short conversation)', async () => {
@@ -128,6 +157,7 @@ describe('accumulateWhileScrolling', () => {
       configurable: true,
     });
     Object.defineProperty(container, 'clientHeight', { get: () => 900, configurable: true });
+    Object.defineProperty(container, 'scrollHeight', { get: () => 10_900, configurable: true });
     let n = 0;
     const harvest = () => [{ key: `new${n++}`, value: `val${n}` }];
 
@@ -150,6 +180,7 @@ describe('accumulateWhileScrolling', () => {
       configurable: true,
     });
     Object.defineProperty(container, 'clientHeight', { get: () => 900, configurable: true });
+    Object.defineProperty(container, 'scrollHeight', { get: () => 10_900, configurable: true });
 
     let round = 0;
     const harvest = () => {

@@ -245,7 +245,15 @@ export async function accumulateWhileScrolling<T>(
 
   const toItems = (): T[] => order.map(key => content.get(key) as T);
 
-  ingest(); // seed with the initial (bottom) window
+  // Seed at the true bottom so the newest turns are mounted before harvesting.
+  // Sync may start with the view scrolled up (issue #348): the last turn is then
+  // below the fold and unmounted, and because we only ever scroll *up* from the
+  // seed, an unmounted tail would be lost forever. Jumping to scrollHeight first
+  // pins the newest window; a conversation that fits has no scroll range and
+  // stays at the top, so the skip path below still applies.
+  container.scrollTop = container.scrollHeight;
+  await delay(SCROLL_ACCUMULATE_POLL_INTERVAL);
+  ingest();
 
   if (container.scrollTop <= 0) {
     console.info('[G2O] scrollTop=0 on open, conversation fits without scrolling');
