@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.5](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.2.4...v2.2.5) (2026-07-16)
+
+
+### Bug Fixes
+
+* order virtualized Claude turns by data-index to prevent scramble ([#352](https://github.com/sho7650/obsidian-AI-exporter/issues/352)) ([#354](https://github.com/sho7650/obsidian-AI-exporter/issues/354)) ([6df6d82](https://github.com/sho7650/obsidian-AI-exporter/commit/6df6d820d79345bb185cf34ed4c08cb0bcc29e82))
+
 ## [2.2.4](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.2.3...v2.2.4) (2026-07-14)
 
 
