@@ -25,6 +25,7 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 - **Question headers (optional)**: Prepend a `## ` heading (first 60 chars of the question) before each user message for TOC navigation in long conversations
 - **Large-callout flattening**: Optionally flatten very long messages to plain text when saving to Obsidian, avoiding renderer slowdowns
 - **Configurable timezone**: Set timezone for frontmatter dates (created/modified)
+- **Math formula preservation**: LaTeX math (`$...$` and `$$...$$`) is preserved across all platforms for Obsidian's math renderer
 - **Obsidian callouts**: Formatted output with `[!QUESTION]` and `[!NOTE]` callouts
 - **YAML frontmatter**: Metadata including title, source, URL, dates, and tags
 - **Configurable**: Customizable vault path, template options, and frontmatter fields
