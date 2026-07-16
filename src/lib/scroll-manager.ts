@@ -13,6 +13,7 @@ import {
   SCROLL_ACCUMULATE_POLL_INTERVAL,
   SCROLL_ACCUMULATE_STEP_FACTOR,
   SCROLL_ACCUMULATE_MIN_STEP,
+  SCROLL_SETTLE_TIMEOUT,
 } from './constants';
 
 /**
@@ -245,14 +246,10 @@ export async function accumulateWhileScrolling<T>(
 
   const toItems = (): T[] => order.map(key => content.get(key) as T);
 
-  // Seed at the true bottom so the newest turns are mounted before harvesting.
-  // Sync may start with the view scrolled up (issue #348): the last turn is then
-  // below the fold and unmounted, and because we only ever scroll *up* from the
-  // seed, an unmounted tail would be lost forever. Jumping to scrollHeight first
-  // pins the newest window; a conversation that fits has no scroll range and
-  // stays at the top, so the skip path below still applies.
-  container.scrollTop = container.scrollHeight;
-  await delay(SCROLL_ACCUMULATE_POLL_INTERVAL);
+  // Settle the true bottom (see settleBottom), then seed the newest window once.
+  // Harvesting only after settling — never the intermediate downward windows —
+  // keeps accumulation strictly upward so mergeWindow's overlap invariant holds.
+  await settleBottom(container);
   ingest();
 
   if (container.scrollTop <= 0) {
@@ -271,12 +268,7 @@ export async function accumulateWhileScrolling<T>(
       `${content.size} turns mounted, accumulating by scrolling up`
   );
 
-  const step = Math.max(
-    SCROLL_ACCUMULATE_MIN_STEP,
-    Math.floor(container.clientHeight * SCROLL_ACCUMULATE_STEP_FACTOR)
-  );
-
-  const { iterations, fullyLoaded } = await scrollUpUntilStable(container, step, () => {
+  const { iterations, fullyLoaded } = await scrollUpUntilStable(container, () => {
     const before = content.size;
     ingest();
     return content.size > before;
@@ -294,20 +286,67 @@ export async function accumulateWhileScrolling<T>(
 }
 
 /**
+ * Pin a virtualized container to its bottom until scrollHeight stops growing.
+ *
+ * Sync may start with the view scrolled up (issue #348): the newest turns are
+ * then below the fold and unmounted, and since accumulation only ever scrolls
+ * *up* from the seed, an unmounted tail is lost forever. A single jump to
+ * scrollHeight is not enough (issue #352): on a windowed list scrollHeight is an
+ * estimate that *grows* as the newest rows mount and are measured in (ADR-017
+ * observed it climbing 27310 → 30616), so one jump lands short of the true bottom
+ * and the freshest turns stay unmounted.
+ *
+ * Re-pinning to scrollHeight drives those rows into the DOM; when scrollHeight is
+ * unchanged for {@link SCROLL_STABILITY_THRESHOLD} consecutive pins the true
+ * bottom is mounted. Bounded by its *own* {@link SCROLL_SETTLE_TIMEOUT} (not the
+ * caller's {@link SCROLL_TIMEOUT}) so a bottom that keeps re-measuring can never
+ * starve the upward pass. A container whose content already fits has no scroll
+ * range, so there is nothing to mount and it returns immediately. Does not
+ * harvest — the caller seeds once after this returns.
+ */
+async function settleBottom(container: HTMLElement): Promise<void> {
+  // No overflow → no virtualized tail to mount (short conversation).
+  if (container.scrollHeight <= container.clientHeight) return;
+
+  const startTime = Date.now();
+  let previousHeight = -1;
+  let stable = 0;
+
+  while (Date.now() - startTime < SCROLL_SETTLE_TIMEOUT) {
+    container.scrollTop = container.scrollHeight;
+    await delay(SCROLL_ACCUMULATE_POLL_INTERVAL);
+
+    const height = container.scrollHeight;
+    if (height === previousHeight) {
+      if (++stable >= SCROLL_STABILITY_THRESHOLD) return;
+    } else {
+      stable = 0;
+      previousHeight = height;
+    }
+  }
+}
+
+/**
  * Scroll a container upward one step per iteration until harvesting stops
  * yielding new turns while pinned at the top, or {@link SCROLL_TIMEOUT} elapses.
  *
  * Stability is only counted once already at the top, so a mid-scroll window that
  * happens to mount nothing new doesn't end accumulation prematurely.
  *
+ * Scrolls up by a fraction of the viewport per step (floored at
+ * {@link SCROLL_ACCUMULATE_MIN_STEP}) so consecutive windows overlap.
+ *
  * @param onWindow Ingest the freshly-mounted window; return true if it grew the
  *   accumulated set. Invoked once per iteration after each scroll settles.
  */
 async function scrollUpUntilStable(
   container: HTMLElement,
-  step: number,
   onWindow: () => boolean
 ): Promise<{ iterations: number; fullyLoaded: boolean }> {
+  const step = Math.max(
+    SCROLL_ACCUMULATE_MIN_STEP,
+    Math.floor(container.clientHeight * SCROLL_ACCUMULATE_STEP_FACTOR)
+  );
   let stable = 0;
   let iterations = 0;
   const startTime = Date.now();
