@@ -185,7 +185,13 @@ export class ClaudeExtractor extends BaseExtractor {
           : this.extractAssistantContent(item.element);
       if (!content) return;
 
-      const key = this.turnKey(item.element, item.type, content);
+      // `data-index` is monotonic in conversation order; use it both as the
+      // stable de-dup key and as the ordering signal so accumulation can sort by
+      // it (robust against mergeWindow scramble — issue #352).
+      const dataIndex = item.element.closest('[data-index]')?.getAttribute('data-index');
+      const parsed = dataIndex !== undefined && dataIndex !== null ? Number(dataIndex) : NaN;
+      const key = dataIndex ? `idx-${dataIndex}` : `${item.type}-${generateHash(content)}`;
+      const order = Number.isFinite(parsed) ? parsed : undefined;
       const message: ConversationMessage = {
         id: key,
         role: item.type,
@@ -197,23 +203,13 @@ export class ClaudeExtractor extends BaseExtractor {
       if (this.enableToolContent && item.type === 'assistant') {
         const tc = this.extractToolContentFromElement(item.element);
         if (tc) {
-          entries.push({ key, value: { ...message, toolContent: tc } });
+          entries.push({ key, value: { ...message, toolContent: tc }, order });
           return;
         }
       }
-      entries.push({ key, value: message });
+      entries.push({ key, value: message, order });
     });
     return entries;
-  }
-
-  /**
-   * Stable per-turn key for de-duplication across scroll windows.
-   * Prefers the virtual-list `data-index`; hashes content otherwise.
-   */
-  private turnKey(element: Element, type: 'user' | 'assistant', content: string): string {
-    const dataIndex = element.closest('[data-index]')?.getAttribute('data-index');
-    if (dataIndex) return `idx-${dataIndex}`;
-    return `${type}-${generateHash(content)}`;
   }
 
   /**
