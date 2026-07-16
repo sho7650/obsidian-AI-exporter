@@ -205,10 +205,3 @@ export const SCROLL_ACCUMULATE_STEP_FACTOR = 0.6;
 /** Floor for the per-step scroll distance (px). Guards environments where
  *  clientHeight reads 0 (e.g. jsdom, which has no layout engine). */
 export const SCROLL_ACCUMULATE_MIN_STEP = 400;
-
-/** Max time to spend settling the virtualized bottom before scrolling up (ms).
- *  Bounded *separately* from SCROLL_TIMEOUT so a bottom that keeps re-measuring
- *  (still-streaming reply, lazy media below the fold) can never starve upward
- *  accumulation of its own full budget — the newest window is worth a few pins,
- *  not the entire scroll budget (code-review of the #352 fix). */
-export const SCROLL_SETTLE_TIMEOUT = 5000;
