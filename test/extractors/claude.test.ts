@@ -73,6 +73,48 @@ describe('ClaudeExtractor', () => {
         );
         expect(extractor.isDeepResearchVisible()).toBe(false);
       });
+
+      // Claude keeps the artifact mounted after the panel is closed, moving the
+      // off-screen panel into an `inert` + `aria-hidden="true"` subtree (verified
+      // live 2026-07-16). Presence alone must NOT count as "visible", else every
+      // Sync after ever opening a DR/Artifact hijacks the save to report-only and
+      // discards the conversation (user report, issue #352 follow-up).
+      it('returns false when the artifact is inside an inert (closed) panel', () => {
+        setClaudeLocation('test-123');
+        loadFixture(
+          `<div inert aria-hidden="true">${createClaudeDeepResearchDOM('Closed Report', '<p>Lingering</p>')}</div>`
+        );
+        expect(extractor.isDeepResearchVisible()).toBe(false);
+      });
+
+      it('returns false when the artifact panel is aria-hidden (dismissed but mounted)', () => {
+        setClaudeLocation('test-123');
+        loadFixture(
+          `<div aria-hidden="true">${createClaudeDeepResearchDOM('Hidden', '<p>x</p>')}</div>`
+        );
+        expect(extractor.isDeepResearchVisible()).toBe(false);
+      });
+
+      it('returns true when the artifact panel is open (aria-hidden="false")', () => {
+        setClaudeLocation('test-123');
+        loadFixture(
+          `<div aria-hidden="false">${createClaudeDeepResearchDOM('Open', '<p>x</p>')}</div>`
+        );
+        expect(extractor.isDeepResearchVisible()).toBe(true);
+      });
+
+      it('still detects an open artifact when an unrelated sibling is aria-hidden', () => {
+        // Over-suppression guard: only the artifact's own ancestors count, not a
+        // hidden sibling subtree elsewhere on the page (code-review #2/#4).
+        setClaudeLocation('test-123');
+        loadFixture(`
+          <div>
+            <div aria-hidden="true"><p>an unrelated dismissed dialog</p></div>
+            ${createClaudeDeepResearchDOM('Open', '<p>x</p>')}
+          </div>
+        `);
+        expect(extractor.isDeepResearchVisible()).toBe(true);
+      });
     });
   });
 
@@ -465,6 +507,54 @@ describe('ClaudeExtractor', () => {
       const result = await extractor.extract();
       expect(result.success).toBe(true);
       expect(result.data?.type).toBe('deep-research');
+    });
+
+    it('extracts the conversation (not DR) when a lingering artifact panel is closed', async () => {
+      // Regression: once a DR/Artifact has been opened, #markdown-artifact stays
+      // mounted in an inert/aria-hidden subtree. The save must return the
+      // conversation, not hijack to the stale report (issue #352 follow-up).
+      setClaudeLocation('test-123');
+      loadFixture(`
+        <div class="app-container">
+          ${createClaudeConversationDOM([
+            { role: 'user', content: 'What is the weather?' },
+            { role: 'assistant', content: '<p>It is sunny.</p>' },
+          ])}
+          <div inert aria-hidden="true">
+            ${createClaudeDeepResearchDOM('Stale Report', '<p>lingering</p>')}
+          </div>
+        </div>
+      `);
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      expect(result.data?.type).not.toBe('deep-research');
+      expect(
+        result.data?.messages.some(m => m.role === 'user' && m.content.includes('weather'))
+      ).toBe(true);
+    });
+
+    it('excludes a lingering closed artifact from the conversation messages', async () => {
+      // The closed #markdown-artifact still carries .font-claude-response, so
+      // conversation extraction must not pull the stale report in as an extra
+      // assistant turn (code-review #1 of the DR-visibility fix).
+      setClaudeLocation('test-123');
+      loadFixture(`
+        <div class="app-container">
+          ${createClaudeConversationDOM([
+            { role: 'user', content: 'What is the weather?' },
+            { role: 'assistant', content: '<p>It is sunny.</p>' },
+          ])}
+          <div inert aria-hidden="true">
+            ${createClaudeDeepResearchDOM('Stale Report Title', '<p>lingering report body</p>')}
+          </div>
+        </div>
+      `);
+      const result = await extractor.extract();
+      const joined = (result.data?.messages ?? []).map(m => m.content).join('\n');
+      expect(joined).not.toContain('Stale Report Title');
+      expect(joined).not.toContain('lingering report body');
+      // The real conversation is intact: exactly one assistant turn.
+      expect(result.data?.messages.filter(m => m.role === 'assistant')).toHaveLength(1);
     });
 
     it('deduplicates citations by URL', () => {

@@ -48,14 +48,36 @@ export class ClaudeExtractor extends BaseExtractor {
   }
 
   /**
-   * Check if Deep Research mode is visible
+   * Check if a Deep Research / Artifact report is the actively-viewed panel.
    *
-   * Detects presence of #markdown-artifact element
+   * Detects the #markdown-artifact element, but presence alone is not enough:
+   * Claude keeps the artifact mounted after the panel is closed, moving the
+   * off-screen panel into an `inert` + `aria-hidden="true"` subtree (verified
+   * live 2026-07-16, w/h collapse to 0 and x is pushed past the viewport). A
+   * presence-only check therefore hijacked every save after the user had ever
+   * opened a report — returning the stale report and dropping the conversation
+   * (issue #352 follow-up). Treat an inert / aria-hidden subtree as "closed".
+   *
    * @see FR-003-3 in design document
    */
   isDeepResearchVisible(): boolean {
     const artifact = this.queryWithFallback<HTMLElement>(DEEP_RESEARCH_SELECTORS.artifact);
-    return artifact !== null;
+    if (!artifact) return false;
+    return !this.isInDismissedPanel(artifact);
+  }
+
+  /**
+   * Whether an element sits inside a dismissed (closed) panel subtree.
+   *
+   * Claude does not unmount a closed Deep Research / Artifact panel — it moves
+   * the off-screen subtree into `inert` + `aria-hidden="true"` (verified live
+   * 2026-07-16). Such content is neither the active view nor a real conversation
+   * turn, so both DR detection and message collection ignore it — otherwise the
+   * lingering report (which also carries `.font-claude-response`) would leak into
+   * the conversation as a stale extra assistant turn.
+   */
+  private isInDismissedPanel(element: Element): boolean {
+    return element.closest('[inert], [aria-hidden="true"]') !== null;
   }
 
   // ========== ID & Title Extraction ==========
@@ -137,14 +159,17 @@ export class ClaudeExtractor extends BaseExtractor {
    * Collect user/assistant message elements in DOM order.
    *
    * User messages nested inside an assistant response (e.g. quoted content) are
-   * skipped. Shared by extractMessages() (single pass) and harvestWindow()
-   * (per-scroll-window pass for virtualized conversations).
+   * skipped, as is anything inside a dismissed artifact panel (a closed report
+   * lingers with `.font-claude-response`; see {@link isInDismissedPanel}).
+   * Shared by extractMessages() (single pass) and harvestWindow() (per-scroll-
+   * window pass for virtualized conversations).
    */
   private collectSortedElements(): Array<{ element: Element; type: 'user' | 'assistant' }> {
     const allElements: Array<{ element: Element; type: 'user' | 'assistant' }> = [];
 
     const userMessages = this.queryAllWithFallback<HTMLElement>(SELECTORS.userMessage);
     userMessages.forEach(el => {
+      if (this.isInDismissedPanel(el)) return;
       const assistantParent = el.closest('.font-claude-response, [class*="font-claude-response"]');
       if (!assistantParent) {
         allElements.push({ element: el, type: 'user' });
@@ -153,6 +178,7 @@ export class ClaudeExtractor extends BaseExtractor {
 
     const assistantResponses = this.queryAllWithFallback<HTMLElement>(SELECTORS.assistantResponse);
     assistantResponses.forEach(el => {
+      if (this.isInDismissedPanel(el)) return;
       allElements.push({ element: el, type: 'assistant' });
     });
 
