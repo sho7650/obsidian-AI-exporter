@@ -92,9 +92,77 @@ function createVirtualList(opts: {
   return { container, harvest };
 }
 
+/**
+ * Build a list whose bottom `tail` turns NEVER evict (they stay mounted in every
+ * window), while the middle evicts as you scroll up — the real Claude behavior
+ * behind the #352 ordering scramble. When scrolled near the top the harvested
+ * DOM window is `[0..W-1, <persistent tail>]`, so mergeWindow's overlap check
+ * fails (window tail ≠ accumulated head) and it wedges the tail into the middle.
+ * Each turn carries a monotonic `order` (its data-index) so the engine can sort.
+ */
+function createPersistentTailList(opts: {
+  total: number;
+  movingWindow: number;
+  tail: number;
+  clientHeight?: number;
+}): {
+  container: HTMLElement;
+  harvest: () => Array<{ key: string; value: string; order: number }>;
+} {
+  const { total, movingWindow: W, tail: P } = opts;
+  const clientHeight = opts.clientHeight ?? 900;
+  const maxScroll = 10_000;
+  let scrollTop = maxScroll; // opens at the bottom
+
+  const container = document.createElement('div');
+  Object.defineProperty(container, 'scrollTop', {
+    get: () => scrollTop,
+    set: (v: number) => {
+      scrollTop = Math.max(0, Math.min(maxScroll, v));
+    },
+    configurable: true,
+  });
+  Object.defineProperty(container, 'clientHeight', { get: () => clientHeight, configurable: true });
+  Object.defineProperty(container, 'scrollHeight', {
+    get: () => maxScroll + clientHeight,
+    configurable: true,
+  });
+
+  const maxStart = Math.max(0, total - W);
+  const harvest = () => {
+    const start = Math.round((scrollTop / maxScroll) * maxStart);
+    const idxs = new Set<number>();
+    for (let i = start; i < start + W && i < total; i++) idxs.add(i);
+    for (let i = total - P; i < total; i++) idxs.add(i); // persistent, never-evicting tail
+    return [...idxs]
+      .sort((a, b) => a - b)
+      .map(i => ({ key: `idx-${i}`, value: `v${i}`, order: i }));
+  };
+
+  return { container, harvest };
+}
+
 describe('accumulateWhileScrolling', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
+
+  it('orders turns by their monotonic index when the tail never evicts (issue #352)', async () => {
+    // The last 3 turns stay mounted in every window; the middle evicts. Overlap
+    // stitching alone wedges the tail into the middle — the engine must fall back
+    // to the per-turn `order` to reconstruct the true conversation order.
+    const { container, harvest } = createPersistentTailList({
+      total: 20,
+      movingWindow: 6,
+      tail: 3,
+    });
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.itemCount).toBe(20);
+    expect(result.items).toEqual(Array.from({ length: 20 }, (_, i) => `v${i}`));
+  });
 
   it('accumulates every turn across windows despite eviction', async () => {
     const { container, harvest } = createVirtualList({ total: 12, windowSize: 4 });

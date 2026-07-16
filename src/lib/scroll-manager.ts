@@ -141,6 +141,15 @@ export interface HarvestEntry<T> {
   key: string;
   /** The extracted value (e.g. a ConversationMessage). */
   value: T;
+  /**
+   * Optional monotonic conversation-order index for this turn (e.g. Claude's
+   * `data-index`). When *every* harvested turn supplies one, accumulation orders
+   * the result by it instead of by window-overlap stitching — robust against the
+   * mergeWindow scramble that occurs when the newest turns never evict and the
+   * middle does (issue #352). Platforms without a numeric order (e.g. ChatGPT's
+   * uuid keys) omit it and keep the overlap-stitched order.
+   */
+  order?: number;
 }
 
 /** Result of accumulating a virtualized conversation via scrolling. */
@@ -194,6 +203,22 @@ export function mergeWindow(accumulated: readonly string[], window: readonly str
   return dedupeKeys([...prefix, ...accumulated]);
 }
 
+/**
+ * Final key order for the accumulated turns.
+ *
+ * When *every* captured turn carries a monotonic order index (Claude's
+ * `data-index`), sort by it — the authoritative conversation order — rather than
+ * trusting the window-overlap stitching, which scrambles when the newest turns
+ * never evict and the middle does (issue #352). Otherwise (e.g. ChatGPT's uuid
+ * keys, no numeric order) keep the stitched order unchanged.
+ */
+function resolveOrder(order: readonly string[], orderIndex: ReadonlyMap<string, number>): string[] {
+  if (order.length > 0 && order.every(k => orderIndex.has(k))) {
+    return [...order].sort((a, b) => (orderIndex.get(a) as number) - (orderIndex.get(b) as number));
+  }
+  return [...order];
+}
+
 /** Remove duplicate keys, keeping first occurrence. */
 function dedupeKeys(keys: readonly string[]): string[] {
   const seen = new Set<string>();
@@ -230,12 +255,14 @@ export async function accumulateWhileScrolling<T>(
   harvest: () => HarvestEntry<T>[]
 ): Promise<AccumulateResult<T>> {
   const content = new Map<string, T>();
+  const orderIndex = new Map<string, number>();
   let order: string[] = [];
 
   const ingest = (): void => {
     const window = harvest();
     for (const entry of window) {
       content.set(entry.key, entry.value); // last write wins → freshest content
+      if (entry.order !== undefined) orderIndex.set(entry.key, entry.order);
     }
     order = mergeWindow(
       order,
@@ -243,7 +270,7 @@ export async function accumulateWhileScrolling<T>(
     );
   };
 
-  const toItems = (): T[] => order.map(key => content.get(key) as T);
+  const toItems = (): T[] => resolveOrder(order, orderIndex).map(key => content.get(key) as T);
 
   // Seed at the true bottom so the newest turns are mounted before harvesting.
   // Sync may start with the view scrolled up (issue #348): the last turn is then
@@ -282,15 +309,19 @@ export async function accumulateWhileScrolling<T>(
     return content.size > before;
   });
 
+  logAccumulation(fullyLoaded, content.size, iterations);
+  return { items: toItems(), fullyLoaded, itemCount: content.size, iterations, skipped: false };
+}
+
+/** Log the outcome of an upward accumulation pass (stabilized vs timed out). */
+function logAccumulation(fullyLoaded: boolean, turns: number, iterations: number): void {
   if (fullyLoaded) {
-    console.info(`[G2O] Accumulated ${content.size} turns after ${iterations} scroll iterations`);
+    console.info(`[G2O] Accumulated ${turns} turns after ${iterations} scroll iterations`);
   } else {
     console.warn(
-      `[G2O] Auto-scroll accumulation timed out after ${SCROLL_TIMEOUT}ms with ${content.size} turns`
+      `[G2O] Auto-scroll accumulation timed out after ${SCROLL_TIMEOUT}ms with ${turns} turns`
     );
   }
-
-  return { items: toItems(), fullyLoaded, itemCount: content.size, iterations, skipped: false };
 }
 
 /**
