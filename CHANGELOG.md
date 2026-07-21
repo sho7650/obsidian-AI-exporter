@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.7](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.2.6...v2.2.7) (2026-07-21)
+
+
+### Documentation
+
+* document LaTeX math preservation in READMEs ([#358](https://github.com/sho7650/obsidian-AI-exporter/issues/358)) ([d58cc53](https://github.com/sho7650/obsidian-AI-exporter/commit/d58cc53ddbe68b31f359ed8b125e70a1e1f31bf2))
+
+
+### Miscellaneous
+
+* **deps-dev:** Bump brace-expansion from 5.0.6 to 5.0.7 ([#361](https://github.com/sho7650/obsidian-AI-exporter/issues/361)) ([85a0b0e](https://github.com/sho7650/obsidian-AI-exporter/commit/85a0b0e39132d0472a2489046fc08347d9f80190))
+
 ## [2.2.6](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.2.5...v2.2.6) (2026-07-16)
 
 
