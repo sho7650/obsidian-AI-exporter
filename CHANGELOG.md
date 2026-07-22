@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.8](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.2.7...v2.2.8) (2026-07-22)
+
+
+### Bug Fixes
+
+* scale scroll accumulation with a progress-aware deadline ([#360](https://github.com/sho7650/obsidian-AI-exporter/issues/360)) ([#366](https://github.com/sho7650/obsidian-AI-exporter/issues/366)) ([2025039](https://github.com/sho7650/obsidian-AI-exporter/commit/2025039fde6a7181b2fd7e5f7e2a2c5a858ac3d1))
+
 ## [2.2.7](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.2.6...v2.2.7) (2026-07-21)
 
 
