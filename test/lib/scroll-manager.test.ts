@@ -55,6 +55,12 @@ function createVirtualList(opts: {
    * turn is below the fold and not in the initially-mounted window.
    */
   startFraction?: number;
+  /**
+   * Total scroll range in px (default 10_000). A larger range means more scroll
+   * iterations are needed to reach the top, modelling a very long conversation
+   * whose accumulation exceeds the old fixed wall-clock timeout.
+   */
+  maxScroll?: number;
 }): {
   container: HTMLElement;
   harvest: () => Array<{ key: string; value: string }>;
@@ -63,7 +69,7 @@ function createVirtualList(opts: {
   const clientHeight = opts.clientHeight ?? 900;
   // A conversation that fits entirely in one window has no scroll range.
   const fits = total <= windowSize;
-  const maxScroll = fits ? 0 : 10_000;
+  const maxScroll = fits ? 0 : (opts.maxScroll ?? 10_000);
   const items = Array.from({ length: total }, (_, i) => ({ key: `k${i}`, value: `v${i}` }));
 
   const container = document.createElement('div');
@@ -176,6 +182,57 @@ describe('accumulateWhileScrolling', () => {
     expect(result.itemCount).toBe(12);
     // Ordered from first turn to last.
     expect(result.items).toEqual(Array.from({ length: 12 }, (_, i) => `v${i}`));
+  });
+
+  it('keeps accumulating past the old fixed 30s wall while progress continues (issue #360)', async () => {
+    // A very long conversation: reaching the top takes ~150 scroll iterations,
+    // far more than the old 30_000ms / 400ms ≈ 75-iteration wall-clock wall.
+    // Because every step surfaces new turns, the progress-aware deadline must
+    // never cut off mid-scroll — the whole conversation must be captured.
+    const { container, harvest } = createVirtualList({
+      total: 300,
+      windowSize: 6,
+      clientHeight: 1000, // step = 600px → 90_000 / 600 = 150 iterations to top
+      maxScroll: 90_000,
+    });
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.fullyLoaded).toBe(true);
+    expect(result.itemCount).toBe(300);
+    expect(result.items).toEqual(Array.from({ length: 300 }, (_, i) => `v${i}`));
+  });
+
+  it('stops via the idle deadline (not the absolute cap) when stuck below the top', async () => {
+    // The scroll never reaches the top and no new turns ever mount after the
+    // seed window: a broken/stuck scroller. Accumulation must give up promptly
+    // on the no-progress (idle) deadline, not grind until the absolute cap.
+    const container = document.createElement('div');
+    let scrollTop = 10_000;
+    Object.defineProperty(container, 'scrollTop', {
+      get: () => scrollTop,
+      set: (v: number) => {
+        scrollTop = Math.max(3_000, v); // never pins at the top
+      },
+      configurable: true,
+    });
+    Object.defineProperty(container, 'clientHeight', { get: () => 900, configurable: true });
+    Object.defineProperty(container, 'scrollHeight', { get: () => 10_900, configurable: true });
+    // Fixed window: the same 6 turns mount forever, so no iteration ever grows.
+    const window = Array.from({ length: 6 }, (_, i) => ({ key: `k${i}`, value: `v${i}` }));
+    const harvest = () => window;
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.fullyLoaded).toBe(false);
+    expect(result.itemCount).toBe(6);
+    // Idle deadline (~15s / 400ms ≈ 38 iters) fires long before the old 30s
+    // wall (~75) or the absolute cap (~750): proves the idle path, not the cap.
+    expect(result.iterations).toBeLessThan(50);
   });
 
   it('captures the newest turn even when Sync starts scrolled up (issue #348)', async () => {

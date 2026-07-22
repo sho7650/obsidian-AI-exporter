@@ -6,7 +6,6 @@
 import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { extractErrorMessage } from '../../lib/error-utils';
-import { SCROLL_TIMEOUT } from '../../lib/constants';
 import { ensureAllElementsLoaded, type ScrollResult } from '../../lib/scroll-manager';
 import { fetchImageAsBase64 } from '../image-capture';
 import type {
@@ -92,7 +91,7 @@ export class GeminiExtractor extends BaseExtractor {
 
       if (scrollResult && !scrollResult.fullyLoaded && !scrollResult.skipped) {
         const warning =
-          `Auto-scroll timed out after ${SCROLL_TIMEOUT / 1000}s. ` +
+          `Auto-scroll timed out before reaching the top. ` +
           `Some earlier messages may be missing (${scrollResult.elementCount} turns loaded).`;
         return { ...result, warnings: [...(result.warnings ?? []), warning] };
       }

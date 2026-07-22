@@ -20,7 +20,6 @@ import {
   MAX_CONVERSATION_TITLE_LENGTH,
   MAX_DEEP_RESEARCH_TITLE_LENGTH,
   PLATFORM_LABELS,
-  SCROLL_TIMEOUT,
 } from '../../lib/constants';
 import { accumulateWhileScrolling, type HarvestEntry } from '../../lib/scroll-manager';
 
@@ -164,7 +163,7 @@ export abstract class BaseExtractor implements IConversationExtractor {
     return {
       messages,
       warning:
-        `Auto-scroll timed out after ${SCROLL_TIMEOUT / 1000}s. ` +
+        `Auto-scroll timed out before reaching the top. ` +
         `Some earlier messages may be missing (${result.itemCount} turns loaded).`,
     };
   }
