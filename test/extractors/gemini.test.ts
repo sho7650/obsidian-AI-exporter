@@ -3,7 +3,7 @@ import { GeminiExtractor } from '../../src/content/extractors/gemini';
 import { buildSourceMap } from '../../src/lib/source-map';
 import {
   SCROLL_POLL_INTERVAL,
-  SCROLL_TIMEOUT,
+  SCROLL_MAX_TIMEOUT,
   SCROLL_STABILITY_THRESHOLD,
   SCROLL_REARM_DELAY,
 } from '../../src/lib/constants';
@@ -1138,9 +1138,10 @@ describe('GeminiExtractor', () => {
 
       const extractPromise = extractor.extract();
 
-      // Advance past the full timeout (with re-arm delay per iteration)
+      // Growth never stops, so the pass runs until the absolute safety cap
+      // (SCROLL_MAX_TIMEOUT) rather than a fixed 30s wall. Advance past it.
       const perIteration = SCROLL_REARM_DELAY + SCROLL_POLL_INTERVAL;
-      await vi.advanceTimersByTimeAsync(SCROLL_TIMEOUT + perIteration * 2);
+      await vi.advanceTimersByTimeAsync(SCROLL_MAX_TIMEOUT + perIteration * 2);
 
       const result = await extractPromise;
 
@@ -1148,8 +1149,49 @@ describe('GeminiExtractor', () => {
       expect(result.warnings).toBeDefined();
       const timeoutWarning = result.warnings!.find(w => w.includes('Auto-scroll timed out'));
       expect(timeoutWarning).toBeDefined();
-      expect(timeoutWarning).toContain(`${SCROLL_TIMEOUT / 1000}s`);
       expect(timeoutWarning).toContain('turns loaded');
+    });
+
+    it('keeps loading a long conversation past the old 30s wall while turns keep arriving (issue #360)', async () => {
+      setGeminiLocation('test123');
+      setGeminiTitle('Long Conversation');
+      const initialHTML = createGeminiConversationDOM([
+        { role: 'user', content: 'Q1' },
+        { role: 'assistant', content: '<p>A1</p>' },
+      ]);
+      loadFixture(createGeminiScrollableDOM(initialHTML));
+
+      // Genuine growth: an older turn loads on each scroll for many iterations,
+      // then loading stops and the count stabilizes. The total scroll time far
+      // exceeds the old fixed 30s wall, so a fixed-timeout engine would cut off
+      // mid-load and emit a timeout warning; a progress-aware engine must load
+      // them all with no warning.
+      let added = 0;
+      const TOTAL_TO_ADD = 100;
+      mockScrollContainer(1000, () => {
+        if (added < TOTAL_TO_ADD) {
+          const scroller = document.querySelector('infinite-scroller');
+          if (!scroller) return;
+          added++;
+          scroller.insertAdjacentHTML(
+            'afterbegin',
+            createTurnHTML(`Loaded Q${added}`, `Loaded A${added}`, 100 + added)
+          );
+        }
+      });
+
+      const extractPromise = extractor.extract();
+      // Advance far past the old 30s wall so a fixed-timeout engine would have
+      // long since timed out mid-load.
+      await vi.advanceTimersByTimeAsync(200_000);
+
+      const result = await extractPromise;
+
+      expect(result.success).toBe(true);
+      const timeoutWarning = result.warnings?.find(w => w.includes('Auto-scroll timed out'));
+      expect(timeoutWarning).toBeUndefined();
+      // Far more than the ~25 turns an old 30s wall could load before cutting off.
+      expect(result.data!.messages.length).toBeGreaterThanOrEqual(150);
     });
 
     it('does not scroll when Deep Research panel is visible', async () => {
@@ -1242,8 +1284,9 @@ describe('GeminiExtractor', () => {
 
       const extractPromise = extractor.extract();
 
+      // Growth never stops → the pass runs until the absolute safety cap.
       const perIteration = SCROLL_REARM_DELAY + SCROLL_POLL_INTERVAL;
-      await vi.advanceTimersByTimeAsync(SCROLL_TIMEOUT + perIteration * 2);
+      await vi.advanceTimersByTimeAsync(SCROLL_MAX_TIMEOUT + perIteration * 2);
 
       const result = await extractPromise;
 

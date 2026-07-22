@@ -7,13 +7,31 @@
 
 import {
   SCROLL_POLL_INTERVAL,
-  SCROLL_TIMEOUT,
+  SCROLL_IDLE_TIMEOUT,
+  SCROLL_MAX_TIMEOUT,
   SCROLL_STABILITY_THRESHOLD,
   SCROLL_REARM_DELAY,
   SCROLL_ACCUMULATE_POLL_INTERVAL,
   SCROLL_ACCUMULATE_STEP_FACTOR,
   SCROLL_ACCUMULATE_MIN_STEP,
 } from './constants';
+
+/**
+ * Progress-aware accumulation deadline (issue #360, ADR-018).
+ *
+ * A scroll pass keeps running while it is still making progress: the pass is
+ * live until either no new turns have appeared for {@link SCROLL_IDLE_TIMEOUT}
+ * (a stuck/broken scroll) or the absolute {@link SCROLL_MAX_TIMEOUT} safety cap
+ * is reached. Callers reset `lastProgressTime` on every iteration that surfaces
+ * a new turn, so a genuinely-long conversation is never cut off mid-scroll.
+ *
+ * @param startTime When the pass began (`Date.now()`).
+ * @param lastProgressTime When the pass last made progress (`Date.now()`).
+ */
+function withinDeadline(startTime: number, lastProgressTime: number): boolean {
+  const now = Date.now();
+  return now - lastProgressTime < SCROLL_IDLE_TIMEOUT && now - startTime < SCROLL_MAX_TIMEOUT;
+}
 
 /**
  * Result of the auto-scroll process
@@ -80,8 +98,9 @@ export async function ensureAllElementsLoaded(
   let stableCount = 0;
   let iterations = 0;
   const startTime = Date.now();
+  let lastProgressTime = startTime;
 
-  while (Date.now() - startTime < SCROLL_TIMEOUT) {
+  while (withinDeadline(startTime, lastProgressTime)) {
     // Re-arm: if already at top, scroll to bottom first so the next
     // scroll-to-0 crosses the onScrolledTopPastThreshold edge trigger.
     if (container.scrollTop === 0) {
@@ -118,11 +137,15 @@ export async function ensureAllElementsLoaded(
       console.debug(`[G2O] Element count changed: ${previousCount} -> ${currentCount}`);
       stableCount = 0;
       previousCount = currentCount;
+      lastProgressTime = Date.now(); // progress → reset the idle deadline
     }
   }
 
   const finalCount = countElements(elementSelector);
-  console.warn(`[G2O] Auto-scroll timed out after ${SCROLL_TIMEOUT}ms with ${finalCount} elements`);
+  console.warn(
+    `[G2O] Auto-scroll timed out (no new elements for ${SCROLL_IDLE_TIMEOUT / 1000}s) ` +
+      `with ${finalCount} elements`
+  );
   return {
     fullyLoaded: false,
     elementCount: finalCount,
@@ -240,8 +263,9 @@ function dedupeKeys(keys: readonly string[]): string[] {
  * pass. Instead we harvest the current window, scroll up by a fraction of the
  * viewport (keeping windows overlapping), harvest again, and merge — repeating
  * until the top is reached and no new turns appear for
- * {@link SCROLL_STABILITY_THRESHOLD} consecutive iterations, or until
- * {@link SCROLL_TIMEOUT} elapses.
+ * {@link SCROLL_STABILITY_THRESHOLD} consecutive iterations, or the
+ * progress-aware deadline ({@link SCROLL_IDLE_TIMEOUT} / {@link SCROLL_MAX_TIMEOUT})
+ * elapses.
  *
  * De-duplication is by {@link HarvestEntry.key}; the most recently harvested
  * value for a key wins, so a turn that was mid-stream on first sight is replaced
@@ -319,14 +343,16 @@ function logAccumulation(fullyLoaded: boolean, turns: number, iterations: number
     console.info(`[G2O] Accumulated ${turns} turns after ${iterations} scroll iterations`);
   } else {
     console.warn(
-      `[G2O] Auto-scroll accumulation timed out after ${SCROLL_TIMEOUT}ms with ${turns} turns`
+      `[G2O] Auto-scroll accumulation timed out (no new turns for ` +
+        `${SCROLL_IDLE_TIMEOUT / 1000}s) with ${turns} turns`
     );
   }
 }
 
 /**
  * Scroll a container upward one step per iteration until harvesting stops
- * yielding new turns while pinned at the top, or {@link SCROLL_TIMEOUT} elapses.
+ * yielding new turns while pinned at the top, or the progress-aware deadline
+ * ({@link SCROLL_IDLE_TIMEOUT} / {@link SCROLL_MAX_TIMEOUT}) elapses.
  *
  * Stability is only counted once already at the top, so a mid-scroll window that
  * happens to mount nothing new doesn't end accumulation prematurely.
@@ -342,8 +368,9 @@ async function scrollUpUntilStable(
   let stable = 0;
   let iterations = 0;
   const startTime = Date.now();
+  let lastProgressTime = startTime;
 
-  while (Date.now() - startTime < SCROLL_TIMEOUT) {
+  while (withinDeadline(startTime, lastProgressTime)) {
     const wasAtTop = container.scrollTop <= 0;
     container.scrollTop = Math.max(0, container.scrollTop - step);
     await delay(SCROLL_ACCUMULATE_POLL_INTERVAL);
@@ -353,6 +380,7 @@ async function scrollUpUntilStable(
 
     if (grew) {
       stable = 0;
+      lastProgressTime = Date.now(); // progress → reset the idle deadline
     } else if (wasAtTop && ++stable >= SCROLL_STABILITY_THRESHOLD) {
       return { iterations, fullyLoaded: true };
     }

@@ -176,8 +176,27 @@ export const PLATFORM_LABELS: Record<AIPlatform, string> = Object.fromEntries(
 /** Interval between scroll-to-top attempts (milliseconds) */
 export const SCROLL_POLL_INTERVAL = 1000;
 
-/** Maximum time to wait for all messages to load (milliseconds) */
-export const SCROLL_TIMEOUT = 30000;
+// Progress-aware accumulation deadlines (issue #360, ADR-018).
+//
+// A single fixed wall-clock timeout did not scale with conversation length: at
+// ~400ms per iteration it capped accumulation at ~75 turns, so any longer (or
+// previously-synced-and-since-grown) conversation timed out mid-scroll with a
+// partial capture. A fixed wall is also unreliable under Chrome's background-tab
+// timer throttling — setTimeout is clamped to ≥1s when the tab is hidden and to
+// ~10s once it has been hidden >5min (MDN: Window/setTimeout, "Timeouts in
+// inactive tabs") — which shrinks how many iterations a wall-clock budget buys.
+//
+// The engines already stop on their own when accumulation stalls
+// (SCROLL_STABILITY_THRESHOLD consecutive no-growth iterations), so the deadline
+// only needs to bound the two failure modes below. The idle deadline resets on
+// every iteration that surfaces a new turn, so genuine progress is never cut off
+// regardless of total length; the absolute cap bounds pathological growth.
+
+/** Give up if no new turns appear for this long — a stuck/broken scroll (ms). */
+export const SCROLL_IDLE_TIMEOUT = 15000;
+
+/** Absolute safety cap on a single accumulation pass (ms). */
+export const SCROLL_MAX_TIMEOUT = 300000;
 
 /** Number of consecutive unchanged element counts to consider loading complete */
 export const SCROLL_STABILITY_THRESHOLD = 3;
