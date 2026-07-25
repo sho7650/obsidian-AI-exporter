@@ -16,6 +16,7 @@ import {
   createClaudePageWithToolUse,
   createClaudePageWithThinkingStatus,
   createClaudePageWithMultiStatusResponse,
+  createClaudePageWithMixedContentBlocks,
 } from '../fixtures/dom-helpers';
 
 describe('ClaudeExtractor', () => {
@@ -1629,6 +1630,123 @@ console.log(x);</code></pre>
       expect(assistantMsg?.content).toContain('Final answer body.');
       expect(assistantMsg?.content).not.toContain('Investigated the problem');
       expect(assistantMsg?.content).not.toContain('Summarized findings');
+    });
+  });
+
+  // ========== Mixed grid + top-level content blocks ==========
+  //
+  // A response may place its answer in top-level `.standard-markdown` blocks
+  // that sit OUTSIDE the `.row-start-2` grid sections used by the preceding
+  // thinking / tool-use steps. Treating the two locations as mutually exclusive
+  // dropped the entire answer whenever both were present.
+  describe('Mixed content blocks (grid steps + top-level markdown)', () => {
+    it('captures top-level content that follows grid step blocks', async () => {
+      createClaudePageWithMixedContentBlocks('11111111-2222-3333-4444-555555555551', 'Question', [
+        { kind: 'step', statusText: 'Status one.', content: '<p>PREAMBLE-1</p>' },
+        { kind: 'step', statusText: 'Searched the web', content: '<p>PREAMBLE-2</p>' },
+        { kind: 'step', statusText: 'Status three.', content: '<p>PREAMBLE-3</p>' },
+        { kind: 'body', content: '<p>ANSWER-A</p>' },
+        { kind: 'body', content: '<p>ANSWER-B</p><h3>HEADING</h3>' },
+      ]);
+
+      const result = await extractor.extract();
+      expect(result.success).toBe(true);
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+
+      // The answer lives outside .row-start-2 and must survive
+      expect(assistantMsg?.content).toContain('ANSWER-A');
+      expect(assistantMsg?.content).toContain('ANSWER-B');
+      expect(assistantMsg?.content).toContain('HEADING');
+      // Step preambles are visible response text too
+      expect(assistantMsg?.content).toContain('PREAMBLE-1');
+      expect(assistantMsg?.content).toContain('PREAMBLE-3');
+      // Status labels stay out of the body
+      expect(assistantMsg?.content).not.toContain('Searched the web');
+    });
+
+    it('preserves DOM order when step and body blocks interleave', async () => {
+      createClaudePageWithMixedContentBlocks('11111111-2222-3333-4444-555555555552', 'Question', [
+        { kind: 'step', statusText: 'First step.', content: '<p>FIRST</p>' },
+        { kind: 'body', content: '<p>SECOND</p>' },
+        { kind: 'step', statusText: 'Third step.', content: '<p>THIRD</p>' },
+        { kind: 'body', content: '<p>FOURTH</p>' },
+      ]);
+
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+
+      expect(content).toContain('FIRST');
+      expect(content).toContain('FOURTH');
+      expect(content.indexOf('FIRST')).toBeLessThan(content.indexOf('SECOND'));
+      expect(content.indexOf('SECOND')).toBeLessThan(content.indexOf('THIRD'));
+      expect(content.indexOf('THIRD')).toBeLessThan(content.indexOf('FOURTH'));
+    });
+
+    it('ignores embedded widget containers that carry no markdown', async () => {
+      createClaudePageWithMixedContentBlocks('11111111-2222-3333-4444-555555555553', 'Question', [
+        { kind: 'step', statusText: 'Status.', content: '<p>PREAMBLE</p>' },
+        { kind: 'body', content: '<p>BEFORE-WIDGET</p>' },
+        { kind: 'widget' },
+        { kind: 'body', content: '<p>AFTER-WIDGET</p>' },
+      ]);
+
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+
+      expect(content).toContain('BEFORE-WIDGET');
+      expect(content).toContain('AFTER-WIDGET');
+      expect(content).not.toContain('iframe');
+    });
+
+    it('keeps tool markdown inside the status header out of the response body', async () => {
+      createClaudePageWithMixedContentBlocks('11111111-2222-3333-4444-555555555554', 'Question', [
+        {
+          kind: 'step',
+          statusText: 'Ran a tool.',
+          content: '<p>PREAMBLE</p>',
+          toolMarkdown: 'TOOL-ONLY-TEXT',
+        },
+        { kind: 'body', content: '<p>ANSWER</p>' },
+      ]);
+
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+
+      expect(content).toContain('PREAMBLE');
+      expect(content).toContain('ANSWER');
+      // .standard-markdown nested in the OUTER .row-start-1 is tool content
+      expect(content).not.toContain('TOOL-ONLY-TEXT');
+    });
+
+    it('does not emit nested fallback matches twice', async () => {
+      // No .standard-markdown, so the lower-priority [class*="markdown"]
+      // selector takes over — and it matches BOTH the wrapper and the inner
+      // node. Sweeping every match must not duplicate the shared text.
+      setClaudeLocation('11111111-2222-3333-4444-555555555555');
+      loadFixture(`
+        <div class="conversation-thread">
+          <div data-test-render-count="2" class="group" style="height: auto;">
+            <div class="bg-bg-300 rounded-xl">
+              <div data-testid="user-message">
+                <p class="whitespace-pre-wrap break-words">Question</p>
+              </div>
+            </div>
+          </div>
+          <div data-test-render-count="1" class="group" style="height: auto;">
+            <div class="font-claude-response" data-is-streaming="false">
+              <div class="markdown-wrapper">
+                <div class="markdown-body"><p>NESTED-ONCE</p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `);
+
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+
+      expect(content).toContain('NESTED-ONCE');
+      expect(content.split('NESTED-ONCE').length - 1).toBe(1);
     });
   });
 

@@ -946,6 +946,104 @@ export function createClaudePageWithMultiStatusResponse(
   `);
 }
 
+/**
+ * One content block inside a Claude assistant response.
+ *
+ * - `step`   — a `.grid` block with a `.row-start-1` status header and the
+ *              content nested under `.row-start-2`.
+ * - `body`   — a top-level `.standard-markdown` block that is a sibling of the
+ *              grid blocks, i.e. NOT inside any `.row-start-2`.
+ * - `widget` — a non-markdown container (embedded app / iframe) that carries no
+ *              extractable text.
+ */
+export type ClaudeContentBlock =
+  | { kind: 'step'; statusText: string; content: string; toolMarkdown?: string }
+  | { kind: 'body'; content: string }
+  | { kind: 'widget' };
+
+/**
+ * Create a Claude page whose assistant response MIXES grid step blocks with
+ * top-level markdown blocks.
+ *
+ * Structure only — no captured conversation text. Mirrors the shape observed on
+ * the live site when a response interleaves thinking / tool-use steps with the
+ * final answer:
+ *
+ * ```
+ * .font-claude-response
+ *   div > .grid > .row-start-1            <- status header (+ optional tool markdown)
+ *               > .row-start-2
+ *                   > .row-start-1        <- NOTE: the class names are REUSED
+ *                       > … > .standard-markdown   <- step content
+ *   div > .standard-markdown              <- top-level answer, outside any .row-start-2
+ * ```
+ *
+ * The nested `.row-start-1` inside `.row-start-2` is the load-bearing detail:
+ * a rule that simply skips everything under `.row-start-1` would discard the
+ * step content too. {@link createClaudePageWithMultiStatusResponse} models only
+ * the all-content-inside-`.row-start-2` case and cannot express this mix.
+ */
+export function createClaudePageWithMixedContentBlocks(
+  conversationId: string,
+  userContent: string,
+  blocks: ClaudeContentBlock[]
+): void {
+  setClaudeLocation(conversationId);
+
+  const renderStep = (block: Extract<ClaudeContentBlock, { kind: 'step' }>): string => `
+      <div><div class="grid grid-rows-[auto_auto] min-w-0">
+        <div class="row-start-1 col-start-1 min-w-0">
+          <div class="min-w-0 pl-2 py-[var(--msg-pill-py,0.375rem)]">
+            <button class="group/status" aria-expanded="false">
+              <span class="truncate font-base">${escapeHtmlForClaude(block.statusText)}</span>
+            </button>
+            ${block.toolMarkdown ? `<div class="standard-markdown"><p>${block.toolMarkdown}</p></div>` : ''}
+          </div>
+        </div>
+        <div class="row-start-2 col-start-1 relative grid grid-rows-[auto_auto] isolate min-w-0">
+          <div class="row-start-1 col-start-1 relative z-[2] min-w-0">
+            <div><div><div class="standard-markdown grid-cols-1 grid">${block.content}</div></div></div>
+          </div>
+        </div>
+      </div></div>`;
+
+  const renderBody = (block: Extract<ClaudeContentBlock, { kind: 'body' }>): string =>
+    `<div><div class="standard-markdown grid-cols-1 grid">${block.content}</div></div>`;
+
+  const renderWidget = (): string => `
+      <div data-find-omitted="" class="contents"></div>
+      <div id="mcp-app-container-test" class="w-full">
+        <div class="h-full w-full"><iframe title="embedded app"></iframe></div>
+      </div>`;
+
+  const rendered = blocks
+    .map(block => {
+      if (block.kind === 'step') return renderStep(block);
+      if (block.kind === 'body') return renderBody(block);
+      return renderWidget();
+    })
+    .join('\n');
+
+  loadFixture(`
+    <div class="app-container">
+      <div class="conversation-thread">
+        <div data-test-render-count="2" class="group" style="height: auto;">
+          <div class="bg-bg-300 rounded-xl pl-2.5 py-2.5">
+            <div data-testid="user-message">
+              <p class="whitespace-pre-wrap break-words">${escapeHtmlForClaude(userContent)}</p>
+            </div>
+          </div>
+        </div>
+        <div data-test-render-count="1" class="group" style="height: auto;">
+          <div class="font-claude-response [&_.standard-markdown_:is(p,h1)]:pl-2" data-is-streaming="false">
+            ${rendered}
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
 // ========== ChatGPT DOM Helpers ==========
 
 /**

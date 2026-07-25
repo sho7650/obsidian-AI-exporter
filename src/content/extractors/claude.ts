@@ -273,43 +273,60 @@ export class ClaudeExtractor extends BaseExtractor {
    * @see NFR-001-2 in design document
    */
   private extractAssistantContent(element: Element): string {
-    // Grid layout: Extended Thinking or Tool-Use (.row-start-1 + .row-start-2).
-    //
-    // A single response may be split across MULTIPLE sequential grid blocks
-    // (interleaved thinking / tool-use steps), each with its own .row-start-2
-    // content section and the final answer in the last block. Gather every
-    // section's markdown so the answer isn't dropped when it follows earlier
-    // preamble blocks (a prior single-querySelector kept only the first).
-    // Tool-use / thinking summaries live in .row-start-1 headers, so reading
-    // only .row-start-2 keeps status labels out of the response body.
-    const responseSections = element.querySelectorAll<HTMLElement>('.row-start-2');
-    if (responseSections.length > 0) {
-      const parts: string[] = [];
-      responseSections.forEach(section => {
-        const markdownInSection = this.queryWithFallback<HTMLElement>(
-          SELECTORS.markdownContent,
-          section
-        );
-        if (markdownInSection) {
-          const html = sanitizeHtml(markdownInSection.innerHTML);
-          if (html.trim()) parts.push(html);
-        }
-      });
-      if (parts.length > 0) {
-        return parts.join('\n');
-      }
-      // All .row-start-2 sections empty (e.g., thinking-status responses where
-      // content is a grid sibling). Fall through to search entire element.
+    const parts = this.collectResponseMarkdown(element);
+    if (parts.length > 0) {
+      return parts.join('\n');
     }
 
-    // Non-grid fallback or empty .row-start-2: search the entire element
-    const markdownEl = this.queryWithFallback<HTMLElement>(SELECTORS.markdownContent, element);
-    if (markdownEl) {
-      return sanitizeHtml(markdownEl.innerHTML);
-    }
-
-    // Fallback: use the element's innerHTML
+    // No markdown section anywhere: fall back to the whole response element.
     return sanitizeHtml(element.innerHTML);
+  }
+
+  /**
+   * Collect the response body's markdown sections, in DOM order.
+   *
+   * A single response interleaves two content shapes. Thinking / tool-use steps
+   * put their text inside a grid block's `.row-start-2`, while the final answer
+   * is emitted as top-level `.standard-markdown` blocks that sit inside NO grid
+   * section. Earlier revisions read only `.row-start-2` and fell back to a
+   * whole-element search solely when every section came back empty, so a
+   * response that had both shapes returned just the step preambles and dropped
+   * the entire answer.
+   *
+   * `querySelectorAll` walks in document order, so one sweep yields both shapes
+   * already in conversation order.
+   */
+  private collectResponseMarkdown(element: Element): string[] {
+    const sections = this.queryAllWithFallback<HTMLElement>(SELECTORS.markdownContent, element);
+    const parts: string[] = [];
+
+    for (const section of sections) {
+      if (this.isInStatusHeader(section)) continue;
+      // A lower-priority selector such as [class*="markdown"] can match both a
+      // wrapper and the node inside it; emitting both would repeat the shared
+      // text, so keep only the outermost match.
+      if (sections.some(other => other !== section && other.contains(section))) continue;
+      const html = sanitizeHtml(section.innerHTML);
+      if (html.trim()) parts.push(html);
+    }
+
+    return parts;
+  }
+
+  /**
+   * Whether a markdown section belongs to a step's status header rather than to
+   * the response body.
+   *
+   * Claude reuses `.row-start-1` / `.row-start-2` at two nesting levels: the
+   * OUTER `.row-start-1` is the status header, whose tool output is surfaced
+   * separately by {@link extractToolContentFromElement}, while a step's own text
+   * sits under `.row-start-2` — wrapped in a SECOND, nested `.row-start-1`.
+   * Skipping everything beneath any `.row-start-1` would therefore discard the
+   * step text as well; only a header outside `.row-start-2` is a status header.
+   */
+  private isInStatusHeader(element: Element): boolean {
+    const header = element.closest('.row-start-1');
+    return header !== null && header.closest('.row-start-2') === null;
   }
 
   /**
