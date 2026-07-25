@@ -58,6 +58,21 @@ describe('validateVaultPath', () => {
     expect(() => validateVaultPath('/etc/passwd')).toThrow('invalid characters');
   });
 
+  // The returned value is the trimmed string, so the checks have to run on the
+  // trimmed string too. Otherwise leading whitespace smuggles a rejected path
+  // through settings validation, and every later save fails in the background
+  // with a bare "Invalid file path".
+  it('throws on traversal hidden behind leading whitespace', () => {
+    expect(() => validateVaultPath(' /Users/victim')).toThrow('invalid characters');
+    expect(() => validateVaultPath('  ../secret')).toThrow('invalid characters');
+    expect(() => validateVaultPath('\t/etc/passwd')).toThrow('invalid characters');
+  });
+
+  it('measures length against the trimmed path', () => {
+    const maxPath = 'a'.repeat(200);
+    expect(validateVaultPath(`  ${maxPath}  `)).toBe(maxPath);
+  });
+
   it('throws on path too long', () => {
     const longPath = 'a'.repeat(201);
     expect(() => validateVaultPath(longPath)).toThrow('too long');

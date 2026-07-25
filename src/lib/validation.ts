@@ -56,18 +56,23 @@ export function validateCalloutType(type: string, defaultType: CalloutType): Cal
  * Validate vault path
  */
 export function validateVaultPath(path: string): string {
+  // Every check below runs on the trimmed value, because that is what gets
+  // stored and later joined into a vault path. Validating the raw input instead
+  // would let leading whitespace hide an absolute or traversing path from this
+  // check while still persisting the offending trimmed form — the background
+  // re-check then rejects it on every save with no way to fix it from here.
   const trimmed = path.trim();
 
   // Empty path is allowed (saves to vault root)
   if (!trimmed) return '';
 
   // Path traversal check
-  if (containsPathTraversal(path)) {
+  if (containsPathTraversal(trimmed)) {
     throw new Error('Vault path contains invalid characters');
   }
 
   // Length limit (filesystem constraint)
-  if (path.length > MAX_VAULT_PATH_LENGTH) {
+  if (trimmed.length > MAX_VAULT_PATH_LENGTH) {
     throw new Error(`Vault path is too long (max ${MAX_VAULT_PATH_LENGTH} characters)`);
   }
 
