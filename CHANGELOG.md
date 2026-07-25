@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.11](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.2.10...v2.2.11) (2026-07-25)
+
+
+### Bug Fixes
+
+* recover Claude answer text and per-step tool content ([#372](https://github.com/sho7650/obsidian-AI-exporter/issues/372)) ([d38ed4e](https://github.com/sho7650/obsidian-AI-exporter/commit/d38ed4e75d7a09cbdc1dd3993e0ce2d16d74790c))
+
+
+### Miscellaneous
+
+* **deps-dev:** Bump postcss from 8.5.15 to 8.5.23 ([#371](https://github.com/sho7650/obsidian-AI-exporter/issues/371)) ([497e43b](https://github.com/sho7650/obsidian-AI-exporter/commit/497e43bdd30d7883be815946dd4c93ed01c3c8b8))
+
 ## [2.2.10](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.2.9...v2.2.10) (2026-07-25)
 
 
