@@ -13,6 +13,7 @@ This extension extracts conversations from Google Gemini (gemini.google.com), Cl
 • Clean Markdown formatting with YAML frontmatter
 • Obsidian callout syntax for Q&A blocks (shows correct AI name)
 • Deep Research support (Gemini, Perplexity) and Extended Thinking/Artifacts (Claude)
+• Source citations - NotebookLM chat citations exported as footnotes
 • Image export - Gemini-generated images embedded in your vault, downloaded as files, or stripped for clipboard
 • Configurable timezone for frontmatter dates
 • LaTeX math formula preservation ($$...$$ and $...$) across all platforms
@@ -21,6 +22,7 @@ This extension extracts conversations from Google Gemini (gemini.google.com), Cl
 • Optional `## ` question headers for TOC navigation in long conversations
 • Auto-scroll for long conversations, including virtualized (windowed) Claude and ChatGPT threads
 • Filename schemes - choose title-id (default) or title-date naming, with collision-safe overwrite protection
+• Large-callout flattening - very long messages are saved as plain text so Obsidian stays responsive
 • Platform organization with {platform} template variable
 • HTTPS support for secure connections to Obsidian REST API
 • Customizable API URL, save location, message format, and frontmatter fields
