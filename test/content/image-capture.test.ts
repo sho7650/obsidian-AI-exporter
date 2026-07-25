@@ -45,11 +45,45 @@ describe('fetchImageAsBase64', () => {
     expect(img?.data).toBe('UE5H');
   });
 
-  it('defaults to image/png when the blob type is missing or non-image', async () => {
+  it('defaults to image/png when the blob type is missing', async () => {
     mockFetchBlob(blobLike(new Uint8Array([1, 2, 3]), ''));
 
     const img = await fetchImageAsBase64('blob:x', 'img-2', 'alt');
     expect(img?.mimeType).toBe('image/png');
+  });
+
+  // The captured bytes are written to the vault verbatim — this is the only
+  // content path that never passes through DOMPurify. Anything the shared
+  // allow-list does not cover is skipped here rather than forwarded.
+
+  it('returns null for an SVG image (not on the allow-list)', async () => {
+    mockFetchBlob(blobLike(new Uint8Array([0x3c, 0x73]), 'image/svg+xml'));
+
+    const img = await fetchImageAsBase64('blob:x', 'img-svg', 'alt');
+    expect(img).toBeNull();
+  });
+
+  it('returns null for a non-image blob type', async () => {
+    mockFetchBlob(blobLike(new Uint8Array([1, 2, 3]), 'text/html'));
+
+    const img = await fetchImageAsBase64('blob:x', 'img-html', 'alt');
+    expect(img).toBeNull();
+  });
+
+  it('returns null for an image type outside the allow-list', async () => {
+    // Would otherwise reach the background, where validateImages() rejects the
+    // WHOLE note — one unsupported image must not cost the conversation.
+    mockFetchBlob(blobLike(new Uint8Array([1, 2, 3]), 'image/heic'));
+
+    const img = await fetchImageAsBase64('blob:x', 'img-heic', 'alt');
+    expect(img).toBeNull();
+  });
+
+  it('accepts an allow-listed type carrying parameters', async () => {
+    mockFetchBlob(blobLike(new Uint8Array([0x50, 0x4e, 0x47]), 'image/PNG; charset=binary'));
+
+    const img = await fetchImageAsBase64('blob:x', 'img-param', 'alt');
+    expect(img?.mimeType).toBe('image/PNG; charset=binary');
   });
 
   it('returns null when the fetch response is not ok', async () => {

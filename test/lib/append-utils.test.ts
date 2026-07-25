@@ -5,6 +5,7 @@ import {
   buildAppendContent,
 } from '../../src/lib/append-utils';
 import type { ObsidianNote, ExtensionSettings, NoteFrontmatter } from '../../src/lib/types';
+import { SCAN_MAX_REQUESTS } from '../../src/lib/constants';
 
 // ========== extractIdSuffix ==========
 
@@ -190,7 +191,7 @@ describe('lookupExistingFile', () => {
       'AI/claude/2026/06/my-chat-abc12345.md', // resolvedPath = full path with date
       'AI/claude/2026/06', // resolvedPath dir
       testNote,
-      'AI/claude' // searchBasePath = template stripped of date variables
+      { searchBasePath: 'AI/claude' } // template stripped of date variables
     );
 
     expect(result.found).toBe(true);
@@ -211,7 +212,7 @@ describe('lookupExistingFile', () => {
       'AI/claude/my-chat-abc12345.md',
       'AI/claude',
       testNote,
-      'AI/claude' // identical to resolvedPath
+      { searchBasePath: 'AI/claude' } // identical to resolvedPath
     );
 
     expect(result.found).toBe(true);
@@ -230,7 +231,7 @@ describe('lookupExistingFile', () => {
       'AI/claude/2026/06/my-chat-abc12345.md',
       'AI/claude/2026/06',
       testNote,
-      'AI/claude'
+      { searchBasePath: 'AI/claude' }
     );
 
     expect(result.found).toBe(false);
@@ -250,12 +251,120 @@ describe('lookupExistingFile', () => {
       'AI/claude/2026/06/my-chat-abc12345.md',
       'AI/claude/2026/06',
       testNote,
-      'AI/claude'
+      { searchBasePath: 'AI/claude' }
     );
 
     // getFile must have been called exactly once (the direct check at step 1).
     expect(mockClient.getFile).toHaveBeenCalledTimes(1);
     expect(result.found).toBe(false);
+  });
+
+  // ----- filenameScheme: 'title-date' -----
+  // The file name embeds the SAVE date, not the conversation id, so a note
+  // re-saved on a later day has neither a matching direct path nor a usable
+  // id suffix. Without a scheme-aware scan every day produces a duplicate note.
+
+  it('finds a file saved on an earlier day when the scheme is title-date', async () => {
+    const existingContent = '---\nid: claude_abc-def-123\n---\nBody';
+    const dateNote = createTestNote({
+      fileName: 'my-chat-2026-07-10.md',
+      frontmatter: createTestFrontmatter({ id: 'claude_abc-def-123' }),
+    });
+
+    mockClient.getFile.mockResolvedValueOnce(null); // direct miss: today's name
+    mockClient.listFiles.mockResolvedValue(['my-chat-2026-07-03.md', 'unrelated-2026-07-05.md']);
+    mockClient.getFile.mockResolvedValueOnce(existingContent);
+
+    const result = await lookupExistingFile(
+      mockClient as never,
+      'AI/claude/my-chat-2026-07-10.md',
+      'AI/claude',
+      dateNote,
+      { filenameScheme: 'title-date' }
+    );
+
+    expect(result.found).toBe(true);
+    expect(result.matchType).toBe('id-scan');
+    expect(result.path).toBe('AI/claude/my-chat-2026-07-03.md');
+  });
+
+  it('does not match a foreign conversation when the scheme is title-date', async () => {
+    const dateNote = createTestNote({
+      fileName: 'my-chat-2026-07-10.md',
+      frontmatter: createTestFrontmatter({ id: 'claude_abc-def-123' }),
+    });
+
+    mockClient.getFile.mockResolvedValueOnce(null); // direct miss
+    mockClient.listFiles.mockResolvedValue(['someone-elses-2026-07-03.md']);
+    mockClient.getFile.mockResolvedValueOnce('---\nid: claude_other-id\n---\nBody');
+
+    const result = await lookupExistingFile(
+      mockClient as never,
+      'AI/claude/my-chat-2026-07-10.md',
+      'AI/claude',
+      dateNote,
+      { filenameScheme: 'title-date' }
+    );
+
+    expect(result.found).toBe(false);
+    expect(result.matchType).toBe('none');
+  });
+
+  it('finds a title-date file in a previous month folder (recursive scan)', async () => {
+    const existingContent = '---\nid: claude_abc-def-123\n---\nBody';
+    const dateNote = createTestNote({
+      fileName: 'my-chat-2026-07-10.md',
+      frontmatter: createTestFrontmatter({ id: 'claude_abc-def-123' }),
+    });
+
+    mockClient.getFile.mockResolvedValueOnce(null); // direct miss
+    mockClient.listEntries.mockResolvedValueOnce(['2026/']);
+    mockClient.listEntries.mockResolvedValueOnce(['06/', '07/']);
+    mockClient.listEntries.mockResolvedValueOnce(['my-chat-2026-06-28.md']); // June
+    mockClient.listEntries.mockResolvedValueOnce([]); // July, still empty
+    mockClient.getFile.mockResolvedValueOnce(existingContent);
+
+    const result = await lookupExistingFile(
+      mockClient as never,
+      'AI/claude/2026/07/my-chat-2026-07-10.md',
+      'AI/claude/2026/07',
+      dateNote,
+      { searchBasePath: 'AI/claude', filenameScheme: 'title-date' }
+    );
+
+    expect(result.found).toBe(true);
+    expect(result.path).toBe('AI/claude/2026/06/my-chat-2026-06-28.md');
+  });
+
+  // ----- Request budget -----
+
+  it('stops scanning once the request budget is exhausted', async () => {
+    const dateNote = createTestNote({
+      fileName: 'my-chat-2026-07-10.md',
+      frontmatter: createTestFrontmatter({ id: 'claude_abc-def-123' }),
+    });
+
+    // Far more candidates than the budget allows; none of them match.
+    const candidates = Array.from(
+      { length: SCAN_MAX_REQUESTS + 50 },
+      (_, i) => `note-${i}-2026-07-01.md`
+    );
+    mockClient.getFile.mockResolvedValue(null);
+    mockClient.listFiles.mockResolvedValue(candidates);
+
+    const result = await lookupExistingFile(
+      mockClient as never,
+      'AI/claude/my-chat-2026-07-10.md',
+      'AI/claude',
+      dateNote,
+      { filenameScheme: 'title-date' }
+    );
+
+    expect(result.found).toBe(false);
+    // The direct-path GET plus at most the budgeted scan requests.
+    expect(mockClient.getFile.mock.calls.length).toBeLessThanOrEqual(SCAN_MAX_REQUESTS + 1);
+    // …and it must not have walked the whole candidate list.
+    expect(mockClient.getFile.mock.calls.length).toBeLessThan(candidates.length);
   });
 });
 

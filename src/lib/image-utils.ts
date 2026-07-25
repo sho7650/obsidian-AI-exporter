@@ -9,14 +9,22 @@
 /** Maximum accepted image size in bytes (10MB safety guard). */
 export const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 
-/** MIME type → file extension. Unknown types fall back to `png`. */
+/**
+ * MIME type → file extension. Unknown types fall back to `png`.
+ *
+ * SVG is intentionally excluded. Captured image bytes are the only content that
+ * reaches the vault without passing through DOMPurify, and SVG is the sole
+ * format here that can carry executable markup; Obsidian accepts `.svg` embeds,
+ * so this map is the only place the format can be gated. No supported platform
+ * is known to emit SVG for generated images — such an image is skipped at
+ * capture time (see `content/image-capture.ts`) and the note still saves.
+ */
 const MIME_TO_EXT: Readonly<Record<string, string>> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
   'image/jpg': 'jpg',
   'image/gif': 'gif',
   'image/webp': 'webp',
-  'image/svg+xml': 'svg',
   'image/avif': 'avif',
   'image/bmp': 'bmp',
 };

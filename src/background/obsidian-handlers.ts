@@ -93,14 +93,11 @@ async function tryAppendMode(
   }
 
   try {
-    const lookup = await lookupExistingFile(
-      client,
-      fullPath,
-      resolvedPath,
-      note,
+    const lookup = await lookupExistingFile(client, fullPath, resolvedPath, note, {
       searchBasePath,
-      appendPathMemo.get(note.frontmatter.id)
-    );
+      hintPath: appendPathMemo.get(note.frontmatter.id),
+      filenameScheme: settings.templateOptions.filenameScheme,
+    });
     if (!lookup.found) return null;
     rememberAppendPath(note.frontmatter.id, lookup.path);
 

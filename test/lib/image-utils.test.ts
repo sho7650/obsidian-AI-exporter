@@ -15,7 +15,6 @@ describe('mimeToExtension', () => {
     expect(mimeToExtension('image/jpeg')).toBe('jpg');
     expect(mimeToExtension('image/gif')).toBe('gif');
     expect(mimeToExtension('image/webp')).toBe('webp');
-    expect(mimeToExtension('image/svg+xml')).toBe('svg');
     expect(mimeToExtension('image/avif')).toBe('avif');
     expect(mimeToExtension('image/bmp')).toBe('bmp');
   });
@@ -75,7 +74,11 @@ describe('ALLOWED_IMAGE_MIME_TYPES', () => {
     expect(ALLOWED_IMAGE_MIME_TYPES.has('image/png')).toBe(true);
     expect(ALLOWED_IMAGE_MIME_TYPES.has('image/jpeg')).toBe(true);
     expect(ALLOWED_IMAGE_MIME_TYPES.has('image/webp')).toBe(true);
-    expect(ALLOWED_IMAGE_MIME_TYPES.has('image/svg+xml')).toBe(true);
+    // SVG is deliberately absent: image bytes are written to the vault without
+    // passing through DOMPurify, and SVG is the one raster-adjacent format that
+    // can carry script. Obsidian accepts .svg embeds, so excluding it here is
+    // the only gate.
+    expect(ALLOWED_IMAGE_MIME_TYPES.has('image/svg+xml')).toBe(false);
     // Every allowed type maps to a non-empty extension (SSOT parity)
     for (const mime of ALLOWED_IMAGE_MIME_TYPES) {
       expect(mimeToExtension(mime).length).toBeGreaterThan(0);
