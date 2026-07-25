@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.10](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.2.9...v2.2.10) (2026-07-25)
+
+
+### Bug Fixes
+
+* correct append-mode lookup, coverage scope, and vault path validation ([#369](https://github.com/sho7650/obsidian-AI-exporter/issues/369)) ([f7300a4](https://github.com/sho7650/obsidian-AI-exporter/commit/f7300a441663214b07fdb3db0c7b27d2e137ec8b))
+
 ## [2.2.9](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.2.8...v2.2.9) (2026-07-22)
 
 
