@@ -1748,6 +1748,51 @@ console.log(x);</code></pre>
       expect(content).toContain('NESTED-ONCE');
       expect(content.split('NESTED-ONCE').length - 1).toBe(1);
     });
+
+    // Tool content is gathered per status header. Reading only the first one
+    // discarded every later step's tool activity.
+    it('captures tool content from every status block', async () => {
+      extractor.applySettings({ enableToolContent: true } as never);
+      createClaudePageWithMixedContentBlocks('11111111-2222-3333-4444-555555555556', 'Question', [
+        { kind: 'step', statusText: 'Planned the work.', content: '<p>PREAMBLE-1</p>' },
+        { kind: 'step', statusText: 'Searched the web', content: '<p>PREAMBLE-2</p>' },
+        { kind: 'step', statusText: 'Summarised findings.', content: '<p>PREAMBLE-3</p>' },
+        { kind: 'body', content: '<p>ANSWER</p>' },
+      ]);
+
+      const result = await extractor.extract();
+      const toolContent =
+        result.data?.messages.find(m => m.role === 'assistant')?.toolContent ?? '';
+
+      expect(toolContent).toContain('Planned the work.');
+      expect(toolContent).toContain('Searched the web');
+      expect(toolContent).toContain('Summarised findings.');
+    });
+
+    it('skips only the Extended Thinking block, keeping other tool content', async () => {
+      extractor.applySettings({ enableToolContent: true } as never);
+      createClaudePageWithMixedContentBlocks('11111111-2222-3333-4444-555555555557', 'Question', [
+        {
+          kind: 'step',
+          statusText: 'THINKING-HEADER',
+          content: '<p>PREAMBLE-1</p>',
+          thinking: true,
+        },
+        { kind: 'step', statusText: 'Searched the web', content: '<p>PREAMBLE-2</p>' },
+        { kind: 'body', content: '<p>ANSWER</p>' },
+      ]);
+
+      const result = await extractor.extract();
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      const toolContent = assistantMsg?.toolContent ?? '';
+
+      // Extended Thinking is presented separately, not as tool activity
+      expect(toolContent).not.toContain('THINKING-HEADER');
+      // …but a thinking block first in the response must not suppress the rest
+      expect(toolContent).toContain('Searched the web');
+      // Response body is unaffected either way
+      expect(assistantMsg?.content).toContain('ANSWER');
+    });
   });
 
   // ========== Code Blocks in Assistant Responses ==========

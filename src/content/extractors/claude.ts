@@ -336,17 +336,33 @@ export class ClaudeExtractor extends BaseExtractor {
    * null otherwise (no grid, no tool section, or Extended Thinking).
    */
   private extractToolContentFromElement(element: Element): string | null {
-    const responseSection = element.querySelector('.row-start-2');
-    if (!responseSection) return null; // Non-grid → no tool content
+    if (!element.querySelector('.row-start-2')) return null; // Non-grid → no tool content
 
-    const toolSection = element.querySelector('.row-start-1');
-    if (!toolSection) return null;
+    const parts: string[] = [];
+    for (const header of this.collectStatusHeaders(element)) {
+      // Extended Thinking is presented separately from tool activity. Skip just
+      // that block: a thinking step early in the response must not suppress the
+      // tool content of every step after it.
+      if (header.querySelector('[class*="group/thinking"]')) continue;
 
-    const isExtendedThinking = toolSection.querySelector('[class*="group/thinking"]') !== null;
-    if (isExtendedThinking) return null;
+      const toolContent = this.extractToolContent(header);
+      if (toolContent) parts.push(toolContent);
+    }
 
-    const toolContent = this.extractToolContent(toolSection);
-    return toolContent || null;
+    return parts.length > 0 ? parts.join('\n\n') : null;
+  }
+
+  /**
+   * Status headers of a response's grid step blocks, in DOM order.
+   *
+   * A response can carry several sequential steps, each with its own header.
+   * Only the OUTER `.row-start-1` is a header — see {@link isInStatusHeader}
+   * for why the nested one under `.row-start-2` must not be treated as such.
+   */
+  private collectStatusHeaders(element: Element): HTMLElement[] {
+    return Array.from(element.querySelectorAll<HTMLElement>('.row-start-1')).filter(
+      header => header.closest('.row-start-2') === null
+    );
   }
 
   /**

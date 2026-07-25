@@ -957,7 +957,14 @@ export function createClaudePageWithMultiStatusResponse(
  *              extractable text.
  */
 export type ClaudeContentBlock =
-  | { kind: 'step'; statusText: string; content: string; toolMarkdown?: string }
+  | {
+      kind: 'step';
+      statusText: string;
+      content: string;
+      toolMarkdown?: string;
+      /** Render the header as an Extended Thinking panel (`group/thinking`). */
+      thinking?: boolean;
+    }
   | { kind: 'body'; content: string }
   | { kind: 'widget' };
 
@@ -994,10 +1001,12 @@ export function createClaudePageWithMixedContentBlocks(
       <div><div class="grid grid-rows-[auto_auto] min-w-0">
         <div class="row-start-1 col-start-1 min-w-0">
           <div class="min-w-0 pl-2 py-[var(--msg-pill-py,0.375rem)]">
+            ${block.thinking ? '<div class="group/thinking border rounded">' : ''}
             <button class="group/status" aria-expanded="false">
               <span class="truncate font-base">${escapeHtmlForClaude(block.statusText)}</span>
             </button>
             ${block.toolMarkdown ? `<div class="standard-markdown"><p>${block.toolMarkdown}</p></div>` : ''}
+            ${block.thinking ? '</div>' : ''}
           </div>
         </div>
         <div class="row-start-2 col-start-1 relative grid grid-rows-[auto_auto] isolate min-w-0">
