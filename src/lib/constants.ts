@@ -28,6 +28,22 @@ export const FILENAME_ID_SUFFIX_LENGTH = 8;
 export const MAX_LANG_HINT_LENGTH = 30;
 
 /**
+ * Upper bound on Obsidian REST API requests spent by a single append-mode
+ * existing-file lookup (directory listings + candidate reads combined).
+ *
+ * The scan is bounded in depth but not in breadth, so a deeply-foldered vault
+ * could otherwise issue an unbounded number of sequential requests on every
+ * save. 200 comfortably covers realistic layouts — five years of
+ * `{YYYY}/{MM}` folders costs 66 listings — while capping the pathological
+ * case. Requests go to 127.0.0.1, so even the worst case stays sub-second, and
+ * the caller-side path memo short-circuits repeat saves entirely.
+ *
+ * Exhausting the budget is treated as "not found", which falls through to a
+ * normal (non-append) save.
+ */
+export const SCAN_MAX_REQUESTS = 200;
+
+/**
  * Default line threshold for the Obsidian-only "flatten large callouts"
  * setting. Obsidian decorates every blockquote line, so a very long message
  * (e.g. a pasted document) rendered as one giant callout makes the note render

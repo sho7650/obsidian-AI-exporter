@@ -11,6 +11,9 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
+      // NOTE: `include` does not narrow the measured set on its own. With the
+      // v8 provider the report still covers every file loaded during the run,
+      // so anything outside src/ must be excluded explicitly below (ADR-019).
       include: ['src/**/*.ts'],
       exclude: [
         'src/**/*.d.ts',
@@ -20,12 +23,18 @@ export default defineConfig({
         'src/popup/index.ts',
         'src/content/index.ts',
         'test/**/*.ts', // Test infrastructure should not count toward coverage
+        // E2E selector-validation tooling. It has its own unit tests, but it is
+        // developer tooling rather than shipped extension code; leaving it in
+        // diluted the thresholds below (ADR-019).
+        'e2e/**',
       ],
+      // Calibrated against the measured src-only figures (96.13 / 87.17 /
+      // 98.67 / 97.43 at the time of ADR-019), leaving a small margin.
       thresholds: {
-        statements: 85,
-        branches: 75,
-        functions: 85,
-        lines: 85,
+        statements: 95,
+        branches: 85,
+        functions: 95,
+        lines: 95,
       },
     },
   },
