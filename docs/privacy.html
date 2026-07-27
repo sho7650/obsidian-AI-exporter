@@ -16,7 +16,7 @@
 </head>
 <body>
   <h1>Privacy Policy</h1>
-  <p class="update-date">Last updated: March 2026</p>
+  <p class="update-date">Last updated: July 2026</p>
 
   <h2>Overview</h2>
   <p>Obsidian AI Exporter is a Chrome extension that exports AI conversations to Obsidian. This policy explains how we handle your data.</p>
@@ -34,7 +34,7 @@
     <li>Personal information</li>
     <li>Browsing history</li>
     <li>Analytics or telemetry</li>
-    <li>Any data sent to external servers</li>
+    <li>Anything uploaded to servers we operate — we operate none</li>
   </ul>
 
   <h2>Data Storage</h2>
@@ -54,8 +54,9 @@
     <li><strong>www.perplexity.ai</strong>: To extract Perplexity conversation content (read-only)</li>
     <li><strong>notebooklm.google.com</strong>: To extract NotebookLM conversation content (read-only)</li>
     <li><strong>Your Obsidian instance</strong>: To save files to your Obsidian vault via Local REST API (when Obsidian output is enabled). By default this is <code>127.0.0.1</code> (localhost) over HTTP. Users can optionally configure HTTPS or a LAN host address.</li>
+    <li><strong>googleusercontent.com</strong>: To download AI-generated images so they can be saved with the conversation (only when image export is enabled, and only for images contained in the conversation you are exporting). This is Google's image CDN — the same host the AI page already loads those images from. The request downloads an image; no conversation content or personal data is sent.</li>
   </ul>
-  <p>No data is ever sent to external servers or third parties. Communication with Obsidian occurs only on your local machine or local network as configured by you.</p>
+  <p>Your conversation content is never sent to any third party. It goes only to the Obsidian instance you configure, on your local machine or local network. We collect no analytics or telemetry, and we operate no servers of our own.</p>
 
   <h2>Output Options</h2>
   <p>Conversations can be exported to three destinations:</p>
@@ -78,6 +79,7 @@
     <tr><td>Host: chatgpt.com</td><td>Inject the sync button on ChatGPT pages</td></tr>
     <tr><td>Host: www.perplexity.ai</td><td>Inject the sync button on Perplexity pages</td></tr>
     <tr><td>Host: notebooklm.google.com</td><td>Inject the sync button on NotebookLM pages</td></tr>
+    <tr><td>Host: *.googleusercontent.com</td><td>Download AI-generated images for export (image export only). The browser blocks the page itself from fetching these, so the extension downloads them.</td></tr>
     <tr><td>Host: 127.0.0.1 (HTTP &amp; HTTPS)</td><td>Communicate with Obsidian's local API on localhost</td></tr>
     <tr><td>Optional: other hosts</td><td>Requested at runtime if you configure a non-localhost API URL (e.g., LAN access). You will see a Chrome permission prompt before any connection is made.</td></tr>
   </table>

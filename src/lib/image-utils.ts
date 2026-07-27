@@ -57,6 +57,42 @@ export function isAllowedImageMime(mimeType: string): boolean {
   return ALLOWED_IMAGE_MIME_TYPES.has(normalizeMime(mimeType));
 }
 
+/**
+ * Host suffix serving AI-generated images that must be fetched by the
+ * background worker rather than the page (see {@link isAllowedImageSourceUrl}).
+ */
+const IMAGE_CDN_DOMAIN = 'googleusercontent.com';
+
+/**
+ * True when `url` is a remote image source the background worker may fetch.
+ *
+ * Gemini serves generated images from `https://lh3.googleusercontent.com/...`
+ * (the subdomain rotates: lh3/lh4/lh5/…) with no `Access-Control-Allow-Origin`
+ * header. Content scripts are subject to CORS even when the extension holds
+ * host permissions, so the fetch has to happen in the background worker, which
+ * is exempt (issue #376).
+ *
+ * That exemption is exactly why this allow-list exists: without it, anything
+ * able to post a message to the worker could use it as an SSRF proxy to read
+ * arbitrary hosts — including `127.0.0.1`, where the user's vault lives.
+ * Matching is done on the parsed `hostname`, so credentials (`…@evil.test`),
+ * ports, and look-alike suffixes (`evilgoogleusercontent.com`) cannot slip past.
+ *
+ * `blob:` URLs are intentionally rejected: only the page can resolve those, and
+ * the content script keeps that path.
+ */
+export function isAllowedImageSourceUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== 'https:') return false;
+  const host = parsed.hostname.toLowerCase();
+  return host === IMAGE_CDN_DOMAIN || host.endsWith(`.${IMAGE_CDN_DOMAIN}`);
+}
+
 /** Base64 character set with optional `=` padding (0–2 chars). */
 const BASE64_PATTERN = /^[A-Za-z0-9+/]*={0,2}$/;
 

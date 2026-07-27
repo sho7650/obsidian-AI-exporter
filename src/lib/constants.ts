@@ -160,7 +160,12 @@ export const ALLOWED_ORIGINS: readonly string[] = ALL_PLATFORMS.map(platformOrig
  * Valid message actions for background worker (M-02)
  * Whitelist of actions accepted from content scripts
  */
-export const VALID_MESSAGE_ACTIONS = ['getSettings', 'testConnection', 'saveToOutputs'] as const;
+export const VALID_MESSAGE_ACTIONS = [
+  'getSettings',
+  'testConnection',
+  'saveToOutputs',
+  'fetchImage',
+] as const;
 
 /**
  * Valid output destinations for multi-output operations

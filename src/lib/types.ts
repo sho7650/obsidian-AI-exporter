@@ -171,6 +171,12 @@ export interface OutputResult {
    * DIFFERENT conversation (filename collision safeguard, issue #327).
    */
   savedAs?: string;
+  /**
+   * Non-fatal problem encountered while writing to this destination
+   * (e.g. an image that could not be saved, issue #376). Surfaced to the
+   * user as a follow-up warning toast; the output itself still succeeded.
+   */
+  warning?: string;
 }
 
 /**
@@ -301,7 +307,16 @@ export interface TemplateOptions {
 export type ExtensionMessage =
   | { action: 'saveToOutputs'; data: ObsidianNote; outputs: OutputDestination[] }
   | { action: 'getSettings' }
-  | { action: 'testConnection' };
+  | { action: 'testConnection' }
+  | { action: 'fetchImage'; url: string };
+
+/**
+ * Response to a `fetchImage` message. The background worker fetches remote
+ * images the content script cannot reach (CORS) and returns them as base64.
+ */
+export type ImageFetchResponse =
+  | { success: true; data: string; mimeType: string; error?: undefined }
+  | { success: false; error: string; data?: undefined; mimeType?: undefined };
 
 /**
  * Message sent from the background worker to the offscreen document.
@@ -324,6 +339,11 @@ export interface SaveResponse {
   messagesAppended?: number;
   /** Actual file name when a collision forced an alternative (issue #327) */
   savedAs?: string;
+  /**
+   * Non-fatal problem encountered while saving — the note itself was written.
+   * Currently set when one or more images could not be written (issue #376).
+   */
+  warning?: string;
 }
 
 /**

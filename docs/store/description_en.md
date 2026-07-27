@@ -27,11 +27,13 @@ This extension extracts conversations from Google Gemini (gemini.google.com), Cl
 • HTTPS support for secure connections to Obsidian REST API
 • Customizable API URL, save location, message format, and frontmatter fields
 • English and Japanese UI support
-• Works entirely offline - no external servers
+• No account, no sign-up, no cloud service required
 
 🔒 PRIVACY FIRST
 • All processing happens locally on your device
-• No data is sent to external servers
+• No analytics, no telemetry, no data collection
+• Your conversations go only to your own Obsidian vault
+• Image export downloads pictures from Google's image CDN - the same host the AI page already uses
 • API key stored securely in local storage only
 • Open source: https://github.com/sho7650/obsidian-AI-exporter
 

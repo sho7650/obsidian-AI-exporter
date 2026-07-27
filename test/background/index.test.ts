@@ -4,7 +4,7 @@
  * Tests the message handling, validation, and API integration of the background script.
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import type { ObsidianNote } from '../../src/lib/types';
+import type { MultiOutputResponse, ObsidianNote } from '../../src/lib/types';
 import { generateHash } from '../../src/lib/hash';
 
 // Mock client instance - defined at module level
@@ -1614,6 +1614,37 @@ describe('background/index', () => {
       const content = (clipboardCall?.[0] as { content: string }).content;
       expect(content).not.toContain('g2o-image://');
       expect(content).not.toContain('![[');
+    });
+
+    it('obsidian: reports a warning when an image write fails, without blocking the note (issue #376)', async () => {
+      mockClient.getFile.mockResolvedValue(null); // fresh file
+      mockClient.putFile.mockResolvedValue(undefined);
+      mockClient.putBinaryFile.mockRejectedValue(new Error('boom'));
+
+      const sendResponse = save(['obsidian']);
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+      const response = sendResponse.mock.calls[0][0] as MultiOutputResponse;
+      const obsidian = response.results.find(r => r.destination === 'obsidian');
+      // The note itself must still be written (image failures are non-blocking).
+      expect(obsidian?.success).toBe(true);
+      expect(mockClient.putFile).toHaveBeenCalled();
+      // ...but the failure must no longer be silent.
+      expect(obsidian?.warning).toContain('img-note-img-1.png');
+    });
+
+    it('obsidian: reports no warning when every image write succeeds', async () => {
+      mockClient.getFile.mockResolvedValue(null);
+      mockClient.putFile.mockResolvedValue(undefined);
+      mockClient.putBinaryFile.mockResolvedValue(undefined);
+
+      const sendResponse = save(['obsidian']);
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+      const response = sendResponse.mock.calls[0][0] as MultiOutputResponse;
+      const obsidian = response.results.find(r => r.destination === 'obsidian');
+      expect(obsidian?.success).toBe(true);
+      expect(obsidian?.warning).toBeUndefined();
     });
 
     it('obsidian: image export disabled strips placeholders and writes no binary', async () => {

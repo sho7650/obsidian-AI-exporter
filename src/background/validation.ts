@@ -22,7 +22,7 @@ import {
 import type { ExtensionMessage, ExtractedImage, ObsidianNote } from '../lib/types';
 import { containsPathTraversal } from '../lib/path-utils';
 import { isHttpUrl } from '../lib/validation';
-import { isAllowedImageMime, isLikelyBase64 } from '../lib/image-utils';
+import { isAllowedImageMime, isLikelyBase64, isAllowedImageSourceUrl } from '../lib/image-utils';
 
 /**
  * Validate message sender (M-02)
@@ -76,6 +76,15 @@ export function validateMessageContent(message: ExtensionMessage): boolean {
         VALID_OUTPUT_DESTINATIONS.includes(o as (typeof VALID_OUTPUT_DESTINATIONS)[number])
       )
     ) {
+      return false;
+    }
+  }
+
+  // The worker can reach hosts the page cannot, so a fetchImage URL is only
+  // accepted for the image CDN allow-list (issue #376). Re-checked in the
+  // handler; rejecting here keeps a bad URL from ever reaching it.
+  if (message.action === 'fetchImage') {
+    if (typeof message.url !== 'string' || !isAllowedImageSourceUrl(message.url)) {
       return false;
     }
   }

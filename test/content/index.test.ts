@@ -387,6 +387,37 @@ describe('content/bootstrap', () => {
       );
     });
 
+    it('surfaces a save warning after the success toast (issue #376)', async () => {
+      vi.useFakeTimers();
+      try {
+        loadGeminiConversation();
+        mockMessaging({
+          save: {
+            results: [
+              {
+                destination: 'obsidian',
+                success: true,
+                warning: '1 image could not be saved: img-note-img-1.png',
+              },
+            ],
+            allSuccessful: true,
+            anySuccessful: true,
+          },
+        });
+
+        const pending = handleSync();
+        await vi.advanceTimersByTimeAsync(10_000);
+        await pending;
+
+        expect(showSuccessToast).toHaveBeenCalled();
+        expect(showWarningToast).toHaveBeenCalledWith(
+          '1 image could not be saved: img-note-img-1.png'
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('shows an error when every output fails', async () => {
       loadGeminiConversation();
       mockMessaging({

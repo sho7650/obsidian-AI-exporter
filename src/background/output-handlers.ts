@@ -109,6 +109,7 @@ async function handleSaveToObsidian(
       error: result.error,
       messagesAppended: result.messagesAppended,
       savedAs: result.savedAs,
+      warning: result.warning,
     };
   } catch (error) {
     return {
