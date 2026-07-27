@@ -157,21 +157,7 @@ export async function handleSave(
     );
     if (appendResult) return appendResult;
 
-    const target = await resolveCollisionFreePath(client, resolvedPath, note);
-    if ('error' in target) {
-      return { success: false, error: target.error };
-    }
-
-    const saveNote = await prepareNoteImages(client, settings, note, templateVariables);
-    const flattenedBody = maybeFlatten(saveNote.body, settings);
-    const content = generateNoteContent({ ...saveNote, body: flattenedBody }, settings);
-    await client.putFile(target.path, content);
-
-    return {
-      success: true,
-      isNewFile: target.isNewFile,
-      ...(target.renamed && { savedAs: target.fileName }),
-    };
+    return await saveFreshNote(client, settings, note, resolvedPath, templateVariables);
   } catch (error) {
     console.error('[G2O Background] Save failed:', error);
     return { success: false, error: getErrorMessage(error) };
@@ -179,39 +165,100 @@ export async function handleSave(
 }
 
 /**
+ * Write the note as a fresh (non-append) save: pick a name that does not
+ * clobber a different conversation, write any images, then write the note.
+ */
+async function saveFreshNote(
+  client: ObsidianApiClient,
+  settings: ExtensionSettings,
+  note: ObsidianNote,
+  resolvedPath: string,
+  templateVariables: Record<string, string>
+): Promise<SaveResponse> {
+  const target = await resolveCollisionFreePath(client, resolvedPath, note);
+  if ('error' in target) {
+    return { success: false, error: target.error };
+  }
+
+  const { note: saveNote, failedImages } = await prepareNoteImages(
+    client,
+    settings,
+    note,
+    templateVariables
+  );
+  const flattenedBody = maybeFlatten(saveNote.body, settings);
+  const content = generateNoteContent({ ...saveNote, body: flattenedBody }, settings);
+  await client.putFile(target.path, content);
+
+  const warning = imageWarning(failedImages);
+  return {
+    success: true,
+    isNewFile: target.isNewFile,
+    ...(target.renamed && { savedAs: target.fileName }),
+    ...(warning && { warning }),
+  };
+}
+
+/** Outcome of the image-writing pass: the note to save, plus any images lost. */
+interface PreparedNote {
+  note: ObsidianNote;
+  /** File names of images that could not be written (issue #376) */
+  failedImages: readonly string[];
+}
+
+/**
+ * Build the user-facing warning for images that could not be written, or
+ * undefined when every image succeeded.
+ */
+function imageWarning(failedImages: readonly string[]): string | undefined {
+  if (failedImages.length === 0) return undefined;
+  const noun = failedImages.length === 1 ? 'image' : 'images';
+  return `${failedImages.length} ${noun} could not be saved: ${failedImages.join(', ')}`;
+}
+
+/**
  * For a fresh (non-append) save, write captured images to the vault and return
  * a note whose body embeds them via `![[filename]]` wikilinks. When image
  * export is disabled or there are no images, image placeholders are stripped.
- * Image-write failures are logged but never block the note (DES-017 principle).
+ *
+ * Image-write failures never block the note (DES-017 principle), but they are
+ * no longer silent: the failed file names are returned so the caller can
+ * surface them to the user (issue #376).
  */
 async function prepareNoteImages(
   client: ObsidianApiClient,
   settings: ExtensionSettings,
   note: ObsidianNote,
   templateVariables: Record<string, string>
-): Promise<ObsidianNote> {
+): Promise<PreparedNote> {
   const images = settings.enableImageExport ? (note.images ?? []) : [];
   if (images.length === 0) {
-    return note.body.includes('g2o-image://')
+    const stripped = note.body.includes('g2o-image://')
       ? { ...note, body: stripImagePlaceholders(note.body) }
       : note;
+    return { note: stripped, failedImages: [] };
   }
 
   const baseName = note.fileName.replace(/\.md$/i, '');
   const { body, files } = resolveImagesForObsidian(note.body, images, baseName);
 
   const imageDir = resolvePathTemplate(settings.imageVaultPath, templateVariables);
+  const failedImages: string[] = [];
   for (const file of files) {
     const path = imageDir ? `${imageDir}/${file.fileName}` : file.fileName;
-    if (containsPathTraversal(path)) continue;
+    if (containsPathTraversal(path)) {
+      failedImages.push(file.fileName);
+      continue;
+    }
     try {
       await client.putBinaryFile(path, base64ToBytes(file.data), file.mimeType);
     } catch (error) {
       console.warn('[G2O Background] Image write failed:', file.fileName, error);
+      failedImages.push(file.fileName);
     }
   }
 
-  return { ...note, body };
+  return { note: { ...note, body }, failedImages };
 }
 
 /** Probe attempts: original + hash suffix + a few counters for hash collisions */

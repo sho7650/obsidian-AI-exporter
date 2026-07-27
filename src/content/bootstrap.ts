@@ -283,9 +283,17 @@ function displaySaveResults(
     showErrorToast(errorMsg || 'Failed to save');
   }
 
-  if (extractionWarnings && extractionWarnings.length > 0 && saveResult.anySuccessful) {
+  // Non-fatal problems reported by a destination that still succeeded — e.g.
+  // images that could not be written (issue #376). Shown alongside extraction
+  // warnings so a successful save never hides a partial failure.
+  const saveWarnings = saveResult.results
+    .map((r: OutputResult) => r.warning)
+    .filter((w): w is string => Boolean(w));
+  const warnings = [...saveWarnings, ...(extractionWarnings ?? [])];
+
+  if (warnings.length > 0 && saveResult.anySuccessful) {
     setTimeout(() => {
-      showWarningToast(extractionWarnings.join('. '));
+      showWarningToast(warnings.join('. '));
     }, INFO_TOAST_DURATION);
   }
 }

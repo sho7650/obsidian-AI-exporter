@@ -4,8 +4,47 @@ import {
   ObsidianApiError,
   isObsidianApiError,
   classifyNetworkError,
+  encodeVaultPath,
 } from '../../src/lib/obsidian-api';
 import { getErrorMessage } from '../../src/lib/error-utils';
+
+/**
+ * Local REST API 4.1.3+ (GHSA-62gx-5q78-wrvx) splits the request path on
+ * literal `/` and only then decodes each segment, so `%2F` is no longer a
+ * directory separator. Paths must therefore be encoded per segment.
+ */
+describe('encodeVaultPath (issue #377)', () => {
+  it('keeps directory separators literal', () => {
+    expect(encodeVaultPath('AI/gemini/note.md')).toBe('AI/gemini/note.md');
+  });
+
+  it('percent-encodes spaces within a segment', () => {
+    expect(encodeVaultPath('AI/Gemini/test file.md')).toBe('AI/Gemini/test%20file.md');
+  });
+
+  it('percent-encodes URL syntax characters that encodeURI would leave raw', () => {
+    // encodeURI does not escape # ? & — they would truncate or corrupt the URL.
+    expect(encodeVaultPath('AI/Q&A/notes#draft?x.md')).toBe('AI/Q%26A/notes%23draft%3Fx.md');
+  });
+
+  it('percent-encodes non-ASCII segments', () => {
+    expect(encodeVaultPath('AI/ジェミニ/メモ.md')).toBe(
+      `AI/${encodeURIComponent('ジェミニ')}/${encodeURIComponent('メモ')}.md`
+    );
+  });
+
+  it('percent-encodes a literal % so the server round-trips it', () => {
+    expect(encodeVaultPath('AI/100%/note.md')).toBe('AI/100%25/note.md');
+  });
+
+  it('passes through a bare filename with no separators', () => {
+    expect(encodeVaultPath('note.md')).toBe('note.md');
+  });
+
+  it('returns an empty string unchanged', () => {
+    expect(encodeVaultPath('')).toBe('');
+  });
+});
 
 describe('ObsidianApiClient', () => {
   let client: ObsidianApiClient;
@@ -140,7 +179,7 @@ describe('ObsidianApiClient', () => {
 
       expect(content).toBe('# File Content');
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:27123/vault/path%2Fto%2Ffile.md',
+        'http://127.0.0.1:27123/vault/path/to/file.md',
         expect.any(Object)
       );
     });
@@ -195,7 +234,7 @@ describe('ObsidianApiClient', () => {
       await client.getFile('AI/Gemini/test file.md');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:27123/vault/AI%2FGemini%2Ftest%20file.md',
+        'http://127.0.0.1:27123/vault/AI/Gemini/test%20file.md',
         expect.any(Object)
       );
     });
@@ -208,7 +247,7 @@ describe('ObsidianApiClient', () => {
       await client.putFile('path/to/file.md', '# New Content');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:27123/vault/path%2Fto%2Ffile.md',
+        'http://127.0.0.1:27123/vault/path/to/file.md',
         expect.objectContaining({
           method: 'PUT',
           headers: {
@@ -261,7 +300,7 @@ describe('ObsidianApiClient', () => {
       await client.putBinaryFile('AI/gemini/images/a-img-1.png', bytes, 'image/png');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:27123/vault/AI%2Fgemini%2Fimages%2Fa-img-1.png',
+        'http://127.0.0.1:27123/vault/AI/gemini/images/a-img-1.png',
         expect.objectContaining({
           method: 'PUT',
           headers: {
@@ -294,7 +333,7 @@ describe('ObsidianApiClient', () => {
 
       expect(files).toEqual(['note1.md', 'note2.md']);
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:27123/vault/AI%2Fclaude/',
+        'http://127.0.0.1:27123/vault/AI/claude/',
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
@@ -372,7 +411,7 @@ describe('ObsidianApiClient', () => {
 
       expect(entries).toEqual(['2026/', '2025/', 'README.md', 'old-chat-abc12345.md']);
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:27123/vault/AI%2Fgemini/',
+        'http://127.0.0.1:27123/vault/AI/gemini/',
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({

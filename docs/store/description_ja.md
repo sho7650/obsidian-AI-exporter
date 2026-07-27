@@ -27,11 +27,13 @@ Google Gemini（gemini.google.com）、Claude AI（claude.ai）、ChatGPT（chat
 • Obsidian REST API への HTTPS 接続をサポート
 • API URL、保存先パス、メッセージ形式、フロントマターフィールドをカスタマイズ可能
 • 英語・日本語 UI 対応
-• 完全オフライン動作 - 外部サーバー不要
+• アカウント登録・クラウドサービス不要
 
 🔒 プライバシー重視
 • すべての処理はお使いの端末上で実行
-• 外部サーバーへのデータ送信なし
+• 解析・テレメトリ・データ収集は一切なし
+• 会話の送信先はあなた自身の Obsidian vault のみ
+• 画像エクスポートは Google の画像 CDN から画像を取得 - AI のページが既に使用しているホストと同じ
 • API キーはローカルストレージに安全に保存
 • オープンソース：https://github.com/sho7650/obsidian-AI-exporter
 

@@ -8,6 +8,7 @@ import { getSettings, migrateSettings } from '../lib/storage';
 import { validateSender, validateMessageContent } from './validation';
 import { handleTestConnection } from './obsidian-handlers';
 import { handleMultiOutput } from './output-handlers';
+import { handleFetchImage } from './image-fetch';
 import type { ExtensionMessage, ContentScriptSettings, ExtensionSettings } from '../lib/types';
 
 // Run settings migration on service worker startup (C-01)
@@ -112,6 +113,10 @@ async function handleMessage(
 
     case 'testConnection':
       return handleTestConnection(settings);
+
+    case 'fetchImage':
+      // Remote images the content script cannot fetch itself (CORS, issue #376).
+      return handleFetchImage(message.url);
 
     case 'getSettings':
       // Security: Redact API key for content scripts (they run on third-party pages)

@@ -7,6 +7,7 @@ import {
   ALLOWED_IMAGE_MIME_TYPES,
   isAllowedImageMime,
   isLikelyBase64,
+  isAllowedImageSourceUrl,
 } from '../../src/lib/image-utils';
 
 describe('mimeToExtension', () => {
@@ -124,5 +125,58 @@ describe('isLikelyBase64', () => {
   it('rejects strings whose length is not a multiple of 4', () => {
     expect(isLikelyBase64('ABC')).toBe(false);
     expect(isLikelyBase64('AAAAA')).toBe(false);
+  });
+});
+
+/**
+ * Gemini serves generated images from googleusercontent.com, which sends no
+ * `Access-Control-Allow-Origin` header — so the content script cannot fetch
+ * them (Chrome: content scripts are subject to CORS even with host
+ * permissions). The background worker fetches them instead, and this allow-list
+ * is what stops that worker from being usable as an open SSRF proxy (issue #376).
+ */
+describe('isAllowedImageSourceUrl', () => {
+  it('allows the googleusercontent image CDN over https', () => {
+    expect(isAllowedImageSourceUrl('https://lh3.googleusercontent.com/gg/AbC123=s1024-rj')).toBe(
+      true
+    );
+  });
+
+  it('allows other googleusercontent subdomains (lh4/lh5/lh6 rotate)', () => {
+    expect(isAllowedImageSourceUrl('https://lh6.googleusercontent.com/rd-gg/x')).toBe(true);
+  });
+
+  it('allows the apex domain', () => {
+    expect(isAllowedImageSourceUrl('https://googleusercontent.com/x')).toBe(true);
+  });
+
+  it('rejects http (downgrade)', () => {
+    expect(isAllowedImageSourceUrl('http://lh3.googleusercontent.com/gg/x')).toBe(false);
+  });
+
+  it('rejects a look-alike suffix host', () => {
+    expect(isAllowedImageSourceUrl('https://evilgoogleusercontent.com/x')).toBe(false);
+  });
+
+  it('rejects a host that merely contains the domain', () => {
+    expect(isAllowedImageSourceUrl('https://googleusercontent.com.evil.test/x')).toBe(false);
+  });
+
+  it('rejects the domain placed in userinfo', () => {
+    expect(isAllowedImageSourceUrl('https://googleusercontent.com@evil.test/x')).toBe(false);
+  });
+
+  it('rejects unrelated hosts', () => {
+    expect(isAllowedImageSourceUrl('https://127.0.0.1:27123/vault/secret.md')).toBe(false);
+  });
+
+  it('rejects non-http schemes', () => {
+    expect(isAllowedImageSourceUrl('file:///etc/passwd')).toBe(false);
+    expect(isAllowedImageSourceUrl('blob:https://gemini.google.com/abc')).toBe(false);
+  });
+
+  it('rejects malformed input', () => {
+    expect(isAllowedImageSourceUrl('not a url')).toBe(false);
+    expect(isAllowedImageSourceUrl('')).toBe(false);
   });
 });

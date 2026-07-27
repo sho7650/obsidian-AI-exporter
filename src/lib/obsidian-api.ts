@@ -57,6 +57,29 @@ function createTimeoutSignal(ms: number): AbortSignal {
   return controller.signal;
 }
 
+/**
+ * Encode a vault path for the `/vault/{path}` endpoints.
+ *
+ * Directory separators MUST stay literal. Local REST API 4.1.3+ fixed a path
+ * traversal vulnerability (GHSA-62gx-5q78-wrvx) by splitting the request path
+ * on literal `/` and only then decoding each segment, so a percent-encoded
+ * slash is no longer a separator — `AI%2Fgemini%2Fnote.md` is read as a single
+ * file named `AI/gemini/note.md`, which 404s (issue #377).
+ *
+ * Each segment is still encoded with `encodeURIComponent`, not `encodeURI`:
+ * vault paths are free-form user input and `encodeURI` leaves `#`, `?` and `&`
+ * raw, which would truncate or corrupt the request URL.
+ *
+ * @param path - Path relative to vault root (e.g. `AI/gemini/note.md`)
+ * @returns The same path with each segment percent-encoded
+ */
+export function encodeVaultPath(path: string): string {
+  return path
+    .split('/')
+    .map(segment => encodeURIComponent(segment))
+    .join('/');
+}
+
 export class ObsidianApiError extends Error {
   readonly status: number;
   constructor(status: number, message: string) {
@@ -176,7 +199,7 @@ export class ObsidianApiClient {
    * @returns File content as string, or null if file doesn't exist
    */
   async getFile(path: string): Promise<string | null> {
-    const encodedPath = encodeURIComponent(path);
+    const encodedPath = encodeVaultPath(path);
     const response = await this.fetchWithTimeout(`${this.baseUrl}/vault/${encodedPath}`, {
       method: 'GET',
       headers: this.getHeaders(),
@@ -199,7 +222,7 @@ export class ObsidianApiClient {
    * @param content - File content (markdown)
    */
   async putFile(path: string, content: string): Promise<void> {
-    const encodedPath = encodeURIComponent(path);
+    const encodedPath = encodeVaultPath(path);
     const response = await this.fetchWithTimeout(`${this.baseUrl}/vault/${encodedPath}`, {
       method: 'PUT',
       headers: {
@@ -221,7 +244,7 @@ export class ObsidianApiClient {
    * @param contentType - MIME type (e.g. "image/png")
    */
   async putBinaryFile(path: string, data: Uint8Array, contentType: string): Promise<void> {
-    const encodedPath = encodeURIComponent(path);
+    const encodedPath = encodeVaultPath(path);
     const response = await this.fetchWithTimeout(`${this.baseUrl}/vault/${encodedPath}`, {
       method: 'PUT',
       headers: {
@@ -262,7 +285,7 @@ export class ObsidianApiClient {
    * @returns Array of entry names; directories carry a trailing `/`
    */
   async listEntries(directory: string): Promise<string[]> {
-    const encodedDir = encodeURIComponent(directory);
+    const encodedDir = encodeVaultPath(directory);
     const response = await this.fetchWithTimeout(`${this.baseUrl}/vault/${encodedDir}/`, {
       method: 'GET',
       headers: {
