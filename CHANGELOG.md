@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.2.12...v2.3.0) (2026-07-27)
+
+
+### Features
+
+* adapt to Local REST API path rules and Gemini CDN-hosted images ([#378](https://github.com/sho7650/obsidian-AI-exporter/issues/378)) ([9c97915](https://github.com/sho7650/obsidian-AI-exporter/commit/9c97915b15f67a0b5c7d65fb0f299e6b7e9d17d3)), closes [#377](https://github.com/sho7650/obsidian-AI-exporter/issues/377) [#376](https://github.com/sho7650/obsidian-AI-exporter/issues/376)
+
 ## [2.2.12](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.2.11...v2.2.12) (2026-07-25)
 
 
