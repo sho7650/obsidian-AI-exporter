@@ -95,11 +95,15 @@ Gemini-generated images are captured and exported automatically (see [Image Expo
 2. Click the purple "Sync" button in the bottom-right corner
 3. The conversation will be exported with the same output options as Gemini
 
+> **Keep Auto-scroll enabled for long conversations.** Claude mounts only a window of turns at a time and discards the rest; with Auto-scroll off, only the turns currently on screen can be exported.
+
 ### ChatGPT
 
 1. Open a conversation on [chatgpt.com](https://chatgpt.com) (regular chats and custom GPTs via `/g/` URLs are both supported)
 2. Click the purple "Sync" button in the bottom-right corner
 3. The conversation will be exported with the same output options as Gemini
+
+> **Keep Auto-scroll enabled for long conversations.** ChatGPT mounts only a window of turns at a time and discards the rest; with Auto-scroll off, only the turns currently on screen can be exported.
 
 ### Perplexity
 

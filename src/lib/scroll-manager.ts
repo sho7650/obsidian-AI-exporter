@@ -165,12 +165,12 @@ export interface HarvestEntry<T> {
   /** The extracted value (e.g. a ConversationMessage). */
   value: T;
   /**
-   * Optional monotonic conversation-order index for this turn (e.g. Claude's
-   * `data-index`). When *every* harvested turn supplies one, accumulation orders
-   * the result by it instead of by window-overlap stitching — robust against the
-   * mergeWindow scramble that occurs when the newest turns never evict and the
-   * middle does (issue #352). Platforms without a numeric order (e.g. ChatGPT's
-   * uuid keys) omit it and keep the overlap-stitched order.
+   * Optional monotonic conversation-order index for this turn (Claude's
+   * `data-index`, ChatGPT's `conversation-turn-N` ordinal). When *every*
+   * harvested turn supplies one, accumulation orders the result by it; otherwise
+   * the order established by {@link mergeWindow} stands. Both paths are expected
+   * to agree — the index is a second, independent signal, not a repair for the
+   * merge (issues #352, #353).
    */
   order?: number;
 }
@@ -192,11 +192,21 @@ export interface AccumulateResult<T> {
 /**
  * Merge a newly-harvested window of keys into the accumulated ordering.
  *
- * Windows are captured while scrolling **up**, so each new window's tail
- * overlaps the accumulated head. We align on that overlap and prepend the
- * non-overlapping prefix. With no detectable overlap we fall back to prepending
- * the window's not-yet-seen keys, so ordering degrades gracefully rather than
- * dropping turns. The result never contains duplicate keys.
+ * A window's DOM order is always globally truthful — it is document order — so
+ * every already-seen key in it is a valid **anchor**: each run of not-yet-seen
+ * keys belongs immediately before the seen key that follows it. Merging by
+ * anchor rather than by aligning the window's suffix against the accumulated
+ * head is what makes this correct when the newest turns never evict: on both
+ * Claude and ChatGPT the last few turns stay mounted in *every* window, so a
+ * window harvested near the top looks like `[0…6, <persistent tail>]`. Its
+ * suffix is that tail and can never match the accumulated (older) head, but the
+ * anchor it needs — the first key it shares with the accumulation — is right
+ * there in the window (issues #352, #353).
+ *
+ * A trailing run with no following anchor goes directly after the last anchor;
+ * a window sharing nothing with the accumulation is prepended whole, since
+ * windows are only ever harvested while scrolling **upward**. Keys are never
+ * dropped and the result never contains duplicates.
  *
  * @param accumulated Keys gathered so far, in conversation order.
  * @param window Keys from the current window, in DOM (top→bottom) order.
@@ -205,35 +215,43 @@ export function mergeWindow(accumulated: readonly string[], window: readonly str
   if (accumulated.length === 0) return dedupeKeys(window);
   if (window.length === 0) return [...accumulated];
 
-  // Largest k where the window's last k keys equal the accumulated first k keys.
-  let overlap = 0;
-  const maxK = Math.min(window.length, accumulated.length);
-  for (let k = maxK; k >= 1; k--) {
-    let matches = true;
-    for (let i = 0; i < k; i++) {
-      if (window[window.length - k + i] !== accumulated[i]) {
-        matches = false;
-        break;
+  const known = new Set(accumulated);
+  const runBefore = new Map<string, string[]>(); // anchor key → run to insert ahead of it
+  const staged = new Set<string>();
+  let run: string[] = [];
+  let lastAnchor: string | null = null;
+
+  for (const key of window) {
+    if (known.has(key)) {
+      if (run.length > 0) {
+        runBefore.set(key, [...(runBefore.get(key) ?? []), ...run]);
+        run = [];
       }
-    }
-    if (matches) {
-      overlap = k;
-      break;
+      lastAnchor = key;
+    } else if (!staged.has(key)) {
+      staged.add(key);
+      run.push(key);
     }
   }
 
-  const prefix = window.slice(0, window.length - overlap);
-  return dedupeKeys([...prefix, ...accumulated]);
+  const lead = lastAnchor === null ? run : [];
+  const trail = lastAnchor === null ? [] : run;
+
+  const merged = [...lead];
+  for (const key of accumulated) {
+    merged.push(...(runBefore.get(key) ?? []), key);
+    if (key === lastAnchor) merged.push(...trail);
+  }
+  return dedupeKeys(merged);
 }
 
 /**
  * Final key order for the accumulated turns.
  *
- * When *every* captured turn carries a monotonic order index (Claude's
- * `data-index`), sort by it — the authoritative conversation order — rather than
- * trusting the window-overlap stitching, which scrambles when the newest turns
- * never evict and the middle does (issue #352). Otherwise (e.g. ChatGPT's uuid
- * keys, no numeric order) keep the stitched order unchanged.
+ * When *every* captured turn carries a monotonic order index, sort by it — the
+ * platform's own statement of conversation order. Otherwise keep the order
+ * {@link mergeWindow} established, which is authoritative on its own; the index
+ * is a corroborating signal, not a repair (issues #352, #353).
  */
 function resolveOrder(order: readonly string[], orderIndex: ReadonlyMap<string, number>): string[] {
   if (order.length > 0 && order.every(k => orderIndex.has(k))) {

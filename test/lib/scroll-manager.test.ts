@@ -36,7 +36,27 @@ describe('mergeWindow', () => {
   it('never emits duplicate keys', () => {
     expect(mergeWindow(['b', 'c'], ['a', 'b'])).toEqual(['a', 'b', 'c']);
   });
+
+  it('splices new keys in at their anchor when the window ends with a persistent tail (issue #353)', () => {
+    // The decisive step of the live ChatGPT trace (see TURN_WINDOWS below):
+    // turns 14-16 have evicted, but the newest turns 17-21 stay mounted, so the
+    // window is [1..13, 17..21] while the accumulation already holds [2..21].
+    // The window's *suffix* is the persistent tail and never matches the
+    // accumulated head — but the window still contains the anchor (2), which is
+    // where the unseen turn 1 belongs.
+    expect(mergeWindow(turns(2, 21), [...turns(1, 13), ...turns(17, 21)])).toEqual(turns(1, 21));
+  });
+
+  it('appends a trailing run of new keys after its preceding anchor', () => {
+    // New keys sitting *below* an already-seen key must not be prepended.
+    expect(mergeWindow(['a', 'b'], ['a', 'c'])).toEqual(['a', 'c', 'b']);
+  });
 });
+
+/** Turn keys `t{from}`..`t{to}`, mirroring ChatGPT's conversation-turn numbering. */
+function turns(from: number, to: number): string[] {
+  return Array.from({ length: to - from + 1 }, (_, i) => `t${from + i}`);
+}
 
 /**
  * Build a fake virtualized scroll container: a full list of `total` items, of
@@ -148,9 +168,108 @@ function createPersistentTailList(opts: {
   return { container, harvest };
 }
 
+/**
+ * The mounted-turn windows captured from a real, logged-in desktop ChatGPT
+ * conversation of 21 turns (2026-07-29, issue #353). Each row is one harvest,
+ * scrolling upward from the bottom; the numbers are the `conversation-turn-N`
+ * ordinals of the turns mounted at that moment.
+ *
+ * Note rows 6-7: turns 14-16 (then 13) have been evicted from the middle while
+ * the newest turns 17-21 stay mounted — the shape that makes suffix/prefix
+ * overlap stitching fail.
+ */
+const TURN_WINDOWS: readonly (readonly number[])[] = [
+  [17, 18, 19, 20, 21], // seed (bottom)
+  [17, 18, 19, 20, 21],
+  [13, 14, 15, 16, 17, 18, 19, 20, 21],
+  [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+  [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+  [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 17, 18, 19, 20, 21],
+  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 17, 18, 19, 20, 21], // top
+];
+
+/**
+ * Replay a recorded sequence of mounted windows: harvest N returns the Nth
+ * recorded window (the last one repeats once the script is exhausted, as it
+ * does on the real page once scrolling is pinned at the top).
+ *
+ * The scroll range is sized so the engine reaches scrollTop 0 exactly as the
+ * script runs out, letting the normal stability check end accumulation.
+ *
+ * @param withOrder Emit a monotonic `order` per turn (Claude's `data-index`
+ *   layer). Omitted for the ChatGPT-equivalent case, where ordering must come
+ *   from the merge itself.
+ */
+function createRecordedWindowList(
+  windows: readonly (readonly number[])[],
+  withOrder = false
+): {
+  container: HTMLElement;
+  harvest: () => Array<{ key: string; value: string; order?: number }>;
+} {
+  const clientHeight = 900;
+  const step = Math.max(400, Math.floor(clientHeight * 0.6));
+  const maxScroll = step * (windows.length - 1);
+  let scrollTop = maxScroll;
+  let harvests = 0;
+
+  const container = document.createElement('div');
+  Object.defineProperty(container, 'scrollTop', {
+    get: () => scrollTop,
+    set: (v: number) => {
+      scrollTop = Math.max(0, Math.min(maxScroll, v));
+    },
+    configurable: true,
+  });
+  Object.defineProperty(container, 'clientHeight', { get: () => clientHeight, configurable: true });
+  Object.defineProperty(container, 'scrollHeight', {
+    get: () => maxScroll + clientHeight,
+    configurable: true,
+  });
+
+  const harvest = () => {
+    const window = windows[Math.min(harvests, windows.length - 1)];
+    harvests++;
+    return window.map(n => ({
+      key: `t${n}`,
+      value: `v${n}`,
+      ...(withOrder ? { order: n } : {}),
+    }));
+  };
+
+  return { container, harvest };
+}
+
 describe('accumulateWhileScrolling', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
+
+  it('reconstructs the true order from the live ChatGPT window trace, without any order index (issue #353)', async () => {
+    // ChatGPT turns are keyed by uuid, so the `order` fallback that fixed Claude
+    // (#352) is unavailable — the merge itself has to get this right.
+    const { container, harvest } = createRecordedWindowList(TURN_WINDOWS);
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.itemCount).toBe(21);
+    expect(result.items).toEqual(Array.from({ length: 21 }, (_, i) => `v${i + 1}`));
+  });
+
+  it('reconstructs the same order from the live trace when an order index is present', async () => {
+    // Belt-and-suspenders layer: ChatGPT's `conversation-turn-N` ordinal fed
+    // through HarvestEntry.order must agree with the merge-derived order.
+    const { container, harvest } = createRecordedWindowList(TURN_WINDOWS, true);
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.itemCount).toBe(21);
+    expect(result.items).toEqual(Array.from({ length: 21 }, (_, i) => `v${i + 1}`));
+  });
 
   it('orders turns by their monotonic index when the tail never evicts (issue #352)', async () => {
     // The last 3 turns stay mounted in every window; the middle evicts. Overlap

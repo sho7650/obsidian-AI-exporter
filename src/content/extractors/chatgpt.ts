@@ -148,6 +148,23 @@ export class ChatGPTExtractor extends BaseExtractor {
   }
 
   /**
+   * Conversation-wide ordinal of a turn, from `data-testid="conversation-turn-N"`.
+   *
+   * N is numbered across the whole conversation and is not renumbered per
+   * mounted window: measured on a live desktop session (2026-07-29, issue #353),
+   * a mid-scroll window reported turns 17-21 while the top window reported 1-21.
+   * That makes it a monotonic order index — the role Claude's `data-index` plays
+   * — so accumulation can sort by it instead of relying on window stitching.
+   *
+   * Returns undefined when the attribute is absent or unparsable, in which case
+   * ordering falls back to the merge itself (see `mergeWindow`).
+   */
+  private turnOrdinal(turn: Element): number | undefined {
+    const match = turn.getAttribute('data-testid')?.match(/^conversation-turn-(\d+)$/);
+    return match ? Number(match[1]) : undefined;
+  }
+
+  /**
    * Harvest the currently-mounted window as keyed messages.
    *
    * Keyed by the turn's stable uuid (data-turn-id, then data-message-id),
@@ -180,6 +197,7 @@ export class ChatGPTExtractor extends BaseExtractor {
           htmlContent: role === 'assistant' ? content : undefined,
           index: 0, // re-indexed after accumulation
         },
+        order: this.turnOrdinal(turn),
       });
     });
 

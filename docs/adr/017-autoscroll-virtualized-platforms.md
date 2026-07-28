@@ -60,6 +60,10 @@ per-turn id, rather than scrolling first and extracting once.
      completeness signal: contiguous from 0).
    - **ChatGPT** — key by `data-message-id`/`data-turn-id`; order by capture/DOM
      order; stop on stable-no-new-ids.
+     _Superseded in part by [ADR-022](022-anchor-insertion-window-merge.md):_
+     DOM-order stitching alone scrambles when the newest turns never evict
+     (issue #353). Windows are now merged by anchor insertion, and ChatGPT also
+     supplies the `conversation-turn-N` ordinal as `HarvestEntry.order`.
 3. Expose the mechanism through a `getScrollConfig(): ScrollConfig | null` hook on
    `BaseExtractor` (default `null`). `BaseExtractor.extract()` runs the
    accumulation pass when a config is present. Gemini keeps its own `extract()`
@@ -105,5 +109,9 @@ decoy-nav fixture in `test/extractors/chatgpt-autoscroll.test.ts`.
   layout, so accumulation on desktop ChatGPT is verified only by unit tests + the
   desktop fixture, not a live automated run. Claude's live run (daemon) captured
   all 26 turns; ChatGPT relies on the user's manual smoke test.
+  Partially narrowed by [ADR-022](022-anchor-insertion-window-merge.md): the
+  mounted-window sequence of a real desktop session was recorded and is replayed
+  as a unit test, which confirmed that desktop ChatGPT does evict mid-conversation
+  turns while keeping the newest ones mounted.
 - Exact stop-condition tuning (stable-iteration threshold, per-window scroll
   delta) per platform.

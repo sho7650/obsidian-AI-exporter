@@ -13,6 +13,10 @@ export const SELECTORS = {
   // ChatGPT changed from <article> to <section> in 2026-03; the article
   // variants matched nothing on the live site by 2026-07 and were removed
   // (the baseline contract rejects zero-match entries).
+  // The `data-testid` ordinal is numbered across the whole conversation and is
+  // NOT renumbered per mounted window (measured live 2026-07-29: a mid-scroll
+  // window reported turns 17-21, the top window 1-21). ChatGPTExtractor reads it
+  // as the accumulation order index — see `turnOrdinal()` and issue #353.
   conversationTurn: [
     'section[data-turn-id]', // Current structure (HIGH)
     'section[data-testid^="conversation-turn"]', // Current test attr (MEDIUM)
