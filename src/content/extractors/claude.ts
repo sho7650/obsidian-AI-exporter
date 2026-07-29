@@ -37,17 +37,6 @@ export class ClaudeExtractor extends BaseExtractor {
   // ========== Platform Detection ==========
 
   /**
-   * Check if this extractor can handle the current page
-   *
-   * IMPORTANT: Uses strict comparison (===) to prevent
-   * subdomain attacks like "evil-claude.ai.attacker.com"
-   * @see NFR-001-1 in design document
-   */
-  canExtract(): boolean {
-    return window.location.hostname === 'claude.ai';
-  }
-
-  /**
    * Check if a Deep Research / Artifact report is the actively-viewed panel.
    *
    * Detects the #markdown-artifact element, but presence alone is not enough:

@@ -41,13 +41,6 @@ export class GeminiExtractor extends BaseExtractor {
   }
 
   /**
-   * Check if this extractor can handle the current page
-   */
-  canExtract(): boolean {
-    return window.location.hostname === 'gemini.google.com';
-  }
-
-  /**
    * Check if Deep Research panel is currently visible
    */
   isDeepResearchVisible(): boolean {

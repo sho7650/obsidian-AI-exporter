@@ -1,5 +1,5 @@
 /**
- * CSS Selectors for NotebookLM (notebooklm.google.com)
+ * CSS Selectors for Gemini Notebook (notebook.google.com, formerly NotebookLM)
  *
  * Selectors are ordered by stability (HIGH → LOW).
  * NotebookLM uses Angular Material with custom elements

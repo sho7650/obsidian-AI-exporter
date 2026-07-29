@@ -31,19 +31,6 @@ export class ChatGPTExtractor extends BaseExtractor {
     this.enableAutoScroll = settings.enableAutoScroll ?? false;
   }
 
-  // ========== Platform Detection ==========
-
-  /**
-   * Check if this extractor can handle the current page
-   *
-   * IMPORTANT: Uses strict comparison (===) to prevent
-   * subdomain attacks like "evil-chatgpt.com.attacker.com"
-   * @see NFR-001-1 in design document
-   */
-  canExtract(): boolean {
-    return window.location.hostname === 'chatgpt.com';
-  }
-
   // ========== ID & Title Extraction ==========
 
   /**

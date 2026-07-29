@@ -43,13 +43,20 @@ import { throttle } from '../lib/throttle';
 /**
  * Platform-specific main content container selectors for optimized observation.
  * Keyed by AIPlatform so the compiler enforces an entry per platform (ADR-014).
+ *
+ * Each list is tried in order, falling back to document.body. The former
+ * second entries (`#app-container` for the Google properties, `#__next` for the
+ * React ones) were verified absent on all five platforms in 2026-07 — and they
+ * could only ever be consulted when `<main>` is missing, which is precisely
+ * when they are missing too. They are dropped rather than left as reassurance
+ * that does nothing; the document.body fallback below is the real safety net.
  */
 const PLATFORM_ROOT_SELECTORS: Record<AIPlatform, string[]> = {
-  gemini: ['main', '#app-container'],
-  claude: ['main', '#__next'],
-  chatgpt: ['main', '#__next'],
-  perplexity: ['main', '#__next'],
-  notebooklm: ['main', '#app-container'],
+  gemini: ['main'],
+  claude: ['main'],
+  chatgpt: ['main'],
+  perplexity: ['main'],
+  notebooklm: ['main'],
 };
 
 /**
