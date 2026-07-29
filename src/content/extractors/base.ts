@@ -17,6 +17,7 @@ import { extractErrorMessage } from '../../lib/error-utils';
 import { generateHash } from '../../lib/hash';
 import { sanitizeHtml } from '../../lib/sanitize';
 import {
+  ALL_PLATFORM_LABELS,
   MAX_CONVERSATION_TITLE_LENGTH,
   MAX_DEEP_RESEARCH_TITLE_LENGTH,
   PLATFORM_LABELS,
@@ -446,22 +447,26 @@ export abstract class BaseExtractor implements IConversationExtractor {
   }
 
   /**
-   * Known platform suffixes in document.title, derived from PLATFORM_LABELS
-   * so new platforms are picked up automatically.
-   * Matches: " - Claude", " | Gemini", " - Google Gemini", " - ChatGPT", etc.
+   * Known platform suffixes in document.title, derived from ALL_PLATFORM_LABELS
+   * so new platforms are picked up automatically and renamed ones keep working
+   * during a staggered rollout (ADR-023).
+   * Matches: " - Claude", " | Gemini", " - Google Gemini", " - Gemini Notebook", etc.
+   *
+   * ALL_PLATFORM_LABELS is longest-first, so "Gemini Notebook" is tried before
+   * the shorter "Gemini" that is a prefix of it.
    */
   private static readonly TITLE_SUFFIX_PATTERN = new RegExp(
-    `\\s*[-|]\\s*(?:Google\\s+)?(?:${Object.values(PLATFORM_LABELS).join('|')})\\s*$`,
+    `\\s*[-|]\\s*(?:Google\\s+)?(?:${ALL_PLATFORM_LABELS.join('|')})\\s*$`,
     'i'
   );
 
   /**
    * Titles that are nothing but a platform name (lowercased), derived from
-   * PLATFORM_LABELS plus known aliases.
+   * ALL_PLATFORM_LABELS plus known aliases.
    */
   private static readonly PLATFORM_ONLY_TITLES = new Set([
     'google gemini',
-    ...Object.values(PLATFORM_LABELS).map(label => label.toLowerCase()),
+    ...ALL_PLATFORM_LABELS.map(label => label.toLowerCase()),
   ]);
 
   /**

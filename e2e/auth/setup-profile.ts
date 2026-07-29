@@ -33,7 +33,7 @@ const TARGET_URLS = [
   'https://claude.ai',
   'https://chatgpt.com',
   'https://www.perplexity.ai',
-  'https://notebooklm.google.com',
+  'https://notebook.google.com',
 ];
 
 function waitForLine(prompt: string): Promise<void> {

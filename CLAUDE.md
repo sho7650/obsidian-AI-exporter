@@ -110,7 +110,7 @@ Load the extension in Chrome: `chrome://extensions` → Load unpacked → select
 ## Architecture
 
 ```
-Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, notebooklm.google.com)
+Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, notebook.google.com + legacy notebooklm.google.com)
     ↓ extracts conversation / Deep Research / Artifacts
 Background Service Worker
     ↓ sends to Obsidian
@@ -200,7 +200,7 @@ source: gemini
 - **Claude** (`claude.ai`): Conversations, Extended Thinking, and Artifacts with inline citations
 - **ChatGPT** (`chatgpt.com`): Conversations (including custom GPTs via `/g/` URLs)
 - **Perplexity** (`www.perplexity.ai`): Conversations
-- **NotebookLM** (`notebooklm.google.com`): Chat conversations with source citations
+- **Gemini Notebook** (`notebook.google.com`, formerly NotebookLM on `notebooklm.google.com`): Chat conversations with source citations. Both hosts are matched while the legacy one redirects ([ADR-023](docs/adr/023-multi-host-platform-registry.md)); the platform id stays `notebooklm`
 
 ## Image Export
 

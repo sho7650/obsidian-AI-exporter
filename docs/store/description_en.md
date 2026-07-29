@@ -1,7 +1,7 @@
-Save your AI conversations from Gemini, Claude, ChatGPT, Perplexity, and NotebookLM to Obsidian with one click.
+Save your AI conversations from Gemini, Claude, ChatGPT, Perplexity, and Gemini Notebook to Obsidian with one click.
 
 🎯 WHAT IT DOES
-This extension extracts conversations from Google Gemini (gemini.google.com), Claude AI (claude.ai), ChatGPT (chatgpt.com), Perplexity (www.perplexity.ai), and NotebookLM (notebooklm.google.com) and exports them as beautifully formatted Markdown notes.
+This extension extracts conversations from Google Gemini (gemini.google.com), Claude AI (claude.ai), ChatGPT (chatgpt.com), Perplexity (www.perplexity.ai), and Gemini Notebook / formerly NotebookLM (notebook.google.com) and exports them as beautifully formatted Markdown notes.
 
 ☕ THREE EXPORT OPTIONS
 • Obsidian: Send directly to your vault via Local REST API plugin
@@ -9,11 +9,11 @@ This extension extracts conversations from Google Gemini (gemini.google.com), Cl
 • Clipboard: Copy formatted Markdown to paste anywhere
 
 ✨ KEY FEATURES
-• One-click export from Gemini, Claude, ChatGPT, Perplexity, and NotebookLM conversations
+• One-click export from Gemini, Claude, ChatGPT, Perplexity, and Gemini Notebook conversations
 • Clean Markdown formatting with YAML frontmatter
 • Obsidian callout syntax for Q&A blocks (shows correct AI name)
 • Deep Research support (Gemini, Perplexity) and Extended Thinking/Artifacts (Claude)
-• Source citations - NotebookLM chat citations exported as footnotes
+• Source citations - Gemini Notebook chat citations exported as footnotes
 • Image export - Gemini-generated images embedded in your vault, downloaded as files, or stripped for clipboard
 • Configurable timezone for frontmatter dates
 • LaTeX math formula preservation ($$...$$ and $...$) across all platforms
@@ -45,7 +45,7 @@ For Obsidian integration:
 File download and clipboard options work without any setup.
 
 🚀 HOW TO USE
-1. Open any conversation on gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, or notebooklm.google.com
+1. Open any conversation on gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, or notebook.google.com
 2. Click the purple "Sync" button (appears on the page)
 3. Choose your export method: Obsidian, File, or Clipboard
 4. Done! Your conversation is saved as Markdown

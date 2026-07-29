@@ -64,7 +64,7 @@ describe('loadConfig', () => {
     expect(config.platformUrls).toContain('https://claude.ai');
     expect(config.platformUrls).toContain('https://chatgpt.com');
     expect(config.platformUrls).toContain('https://www.perplexity.ai');
-    expect(config.platformUrls).toContain('https://notebooklm.google.com');
+    expect(config.platformUrls).toContain('https://notebook.google.com');
   });
 
   it('loads .env.local via dotenv on startup', async () => {

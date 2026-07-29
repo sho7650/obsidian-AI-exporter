@@ -349,13 +349,38 @@ describe('BaseExtractor', () => {
       expect(extractor.testGetPageTitle()).toBe('Test Topic');
     });
 
+    it('strips " - Gemini Notebook" suffix (NotebookLM rebrand, ADR-023)', () => {
+      document.title = 'Test Topic - Gemini Notebook';
+      expect(extractor.testGetPageTitle()).toBe('Test Topic');
+    });
+
+    it('strips the legacy " - NotebookLM" suffix', () => {
+      document.title = 'Test Topic - NotebookLM';
+      expect(extractor.testGetPageTitle()).toBe('Test Topic');
+    });
+
+    it('does not let the shorter "Gemini" label truncate "Gemini Notebook"', () => {
+      // Regression guard: a naive alternation matches "Gemini" first and would
+      // leave "Test Topic - Gemini" behind (or strip nothing at all).
+      document.title = 'Notes on Gemini - Gemini Notebook';
+      expect(extractor.testGetPageTitle()).toBe('Notes on Gemini');
+    });
+
     it('returns raw title when no known suffix', () => {
       document.title = 'Some Conversation Title';
       expect(extractor.testGetPageTitle()).toBe('Some Conversation Title');
     });
 
     it('returns null when title is only a platform name', () => {
-      for (const name of ['Gemini', 'Google Gemini', 'Claude', 'ChatGPT', 'Perplexity']) {
+      for (const name of [
+        'Gemini',
+        'Google Gemini',
+        'Claude',
+        'ChatGPT',
+        'Perplexity',
+        'Gemini Notebook',
+        'NotebookLM',
+      ]) {
         document.title = name;
         expect(extractor.testGetPageTitle()).toBeNull();
       }

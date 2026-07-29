@@ -6,7 +6,12 @@
  */
 
 import type { AIPlatform } from './types';
-import { PLATFORM_REGISTRY, ALL_PLATFORMS, platformOrigin } from './platform-registry';
+import {
+  PLATFORM_REGISTRY,
+  ALL_PLATFORMS,
+  platformOrigins,
+  platformLabels,
+} from './platform-registry';
 
 // ============================================================
 // String Length Limits
@@ -154,7 +159,7 @@ export const MUTATION_DEBOUNCE_DELAY = 100;
  * Only these origins can send messages to the background worker.
  * Derived from PLATFORM_REGISTRY (ADR-014).
  */
-export const ALLOWED_ORIGINS: readonly string[] = ALL_PLATFORMS.map(platformOrigin);
+export const ALLOWED_ORIGINS: readonly string[] = ALL_PLATFORMS.flatMap(platformOrigins);
 
 /**
  * Valid message actions for background worker (M-02)
@@ -189,6 +194,21 @@ export const VALID_MESSAGE_FORMATS = ['callout', 'plain', 'blockquote'] as const
 export const PLATFORM_LABELS: Record<AIPlatform, string> = Object.fromEntries(
   ALL_PLATFORMS.map(platform => [platform, PLATFORM_REGISTRY[platform].label])
 ) as Record<AIPlatform, string>;
+
+/**
+ * Every display label across all platforms — current names plus superseded
+ * ones (e.g. "NotebookLM" before the Gemini Notebook rebrand), sorted
+ * longest-first (ADR-023).
+ *
+ * Consumers that parse *previously written* notes must use this rather than
+ * PLATFORM_LABELS: append-mode message counting sees old labels, and
+ * document.title still carries whichever suffix the page renders. The
+ * longest-first order keeps regex alternations from matching a short label
+ * ("Gemini") inside a longer one ("Gemini Notebook").
+ */
+export const ALL_PLATFORM_LABELS: readonly string[] = ALL_PLATFORMS.flatMap(platformLabels).sort(
+  (a, b) => b.length - a.length
+);
 
 // ============================================================
 // Auto-Scroll Configuration (Gemini)

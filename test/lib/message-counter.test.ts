@@ -112,6 +112,40 @@ describe('message-counter', () => {
       expect(countExistingMessages(body)).toBe(4);
     });
 
+    it('handles the current Gemini Notebook label', () => {
+      const body = ['> [!QUESTION] User', '> Hello', '', '> [!NOTE] Gemini Notebook', '> Hi'].join(
+        '\n'
+      );
+
+      expect(countExistingMessages(body)).toBe(2);
+    });
+
+    it('still counts notes written under the legacy NotebookLM label (ADR-023)', () => {
+      // Regression guard: dropping the old label makes append-mode see 0
+      // existing messages and re-append the entire conversation.
+      const body = [
+        '> [!QUESTION] User',
+        '> Hello',
+        '',
+        '> [!NOTE] NotebookLM',
+        '> Hi',
+        '',
+        '> [!QUESTION] User',
+        '> Bye',
+        '',
+        '> [!NOTE] NotebookLM',
+        '> See ya',
+      ].join('\n');
+
+      expect(countExistingMessages(body)).toBe(4);
+    });
+
+    it('counts legacy NotebookLM labels in **Label:** format', () => {
+      const body = ['**User:**', '> Hello', '', '**NotebookLM:**', '> Hi there!'].join('\n');
+
+      expect(countExistingMessages(body)).toBe(2);
+    });
+
     it('handles Assistant label', () => {
       const body = ['**User:**', '> Hello', '', '**Assistant:**', '> Hi there!'].join('\n');
 
