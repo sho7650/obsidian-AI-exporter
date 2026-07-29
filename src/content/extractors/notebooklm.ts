@@ -15,7 +15,6 @@
 
 import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
-import { platformForHost } from '../../lib/platform-registry';
 import type { ConversationMessage } from '../../lib/types';
 import { createFootnoteRef, footnoteDefsToHtml, transformCitations } from './footnotes';
 import type { CitationTransformResult } from './footnotes';
@@ -105,29 +104,12 @@ function transformCitationsToFootnotes(
 export class NotebookLMExtractor extends BaseExtractor {
   readonly platform = 'notebooklm';
 
-  // ========== Platform Detection ==========
-
-  /**
-   * Check if this extractor can handle the current page
-   *
-   * Delegates to the platform registry so the accepted hosts stay in one
-   * place: this platform is served from both notebook.google.com and the
-   * legacy notebooklm.google.com (ADR-023).
-   *
-   * IMPORTANT: platformForHost() compares each candidate with strict equality,
-   * which prevents subdomain attacks like
-   * "evil-notebook.google.com.attacker.com".
-   */
-  canExtract(): boolean {
-    return platformForHost(window.location.hostname) === this.platform;
-  }
-
   // ========== ID & Title Extraction ==========
 
   /**
    * Extract notebook ID from URL
    *
-   * URL format: https://notebooklm.google.com/notebook/{uuid}
+   * URL format: https://notebook.google.com/notebook/{uuid}
    * @returns UUID string or null if not found
    */
   getConversationId(): string | null {
@@ -147,7 +129,7 @@ export class NotebookLMExtractor extends BaseExtractor {
     if (titleEl?.textContent) {
       return this.sanitizeText(titleEl.textContent);
     }
-    return 'Untitled NotebookLM Conversation';
+    return 'Untitled Gemini Notebook Conversation';
   }
 
   // ========== Message Extraction ==========

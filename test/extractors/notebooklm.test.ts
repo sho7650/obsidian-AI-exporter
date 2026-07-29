@@ -112,7 +112,7 @@ describe('NotebookLMExtractor', () => {
     it('falls back to default when .cover-title is absent', () => {
       setNotebookLMLocation('test-id');
       loadFixture('<div></div>');
-      expect(extractor.getTitle()).toBe('Untitled NotebookLM Conversation');
+      expect(extractor.getTitle()).toBe('Untitled Gemini Notebook Conversation');
     });
   });
 

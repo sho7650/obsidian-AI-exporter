@@ -23,6 +23,7 @@ import {
   PLATFORM_LABELS,
 } from '../../lib/constants';
 import { accumulateWhileScrolling, type HarvestEntry } from '../../lib/scroll-manager';
+import { platformForHost } from '../../lib/platform-registry';
 
 /**
  * Per-platform configuration for accumulating a virtualized conversation
@@ -47,10 +48,27 @@ export abstract class BaseExtractor implements IConversationExtractor {
   /** Whether to auto-scroll to load lazily-rendered history (set from settings). */
   enableAutoScroll = false;
 
-  abstract canExtract(): boolean;
   abstract getConversationId(): string | null;
   abstract getTitle(): string;
   abstract extractMessages(): ConversationMessage[];
+
+  /**
+   * Check whether this extractor handles the current page.
+   *
+   * Resolved from PLATFORM_REGISTRY rather than a per-extractor hostname
+   * literal: a host written down twice is a host that can go stale in one
+   * place, which is exactly how the NotebookLM rebrand broke extraction
+   * (ADR-023). Platforms served from several hosts work automatically.
+   *
+   * IMPORTANT: platformForHost() compares each candidate with strict equality,
+   * which prevents subdomain attacks like "evil-claude.ai.attacker.com"
+   * (NFR-001-1; CodeQL js/incomplete-url-substring-sanitization).
+   *
+   * Overridable for platforms that need more than a host match.
+   */
+  canExtract(): boolean {
+    return platformForHost(window.location.hostname) === this.platform;
+  }
 
   // ========== Platform Label ==========
 

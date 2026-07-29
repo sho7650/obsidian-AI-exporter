@@ -182,18 +182,6 @@ type TaggedElement =
 export class PerplexityExtractor extends BaseExtractor {
   readonly platform = 'perplexity';
 
-  // ========== Platform Detection ==========
-
-  /**
-   * Check if this extractor can handle the current page
-   *
-   * IMPORTANT: Uses strict comparison (===) to prevent
-   * subdomain attacks like "evil-www.perplexity.ai.attacker.com"
-   */
-  canExtract(): boolean {
-    return window.location.hostname === 'www.perplexity.ai';
-  }
-
   // ========== ID & Title Extraction ==========
 
   /**
