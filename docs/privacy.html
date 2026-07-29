@@ -52,7 +52,8 @@
     <li><strong>claude.ai</strong>: To extract Claude conversation content (read-only)</li>
     <li><strong>chatgpt.com</strong>: To extract ChatGPT conversation content (read-only)</li>
     <li><strong>www.perplexity.ai</strong>: To extract Perplexity conversation content (read-only)</li>
-    <li><strong>notebooklm.google.com</strong>: To extract NotebookLM conversation content (read-only)</li>
+    <li><strong>notebook.google.com</strong>: To extract Gemini Notebook conversation content (read-only)</li>
+    <li><strong>notebooklm.google.com</strong>: Legacy NotebookLM host, redirected by Google to notebook.google.com (read-only)</li>
     <li><strong>Your Obsidian instance</strong>: To save files to your Obsidian vault via Local REST API (when Obsidian output is enabled). By default this is <code>127.0.0.1</code> (localhost) over HTTP. Users can optionally configure HTTPS or a LAN host address.</li>
     <li><strong>googleusercontent.com</strong>: To download AI-generated images so they can be saved with the conversation (only when image export is enabled, and only for images contained in the conversation you are exporting). This is Google's image CDN — the same host the AI page already loads those images from. The request downloads an image; no conversation content or personal data is sent.</li>
   </ul>
@@ -78,7 +79,8 @@
     <tr><td>Host: claude.ai</td><td>Inject the sync button on Claude pages</td></tr>
     <tr><td>Host: chatgpt.com</td><td>Inject the sync button on ChatGPT pages</td></tr>
     <tr><td>Host: www.perplexity.ai</td><td>Inject the sync button on Perplexity pages</td></tr>
-    <tr><td>Host: notebooklm.google.com</td><td>Inject the sync button on NotebookLM pages</td></tr>
+    <tr><td>Host: notebook.google.com</td><td>Inject the sync button on Gemini Notebook pages</td></tr>
+    <tr><td>Host: notebooklm.google.com</td><td>Inject the sync button on legacy NotebookLM URLs</td></tr>
     <tr><td>Host: *.googleusercontent.com</td><td>Download AI-generated images for export (image export only). The browser blocks the page itself from fetching these, so the extension downloads them.</td></tr>
     <tr><td>Host: 127.0.0.1 (HTTP &amp; HTTPS)</td><td>Communicate with Obsidian's local API on localhost</td></tr>
     <tr><td>Optional: other hosts</td><td>Requested at runtime if you configure a non-localhost API URL (e.g., LAN access). You will see a Chrome permission prompt before any connection is made.</td></tr>

@@ -1709,17 +1709,25 @@ function createNotebookLMConversationDOM(
 }
 
 /**
- * Set window.location for NotebookLM URL testing
+ * Set window.location for NotebookLM URL testing.
+ *
+ * Defaults to the post-rebrand host (notebook.google.com); pass
+ * `{ legacyHost: true }` to simulate a client still served the old
+ * notebooklm.google.com host during the rollout (ADR-023).
  */
-export function setNotebookLMLocation(notebookId: string): void {
+export function setNotebookLMLocation(
+  notebookId: string,
+  options: { legacyHost?: boolean } = {}
+): void {
+  const hostname = options.legacyHost ? 'notebooklm.google.com' : 'notebook.google.com';
   Object.defineProperty(window, 'location', {
     value: {
-      hostname: 'notebooklm.google.com',
+      hostname,
       pathname: `/notebook/${notebookId}`,
-      href: `https://notebooklm.google.com/notebook/${notebookId}`,
-      origin: 'https://notebooklm.google.com',
+      href: `https://${hostname}/notebook/${notebookId}`,
+      origin: `https://${hostname}`,
       protocol: 'https:',
-      host: 'notebooklm.google.com',
+      host: hostname,
       search: '',
       hash: '',
     },

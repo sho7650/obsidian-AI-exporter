@@ -29,6 +29,9 @@ const PLATFORM_IDS: Record<string, string> = {
   'claude.ai': 'claude',
   'chatgpt.com': 'chatgpt',
   'www.perplexity.ai': 'perplexity',
+  // One platform, two hosts: Google's rebrand moved NotebookLM to
+  // notebook.google.com; the legacy host is kept during rollout (ADR-023).
+  'notebook.google.com': 'notebooklm',
   'notebooklm.google.com': 'notebooklm',
 };
 

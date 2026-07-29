@@ -1,6 +1,6 @@
 # Obsidian AI Exporter
 
-Google Gemini、Claude AI、ChatGPT、Perplexity、NotebookLM の会話を Obsidian に保存する Chrome 拡張機能です。Local REST API を使用してローカル環境で動作します。
+Google Gemini、Claude AI、ChatGPT、Perplexity、Gemini Notebook（旧 NotebookLM）の会話を Obsidian に保存する Chrome 拡張機能です。Local REST API を使用してローカル環境で動作します。
 
 [English version](README.md)
 
@@ -9,13 +9,13 @@ Google Gemini、Claude AI、ChatGPT、Perplexity、NotebookLM の会話を Obsid
 
 ## 機能
 
-- **マルチプラットフォーム対応**: Google Gemini、Claude AI、ChatGPT、Perplexity、NotebookLM からエクスポート
+- **マルチプラットフォーム対応**: Google Gemini、Claude AI、ChatGPT、Perplexity、Gemini Notebook（旧 NotebookLM）からエクスポート
 - **ワンクリック保存**: 対応 AI ページに表示される「Sync」ボタンで即座に保存
 - **複数の出力オプション**: Obsidian への保存、ファイルダウンロード、クリップボードへコピー
 - **Deep Research 対応**: Gemini Deep Research、Claude Extended Thinking、Perplexity Deep Research レポートを保存
 - **Artifact 対応**: Claude Artifacts をインライン引用とソース付きで抽出
 - **画像エクスポート**: Gemini が生成した画像を会話と一緒に保存 — vault への埋め込み、ファイルダウンロード、クリップボード時は除去
-- **ソース引用**: NotebookLM のチャット引用を footnote 形式でエクスポート
+- **ソース引用**: Gemini Notebook のチャット引用を footnote 形式でエクスポート
 - **自動スクロール**: 長い会話で全メッセージを自動的に読み込み。仮想化（windowing）された Claude・ChatGPT のスレッドにも対応
 - **追記モード**: 既存ノートには新しいメッセージのみを追加
 - **ファイル名スキーム**: エクスポートするノートの命名を `title-id`（デフォルト）または `title-date` から選択
@@ -111,9 +111,9 @@ Gemini が生成した画像は自動的に捕捉・エクスポートされま�
 2. 右下に表示される紫色の「Sync」ボタンをクリック
 3. Gemini と同じ出力オプションで会話がエクスポートされます
 
-### NotebookLM
+### Gemini Notebook（旧 NotebookLM）
 
-1. [notebooklm.google.com](https://notebooklm.google.com) でノートブックを開く
+1. [notebook.google.com](https://notebook.google.com) でノートブックを開く（旧 `notebooklm.google.com` のリンクも Google がリダイレクトするため引き続き利用可能）
 2. 右下に表示される紫色の「Sync」ボタンをクリック
 3. チャット会話がソース引用（footnote 形式）付きでエクスポートされます
 
@@ -224,6 +224,8 @@ message_count: 1
 
 例: `AI/{platform}/{YYYY}/{MM}` は月別フォルダにノートを振り分けます。日付トークンはローカルのタイムゾーンを使用します。追記モードでは、月をまたいでも既存の会話は元のファイルを更新し続けます。
 
+注意: Gemini Notebook の `{platform}` はリブランド後も `notebooklm` のままです。そのため、既存ノートと同じフォルダに保存され続けます。
+
 ### ファイル名スキーム
 
 エクスポートするノートのファイル名の組み立て方を選べます（詳細設定 → **ファイル名スキーム**）:
@@ -276,7 +278,7 @@ Gemini は生成画像を、ページ側でしか読めない `blob:` URL か、
 ## アーキテクチャ
 
 ```
-Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, notebooklm.google.com)
+Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, notebook.google.com + legacy notebooklm.google.com)
     ↓ 会話 / Deep Research / Artifacts を抽出
 Background Service Worker
     ↓ Obsidian に送信
@@ -292,7 +294,7 @@ Obsidian Local REST API (デフォルト: http://127.0.0.1:27123)
 | `src/content/extractors/claude.ts` | Claude 会話 & Artifact 抽出 |
 | `src/content/extractors/chatgpt.ts` | ChatGPT 会話抽出 |
 | `src/content/extractors/perplexity.ts` | Perplexity 会話抽出 |
-| `src/content/extractors/notebooklm.ts` | NotebookLM チャット & ソース引用抽出 |
+| `src/content/extractors/notebooklm.ts` | Gemini Notebook チャット & ソース引用抽出 |
 | `src/content/image-capture.ts` | Gemini 生成画像をページコンテキストで base64 捕捉 |
 | `src/background/` | API 通信用のサービスワーカー |
 | `src/lib/image-output.ts` | 出力先ごとに画像プレースホルダを解決 |

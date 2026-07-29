@@ -28,8 +28,13 @@ describe('NotebookLMExtractor', () => {
       expect(extractor.platform).toBe('notebooklm');
     });
 
-    it('returns true for notebooklm.google.com', () => {
+    it('returns true for notebook.google.com (post-rebrand host)', () => {
       setNotebookLMLocation('test-notebook-id');
+      expect(extractor.canExtract()).toBe(true);
+    });
+
+    it('returns true for the legacy notebooklm.google.com host', () => {
+      setNotebookLMLocation('test-notebook-id', { legacyHost: true });
       expect(extractor.canExtract()).toBe(true);
     });
 
@@ -42,12 +47,30 @@ describe('NotebookLMExtractor', () => {
       });
       expect(extractor.canExtract()).toBe(false);
     });
+
+    it.each([
+      'evil-notebook.google.com.attacker.com',
+      'notebook.google.com.attacker.com',
+      'sub.notebook.google.com',
+    ])('returns false for lookalike host %s', hostname => {
+      Object.defineProperty(window, 'location', {
+        value: { hostname, pathname: '/notebook/abc' },
+        writable: true,
+        configurable: true,
+      });
+      expect(extractor.canExtract()).toBe(false);
+    });
   });
 
   // ========== Conversation ID ==========
   describe('getConversationId', () => {
     it('extracts notebook UUID from URL', () => {
       setNotebookLMLocation('02c6ebb0-b0b2-4960-bdc2-bfdb4e7b88a9');
+      expect(extractor.getConversationId()).toBe('02c6ebb0-b0b2-4960-bdc2-bfdb4e7b88a9');
+    });
+
+    it('extracts the same UUID from a legacy-host URL (path format unchanged)', () => {
+      setNotebookLMLocation('02c6ebb0-b0b2-4960-bdc2-bfdb4e7b88a9', { legacyHost: true });
       expect(extractor.getConversationId()).toBe('02c6ebb0-b0b2-4960-bdc2-bfdb4e7b88a9');
     });
 
@@ -504,7 +527,8 @@ describe('NotebookLMExtractor', () => {
       resetLocation();
       const result = await extractor.extract();
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Not on a NotebookLM page');
+      // Message is derived from the current display label (ADR-023 rebrand).
+      expect(result.error).toBe('Not on a Gemini Notebook page');
     });
   });
 });

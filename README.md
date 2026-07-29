@@ -1,6 +1,6 @@
 # Obsidian AI Exporter
 
-Chrome Extension that exports AI conversations from Google Gemini, Claude AI, ChatGPT, Perplexity, and NotebookLM to Obsidian via the Local REST API.
+Chrome Extension that exports AI conversations from Google Gemini, Claude AI, ChatGPT, Perplexity, and Gemini Notebook (formerly NotebookLM) to Obsidian via the Local REST API.
 
 [日本語版はこちら](README.ja.md)
 
@@ -9,13 +9,13 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 
 ## Features
 
-- **Multi-platform support**: Export from Google Gemini, Claude AI, ChatGPT, Perplexity, and NotebookLM
+- **Multi-platform support**: Export from Google Gemini, Claude AI, ChatGPT, Perplexity, and Gemini Notebook (formerly NotebookLM)
 - **One-click export**: Floating "Sync" button on supported AI pages
 - **Multiple output options**: Save to Obsidian, download as file, or copy to clipboard
 - **Deep Research support**: Export Gemini Deep Research, Claude Extended Thinking, and Perplexity Deep Research reports
 - **Artifact support**: Extract Claude Artifacts with inline citations and sources
 - **Image export**: Gemini-generated images are saved alongside the conversation — embedded in your vault, downloaded as files, or stripped for clipboard
-- **Source citations**: NotebookLM chat citations are exported as footnotes
+- **Source citations**: Gemini Notebook chat citations are exported as footnotes
 - **Auto-scroll**: Automatically loads all messages in long conversations, including virtualized (windowed) Claude and ChatGPT threads
 - **Append mode**: Only new messages are added to existing notes
 - **Filename schemes**: Choose `title-id` (default) or `title-date` naming for exported notes
@@ -111,9 +111,9 @@ Gemini-generated images are captured and exported automatically (see [Image Expo
 2. Click the purple "Sync" button in the bottom-right corner
 3. The conversation will be exported with the same output options as Gemini
 
-### NotebookLM
+### Gemini Notebook (formerly NotebookLM)
 
-1. Open a notebook on [notebooklm.google.com](https://notebooklm.google.com)
+1. Open a notebook on [notebook.google.com](https://notebook.google.com) (the old `notebooklm.google.com` links still work — Google redirects them)
 2. Click the purple "Sync" button in the bottom-right corner
 3. The chat conversation will be exported with inline source citations as footnotes
 
@@ -224,6 +224,8 @@ The **Vault Path** setting supports template tokens that are resolved at save ti
 
 Example: `AI/{platform}/{YYYY}/{MM}` sorts notes into per-month folders. Date tokens use your local time zone. In append mode, existing conversations continue updating their original file even after the month rolls over.
 
+Note: Gemini Notebook still resolves `{platform}` to `notebooklm`, unchanged by the rebrand, so notes keep landing in the folder your existing ones already use.
+
 ### Filename Schemes
 
 Choose how exported note filenames are built (Advanced Settings → **Filename scheme**):
@@ -276,7 +278,7 @@ If `node_modules/` is missing, the Nix wrapper exits with an instruction to run 
 ## Architecture
 
 ```
-Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, notebooklm.google.com)
+Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, notebook.google.com + legacy notebooklm.google.com)
     ↓ extracts conversation / Deep Research / Artifacts
 Background Service Worker
     ↓ sends to Obsidian
@@ -292,7 +294,7 @@ Obsidian Local REST API (default: http://127.0.0.1:27123)
 | `src/content/extractors/claude.ts` | Claude conversation & Artifact extractor |
 | `src/content/extractors/chatgpt.ts` | ChatGPT conversation extractor |
 | `src/content/extractors/perplexity.ts` | Perplexity conversation extractor |
-| `src/content/extractors/notebooklm.ts` | NotebookLM chat & source-citation extractor |
+| `src/content/extractors/notebooklm.ts` | Gemini Notebook chat & source-citation extractor |
 | `src/content/image-capture.ts` | Captures Gemini-generated images as base64 in the page context |
 | `src/background/` | Service worker for API communication |
 | `src/lib/image-output.ts` | Resolves image placeholders per output destination |

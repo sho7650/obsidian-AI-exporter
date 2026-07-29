@@ -1,8 +1,9 @@
 /**
  * NotebookLM Extractor
  *
- * Extracts chat conversations from NotebookLM (notebooklm.google.com)
- * with inline source citations converted to footnotes.
+ * Extracts chat conversations from Gemini Notebook / NotebookLM
+ * (notebook.google.com, formerly notebooklm.google.com) with inline source
+ * citations converted to footnotes.
  *
  * NotebookLM uses Angular Material with custom elements:
  * - chat-panel / chat-message — conversation structure
@@ -14,6 +15,7 @@
 
 import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
+import { platformForHost } from '../../lib/platform-registry';
 import type { ConversationMessage } from '../../lib/types';
 import { createFootnoteRef, footnoteDefsToHtml, transformCitations } from './footnotes';
 import type { CitationTransformResult } from './footnotes';
@@ -108,11 +110,16 @@ export class NotebookLMExtractor extends BaseExtractor {
   /**
    * Check if this extractor can handle the current page
    *
-   * IMPORTANT: Uses strict comparison (===) to prevent
-   * subdomain attacks like "evil-notebooklm.google.com.attacker.com"
+   * Delegates to the platform registry so the accepted hosts stay in one
+   * place: this platform is served from both notebook.google.com and the
+   * legacy notebooklm.google.com (ADR-023).
+   *
+   * IMPORTANT: platformForHost() compares each candidate with strict equality,
+   * which prevents subdomain attacks like
+   * "evil-notebook.google.com.attacker.com".
    */
   canExtract(): boolean {
-    return window.location.hostname === 'notebooklm.google.com';
+    return platformForHost(window.location.hostname) === this.platform;
   }
 
   // ========== ID & Title Extraction ==========
