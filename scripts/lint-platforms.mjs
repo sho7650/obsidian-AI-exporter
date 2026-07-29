@@ -40,6 +40,10 @@ const HOST_DISPLAY_NAMES = {
 // "displayName" checks parse a specific JSON field and look for the display name (case-insensitive).
 const CHECK_TARGETS = [
   { file: 'docs/privacy.html', type: 'hostname' },
+  // Chrome Web Store dashboard text (docs/store/listing.md). Field-level checks
+  // live in test/arch/store-listing-fields.test.ts; this only proves every host
+  // is named somewhere in the file.
+  { file: 'docs/store/listing.md', type: 'hostname' },
   { file: 'README.md', type: 'hostname' },
   { file: 'README.ja.md', type: 'hostname' },
   { file: 'CLAUDE.md', type: 'hostname' },
