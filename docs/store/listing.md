@@ -20,7 +20,7 @@ single purpose covers every registered platform.
 
 The dashboard states: _"Remove any permissions that are not necessary for your
 extension's single purpose. If you request unnecessary permissions, this version
-will be rejected."_ Whether a permission is *necessary* is judged against the
+will be rejected."_ Whether a permission is _necessary_ is judged against the
 single purpose, so a platform missing from that sentence turns its host
 permission into an unjustified one.
 

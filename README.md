@@ -46,17 +46,20 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 ### From Source
 
 1. Clone this repository:
+
    ```bash
    git clone https://github.com/sho7650/obsidian-AI-exporter.git
    cd obsidian-AI-exporter
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Build the extension:
+
    ```bash
    npm run build
    ```
@@ -120,16 +123,19 @@ Gemini-generated images are captured and exported automatically (see [Image Expo
 ### Deep Research / Extended Thinking Export
 
 **Gemini Deep Research:**
+
 1. Open the Deep Research panel (expanded view)
 2. Click the "Sync" button
 3. The full report will be saved with its original heading structure
 
 **Claude Extended Thinking (Artifacts):**
+
 1. Open a conversation with an Artifact
 2. Click the "Sync" button
 3. The Artifact content with inline citations and sources will be extracted
 
 **Perplexity Deep Research:**
+
 1. Open a Perplexity conversation containing a Deep Research report
 2. Click the "Sync" button
 3. The report content will be extracted alongside normal conversation messages
@@ -214,13 +220,13 @@ Detailed analysis sections...
 
 The **Vault Path** setting supports template tokens that are resolved at save time, so notes can be auto-organized. The default is `AI/{platform}`.
 
-| Token        | Resolves to                                                              |
-| ------------ | ------------------------------------------------------------------------ |
-| `{platform}` | Source name (`gemini`, `claude`, `chatgpt`, `perplexity`, `notebooklm`)  |
-| `{YYYY}`     | 4-digit year, local time (e.g. `2026`)                                   |
-| `{YY}`       | 2-digit year, local time (e.g. `26`)                                     |
-| `{MM}`       | 2-digit month, zero-padded (e.g. `07`)                                   |
-| `{DD}`       | 2-digit day, zero-padded (e.g. `08`)                                     |
+| Token        | Resolves to                                                             |
+| ------------ | ----------------------------------------------------------------------- |
+| `{platform}` | Source name (`gemini`, `claude`, `chatgpt`, `perplexity`, `notebooklm`) |
+| `{YYYY}`     | 4-digit year, local time (e.g. `2026`)                                  |
+| `{YY}`       | 2-digit year, local time (e.g. `26`)                                    |
+| `{MM}`       | 2-digit month, zero-padded (e.g. `07`)                                  |
+| `{DD}`       | 2-digit day, zero-padded (e.g. `08`)                                    |
 
 Example: `AI/{platform}/{YYYY}/{MM}` sorts notes into per-month folders. Date tokens use your local time zone. In append mode, existing conversations continue updating their original file even after the month rolls over.
 
@@ -233,7 +239,7 @@ Choose how exported note filenames are built (Advanced Settings → **Filename s
 - **`title-id`** (default): `{title}-{conversationId}.md` — stable across renames of the conversation.
 - **`title-date`**: `{title}-{YYYY}-{MM}-{DD}.md` — uses the local save date.
 
-If the intended filename is already occupied by a *different* conversation, the extension writes to a safe alternative name instead of overwriting it.
+If the intended filename is already occupied by a _different_ conversation, the extension writes to a safe alternative name instead of overwriting it.
 
 ## Image Export
 
@@ -253,22 +259,22 @@ The dev environment is provisioned by Nix (see [ADR-010](docs/adr/010-nix-only-d
 
 Every workflow has a Nix entry point (canonical) and an `npm run` alias (compatibility). See [ADR-011](docs/adr/011-nix-task-surface.md).
 
-| Workflow | Nix (canonical) | npm (alias) |
-|---|---|---|
-| Dev server (HMR) | `nix run .#dev` | `npm run dev` |
-| Production build | `nix run .#build` | `npm run build` |
-| Build + zip for store | `nix run .#build-zip` | `npm run build:zip` |
-| Lint | `nix run .#lint` | `npm run lint` |
-| Lint platform consistency | `nix run .#lint-platforms` | `npm run lint:platforms` |
-| Format (write) | `nix run .#format` | `npm run format` |
-| Format (check) | `nix run .#format-check` | `npm run format:check` |
-| Test | `nix run .#test` | `npm test` |
-| Test (watch) | `nix run .#test-watch` | `npm run test:watch` |
-| Test with coverage | `nix run .#test-coverage` | `npm run test:coverage` |
-| E2E auth setup | `nix run .#e2e-auth` | `npm run e2e:auth` |
-| E2E selector validation | `nix run .#e2e-selectors` | `npm run e2e:selectors` |
-| E2E selectors (headed) | `nix run .#e2e-selectors-headed` | `npm run e2e:selectors:headed` |
-| CDP daemon | `nix run .#e2e-daemon -- <start\|stop\|status>` | `npm run e2e:daemon:<sub>` |
+| Workflow                  | Nix (canonical)                                 | npm (alias)                    |
+| ------------------------- | ----------------------------------------------- | ------------------------------ |
+| Dev server (HMR)          | `nix run .#dev`                                 | `npm run dev`                  |
+| Production build          | `nix run .#build`                               | `npm run build`                |
+| Build + zip for store     | `nix run .#build-zip`                           | `npm run build:zip`            |
+| Lint                      | `nix run .#lint`                                | `npm run lint`                 |
+| Lint platform consistency | `nix run .#lint-platforms`                      | `npm run lint:platforms`       |
+| Format (write)            | `nix run .#format`                              | `npm run format`               |
+| Format (check)            | `nix run .#format-check`                        | `npm run format:check`         |
+| Test                      | `nix run .#test`                                | `npm test`                     |
+| Test (watch)              | `nix run .#test-watch`                          | `npm run test:watch`           |
+| Test with coverage        | `nix run .#test-coverage`                       | `npm run test:coverage`        |
+| E2E auth setup            | `nix run .#e2e-auth`                            | `npm run e2e:auth`             |
+| E2E selector validation   | `nix run .#e2e-selectors`                       | `npm run e2e:selectors`        |
+| E2E selectors (headed)    | `nix run .#e2e-selectors-headed`                | `npm run e2e:selectors:headed` |
+| CDP daemon                | `nix run .#e2e-daemon -- <start\|stop\|status>` | `npm run e2e:daemon:<sub>`     |
 
 > [!NOTE]
 > Nix attribute names cannot contain `:`, so npm script names like `e2e:auth` map to `e2e-auth`. The CDP daemon takes its subcommand as an argument: `nix run .#e2e-daemon -- start`.
@@ -287,35 +293,38 @@ Obsidian Local REST API (default: http://127.0.0.1:27123)
 
 ### Key Components
 
-| Component | Description |
-|-----------|-------------|
-| `src/content/` | Content script for DOM extraction and UI |
-| `src/content/extractors/gemini.ts` | Gemini conversation & Deep Research extractor |
-| `src/content/extractors/claude.ts` | Claude conversation & Artifact extractor |
-| `src/content/extractors/chatgpt.ts` | ChatGPT conversation extractor |
-| `src/content/extractors/perplexity.ts` | Perplexity conversation extractor |
-| `src/content/extractors/notebooklm.ts` | Gemini Notebook chat & source-citation extractor |
-| `src/content/image-capture.ts` | Captures Gemini-generated images as base64 in the page context |
-| `src/background/` | Service worker for API communication |
-| `src/lib/image-output.ts` | Resolves image placeholders per output destination |
-| `src/popup/` | Settings UI |
-| `src/lib/` | Shared utilities and types |
+| Component                              | Description                                                    |
+| -------------------------------------- | -------------------------------------------------------------- |
+| `src/content/`                         | Content script for DOM extraction and UI                       |
+| `src/content/extractors/gemini.ts`     | Gemini conversation & Deep Research extractor                  |
+| `src/content/extractors/claude.ts`     | Claude conversation & Artifact extractor                       |
+| `src/content/extractors/chatgpt.ts`    | ChatGPT conversation extractor                                 |
+| `src/content/extractors/perplexity.ts` | Perplexity conversation extractor                              |
+| `src/content/extractors/notebooklm.ts` | Gemini Notebook chat & source-citation extractor               |
+| `src/content/image-capture.ts`         | Captures Gemini-generated images as base64 in the page context |
+| `src/background/`                      | Service worker for API communication                           |
+| `src/lib/image-output.ts`              | Resolves image placeholders per output destination             |
+| `src/popup/`                           | Settings UI                                                    |
+| `src/lib/`                             | Shared utilities and types                                     |
 
 ## HTTPS Setup (Optional)
 
 The extension supports HTTPS connections to the Obsidian Local REST API. This is useful when:
+
 - The Local REST API is configured with HTTPS (self-signed certificate)
 - You want to connect to an Obsidian instance on your local network (LAN)
 
 ### macOS
 
 1. **Extract the certificate** from the running Obsidian REST API:
+
    ```bash
    openssl s_client -connect 127.0.0.1:27124 -showcerts \
      </dev/null 2>/dev/null | openssl x509 -outform PEM > obsidian-cert.pem
    ```
 
 2. **Import into macOS Keychain** as a trusted root certificate:
+
    ```bash
    sudo security add-trusted-cert -d -r trustRoot \
      -k /Library/Keychains/System.keychain obsidian-cert.pem
@@ -343,6 +352,7 @@ Import the certificate into your OS certificate store and restart Chrome. The ge
 ## Privacy
 
 This extension:
+
 - Does **not** collect your data, and sends **no** analytics or telemetry anywhere
 - Sends your conversations only to your Obsidian instance (default: 127.0.0.1, configurable for LAN access)
 - Downloads generated images from Google's image CDN (`googleusercontent.com`) when image export is enabled — the same host the AI page already loads them from, and only for images in the conversation you are exporting
@@ -359,4 +369,3 @@ MIT
 Contributions are welcome! Please read the [CLAUDE.md](CLAUDE.md) for development guidelines.
 
 [![Buy Me a Coffee](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=sho7650&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff)](https://www.buymeacoffee.com/sho7650)
-

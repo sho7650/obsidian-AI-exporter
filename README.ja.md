@@ -46,17 +46,20 @@ Google Gemini、Claude AI、ChatGPT、Perplexity、Gemini Notebook（旧 Noteboo
 ### ソースから
 
 1. リポジトリをクローン:
+
    ```bash
    git clone https://github.com/sho7650/obsidian-AI-exporter.git
    cd obsidian-AI-exporter
    ```
 
 2. 依存関係をインストール:
+
    ```bash
    npm install
    ```
 
 3. 拡張機能をビルド:
+
    ```bash
    npm run build
    ```
@@ -120,16 +123,19 @@ Gemini が生成した画像は自動的に捕捉・エクスポートされま�
 ### Deep Research / Extended Thinking の保存
 
 **Gemini Deep Research:**
+
 1. Deep Research パネルを開く（展開表示）
 2. 「Sync」ボタンをクリック
 3. レポート全体が見出し構造を維持したまま保存されます
 
 **Claude Extended Thinking（Artifacts）:**
+
 1. Artifact を含む会話を開く
 2. 「Sync」ボタンをクリック
 3. インライン引用とソース付きで Artifact の内容が抽出されます
 
 **Perplexity Deep Research:**
+
 1. Deep Research レポートを含む Perplexity の会話を開く
 2. 「Sync」ボタンをクリック
 3. レポート内容が通常の会話メッセージとともに抽出されます
@@ -214,13 +220,13 @@ message_count: 1
 
 **Vault Path** 設定は保存時に解決されるテンプレートトークンに対応しており、ノートを自動整理できます。デフォルトは `AI/{platform}` です。
 
-| トークン     | 解決される値                                                             |
-| ------------ | ------------------------------------------------------------------------ |
-| `{platform}` | ソース名（`gemini`、`claude`、`chatgpt`、`perplexity`、`notebooklm`）     |
-| `{YYYY}`     | 4桁の年（ローカル時間、例: `2026`）                                       |
-| `{YY}`       | 2桁の年（ローカル時間、例: `26`）                                         |
-| `{MM}`       | 2桁のゼロ埋め月（例: `07`）                                               |
-| `{DD}`       | 2桁のゼロ埋め日（例: `08`）                                               |
+| トークン     | 解決される値                                                          |
+| ------------ | --------------------------------------------------------------------- |
+| `{platform}` | ソース名（`gemini`、`claude`、`chatgpt`、`perplexity`、`notebooklm`） |
+| `{YYYY}`     | 4桁の年（ローカル時間、例: `2026`）                                   |
+| `{YY}`       | 2桁の年（ローカル時間、例: `26`）                                     |
+| `{MM}`       | 2桁のゼロ埋め月（例: `07`）                                           |
+| `{DD}`       | 2桁のゼロ埋め日（例: `08`）                                           |
 
 例: `AI/{platform}/{YYYY}/{MM}` は月別フォルダにノートを振り分けます。日付トークンはローカルのタイムゾーンを使用します。追記モードでは、月をまたいでも既存の会話は元のファイルを更新し続けます。
 
@@ -253,22 +259,22 @@ Gemini は生成画像を、ページ側でしか読めない `blob:` URL か、
 
 すべてのワークフローに Nix エントリポイント（正規）と `npm run` エイリアス（互換）があります。詳細は [ADR-011](docs/adr/011-nix-task-surface.md) を参照。
 
-| ワークフロー | Nix（正規） | npm（エイリアス） |
-|---|---|---|
-| 開発サーバー（HMR） | `nix run .#dev` | `npm run dev` |
-| プロダクションビルド | `nix run .#build` | `npm run build` |
-| ビルド + ストア用 zip | `nix run .#build-zip` | `npm run build:zip` |
-| リント | `nix run .#lint` | `npm run lint` |
-| プラットフォーム整合性チェック | `nix run .#lint-platforms` | `npm run lint:platforms` |
-| フォーマット（書き込み） | `nix run .#format` | `npm run format` |
-| フォーマット（チェック） | `nix run .#format-check` | `npm run format:check` |
-| テスト | `nix run .#test` | `npm test` |
-| テスト（watch） | `nix run .#test-watch` | `npm run test:watch` |
-| カバレッジ付きテスト | `nix run .#test-coverage` | `npm run test:coverage` |
-| E2E 認証セットアップ | `nix run .#e2e-auth` | `npm run e2e:auth` |
-| E2E セレクター検証 | `nix run .#e2e-selectors` | `npm run e2e:selectors` |
-| E2E セレクター（headed） | `nix run .#e2e-selectors-headed` | `npm run e2e:selectors:headed` |
-| CDP デーモン | `nix run .#e2e-daemon -- <start\|stop\|status>` | `npm run e2e:daemon:<sub>` |
+| ワークフロー                   | Nix（正規）                                     | npm（エイリアス）              |
+| ------------------------------ | ----------------------------------------------- | ------------------------------ |
+| 開発サーバー（HMR）            | `nix run .#dev`                                 | `npm run dev`                  |
+| プロダクションビルド           | `nix run .#build`                               | `npm run build`                |
+| ビルド + ストア用 zip          | `nix run .#build-zip`                           | `npm run build:zip`            |
+| リント                         | `nix run .#lint`                                | `npm run lint`                 |
+| プラットフォーム整合性チェック | `nix run .#lint-platforms`                      | `npm run lint:platforms`       |
+| フォーマット（書き込み）       | `nix run .#format`                              | `npm run format`               |
+| フォーマット（チェック）       | `nix run .#format-check`                        | `npm run format:check`         |
+| テスト                         | `nix run .#test`                                | `npm test`                     |
+| テスト（watch）                | `nix run .#test-watch`                          | `npm run test:watch`           |
+| カバレッジ付きテスト           | `nix run .#test-coverage`                       | `npm run test:coverage`        |
+| E2E 認証セットアップ           | `nix run .#e2e-auth`                            | `npm run e2e:auth`             |
+| E2E セレクター検証             | `nix run .#e2e-selectors`                       | `npm run e2e:selectors`        |
+| E2E セレクター（headed）       | `nix run .#e2e-selectors-headed`                | `npm run e2e:selectors:headed` |
+| CDP デーモン                   | `nix run .#e2e-daemon -- <start\|stop\|status>` | `npm run e2e:daemon:<sub>`     |
 
 > [!NOTE]
 > Nix の属性名にはコロンが使えないため、`e2e:auth` のような名前は `e2e-auth` にマッピングされます。CDP デーモンはサブコマンドを引数で渡します: `nix run .#e2e-daemon -- start`。
@@ -287,35 +293,38 @@ Obsidian Local REST API (デフォルト: http://127.0.0.1:27123)
 
 ### 主要コンポーネント
 
-| コンポーネント | 説明 |
-|---------------|------|
-| `src/content/` | DOM 抽出と UI 用のコンテンツスクリプト |
-| `src/content/extractors/gemini.ts` | Gemini 会話 & Deep Research 抽出 |
-| `src/content/extractors/claude.ts` | Claude 会話 & Artifact 抽出 |
-| `src/content/extractors/chatgpt.ts` | ChatGPT 会話抽出 |
-| `src/content/extractors/perplexity.ts` | Perplexity 会話抽出 |
-| `src/content/extractors/notebooklm.ts` | Gemini Notebook チャット & ソース引用抽出 |
-| `src/content/image-capture.ts` | Gemini 生成画像をページコンテキストで base64 捕捉 |
-| `src/background/` | API 通信用のサービスワーカー |
-| `src/lib/image-output.ts` | 出力先ごとに画像プレースホルダを解決 |
-| `src/popup/` | 設定 UI |
-| `src/lib/` | 共有ユーティリティと型定義 |
+| コンポーネント                         | 説明                                              |
+| -------------------------------------- | ------------------------------------------------- |
+| `src/content/`                         | DOM 抽出と UI 用のコンテンツスクリプト            |
+| `src/content/extractors/gemini.ts`     | Gemini 会話 & Deep Research 抽出                  |
+| `src/content/extractors/claude.ts`     | Claude 会話 & Artifact 抽出                       |
+| `src/content/extractors/chatgpt.ts`    | ChatGPT 会話抽出                                  |
+| `src/content/extractors/perplexity.ts` | Perplexity 会話抽出                               |
+| `src/content/extractors/notebooklm.ts` | Gemini Notebook チャット & ソース引用抽出         |
+| `src/content/image-capture.ts`         | Gemini 生成画像をページコンテキストで base64 捕捉 |
+| `src/background/`                      | API 通信用のサービスワーカー                      |
+| `src/lib/image-output.ts`              | 出力先ごとに画像プレースホルダを解決              |
+| `src/popup/`                           | 設定 UI                                           |
+| `src/lib/`                             | 共有ユーティリティと型定義                        |
 
 ## HTTPS 設定（オプション）
 
 Obsidian Local REST API への HTTPS 接続をサポートしています。以下のような場合に便利です:
+
 - Local REST API が HTTPS（自己署名証明書）で構成されている場合
 - ローカルネットワーク（LAN）上の Obsidian インスタンスに接続したい場合
 
 ### macOS
 
 1. Obsidian REST API から**証明書を取得**:
+
    ```bash
    openssl s_client -connect 127.0.0.1:27124 -showcerts \
      </dev/null 2>/dev/null | openssl x509 -outform PEM > obsidian-cert.pem
    ```
 
 2. macOS キーチェーンに**信頼されたルート証明書として登録**:
+
    ```bash
    sudo security add-trusted-cert -d -r trustRoot \
      -k /Library/Keychains/System.keychain obsidian-cert.pem
@@ -343,6 +352,7 @@ OS の証明書ストアに証明書をインポートし、Chrome を再起動�
 ## プライバシー
 
 この拡張機能は:
+
 - データ収集を**行わず**、解析・テレメトリの送信も一切**行いません**
 - 会話の送信先は Obsidian インスタンスのみ（デフォルト: 127.0.0.1、LAN アクセス用に設定変更可能）
 - 画像エクスポート有効時は、Google の画像 CDN（`googleusercontent.com`）から生成画像をダウンロードします — AI のページが既に画像を読み込んでいるのと同じホストで、対象はエクスポート中の会話に含まれる画像のみです
