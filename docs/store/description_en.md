@@ -45,6 +45,7 @@ For Obsidian integration:
 File download and clipboard options work without any setup.
 
 🚀 HOW TO USE
+
 1. Open any conversation on gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, or notebook.google.com
 2. Click the purple "Sync" button (appears on the page)
 3. Choose your export method: Obsidian, File, or Clipboard

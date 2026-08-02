@@ -45,6 +45,7 @@ Obsidian 連携の場合：
 ファイルダウンロードとクリップボードは設定不要で利用可能。
 
 🚀 使い方
+
 1. gemini.google.com、claude.ai、chatgpt.com、www.perplexity.ai、notebook.google.com で会話を開く
 2. ページに表示される紫色の「Sync」ボタンをクリック
 3. エクスポート方法を選択：Obsidian、ファイル、またはクリップボード
