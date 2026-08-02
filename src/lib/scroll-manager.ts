@@ -20,10 +20,13 @@ import {
  * Progress-aware accumulation deadline (issue #360, ADR-018).
  *
  * A scroll pass keeps running while it is still making progress: the pass is
- * live until either no new turns have appeared for {@link SCROLL_IDLE_TIMEOUT}
+ * live until either nothing has progressed for {@link SCROLL_IDLE_TIMEOUT}
  * (a stuck/broken scroll) or the absolute {@link SCROLL_MAX_TIMEOUT} safety cap
- * is reached. Callers reset `lastProgressTime` on every iteration that surfaces
- * a new turn, so a genuinely-long conversation is never cut off mid-scroll.
+ * is reached. Callers reset `lastProgressTime` on every iteration that makes
+ * progress, so a genuinely-long conversation is never cut off mid-scroll. What
+ * counts as progress is engine-specific: newly-loaded elements for Gemini's
+ * infinite-scroller, a new turn *or* upward scroll movement for the virtualized
+ * engine (see {@link scrollUpUntilStable}).
  *
  * @param startTime When the pass began (`Date.now()`).
  * @param lastProgressTime When the pass last made progress (`Date.now()`).
@@ -375,6 +378,23 @@ function logAccumulation(fullyLoaded: boolean, turns: number, iterations: number
  * Stability is only counted once already at the top, so a mid-scroll window that
  * happens to mount nothing new doesn't end accumulation prematurely.
  *
+ * **Progress is a new turn OR upward scroll movement** (issue #365). A turn
+ * taller than the viewport mounts as a single row that stays mounted while the
+ * engine crawls up through it, so by construction it surfaces no new key — and
+ * a turn taller than `SCROLL_IDLE_TIMEOUT / poll × step` would abort the whole
+ * pass if only new turns counted. Measured on live Claude (1440×900): step is
+ * 511px and the idle window is 37 iterations, so the limit was 18,907px, while
+ * a ~1000-line code block renders ~22,160px tall (14px font, 22.75px
+ * line-height) — reliably fatal. Counting movement is safe because upward travel
+ * is monotonically decreasing and therefore finite: once the top is reached (or
+ * the scroller stops responding) movement ceases and the idle deadline resumes
+ * its original job of detecting a genuinely stuck scroll.
+ *
+ * This widened definition is deliberately NOT shared with
+ * {@link ensureAllElementsLoaded}: that engine re-arms by jumping to
+ * `scrollHeight` and back to 0 every iteration, so "the position moved" is
+ * always true there and would disable its idle deadline entirely (ADR-024).
+ *
  * @param onWindow Ingest the freshly-mounted window; return true if it grew the
  *   accumulated set. Invoked once per iteration after each scroll settles.
  */
@@ -389,16 +409,26 @@ async function scrollUpUntilStable(
   let lastProgressTime = startTime;
 
   while (withinDeadline(startTime, lastProgressTime)) {
-    const wasAtTop = container.scrollTop <= 0;
-    container.scrollTop = Math.max(0, container.scrollTop - step);
+    const before = container.scrollTop;
+    const wasAtTop = before <= 0;
+    container.scrollTop = Math.max(0, before - step);
     await delay(SCROLL_ACCUMULATE_POLL_INTERVAL);
 
     const grew = onWindow();
+    const moved = before - container.scrollTop;
     iterations++;
+
+    console.debug(
+      `[G2O] Accumulate iteration ${iterations}: scrollTop=${container.scrollTop}, ` +
+        `moved=${moved}, newTurns=${grew}`
+    );
+
+    if (grew || moved > 0) {
+      lastProgressTime = Date.now(); // progress → reset the idle deadline
+    }
 
     if (grew) {
       stable = 0;
-      lastProgressTime = Date.now(); // progress → reset the idle deadline
     } else if (wasAtTop && ++stable >= SCROLL_STABILITY_THRESHOLD) {
       return { iterations, fullyLoaded: true };
     }

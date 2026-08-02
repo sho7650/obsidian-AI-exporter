@@ -3,6 +3,9 @@
 - Status: Proposed
 - Date: 2026-07-22
 - Related: [ADR-017](017-autoscroll-virtualized-platforms.md), issue #360
+- Extended by: [ADR-024](024-scroll-progress-includes-movement.md) — the
+  "progress" signal defined here counts only new turns, which mis-classifies the
+  traversal of a single viewport-dwarfing turn as a stuck scroller (issue #365)
 - Supersedes/extends: the fixed `SCROLL_TIMEOUT` wall in `src/lib/scroll-manager.ts`
 
 ## Context

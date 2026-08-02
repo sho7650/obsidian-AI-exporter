@@ -241,6 +241,54 @@ function createRecordedWindowList(
   return { container, harvest };
 }
 
+/**
+ * Build a virtualized list from explicit per-turn pixel heights.
+ *
+ * Unlike {@link createVirtualList} (which maps scroll *fraction* to a window of
+ * fixed size), this models the real thing: each turn occupies a real span of the
+ * scroll range, and the mounted window is whichever turns intersect the
+ * viewport. That is what makes a single very tall turn expressible — while it
+ * fills the viewport it is the *only* mounted turn, so every harvest returns the
+ * same key no matter how far the engine scrolls (issue #365).
+ *
+ * @param heights Per-turn heights in px, first turn → last turn.
+ */
+function createVirtualListByHeights(
+  heights: readonly number[],
+  clientHeight: number
+): {
+  container: HTMLElement;
+  harvest: () => Array<{ key: string; value: string; order: number }>;
+} {
+  const offsets: number[] = [];
+  let acc = 0;
+  for (const h of heights) {
+    offsets.push(acc);
+    acc += h;
+  }
+  const maxScroll = Math.max(0, acc - clientHeight);
+  let scrollTop = maxScroll; // opens at the bottom
+
+  const container = document.createElement('div');
+  Object.defineProperty(container, 'scrollTop', {
+    get: () => scrollTop,
+    set: (v: number) => {
+      scrollTop = Math.max(0, Math.min(maxScroll, v));
+    },
+    configurable: true,
+  });
+  Object.defineProperty(container, 'clientHeight', { get: () => clientHeight, configurable: true });
+  Object.defineProperty(container, 'scrollHeight', { get: () => acc, configurable: true });
+
+  const harvest = () =>
+    heights
+      .map((h, i) => ({ i, top: offsets[i], bottom: offsets[i] + h }))
+      .filter(t => t.bottom > scrollTop && t.top < scrollTop + clientHeight)
+      .map(t => ({ key: `idx-${t.i}`, value: `v${t.i}`, order: t.i }));
+
+  return { container, harvest };
+}
+
 describe('accumulateWhileScrolling', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
@@ -324,6 +372,55 @@ describe('accumulateWhileScrolling', () => {
     expect(result.items).toEqual(Array.from({ length: 300 }, (_, i) => `v${i}`));
   });
 
+  it('captures the turns above a single viewport-dwarfing turn (issue #365)', async () => {
+    // Measured on live Claude via the CDP daemon (2026-08-02, 1440x900):
+    //   clientHeight 852 -> step = floor(852 * 0.6) = 511px
+    //   idle window     = 15_000 / 400 = 37 iterations
+    //   => at most 37 * 511 = 18_907px may be traversed without a new turn
+    //   code blocks render at 14px/22.75px line-height (measured 22.16 px/line)
+    //   => a ~1000-line code block turn is ~22_160px and blows past that limit.
+    // Crossing such a turn surfaces no new key by construction (the key is the
+    // turn's own data-index), so an idle deadline that only counts new turns as
+    // progress aborts mid-conversation and loses everything above it.
+    const TALL_TURN = 22_160;
+    const heights = [...Array(10).fill(800), TALL_TURN, ...Array(10).fill(800)];
+    const { container, harvest } = createVirtualListByHeights(heights, 852);
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.fullyLoaded).toBe(true);
+    expect(result.itemCount).toBe(21);
+    // The regression: the turns *above* the tall one must survive.
+    expect(result.items.slice(0, 10)).toEqual(Array.from({ length: 10 }, (_, i) => `v${i}`));
+  });
+
+  it('gives up when neither new turns nor the scroll position move', async () => {
+    // The counterpart guard for the fix above: widening "progress" to include
+    // scroll movement must not defeat ADR-018's stuck-scroller detection. Here
+    // the container refuses to move at all, so the idle deadline must still fire
+    // promptly rather than grinding to the absolute cap (~750 iterations).
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'scrollTop', {
+      get: () => 5_000,
+      set: () => {}, // a scroller that ignores every write
+      configurable: true,
+    });
+    Object.defineProperty(container, 'clientHeight', { get: () => 852, configurable: true });
+    Object.defineProperty(container, 'scrollHeight', { get: () => 50_000, configurable: true });
+    const window = Array.from({ length: 6 }, (_, i) => ({ key: `k${i}`, value: `v${i}` }));
+
+    const promise = accumulateWhileScrolling(container, () => window);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.fullyLoaded).toBe(false);
+    expect(result.itemCount).toBe(6);
+    // 15_000ms / 400ms ≈ 38 iterations, plus slack — nowhere near the cap.
+    expect(result.iterations).toBeLessThan(45);
+  });
+
   it('stops via the idle deadline (not the absolute cap) when stuck below the top', async () => {
     // The scroll never reaches the top and no new turns ever mount after the
     // seed window: a broken/stuck scroller. Accumulation must give up promptly
@@ -349,9 +446,12 @@ describe('accumulateWhileScrolling', () => {
 
     expect(result.fullyLoaded).toBe(false);
     expect(result.itemCount).toBe(6);
-    // Idle deadline (~15s / 400ms ≈ 38 iters) fires long before the old 30s
-    // wall (~75) or the absolute cap (~750): proves the idle path, not the cap.
-    expect(result.iterations).toBeLessThan(50);
+    // The scroller still travels 10_900 → 3_000 before pinning, i.e. ~15
+    // iterations of real upward movement, and movement is progress (issue
+    // #365). The idle deadline (~38 iters) then runs from the moment motion
+    // stops, so ~53 iterations total — still nowhere near the absolute cap
+    // (~750): this proves the idle path, not the cap.
+    expect(result.iterations).toBeLessThan(80);
   });
 
   it('captures the newest turn even when Sync starts scrolled up (issue #348)', async () => {
