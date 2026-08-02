@@ -38,7 +38,8 @@ const read = (rel: string): string => fs.readFileSync(path.join(root, rel), 'utf
  *   ...the exact text pasted into the dashboard...
  *   ```
  */
-const FIELD_BLOCK = /<!--\s*field:\s*([\w.*-]+),\s*limit:\s*(\d+)\s*-->\s*```text\n([\s\S]*?)\n```/g;
+const FIELD_BLOCK =
+  /<!--\s*field:\s*([\w.*-]+),\s*limit:\s*(\d+)\s*-->\s*```text\n([\s\S]*?)\n```/g;
 
 interface Field {
   name: string;
@@ -59,9 +60,40 @@ interface Manifest {
   host_permissions: string[];
 }
 
+/**
+ * Radio buttons and checkboxes have no character limit, so they are recorded as
+ *
+ *   <!-- declaration: NAME, value: VALUE -->
+ */
+const DECLARATION = /<!--\s*declaration:\s*([\w.]+),\s*value:\s*(.+?)\s*-->/g;
+
+function parseDeclarations(markdown: string): Map<string, string> {
+  return new Map([...markdown.matchAll(DECLARATION)].map(m => [m[1], m[2]]));
+}
+
+/**
+ * The nine data types the dashboard asks about, in the order it lists them.
+ * Each must be answered explicitly: an omission here is indistinguishable from
+ * an unticked box when read back, and "we collect nothing" is exactly the claim
+ * that has to be deliberate.
+ */
+const DATA_CATEGORIES = [
+  'personally_identifiable_information',
+  'health_information',
+  'financial_and_payment_information',
+  'authentication_information',
+  'personal_communications',
+  'location',
+  'web_history',
+  'user_activity',
+  'website_content',
+] as const;
+
 const manifest = JSON.parse(read('src/manifest.json')) as Manifest;
-const fields = parseFields(read('docs/store/listing.md'));
+const listing = read('docs/store/listing.md');
+const fields = parseFields(listing);
 const byName = new Map(fields.map(f => [f.name, f]));
+const declarations = parseDeclarations(listing);
 
 /** Hosts as a reviewer sees them, with the manifest's scheme/glob stripped. */
 const manifestHosts = manifest.host_permissions.map(p =>
@@ -98,10 +130,9 @@ describe('architecture: store listing fields are version-controlled', () => {
   it.each(manifestHosts)('the host permission justification mentions %s', host => {
     const field = byName.get('host_permissions');
     expect(field, 'add a "host_permissions" field to docs/store/listing.md').toBeDefined();
-    expect(
-      field!.text.includes(host),
-      `host permission justification never mentions ${host}`
-    ).toBe(true);
+    expect(field!.text.includes(host), `host permission justification never mentions ${host}`).toBe(
+      true
+    );
   });
 
   it.each(ALL_PLATFORMS)('the single purpose description covers %s', platform => {
@@ -113,6 +144,52 @@ describe('architecture: store listing fields are version-controlled', () => {
       names.some(name => field!.text.toLowerCase().includes(name.toLowerCase())),
       `single purpose names none of ${names.join(' / ')} — a reviewer judges whether a ` +
         `host permission is necessary against this text, and an unjustified permission is rejected`
+    ).toBe(true);
+  });
+});
+
+describe('architecture: privacy declarations are version-controlled', () => {
+  it.each(DATA_CATEGORIES)('answers the %s data-usage question explicitly', category => {
+    const value = declarations.get(`data.${category}`);
+    expect(
+      value,
+      `add "data.${category}" to docs/store/listing.md; an unrecorded category reads the ` +
+        `same as an unticked box, and "we collect nothing" has to be a deliberate claim`
+    ).toBeDefined();
+    expect(['yes', 'no'], `data.${category} must be yes or no`).toContain(value);
+  });
+
+  it('declares website content as collected, because conversation text is read from the page', () => {
+    // The Chrome Web Store's definition of "handle" covers local-only work:
+    // "Extensions are required to disclose how they handle user data, even when
+    // data is processed or stored locally on a user's device and is not
+    // transmitted to external servers or third parties."
+    // Every extractor reads conversation text out of the DOM, so this is a yes.
+    expect(declarations.get('data.website_content')).toBe('yes');
+  });
+
+  it('keeps the remote-code answer consistent with the manifest CSP', () => {
+    const answer = declarations.get('remote_code');
+    expect(['yes', 'no'], 'declare remote_code as yes or no').toContain(answer);
+
+    const csp = manifest.content_security_policy.extension_pages;
+    const scriptSrc = /script-src\s+([^;]+)/.exec(csp)?.[1].trim() ?? '';
+    const allowsRemoteScripts = /https?:\/\//.test(scriptSrc);
+
+    expect(
+      answer === 'no',
+      `remote_code is "${answer}" but script-src is "${scriptSrc}" — the declaration and the ` +
+        `CSP disagree about whether remotely hosted code can run`
+    ).toBe(!allowsRemoteScripts);
+  });
+
+  it('records the same privacy policy URL that README.md publishes', () => {
+    const declared = declarations.get('privacy_policy_url');
+    expect(declared, 'add "privacy_policy_url" to docs/store/listing.md').toBeDefined();
+    expect(
+      read('README.md').includes(declared!),
+      `README.md does not link ${declared} — the dashboard and the docs point users at ` +
+        `different privacy policies`
     ).toBe(true);
   });
 });

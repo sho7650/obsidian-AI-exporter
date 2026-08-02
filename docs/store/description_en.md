@@ -31,7 +31,7 @@ This extension extracts conversations from Google Gemini (gemini.google.com), Cl
 
 🔒 PRIVACY FIRST
 • All processing happens locally on your device
-• No analytics, no telemetry, no data collection
+• No analytics, no telemetry, no data collection - conversations are processed and saved to your own device only
 • Your conversations go only to your own Obsidian vault
 • Image export downloads pictures from Google's image CDN - the same host the AI page already uses
 • API key stored securely in local storage only

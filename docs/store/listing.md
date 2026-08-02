@@ -33,9 +33,8 @@ permission into an unjustified one.
    mismatch means the paste was truncated.
 5. Update **Last synced** below.
 
-**Last synced:** 2026-07-29, extension v2.4.1 — except `single_purpose`, which
-is corrected here and **still needs pasting into the dashboard**. The live value
-omits Gemini Notebook.
+**Last synced:** 2026-08-02, extension v2.5.0. Every field below matches the
+dashboard, each verified against its character counter after pasting.
 
 ---
 
@@ -49,8 +48,8 @@ Dashboard field: 単一用途の説明 / "Single purpose description". Limit 100
 Export and save Gemini, Claude, ChatGPT, Perplexity AI, and Gemini Notebook conversations locally as Markdown notes - to Obsidian, as files, or to clipboard.
 ```
 
-157 characters. The live dashboard value is 140 characters and names only four
-platforms; this corrected text adds Gemini Notebook.
+157 characters. Replaced the previous 140-character text, which named only four
+platforms and had been stale since NotebookLM shipped in #206 (2026-04-09).
 
 ---
 
@@ -133,24 +132,96 @@ it.
 
 ---
 
-## Privacy policy
+## Remote code
 
-<https://sho7650.github.io/obsidian-AI-exporter/privacy.html> — published from
-[`docs/privacy.html`](../privacy.html).
+Dashboard field: リモートコード / "Remote code".
+
+<!-- declaration: remote_code, value: no -->
+
+Selected: **"No, I am not using remote code."** The justification textarea is
+empty (0/1000).
+
+Manifest V3 cannot execute remotely hosted code at all, and the extension does
+not try to: `content_security_policy.extension_pages` pins `script-src 'self'`,
+so no external origin can supply a script. `store-listing-fields.test.ts` derives
+this answer from that CSP rather than trusting the line above.
 
 ---
 
-## Not yet captured
+## Data usage
 
-These dashboard fields are **not** recorded here because their current values
-have not been read. They are deliberately left blank rather than guessed, since
-a wrong value here would be pasted into a review submission.
+Dashboard section: データ使用 / "Data usage". Both groups are recorded, including
+the boxes that are **not** ticked — an unrecorded category reads exactly like an
+unticked one, and "we collect nothing" has to be a claim someone made on purpose.
 
-- **Remote code** (リモートコード) — the declared answer and any justification.
-- **Data usage** (データ使用) — which data-type checkboxes are ticked, and the
-  compliance certifications.
+### Data types collected
+
+The Chrome Web Store's definition of _handle_ is broader than everyday usage:
+
+> Generally, by "handle" we mean collecting, transmitting, using, or sharing user
+> data. […] Extensions are required to disclose how they handle user data, **even
+> when data is processed or stored locally on a user's device and is not
+> transmitted to external servers or third parties.**
+
+So "it never leaves the device" is not an exemption. Every extractor reads
+conversation text out of the page, which is website content, and that is
+disclosed accordingly.
+
+| Dashboard label                                                                                                                          | Ticked  |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 個人を特定できる情報 / Personally identifiable information <!-- declaration: data.personally_identifiable_information, value: no -->     | No      |
+| 健康に関する情報 / Health information <!-- declaration: data.health_information, value: no -->                                           | No      |
+| 財務状況や支払いに関する情報 / Financial and payment information <!-- declaration: data.financial_and_payment_information, value: no --> | No      |
+| 認証に関する情報 / Authentication information <!-- declaration: data.authentication_information, value: no -->                           | No      |
+| 個人的コミュニケーション / Personal communications <!-- declaration: data.personal_communications, value: no -->                         | No      |
+| 位置情報 / Location <!-- declaration: data.location, value: no -->                                                                       | No      |
+| ウェブ履歴 / Web history <!-- declaration: data.web_history, value: no -->                                                               | No      |
+| ユーザーのアクティビティ / User activity <!-- declaration: data.user_activity, value: no -->                                             | No      |
+| **ウェブサイトのコンテンツ / Website content** <!-- declaration: data.website_content, value: yes -->                                    | **Yes** |
+
+The Obsidian API key is user-supplied configuration held in `chrome.storage.local`,
+not data gathered about the user, so it is not an authentication-information
+disclosure. Nothing is gathered about the user's identity, location, browsing or
+input.
+
+`個人的コミュニケーション` stays unticked: its examples are mail and chat messages
+between people, and the dashboard does not define whether a conversation with a
+model counts. The category is treated as out of scope rather than guessed at.
+
+### Certifications
+
+All three are ticked, and all three hold — no user data reaches a third party,
+nothing is used outside the stated purpose, and nothing touches creditworthiness
+or lending.
+
+<!-- declaration: certification.no_third_party_transfer, value: yes -->
+<!-- declaration: certification.purpose_limited_use, value: yes -->
+<!-- declaration: certification.no_creditworthiness_use, value: yes -->
+
+| Certification                                                                           | Agreed |
+| --------------------------------------------------------------------------------------- | ------ |
+| Not selling or transferring user data to third parties beyond approved uses             | Yes    |
+| Not using or transferring user data for purposes unrelated to the item's single purpose | Yes    |
+| Not using or transferring user data to determine creditworthiness or for lending        | Yes    |
+
+---
+
+## Privacy policy
+
+<!-- declaration: privacy_policy_url, value: https://sho7650.github.io/obsidian-AI-exporter/privacy.html -->
+
+<https://sho7650.github.io/obsidian-AI-exporter/privacy.html> — published from
+[`docs/privacy.html`](../privacy.html) and cross-checked against the link in
+README.md.
+
+The dashboard states that publishing the item asserts these disclosures reflect
+the current privacy policy, so `docs/privacy.html` and this file have to move
+together. It already documents that conversation content is processed, which is
+what the website-content disclosure above declares.
+
+---
+
+## Not captured here
+
 - **Store listing tab** — category, screenshots, promo assets. Only the long
   descriptions are tracked, in `description_en.md` / `description_ja.md`.
-
-Capture them the next time the dashboard is open, then extend
-`test/arch/store-listing-fields.test.ts` to cover whatever gains a length limit.
