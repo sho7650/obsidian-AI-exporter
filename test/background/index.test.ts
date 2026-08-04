@@ -1010,6 +1010,91 @@ describe('background/index', () => {
       });
     });
 
+    // Forking a new file is a decision the save path used to make in complete
+    // silence, which is why three rounds of correspondence on #365 could not
+    // pin down WHICH negative had occurred. Behaviour is unchanged here — only
+    // the reasoning becomes visible.
+    describe('fork diagnostics (issue #365)', () => {
+      const suffix = generateHash('test-id');
+      const send = (sendResponse: ReturnType<typeof vi.fn>) =>
+        capturedListener(
+          { action: 'saveToOutputs', outputs: ['obsidian'], data: validNote },
+          validSender as chrome.runtime.MessageSender,
+          sendResponse
+        );
+
+      it('warns with every probe outcome when it forks an alternative name', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        mockClient.getFile.mockImplementation((path: string) =>
+          Promise.resolve(
+            path === 'AI/Gemini/test.md' ? '---\nid: other_id\n---\nSomeone else' : null
+          )
+        );
+        mockClient.putFile.mockResolvedValue(undefined);
+
+        const sendResponse = vi.fn();
+        send(sendResponse);
+        await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+        const call = warn.mock.calls.find(c => String(c[0]).includes('Filename collision'));
+        expect(call).toBeDefined();
+        const detail = call?.[1] as {
+          expectedId: string;
+          savedAs: string;
+          probes: Array<{ attempt: number; fileName: string; state: string; foundId?: string }>;
+        };
+        expect(detail.expectedId).toBe('test-id');
+        expect(detail.savedAs).toBe(`test-${suffix}.md`);
+        expect(detail.probes[0]).toEqual({
+          attempt: 0,
+          fileName: 'test.md',
+          state: 'different-id',
+          foundId: 'other_id',
+        });
+        expect(detail.probes[1]).toMatchObject({ attempt: 1, state: 'absent' });
+        warn.mockRestore();
+      });
+
+      it('reports an empty occupying file as empty, not as another conversation', async () => {
+        // Behaviour is deliberately unchanged (it still forks) — but a 0-byte
+        // note must not be reported as evidence that someone else owns the name.
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        mockClient.getFile.mockImplementation((path: string) =>
+          Promise.resolve(path === 'AI/Gemini/test.md' ? '' : null)
+        );
+        mockClient.putFile.mockResolvedValue(undefined);
+
+        const sendResponse = vi.fn();
+        send(sendResponse);
+        await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+        const call = warn.mock.calls.find(c => String(c[0]).includes('Filename collision'));
+        const detail = call?.[1] as { probes: Array<{ attempt: number; state: string }> };
+        expect(detail.probes[0]).toEqual({ attempt: 0, fileName: 'test.md', state: 'empty' });
+        // Unchanged behaviour: the fork still happens.
+        expect(mockClient.putFile).toHaveBeenCalledWith(
+          `AI/Gemini/test-${suffix}.md`,
+          expect.any(String)
+        );
+        warn.mockRestore();
+      });
+
+      it('stays silent when the note lands on its canonical name', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        mockClient.getFile.mockResolvedValue(null);
+        mockClient.putFile.mockResolvedValue(undefined);
+
+        const sendResponse = vi.fn();
+        send(sendResponse);
+        await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+        expect(warn.mock.calls.filter(c => String(c[0]).includes('Filename collision'))).toEqual(
+          []
+        );
+        warn.mockRestore();
+      });
+    });
+
     it('saves new file successfully', async () => {
       mockClient.getFile.mockResolvedValue(null);
       mockClient.putFile.mockResolvedValue(undefined);
@@ -2105,6 +2190,32 @@ describe('background/index', () => {
       const response = sendResponse.mock.calls[0][0];
       expect(response.allSuccessful).toBe(true);
       expect(response.messagesAppended).toBe(2);
+    });
+
+    it('reports why append mode found no existing note (issue #365)', async () => {
+      // The miss is what makes the save path fork a new file, so name it.
+      const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+      mockGetSettings = vi.fn(() => Promise.resolve(appendSettings));
+      mockClient.getFile.mockResolvedValue(null); // direct path absent
+      mockClient.listFiles.mockResolvedValue([]); // …and nothing to scan
+      mockClient.putFile.mockResolvedValue(undefined);
+
+      const sendResponse = vi.fn();
+      capturedListener(
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: appendNote },
+        validSender as chrome.runtime.MessageSender,
+        sendResponse
+      );
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+      const call = info.mock.calls.find(c => String(c[0]).includes('Append lookup'));
+      expect(call).toBeDefined();
+      expect(call?.[1]).toMatchObject({
+        id: 'claude_abc-def',
+        missReason: 'empty-directory',
+        directProbe: { state: 'absent' },
+      });
+      info.mockRestore();
     });
 
     it('returns messagesAppended: 0 when no new messages', async () => {

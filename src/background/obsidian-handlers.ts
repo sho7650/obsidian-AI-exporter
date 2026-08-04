@@ -14,11 +14,11 @@ import {
   getSearchBasePath,
 } from '../lib/path-utils';
 import { lookupExistingFile, buildAppendContent } from '../lib/append-utils';
+import { classifyNoteProbe, isSameConversation, type ProbeState } from '../lib/note-identity';
 import { resolveImagesForObsidian, stripImagePlaceholders } from '../lib/image-output';
 import { flattenLargeCallouts } from '../lib/callout-flatten';
 import { base64ToBytes } from '../lib/image-utils';
 import { collisionSuffix, candidateFileName } from '../lib/filename-collision';
-import { parseFrontmatter } from '../lib/frontmatter-parser';
 import { validateObsidianUrl } from '../lib/validation';
 import type { ExtensionSettings, ObsidianNote, SaveResponse } from '../lib/types';
 
@@ -98,7 +98,17 @@ async function tryAppendMode(
       hintPath: appendPathMemo.get(note.frontmatter.id),
       filenameScheme: settings.templateOptions.filenameScheme,
     });
-    if (!lookup.found) return null;
+    if (!lookup.found) {
+      // A miss is what sends the save down the fork path, so name the negative
+      // rather than letting it vanish (issue #365).
+      console.info('[G2O Background] Append lookup found no existing note', {
+        id: note.frontmatter.id,
+        missReason: lookup.missReason,
+        directProbe: lookup.directProbe,
+        searched: { direct: fullPath, base: searchBasePath },
+      });
+      return null;
+    }
     rememberAppendPath(note.frontmatter.id, lookup.path);
 
     const appendResult = buildAppendContent(lookup.content, note, settings);
@@ -178,6 +188,16 @@ async function saveFreshNote(
   const target = await resolveCollisionFreePath(client, resolvedPath, note);
   if ('error' in target) {
     return { success: false, error: target.error };
+  }
+  if (target.renamed) {
+    // The canonical name was taken by something we could not identify as ours.
+    // This is the moment a duplicate note is born, so say exactly what each
+    // rejected candidate held (issue #365).
+    console.warn('[G2O Background] Filename collision: saved under an alternative name', {
+      expectedId: note.frontmatter.id,
+      savedAs: target.fileName,
+      probes: target.probes,
+    });
   }
 
   const { note: saveNote, failedImages } = await prepareNoteImages(
@@ -270,6 +290,17 @@ interface WritableTarget {
   isNewFile: boolean;
   /** True when the original name was occupied by a different conversation */
   renamed: boolean;
+  /** What each probed candidate name held, in probe order (issue #365). */
+  probes: readonly ProbeOutcome[];
+}
+
+/** What one candidate file name held when it was probed. */
+interface ProbeOutcome {
+  attempt: number;
+  fileName: string;
+  state: ProbeState;
+  /** The id actually read from that file, when it had one. */
+  foundId?: string;
 }
 
 /**
@@ -289,23 +320,33 @@ async function resolveCollisionFreePath(
   note: ObsidianNote
 ): Promise<WritableTarget | { error: string }> {
   const suffix = collisionSuffix(note.frontmatter.id);
+  const probes: ProbeOutcome[] = [];
 
   for (let attempt = 0; attempt < MAX_COLLISION_ATTEMPTS; attempt++) {
     const fileName = candidateFileName(note.fileName, suffix, attempt);
     const path = resolvedPath ? `${resolvedPath}/${fileName}` : fileName;
 
     const existing = await client.getFile(path);
-    if (existing === null) {
-      return { path, fileName, isNewFile: true, renamed: attempt > 0 };
+    const probe = classifyNoteProbe(existing, note.frontmatter.id);
+    probes.push({ attempt, fileName, ...probe });
+
+    if (probe.state === 'absent') {
+      return { path, fileName, isNewFile: true, renamed: attempt > 0, probes };
     }
-    const parsed = parseFrontmatter(existing);
-    if (parsed?.fields.id === note.frontmatter.id) {
-      return { path, fileName, isNewFile: false, renamed: attempt > 0 };
+    if (isSameConversation(probe)) {
+      return { path, fileName, isNewFile: false, renamed: attempt > 0, probes };
     }
-    // Occupied by a different conversation (or an unparseable/foreign file):
-    // never overwrite — try the next deterministic candidate.
+    // Occupied by a different conversation, or holding something we cannot
+    // identify (empty / unparseable / no id): never overwrite — try the next
+    // deterministic candidate. Which of those it was is now recorded, so a
+    // duplicate reported from the field can be traced back to its cause.
   }
 
+  console.warn('[G2O Background] Filename collision: no free name found', {
+    expectedId: note.frontmatter.id,
+    fileName: note.fileName,
+    probes,
+  });
   return {
     error:
       `filename collision: could not find a free name for '${note.fileName}' ` +

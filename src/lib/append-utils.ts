@@ -9,8 +9,34 @@ import type { ObsidianApiClient } from './obsidian-api';
 import type { ObsidianNote, ExtensionSettings, FilenameScheme } from './types';
 import { SCAN_MAX_REQUESTS } from './constants';
 import { parseFrontmatter, updateFrontmatter } from './frontmatter-parser';
+import { classifyNoteProbe, isSameConversation, type NoteProbe } from './note-identity';
 import { countExistingMessages, extractTailMessages } from './message-counter';
 import { formatDateWithTimezone } from './date-utils';
+
+/**
+ * Why a lookup failed to find the conversation's existing note (issue #365).
+ *
+ * A miss makes the save path fork a new file, so when a duplicate turns up in
+ * the wild this is the single most useful thing to know. Reported, never acted
+ * on — the lookup's behaviour is unchanged.
+ *
+ * - `no-candidate-suffix` — a `title-id` file name with no id suffix, so no
+ *   directory scan is possible at all.
+ * - `empty-directory` — the listing returned nothing. `listEntries()` maps a
+ *   404 to `[]`, and the Local REST API documents both "directory does not
+ *   exist" (404) and that empty directories are not returned, so a missing
+ *   folder, an empty one and a swallowed error all look identical here.
+ * - `no-candidate-file` — the folder had files, none carrying our id suffix.
+ * - `candidate-id-mismatch` — same-suffix files existed but none were ours.
+ * - `budget-exhausted` — the scan hit {@link SCAN_MAX_REQUESTS} first, so the
+ *   note may well exist beyond the point the scan stopped.
+ */
+export type LookupMissReason =
+  | 'no-candidate-suffix'
+  | 'empty-directory'
+  | 'no-candidate-file'
+  | 'candidate-id-mismatch'
+  | 'budget-exhausted';
 
 /**
  * Result of file lookup for append mode
@@ -20,6 +46,10 @@ interface FileLookupResult {
   path: string;
   content: string;
   matchType: 'direct' | 'memo' | 'id-scan' | 'none';
+  /** Only on a miss: which negative occurred (issue #365). */
+  missReason?: LookupMissReason;
+  /** What the direct-path GET saw. Absent when a memo hit short-circuited it. */
+  directProbe?: NoteProbe;
 }
 
 /**
@@ -94,8 +124,36 @@ function createScanBudget(max: number): ScanBudget {
 }
 
 /** Uniform "no existing file" result. */
-function notFound(fullPath: string): FileLookupResult {
-  return { found: false, path: fullPath, content: '', matchType: 'none' };
+function notFound(
+  fullPath: string,
+  missReason: LookupMissReason,
+  directProbe?: NoteProbe
+): FileLookupResult {
+  return { found: false, path: fullPath, content: '', matchType: 'none', missReason, directProbe };
+}
+
+/**
+ * What a directory scan saw, so the caller can name the miss.
+ *
+ * `entries`/`candidates` are counts, not data: they separate "the folder was
+ * empty or unreadable" from "the folder had files but none carried our id
+ * suffix" from "same-suffix files existed but none were ours".
+ */
+interface ScanResult {
+  hit: FileLookupResult | null;
+  entries: number;
+  candidates: number;
+}
+
+/** No scan was possible (no directory to list). */
+const NO_SCAN: ScanResult = { hit: null, entries: 0, candidates: 0 };
+
+/** Name the negative a completed scan represents. */
+function scanMissReason(scan: ScanResult, budget: ScanBudget): LookupMissReason {
+  if (budget.exhausted) return 'budget-exhausted';
+  if (scan.entries === 0) return 'empty-directory';
+  if (scan.candidates === 0) return 'no-candidate-file';
+  return 'candidate-id-mismatch';
 }
 
 /**
@@ -136,10 +194,8 @@ async function readCandidate(
 ): Promise<FileLookupResult | null> {
   if (!budget.spend()) return null;
   const content = await client.getFile(candidatePath);
-  if (content === null) return null;
-  const parsed = parseFrontmatter(content);
-  if (parsed?.fields.id !== expectedId) return null;
-  return { found: true, path: candidatePath, content, matchType: 'id-scan' };
+  if (!isSameConversation(classifyNoteProbe(content, expectedId))) return null;
+  return { found: true, path: candidatePath, content: content as string, matchType: 'id-scan' };
 }
 
 /**
@@ -154,10 +210,8 @@ async function tryHintPath(
 ): Promise<FileLookupResult | null> {
   if (!hintPath || hintPath === fullPath) return null;
   const content = await client.getFile(hintPath);
-  if (content === null) return null;
-  const parsed = parseFrontmatter(content);
-  if (parsed?.fields.id !== expectedId) return null;
-  return { found: true, path: hintPath, content, matchType: 'memo' };
+  if (!isSameConversation(classifyNoteProbe(content, expectedId))) return null;
+  return { found: true, path: hintPath, content: content as string, matchType: 'memo' };
 }
 
 /**
@@ -196,34 +250,33 @@ export async function lookupExistingFile(
 
   // Step 1: Direct path match
   const directContent = await client.getFile(fullPath);
-  if (directContent !== null && parseFrontmatter(directContent)?.fields.id === expectedId) {
-    return { found: true, path: fullPath, content: directContent, matchType: 'direct' };
+  const directProbe = classifyNoteProbe(directContent, expectedId);
+  if (isSameConversation(directProbe)) {
+    return {
+      found: true,
+      path: fullPath,
+      content: directContent as string,
+      matchType: 'direct',
+      directProbe,
+    };
   }
 
   // Step 2: Directory scan, bounded by a shared request budget
   const matches = createCandidateMatcher(note.fileName, filenameScheme);
-  if (!matches) return notFound(fullPath);
+  if (!matches) return notFound(fullPath, 'no-candidate-suffix', directProbe);
 
   const budget = createScanBudget(SCAN_MAX_REQUESTS);
   const useRecursive = searchBasePath !== resolvedPath && searchBasePath !== '';
 
-  if (useRecursive) {
-    const recursive = await recursiveIdScan(
-      client,
-      searchBasePath,
-      matches,
-      expectedId,
-      fullPath,
-      budget
-    );
-    if (recursive) return recursive;
-  } else if (resolvedPath) {
-    const flat = await flatIdScan(client, resolvedPath, matches, expectedId, fullPath, budget);
-    if (flat) return flat;
-  }
+  const scan = useRecursive
+    ? await recursiveIdScan(client, searchBasePath, matches, expectedId, fullPath, budget)
+    : resolvedPath
+      ? await flatIdScan(client, resolvedPath, matches, expectedId, fullPath, budget)
+      : NO_SCAN;
+  if (scan.hit) return { ...scan.hit, directProbe };
 
   // Step 3: Not found
-  return notFound(fullPath);
+  return notFound(fullPath, scanMissReason(scan, budget), directProbe);
 }
 
 /**
@@ -240,19 +293,22 @@ async function flatIdScan(
   expectedId: string,
   skipPath: string,
   budget: ScanBudget
-): Promise<FileLookupResult | null> {
-  if (!budget.spend()) return null;
+): Promise<ScanResult> {
+  if (!budget.spend()) return NO_SCAN;
   const files = await client.listFiles(dir);
+  let candidates = 0;
+
   for (const file of files) {
-    if (budget.exhausted) return null;
+    if (budget.exhausted) break;
     if (!matches(file)) continue;
     const candidatePath = `${dir}/${file}`;
     if (candidatePath === skipPath) continue; // Already checked as direct match
+    candidates++;
     const hit = await readCandidate(client, candidatePath, expectedId, budget);
-    if (hit) return hit;
+    if (hit) return { hit, entries: files.length, candidates };
   }
 
-  return null;
+  return { hit: null, entries: files.length, candidates };
 }
 
 /**
@@ -270,14 +326,17 @@ async function recursiveIdScan(
   expectedId: string,
   skipPath: string,
   budget: ScanBudget
-): Promise<FileLookupResult | null> {
+): Promise<ScanResult> {
   type Frame = { dir: string; depth: number };
   const queue: Frame[] = [{ dir: baseDir, depth: 0 }];
+  let seen = 0;
+  let candidates = 0;
 
   while (queue.length > 0) {
     const { dir, depth } = queue.shift() as Frame;
-    if (!budget.spend()) return null;
+    if (!budget.spend()) return { hit: null, entries: seen, candidates };
     const entries = await client.listEntries(dir);
+    seen += entries.length;
     for (const entry of entries) {
       if (entry.endsWith('/')) {
         if (depth + 1 <= RECURSIVE_SCAN_MAX_DEPTH) {
@@ -289,12 +348,13 @@ async function recursiveIdScan(
       if (!matches(entry)) continue;
       const candidatePath = `${dir}/${entry}`;
       if (candidatePath === skipPath) continue;
+      candidates++;
       const hit = await readCandidate(client, candidatePath, expectedId, budget);
-      if (hit) return hit;
+      if (hit) return { hit, entries: seen, candidates };
     }
   }
 
-  return null;
+  return { hit: null, entries: seen, candidates };
 }
 
 /**
