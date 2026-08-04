@@ -338,6 +338,121 @@ describe('lookupExistingFile', () => {
 
   // ----- Request budget -----
 
+  // ===== miss diagnostics (issue #365) =====
+  //
+  // When append mode finds nothing, the save path forks a new note. Three
+  // rounds of correspondence on #365 failed to pin down which negative had
+  // occurred, because every one of them produced the same silent `found:
+  // false`. These pin the reason down without changing any behaviour.
+
+  it('reports missReason no-candidate-suffix when the file name carries no id suffix', async () => {
+    const noSuffix = createTestNote({
+      fileName: 'conversation.md',
+      frontmatter: createTestFrontmatter({ id: 'claude_abc-def-123' }),
+    });
+    mockClient.getFile.mockResolvedValue(null);
+
+    const result = await lookupExistingFile(
+      mockClient as never,
+      'AI/claude/conversation.md',
+      'AI/claude',
+      noSuffix
+    );
+
+    expect(result.found).toBe(false);
+    expect(result.missReason).toBe('no-candidate-suffix');
+    expect(mockClient.listFiles).not.toHaveBeenCalled();
+  });
+
+  it('reports missReason empty-directory when the listing comes back empty', async () => {
+    // listEntries maps a 404 to [] (obsidian-api.ts), so "the folder is gone",
+    // "the folder is empty" and "the request failed" are indistinguishable to
+    // the scan — worth separating from "the folder had files, none matched".
+    mockClient.getFile.mockResolvedValue(null);
+    mockClient.listFiles.mockResolvedValue([]);
+
+    const result = await lookupExistingFile(
+      mockClient as never,
+      'AI/claude/my-chat-abc12345.md',
+      'AI/claude',
+      testNote
+    );
+
+    expect(result.found).toBe(false);
+    expect(result.missReason).toBe('empty-directory');
+  });
+
+  it('reports missReason no-candidate-file when the folder holds no same-suffix file', async () => {
+    mockClient.getFile.mockResolvedValue(null);
+    mockClient.listFiles.mockResolvedValue(['unrelated-file.md', 'another-note-99999999.md']);
+
+    const result = await lookupExistingFile(
+      mockClient as never,
+      'AI/claude/my-chat-abc12345.md',
+      'AI/claude',
+      testNote
+    );
+
+    expect(result.found).toBe(false);
+    expect(result.missReason).toBe('no-candidate-file');
+  });
+
+  it('reports missReason candidate-id-mismatch when a same-suffix file holds another conversation', async () => {
+    mockClient.listFiles.mockResolvedValue(['other-chat-abc12345.md']);
+    mockClient.getFile.mockImplementation((path: string) =>
+      Promise.resolve(
+        path === 'AI/claude/other-chat-abc12345.md'
+          ? '---\nid: claude_someone-else\n---\nBody'
+          : null
+      )
+    );
+
+    const result = await lookupExistingFile(
+      mockClient as never,
+      'AI/claude/my-chat-abc12345.md',
+      'AI/claude',
+      testNote
+    );
+
+    expect(result.found).toBe(false);
+    expect(result.missReason).toBe('candidate-id-mismatch');
+  });
+
+  it('records what the direct-path probe saw when it holds a different conversation', async () => {
+    mockClient.listFiles.mockResolvedValue([]);
+    mockClient.getFile.mockResolvedValue('---\nid: claude_someone-else\n---\nBody');
+
+    const result = await lookupExistingFile(
+      mockClient as never,
+      'AI/claude/my-chat-abc12345.md',
+      'AI/claude',
+      testNote
+    );
+
+    expect(result.found).toBe(false);
+    expect(result.directProbe).toEqual({
+      state: 'different-id',
+      foundId: 'claude_someone-else',
+    });
+  });
+
+  it('records an empty direct-path file as empty rather than as another conversation', async () => {
+    // A 0-byte note is a legitimate 200 with an empty body, not evidence that
+    // someone else owns the name.
+    mockClient.listFiles.mockResolvedValue([]);
+    mockClient.getFile.mockResolvedValue('');
+
+    const result = await lookupExistingFile(
+      mockClient as never,
+      'AI/claude/my-chat-abc12345.md',
+      'AI/claude',
+      testNote
+    );
+
+    expect(result.found).toBe(false);
+    expect(result.directProbe).toEqual({ state: 'empty' });
+  });
+
   it('stops scanning once the request budget is exhausted', async () => {
     const dateNote = createTestNote({
       fileName: 'my-chat-2026-07-10.md',
