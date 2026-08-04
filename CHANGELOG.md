@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.6.1...v2.7.0) (2026-08-04)
+
+
+### Features
+
+* report why a save forks a duplicate note ([#397](https://github.com/sho7650/obsidian-AI-exporter/issues/397)) ([e10a24a](https://github.com/sho7650/obsidian-AI-exporter/commit/e10a24aaecb813f6162b1b5344c6c71ed30bb241)), closes [#365](https://github.com/sho7650/obsidian-AI-exporter/issues/365)
+
 ## [2.6.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.6.0...v2.6.1) (2026-08-02)
 
 
