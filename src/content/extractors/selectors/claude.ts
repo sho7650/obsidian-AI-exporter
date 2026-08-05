@@ -27,20 +27,17 @@ export const SELECTORS = {
   // in a single extracted message (see issue #200).
   // Legacy selectors remain as fallbacks for older Claude DOM variants
   // that did not expose [data-testid="user-message"].
+  //
+  // 2026-08: two fallbacks dropped, both measured at zero on the live pages.
+  // `.bg-bg-300 p` — Claude removed the bg-bg-300 token outright (the user
+  // bubble is now `.bg-neutral-30 dark:…bg-surface-3 .rounded-xl`).
+  // `[class*="user-message"]` — the turn is identified by the data-testid
+  // attribute, not by a class; the `!font-user-message` class that made this
+  // substring match work disappeared a day after bg-bg-300 did. Chasing either
+  // token would only buy the next rename.
   userMessage: [
     '[data-testid="user-message"]', // Grid container (HIGH)
-    '[class*="user-message"]', // Partial match (MEDIUM)
     '.whitespace-pre-wrap.break-words', // Legacy inner <p> (LOW fallback)
-    '.bg-bg-300 p', // Legacy structural fallback (LOW)
-  ],
-
-  // User message wrapper (for date extraction)
-  // 2026-07: py-2.5 became py-[var(--msg-bubble-py,...)] on the live site,
-  // killing the old .pl-2.5.py-2.5 primary (baseline contract caught it)
-  userWrapper: [
-    '.bg-bg-300.rounded-xl', // Style composite (HIGH)
-    '.bg-bg-300', // Tailwind (MEDIUM)
-    '[class*="bg-bg-300"]', // Partial match (MEDIUM)
   ],
 
   // Assistant response selectors
@@ -58,12 +55,12 @@ export const SELECTORS = {
     '[class*="markdown"]', // Partial match (MEDIUM)
   ],
 
-  // Date selectors
-  messageDate: [
-    'span[data-state="closed"]', // Functional attribute (MEDIUM)
-    '.text-text-500.text-xs', // Tailwind (MEDIUM)
-    '[class*="text-text-500"]', // Partial match (LOW)
-  ],
+  // NOTE (2026-08): `userWrapper` and `messageDate` used to live here. No code
+  // ever read either of them — Claude date extraction was never implemented —
+  // yet the live selector suite validates every declared group, so when Claude
+  // dropped the `bg-bg-300` and `.text-text-500.text-xs` classes the run failed
+  // over selectors nothing consumes. Declare them again only alongside the code
+  // that reads them, measured against the DOM of that day.
 
   // Scroll container for virtualized-conversation auto-scroll (ADR-017).
   // Claude windows/evicts turns; this is the overflow-y-auto element that
@@ -89,10 +86,11 @@ export const DEEP_RESEARCH_SELECTORS = {
   ],
 
   // Report title
+  // 2026-08: `h1.text-text-100` dropped — text-text-100 survives elsewhere in
+  // the DOM but no longer lands on an h1, so the pairing can never match.
   title: [
     '#markdown-artifact h1', // Structure (HIGH)
     '.standard-markdown h1', // Structure (HIGH)
-    'h1.text-text-100', // Tailwind (MEDIUM)
     'h1', // Generic (LOW)
   ],
 
