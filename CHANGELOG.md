@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.2](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.1...v2.7.2) (2026-08-05)
+
+
+### Miscellaneous
+
+* **deps-dev:** bump undici, fast-uri and brace-expansion for security fixes ([#404](https://github.com/sho7650/obsidian-AI-exporter/issues/404)) ([8df0542](https://github.com/sho7650/obsidian-AI-exporter/commit/8df054262200e08cef287870079e9d35cf1672ea))
+
 ## [2.7.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.0...v2.7.1) (2026-08-05)
 
 
