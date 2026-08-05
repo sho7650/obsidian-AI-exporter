@@ -1079,6 +1079,29 @@ describe('background/index', () => {
         warn.mockRestore();
       });
 
+      it('does not fork when the existing note is CRLF-terminated (issue #365)', async () => {
+        // The reported failure end to end: a note the extension wrote, later
+        // rewritten with Windows line endings by the user's own tooling. It
+        // used to read as `no-id`, so the save forked `…-<hash>.md` beside it.
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const ownNote = ['---', 'id: test-id', 'title: T', '---', '', 'Body'].join('\r\n');
+        mockClient.getFile.mockImplementation((path: string) =>
+          Promise.resolve(path === 'AI/Gemini/test.md' ? ownNote : null)
+        );
+        mockClient.putFile.mockResolvedValue(undefined);
+
+        const sendResponse = vi.fn();
+        send(sendResponse);
+        await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+        // Written back to its own name, not to a collision-free alternative.
+        expect(mockClient.putFile).toHaveBeenCalledWith('AI/Gemini/test.md', expect.any(String));
+        expect(warn.mock.calls.filter(c => String(c[0]).includes('Filename collision'))).toEqual(
+          []
+        );
+        warn.mockRestore();
+      });
+
       it('stays silent when the note lands on its canonical name', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         mockClient.getFile.mockResolvedValue(null);
