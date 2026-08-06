@@ -71,6 +71,48 @@ describe('classifyNoteProbe', () => {
   });
 });
 
+describe('line endings (issue #365 regression)', () => {
+  // The reported failure, reduced: a note the extension itself wrote, later
+  // rewritten CRLF-terminated by the reporter's own tagging tool on Windows.
+  // The save path read `no-id` from a file whose first frontmatter line is the
+  // matching id, decided it belonged to another conversation, and forked a
+  // duplicate.
+  const lines = [
+    '---',
+    `id: ${ID}`,
+    'title: Gmail search returning irrelevant results',
+    'source: claude',
+    'message_count: 239',
+    '---',
+    '',
+    '> [!QUESTION] User',
+    '> Hello',
+  ];
+
+  it('recognises its own note when the file has CRLF endings', () => {
+    expect(classifyNoteProbe(lines.join('\r\n'), ID)).toEqual({
+      state: 'same-conversation',
+      foundId: ID,
+    });
+  });
+
+  it('recognises its own note when the file has lone-CR endings', () => {
+    expect(classifyNoteProbe(lines.join('\r'), ID)).toEqual({
+      state: 'same-conversation',
+      foundId: ID,
+    });
+  });
+
+  it('still reports a different conversation when the id genuinely differs', () => {
+    const foreign = lines.map(l => l.replace(ID, 'claude_ffffffff')).join('\r\n');
+
+    expect(classifyNoteProbe(foreign, ID)).toEqual({
+      state: 'different-id',
+      foundId: 'claude_ffffffff',
+    });
+  });
+});
+
 describe('isSameConversation', () => {
   const NOT_OURS: ProbeState[] = ['absent', 'empty', 'unparseable', 'no-id', 'different-id'];
 

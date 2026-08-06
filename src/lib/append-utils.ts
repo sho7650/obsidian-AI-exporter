@@ -8,7 +8,7 @@
 import type { ObsidianApiClient } from './obsidian-api';
 import type { ObsidianNote, ExtensionSettings, FilenameScheme } from './types';
 import { SCAN_MAX_REQUESTS } from './constants';
-import { parseFrontmatter, updateFrontmatter } from './frontmatter-parser';
+import { parseFrontmatter, updateFrontmatter, applyLineEnding } from './frontmatter-parser';
 import { classifyNoteProbe, isSameConversation, type NoteProbe } from './note-identity';
 import { countExistingMessages, extractTailMessages } from './message-counter';
 import { formatDateWithTimezone } from './date-utils';
@@ -391,10 +391,14 @@ export function buildAppendContent(
   });
 
   // 6. Rebuild: updated frontmatter + existing body + separator + new messages
+  //
+  // Everything above works on the LF-normalised forms parseFrontmatter returns,
+  // so the result is restored to the file's own line ending before it goes
+  // back. An append must add to the file, not rewrite every line of it (#365).
   const content = updatedRaw + '\n' + parsed.body + '\n\n' + newMessages;
 
   return {
-    content,
+    content: applyLineEnding(content, parsed.eol),
     messagesAppended: newTotal - existingCount,
   };
 }

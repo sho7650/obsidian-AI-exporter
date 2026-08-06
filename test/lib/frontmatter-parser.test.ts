@@ -113,6 +113,101 @@ describe('frontmatter-parser', () => {
 
   // ========== updateFrontmatter ==========
 
+  // ========== line endings (issue #365) ==========
+  //
+  // A note rewritten by an external tool on Windows comes back CRLF-terminated.
+  // `split('\n')` then leaves a trailing `\r` on every line, and the key-value
+  // pattern cannot match it: MDN states a wildcard "matches all characters
+  // except line terminators", U+000D CR is a line terminator, and `$` without
+  // the `m` flag "asserts that the character to the right is out of bounds of
+  // the string". So every field was silently dropped, `fields.id` came back
+  // undefined, and the save path forked a duplicate note for a file that was
+  // its own (#365).
+
+  describe('line endings', () => {
+    /** The reporter's own note (#365, 2026-08-05), field-for-field. */
+    const REPORTED_LINES = [
+      '---',
+      'id: claude_5acb9457-ae97-4744-a048-46d716e674ed',
+      'title: Gmail search returning irrelevant results',
+      'source: claude',
+      'url: "https://claude.ai/chat/5acb9457-ae97-4744-a048-46d716e674ed"',
+      'created: "2026-08-01T10:35:27+03:00"',
+      'modified: "2026-08-01T13:04:00+03:00"',
+      'tags: ["gmail", "semantic-search", "hebrew"]',
+      'message_count: 239',
+      '---',
+      '',
+      '> [!QUESTION] User',
+      '> Hello',
+    ];
+    const withEol = (eol: string): string => REPORTED_LINES.join(eol);
+    const EXPECTED_ID = 'claude_5acb9457-ae97-4744-a048-46d716e674ed';
+
+    it('reads every field from a CRLF file (issue #365)', () => {
+      const result = parseFrontmatter(withEol('\r\n'));
+
+      expect(result).not.toBeNull();
+      expect(result!.fields.id).toBe(EXPECTED_ID);
+      expect(result!.fields.title).toBe('Gmail search returning irrelevant results');
+      expect(result!.fields.message_count).toBe('239');
+    });
+
+    it('reads every field from a lone-CR file', () => {
+      const result = parseFrontmatter(withEol('\r'));
+
+      expect(result).not.toBeNull();
+      expect(result!.fields.id).toBe(EXPECTED_ID);
+    });
+
+    it('reports the file’s line ending so writers can preserve it', () => {
+      expect(parseFrontmatter(withEol('\r\n'))!.eol).toBe('\r\n');
+      expect(parseFrontmatter(withEol('\r'))!.eol).toBe('\r');
+      expect(parseFrontmatter(withEol('\n'))!.eol).toBe('\n');
+    });
+
+    it('takes the first line ending it sees when a file is mixed', () => {
+      // Decided rule: first occurrence wins — simple and deterministic.
+      const mixed = `---\r\nid: ${EXPECTED_ID}\ntitle: T\r\n---\r\n\r\nBody`;
+      const result = parseFrontmatter(mixed);
+
+      expect(result!.eol).toBe('\r\n');
+      expect(result!.fields.id).toBe(EXPECTED_ID);
+    });
+
+    it('normalises raw and body to LF regardless of the source endings', () => {
+      const crlf = parseFrontmatter(withEol('\r\n'))!;
+      const lf = parseFrontmatter(withEol('\n'))!;
+
+      expect(crlf.raw).not.toContain('\r');
+      expect(crlf.body).not.toContain('\r');
+      // The strongest statement of intent: the source endings must make no
+      // difference to anything downstream except the recorded `eol`.
+      expect(crlf.raw).toBe(lf.raw);
+      expect(crlf.body).toBe(lf.body);
+      expect(crlf.fields).toEqual(lf.fields);
+    });
+
+    it('parses a CRLF tag list into the same array as an LF one', () => {
+      const lines = ['---', 'tags:', '  - ai-conversation', '  - claude', '---', 'Body'];
+
+      expect(parseFrontmatter(lines.join('\r\n'))!.fields.tags).toEqual([
+        'ai-conversation',
+        'claude',
+      ]);
+      expect(parseFrontmatter(lines.join('\n'))!.fields.tags).toEqual([
+        'ai-conversation',
+        'claude',
+      ]);
+    });
+
+    it('still rejects content that does not open with a delimiter', () => {
+      // A UTF-8 BOM is a different failure and stays a failure: the caller
+      // reports it as `unparseable`, not as another conversation.
+      expect(parseFrontmatter('﻿' + withEol('\r\n'))).toBeNull();
+    });
+  });
+
   describe('updateFrontmatter', () => {
     it('updates existing field values', () => {
       const raw = '---\nid: abc\nmodified: "2026-01-01"\nmessage_count: 2\n---';

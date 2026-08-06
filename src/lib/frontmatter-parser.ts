@@ -7,25 +7,61 @@
 
 import { escapeYamlValue } from './yaml-utils';
 
+/** Line ending a file uses. Lone CR is legacy but costs nothing to support. */
+export type LineEnding = '\r\n' | '\n' | '\r';
+
+/**
+ * Line ending this content uses, taken from its first occurrence.
+ *
+ * First-occurrence wins is deliberate: it is deterministic and cheap, and a
+ * mixed-ending file ends up consistently on whichever style it opened with
+ * rather than staying mixed.
+ */
+export function detectLineEnding(content: string): LineEnding {
+  const match = /\r\n|\r|\n/.exec(content);
+  return (match?.[0] as LineEnding | undefined) ?? '\n';
+}
+
+/** Rewrite every line ending in `content` to `eol`. */
+export function applyLineEnding(content: string, eol: LineEnding): string {
+  return eol === '\n' ? content : content.replace(/\n/g, eol);
+}
+
 /**
  * Parsed frontmatter result
  */
 interface ParsedFrontmatter {
-  /** Raw frontmatter string including --- delimiters */
+  /** Raw frontmatter string including --- delimiters, normalised to LF */
   raw: string;
   /** Parsed key-value pairs (tags stored as string[]) */
   fields: Record<string, string | string[]>;
-  /** Body content after frontmatter */
+  /** Body content after frontmatter, normalised to LF */
   body: string;
+  /**
+   * Line ending the source content used, so a writer can restore it (#365).
+   * `raw` and `body` are always LF; the caller re-applies this on the way out.
+   */
+  eol: LineEnding;
 }
 
 /**
  * Parse YAML frontmatter from markdown content.
  * Returns null if no valid frontmatter found.
+ *
+ * Line endings are normalised to LF before anything is matched. A CR-terminated
+ * line defeats the key-value pattern below outright: a wildcard matches every
+ * character *except* line terminators, U+000D CR is one of them, and `$`
+ * without the `m` flag only matches at the end of the input (MDN). A file
+ * rewritten on Windows therefore parsed as a valid frontmatter block with zero
+ * fields, so `fields.id` came back undefined and the save path forked a
+ * duplicate note for a file that was its own (issue #365).
  */
 export function parseFrontmatter(content: string): ParsedFrontmatter | null {
   // Must start with ---
   if (!content.startsWith('---')) return null;
+
+  const eol = detectLineEnding(content);
+  content = content.replace(/\r\n|\r/g, '\n');
 
   // Find closing --- (must be at line start)
   const closingIndex = content.indexOf('\n---', 3);
@@ -74,7 +110,7 @@ export function parseFrontmatter(content: string): ParsedFrontmatter | null {
     }
   }
 
-  return { raw, fields, body };
+  return { raw, fields, body, eol };
 }
 
 /**

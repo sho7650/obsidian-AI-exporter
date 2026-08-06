@@ -571,6 +571,58 @@ describe('buildAppendContent', () => {
     expect(result!.content).toContain('> Hi there!');
   });
 
+  // ===== line endings (issue #365) =====
+  //
+  // An append must not rewrite the line endings of a file the user (or their
+  // tooling) maintains as CRLF. Normalising for processing is fine; writing the
+  // normalised form back is not — it would touch every line of a file we were
+  // only asked to add to.
+
+  it('appends to a CRLF file without disturbing the existing bytes', () => {
+    const existingLines = [
+      '---',
+      'id: claude_test',
+      'message_count: 2',
+      'modified: "2026-01-01T00:00:00.000Z"',
+      '---',
+      '> [!QUESTION] User',
+      '> Hello',
+      '',
+      '> [!NOTE] Claude',
+      '> Hi there!',
+    ];
+    const existing = existingLines.join('\r\n');
+
+    const result = buildAppendContent(existing, testNote, testSettings);
+
+    expect(result).not.toBeNull();
+    expect(result!.messagesAppended).toBe(2);
+    // The whole file stays CRLF — no mixed endings anywhere.
+    expect(result!.content).not.toMatch(/(?<!\r)\n/);
+    // …and the body we were not asked to touch is preserved verbatim.
+    expect(result!.content).toContain(['> [!QUESTION] User', '> Hello'].join('\r\n'));
+    expect(result!.content).toContain('New question');
+  });
+
+  it('keeps an LF file on LF', () => {
+    const existing = [
+      '---',
+      'id: claude_test',
+      'message_count: 2',
+      '---',
+      '> [!QUESTION] User',
+      '> Hello',
+      '',
+      '> [!NOTE] Claude',
+      '> Hi there!',
+    ].join('\n');
+
+    const result = buildAppendContent(existing, testNote, testSettings);
+
+    expect(result).not.toBeNull();
+    expect(result!.content).not.toContain('\r');
+  });
+
   it('updates modified timestamp in frontmatter', () => {
     const existing = [
       '---',
