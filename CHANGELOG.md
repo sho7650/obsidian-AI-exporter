@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.2...v2.7.3) (2026-08-06)
+
+
+### Bug Fixes
+
+* read and write notes that use CRLF line endings ([#407](https://github.com/sho7650/obsidian-AI-exporter/issues/407)) ([8411a45](https://github.com/sho7650/obsidian-AI-exporter/commit/8411a4568dbd31e3eea124b8adc5b20f67891b9e)), closes [#365](https://github.com/sho7650/obsidian-AI-exporter/issues/365)
+
 ## [2.7.2](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.1...v2.7.2) (2026-08-05)
 
 
