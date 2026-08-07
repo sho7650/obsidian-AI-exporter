@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.4](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.3...v2.7.4) (2026-08-07)
+
+
+### Bug Fixes
+
+* let the service worker connect to the image CDN ([#410](https://github.com/sho7650/obsidian-AI-exporter/issues/410)) ([50ccdd3](https://github.com/sho7650/obsidian-AI-exporter/commit/50ccdd3b0072de294922a1f22d96b7dce8821a93))
+
 ## [2.7.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.2...v2.7.3) (2026-08-06)
 
 
