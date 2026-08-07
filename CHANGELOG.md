@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.5](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.4...v2.7.5) (2026-08-07)
+
+
+### Documentation
+
+* document the message format and callout type settings ([#412](https://github.com/sho7650/obsidian-AI-exporter/issues/412)) ([6e96d0c](https://github.com/sho7650/obsidian-AI-exporter/commit/6e96d0c5049d8eb05b2021be5db484ad2472729e))
+
 ## [2.7.4](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.3...v2.7.4) (2026-08-07)
 
 
