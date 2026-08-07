@@ -61,7 +61,7 @@ export function isAllowedImageMime(mimeType: string): boolean {
  * Host suffix serving AI-generated images that must be fetched by the
  * background worker rather than the page (see {@link isAllowedImageSourceUrl}).
  */
-const IMAGE_CDN_DOMAIN = 'googleusercontent.com';
+export const IMAGE_CDN_DOMAIN = 'googleusercontent.com';
 
 /**
  * True when `url` is a remote image source the background worker may fetch.

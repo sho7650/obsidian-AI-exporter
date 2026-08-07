@@ -312,6 +312,67 @@ describe('GeminiExtractor', () => {
       expect(assistant?.content).toContain('data-g2o-image="img-1"');
     });
 
+    it('recovers the image from the rendered element when the blob URL is revoked', async () => {
+      // Gemini revokes the blob URL once the image has decoded, so the fetch
+      // fails while the <img> keeps rendering (measured live 2026-08-06: the
+      // fetch fails even from the page's own main world). The element still
+      // holds the bitmap, so the capture has to come off a canvas.
+      setGeminiLocation('imgrevoked');
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+        drawImage: vi.fn(),
+      } as unknown as CanvasRenderingContext2D);
+      vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue(
+        'data:image/png;base64,UE5H'
+      );
+      loadFixture(
+        createGeminiConversationDOM([
+          { role: 'user', content: 'draw' },
+          { role: 'assistant', content: IMG_HTML('blob:https://gemini.google.com/revoked') },
+        ])
+      );
+      const img = document.querySelector('img.image') as HTMLImageElement;
+      Object.defineProperty(img, 'complete', { value: true, configurable: true });
+      Object.defineProperty(img, 'naturalWidth', { value: 8, configurable: true });
+      Object.defineProperty(img, 'naturalHeight', { value: 4, configurable: true });
+
+      const result = await extractor.extract();
+
+      expect(result.data?.images).toHaveLength(1);
+      expect(result.data?.images?.[0]).toMatchObject({ id: 'img-1', mimeType: 'image/png' });
+      vi.restoreAllMocks();
+    });
+
+    it('warns instead of silently dropping an image it could not capture', async () => {
+      // A dropped image used to leave nothing at all: the marker was stripped
+      // at save time and the assistant message came out empty, which looks
+      // exactly like image export being switched off.
+      setGeminiLocation('imgfail');
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+        drawImage: vi.fn(),
+      } as unknown as CanvasRenderingContext2D);
+      vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation(() => {
+        throw new Error('SecurityError: Tainted canvases may not be exported.');
+      });
+      loadFixture(
+        createGeminiConversationDOM([
+          { role: 'user', content: 'draw' },
+          { role: 'assistant', content: IMG_HTML('blob:https://gemini.google.com/tainted') },
+        ])
+      );
+      const img = document.querySelector('img.image') as HTMLImageElement;
+      Object.defineProperty(img, 'complete', { value: true, configurable: true });
+      Object.defineProperty(img, 'naturalWidth', { value: 8, configurable: true });
+      Object.defineProperty(img, 'naturalHeight', { value: 4, configurable: true });
+
+      const result = await extractor.extract();
+
+      expect(result.data?.images).toHaveLength(0);
+      expect(result.warnings?.join(' ')).toMatch(/1 image/i);
+      vi.restoreAllMocks();
+    });
+
     it('leaves conversations without images unaffected', async () => {
       setGeminiLocation('noimg');
       loadFixture(

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { fetchImageAsBase64 } from '../../src/content/image-capture';
+import { fetchImageAsBase64, captureImage } from '../../src/content/image-capture';
 import { MAX_IMAGE_SIZE_BYTES } from '../../src/lib/image-utils';
 
 /** Build a Blob-like object (jsdom's Blob lacks a usable arrayBuffer()). */
@@ -172,5 +172,159 @@ describe('fetchImageAsBase64 — remote (https) sources', () => {
 
     expect(spy).not.toHaveBeenCalled();
     expect(img?.data).toBe('UE5H');
+  });
+});
+
+// ===== capture from the rendered element (issue: Gemini revokes blob URLs) =====
+//
+// Measured live on 2026-08-06/07 against gemini.google.com:
+//
+//   src form   page fetch   isolated fetch   canvas(in place)   background fetch
+//   blob:      FAILS        FAILS            OK (image/png)     n/a (allow-list)
+//   https:     FAILS(CORS)  FAILS(CORS)      SecurityError      200 image/jpeg
+//
+// The blob URL fails even from the page's own main world while the <img> still
+// renders, which means Gemini revokes it once the image has decoded (MDN: the
+// browser is told "not to keep the reference to the file any longer"). The
+// element keeps the decoded bitmap, so canvas is the only way left to reach the
+// bytes. For https the canvas is tainted — MDN: drawing cross-origin data
+// without CORS approval taints the canvas and toDataURL throws SecurityError —
+// so that form must keep going through the service worker.
+//
+// jsdom has no canvas implementation, so these tests stub it. The real proof is
+// the live verification recorded in the ADR.
+
+/** An <img> that reports itself as fully decoded at the given size. */
+function loadedImage(src: string, width = 4, height = 2): HTMLImageElement {
+  const img = document.createElement('img');
+  img.setAttribute('src', src);
+  Object.defineProperty(img, 'complete', { value: true, configurable: true });
+  Object.defineProperty(img, 'naturalWidth', { value: width, configurable: true });
+  Object.defineProperty(img, 'naturalHeight', { value: height, configurable: true });
+  return img;
+}
+
+/** Stub canvas so drawImage/toDataURL behave like a browser's. */
+function mockCanvas(dataUrl: string | (() => never)): void {
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+    drawImage: vi.fn(),
+  } as unknown as CanvasRenderingContext2D);
+  vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation(() =>
+    typeof dataUrl === 'function' ? dataUrl() : dataUrl
+  );
+}
+
+describe('captureImage', () => {
+  it('falls back to the canvas when the blob URL has been revoked', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    mockCanvas('data:image/png;base64,UE5H');
+
+    const result = await captureImage(loadedImage('blob:https://gemini.google.com/x'), 'img-1', 'a');
+
+    expect(result.image).toMatchObject({ id: 'img-1', mimeType: 'image/png', data: 'UE5H', alt: 'a' });
+    expect(result.reason).toBeUndefined();
+  });
+
+  it('prefers the original bytes while the blob URL is still alive', async () => {
+    // A live blob keeps the source encoding; re-encoding through the canvas
+    // would inflate a 131KB JPEG to a ~1.19MB PNG (both measured live).
+    const bytes = new Uint8Array([0xff, 0xd8, 0xff]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        blob: () =>
+          Promise.resolve({
+            size: bytes.byteLength,
+            type: 'image/jpeg',
+            arrayBuffer: () => Promise.resolve(bytes.buffer),
+          } as unknown as Blob),
+      })
+    );
+    const toDataURL = vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL');
+
+    const result = await captureImage(loadedImage('blob:https://gemini.google.com/y'), 'img-2', '');
+
+    expect(result.image?.mimeType).toBe('image/jpeg');
+    expect(toDataURL).not.toHaveBeenCalled();
+  });
+
+  it('reports a reason when the canvas is tainted', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    mockCanvas(() => {
+      throw new Error('SecurityError: Tainted canvases may not be exported.');
+    });
+
+    const result = await captureImage(loadedImage('blob:https://gemini.google.com/z'), 'img-3', '');
+
+    expect(result.image).toBeNull();
+    expect(result.reason).toMatch(/tainted|SecurityError/i);
+  });
+
+  it('does not capture from an element that has not finished loading', async () => {
+    // The generated <img> carries loading="lazy" (measured), so an off-screen
+    // image can still be undecoded — drawing it would yield a blank picture.
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    mockCanvas('data:image/png;base64,UE5H');
+    const img = document.createElement('img');
+    img.setAttribute('src', 'blob:https://gemini.google.com/w');
+    Object.defineProperty(img, 'complete', { value: false, configurable: true });
+    Object.defineProperty(img, 'naturalWidth', { value: 0, configurable: true });
+
+    const result = await captureImage(img, 'img-4', '');
+
+    expect(result.image).toBeNull();
+    expect(result.reason).toMatch(/load|decode/i);
+  });
+
+  it('routes an https source to the service worker and never touches the canvas', async () => {
+    const sendMessage = vi.fn().mockResolvedValue({
+      success: true,
+      data: '/9j/',
+      mimeType: 'image/jpeg',
+    });
+    vi.stubGlobal('chrome', { runtime: { sendMessage } });
+    const toDataURL = vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL');
+
+    const result = await captureImage(
+      loadedImage('https://lh3.googleusercontent.com/gg/abc'),
+      'img-5',
+      'alt'
+    );
+
+    expect(result.image).toMatchObject({ id: 'img-5', mimeType: 'image/jpeg', data: '/9j/' });
+    expect(sendMessage).toHaveBeenCalledWith({
+      action: 'fetchImage',
+      url: 'https://lh3.googleusercontent.com/gg/abc',
+    });
+    expect(toDataURL).not.toHaveBeenCalled();
+  });
+
+  it('reports the worker’s reason when the remote fetch fails', async () => {
+    vi.stubGlobal('chrome', {
+      runtime: {
+        sendMessage: vi.fn().mockResolvedValue({ success: false, error: 'HTTP 403' }),
+      },
+    });
+
+    const result = await captureImage(
+      loadedImage('https://lh3.googleusercontent.com/gg/def'),
+      'img-6',
+      ''
+    );
+
+    expect(result.image).toBeNull();
+    expect(result.reason).toContain('403');
+  });
+
+  it('rejects a canvas capture that exceeds the size limit', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    const oversized = 'A'.repeat(Math.ceil((MAX_IMAGE_SIZE_BYTES + 1024) / 3) * 4);
+    mockCanvas(`data:image/png;base64,${oversized}`);
+
+    const result = await captureImage(loadedImage('blob:https://gemini.google.com/big'), 'img-7', '');
+
+    expect(result.image).toBeNull();
+    expect(result.reason).toMatch(/size|limit/i);
   });
 });
