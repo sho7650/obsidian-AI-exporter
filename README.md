@@ -26,7 +26,7 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 - **Large-callout flattening**: Optionally flatten very long messages to plain text when saving to Obsidian, avoiding renderer slowdowns; the line threshold is configurable (default 200)
 - **Configurable timezone**: Set timezone for frontmatter dates (created/modified)
 - **Math formula preservation**: LaTeX math (`$...$` and `$$...$$`) is preserved across all platforms for Obsidian's math renderer
-- **Obsidian callouts**: Formatted output with `[!QUESTION]` and `[!NOTE]` callouts
+- **Message format**: Obsidian callouts (default), blockquotes, or plain text — and the `[!QUESTION]` / `[!NOTE]` callout types are configurable per role
 - **YAML frontmatter**: Metadata including title, source, URL, dates, and tags
 - **Configurable**: Customizable vault path, template options, and frontmatter fields
 - **Localized**: English and Japanese UI support
@@ -166,6 +166,8 @@ message_count: 4
 > [!NOTE] Gemini
 > To implement JWT authentication, you'll need to...
 ```
+
+**Message Format** in Advanced Settings switches this between callouts (above), plain blockquotes, and plain text. **User Callout Type** and **Assistant Callout Type** change the `QUESTION` / `NOTE` keywords.
 
 ### Tool Content Format (Claude)
 
