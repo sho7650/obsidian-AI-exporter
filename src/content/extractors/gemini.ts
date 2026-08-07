@@ -7,7 +7,7 @@ import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { extractErrorMessage } from '../../lib/error-utils';
 import { ensureAllElementsLoaded, type ScrollResult } from '../../lib/scroll-manager';
-import { fetchImageAsBase64 } from '../image-capture';
+import { captureImage } from '../image-capture';
 import type {
   SyncSettings,
   ExtractionResult,
@@ -30,7 +30,9 @@ export class GeminiExtractor extends BaseExtractor {
    * the start of every extract() so re-runs never carry stale ids.
    */
   private imageIdCounter = 0;
-  private pendingImages: Array<{ id: string; src: string; alt: string }> = [];
+  private pendingImages: Array<{ id: string; alt: string; element: HTMLImageElement }> = [];
+  /** Reasons images could not be captured, surfaced as a warning (issue: revoked blob URLs). */
+  private imageFailures: string[] = [];
 
   /**
    * Apply user settings: enable/disable auto-scroll
@@ -65,6 +67,7 @@ export class GeminiExtractor extends BaseExtractor {
       // Reset per-extraction image state before extractMessages() populates it.
       this.imageIdCounter = 0;
       this.pendingImages = [];
+      this.imageFailures = [];
 
       const scrollResult = await this.runAutoScroll();
 
@@ -312,7 +315,11 @@ export class GeminiExtractor extends BaseExtractor {
 
     const clone = element.cloneNode(true) as HTMLElement;
     const imgs = clone.querySelectorAll<HTMLImageElement>(COMPUTED_SELECTORS.generatedImage);
-    imgs.forEach(img => {
+    // The clone's images are markers-to-be; the LIVE elements are what capture
+    // needs, because a revoked blob URL can only be read back off the rendered
+    // bitmap. querySelectorAll is document order, so index i pairs the two.
+    const live = element.querySelectorAll<HTMLImageElement>(COMPUTED_SELECTORS.generatedImage);
+    imgs.forEach((img, index) => {
       // Image export disabled: drop the generated image so a src-less <img>
       // does not leak an empty `![]()` link into the note.
       if (!this.enableImageExport) {
@@ -321,10 +328,11 @@ export class GeminiExtractor extends BaseExtractor {
       }
 
       const src = img.getAttribute('src') ?? '';
-      if (!src) return;
+      const element = live[index];
+      if (!src || !element) return;
       const id = `img-${++this.imageIdCounter}`;
       const alt = img.getAttribute('alt') ?? '';
-      this.pendingImages.push({ id, src, alt });
+      this.pendingImages.push({ id, alt, element });
 
       const marker = clone.ownerDocument.createElement('img');
       marker.setAttribute('data-g2o-image', id);
@@ -343,7 +351,14 @@ export class GeminiExtractor extends BaseExtractor {
   private async attachImages(result: ExtractionResult): Promise<ExtractionResult> {
     if (!result.success || !result.data) return result;
     const images = await this.collectPendingImages();
-    return { ...result, data: { ...result.data, images } };
+    const warnings =
+      this.imageFailures.length > 0
+        ? [
+            ...(result.warnings ?? []),
+            `${this.imageFailures.length} image(s) could not be captured: ${[...new Set(this.imageFailures)].join('; ')}`,
+          ]
+        : result.warnings;
+    return { ...result, data: { ...result.data, images }, ...(warnings && { warnings }) };
   }
 
   /**
@@ -353,8 +368,16 @@ export class GeminiExtractor extends BaseExtractor {
   private async collectPendingImages(): Promise<ExtractedImage[]> {
     const images: ExtractedImage[] = [];
     for (const pending of this.pendingImages) {
-      const image = await fetchImageAsBase64(pending.src, pending.id, pending.alt);
-      if (image) images.push(image);
+      const result = await captureImage(pending.element, pending.id, pending.alt);
+      if (result.image) {
+        images.push(result.image);
+        continue;
+      }
+      // Never drop an image in silence: a lost one leaves an empty assistant
+      // message that looks identical to image export being switched off.
+      const reason = result.reason ?? 'unknown error';
+      console.warn(`[G2O] Image capture failed (${pending.id}): ${reason}`);
+      this.imageFailures.push(reason);
     }
     return images;
   }
