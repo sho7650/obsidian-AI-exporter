@@ -105,6 +105,18 @@ conversation via the daemon and print its URL → update `*_CONV_URL` in `e2e/.e
 `e2e-baseline-update`. Baselines are per-machine (gitignored) and are written ONLY by the
 update command; zero-match selectors are rejected at update time.
 
+**Test-data requirements.** A baseline can only be written when EVERY selector of the
+platform matches at least once — the rejection is per selector string, not per name, so a
+single dead fallback blocks the whole platform even while its primary works (issue #402).
+Consequently:
+
+- `GEMINI_CONV_URL` must point at a conversation that **contains a generated image**, because
+  `generatedImage` lives in `GEMINI_SELECTORS` and is validated by the conversation test.
+- If the update refuses with `refusing to record zero-match selectors`, the message names the
+  offender. Fix the selector (a fallback the platform no longer renders should be deleted, as
+  in #401) or the test conversation — never work around it by relaxing the baseline contract,
+  which exists because v1's zero entries made `lost` undetectable (ADR-016).
+
 Load the extension in Chrome: `chrome://extensions` → Load unpacked → select `dist/` folder
 
 ## Architecture
