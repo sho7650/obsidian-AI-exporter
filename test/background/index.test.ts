@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import type { MultiOutputResponse, ObsidianNote } from '../../src/lib/types';
 import { generateHash } from '../../src/lib/hash';
+import { flattenLargeCallouts } from '../../src/lib/callout-flatten';
 
 // Mock client instance - defined at module level
 const mockClient = {
@@ -2260,6 +2261,62 @@ describe('background/index', () => {
       const response = sendResponse.mock.calls[0][0];
       expect(response.allSuccessful).toBe(true);
       expect(response.messagesAppended).toBe(0);
+    });
+
+    it('does not re-append the tail of a note whose callouts were flattened (issue #406)', async () => {
+      // The note we saved last time had one oversized callout, so the Obsidian
+      // save path wrote it as `**Claude:**` plain text. Nothing has changed in
+      // the conversation since. Append mode must recognise all 4 messages as
+      // already present — counting only the surviving callouts makes it append
+      // the tail a second time, verbatim.
+      const longAnswer = Array.from({ length: 8 }, (_, i) => `> answer line ${i}`);
+      const body = [
+        '> [!QUESTION] User',
+        '> Hello',
+        '',
+        '> [!NOTE] Claude',
+        ...longAnswer,
+        '',
+        '> [!QUESTION] User',
+        '> New question',
+        '',
+        '> [!NOTE] Claude',
+        '> New answer',
+      ].join('\n');
+      const note: ObsidianNote = {
+        ...appendNote,
+        body,
+        frontmatter: { ...appendNote.frontmatter, message_count: 4 },
+      };
+      // Exactly what the previous save wrote to the vault.
+      const onDisk = [
+        '---',
+        'id: claude_abc-def',
+        'message_count: 4',
+        'modified: "2026-01-01T00:00:00.000Z"',
+        '---',
+        flattenLargeCallouts(body, 5),
+      ].join('\n');
+      expect(onDisk).toContain('**Claude:**'); // guard: the fixture really is mixed
+
+      mockGetSettings = vi.fn(() =>
+        Promise.resolve({ ...appendSettings, flattenLargeCallouts: true, maxCalloutLines: 5 })
+      );
+      mockClient.getFile.mockResolvedValueOnce(onDisk);
+      mockClient.putFile.mockResolvedValue(undefined);
+
+      const sendResponse = vi.fn();
+      capturedListener(
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: note },
+        validSender as chrome.runtime.MessageSender,
+        sendResponse
+      );
+
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+      const response = sendResponse.mock.calls[0][0];
+      expect(response.allSuccessful).toBe(true);
+      expect(response.messagesAppended).toBe(0);
+      expect(mockClient.putFile).not.toHaveBeenCalled();
     });
 
     it('falls back to overwrite when append mode is off', async () => {
