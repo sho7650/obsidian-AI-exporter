@@ -23,6 +23,12 @@ export interface PlatformReport {
   failedTargets: string[];
   /** Targets skipped on a transient content stall. */
   stallSkips: string[];
+  /**
+   * Targets whose selector counts never settled before they were sampled.
+   * Their numbers were read off a page still rendering, so a diff from such a
+   * run is not evidence of DOM drift.
+   */
+  unsettledTargets: string[];
 }
 
 export interface ValidationReport {

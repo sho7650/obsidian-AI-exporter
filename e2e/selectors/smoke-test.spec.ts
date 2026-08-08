@@ -26,6 +26,13 @@ import {
 import type { SelectorGroup } from '../../src/content/extractors/selectors/types';
 import { checkAuthStatus, type AuthStatus } from './auth-check';
 import {
+  waitForSettledCounts,
+  SETTLE_STABLE_RUNS,
+  SETTLE_POLL_INTERVAL_MS,
+  SETTLE_MIN_MS,
+  SETTLE_TIMEOUT_MS,
+} from './settle';
+import {
   loadBaselineGroups,
   updateBaselineGroups,
   compareWithBaseline,
@@ -116,6 +123,23 @@ async function validateSelectors(
   }
 
   return results;
+}
+
+/**
+ * Match count of every selector across every group, in a stable order.
+ *
+ * Feeds the settle wait: the signature it compares is just these numbers joined,
+ * so any element still arriving shows up as a change.
+ */
+async function sampleCounts(
+  page: Page,
+  selectorGroups: Record<string, SelectorGroup>
+): Promise<number[]> {
+  const flat = Object.values(selectorGroups).flatMap(group => Object.values(group).flat());
+  return page.evaluate(
+    (sels: string[]) => sels.map(sel => document.querySelectorAll(sel).length),
+    flat
+  );
 }
 
 async function runPlatformValidation(
@@ -219,6 +243,30 @@ async function runPlatformValidation(
       }
     }
 
+    // Let the page finish rendering before anything is counted.
+    //
+    // Readiness only says the page has STARTED. Measured 2026-08-08: gemini_conv
+    // is ready as soon as the first `.conversation-container` exists, while the
+    // generated image arrives 1313-1973ms later, so `generatedImage` read zero
+    // and failed the run at random. Every platform has such a gap, and counts
+    // keep moving for a further 600-1600ms after the last selector first
+    // matches — which is what an update run would otherwise freeze into the
+    // baseline. Waiting here fixes validate and update together.
+    const settle = await waitForSettledCounts(() => sampleCounts(page, selectorGroups), {
+      requiredRuns: SETTLE_STABLE_RUNS,
+      pollIntervalMs: SETTLE_POLL_INTERVAL_MS,
+      minElapsedMs: SETTLE_MIN_MS,
+      timeoutMs: SETTLE_TIMEOUT_MS,
+      sleep: (ms: number) => page.waitForTimeout(ms),
+      now: () => Date.now(),
+    });
+    if (!settle.settled) {
+      console.warn(
+        `${platform}: selector counts never settled within ${SETTLE_TIMEOUT_MS}ms ` +
+          `(${settle.observations} observations) — the numbers below may be mid-render`
+      );
+    }
+
     // Validate all selectors
     const allResults: SelectorResult[] = [];
     for (const [groupName, selectors] of Object.entries(selectorGroups)) {
@@ -267,6 +315,11 @@ async function runPlatformValidation(
       authStatus,
       baselineState,
       classification: classified,
+      settle: {
+        settled: settle.settled,
+        elapsedMs: settle.elapsedMs,
+        observations: settle.observations,
+      },
     });
 
     // Assert: the baseline itself must be usable before its diff means anything

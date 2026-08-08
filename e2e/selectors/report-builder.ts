@@ -29,6 +29,13 @@ export interface TargetDetail {
   baselineState?: 'ok' | 'legacy' | 'missing_groups';
   /** Present when validation ran. */
   classification?: ClassificationResult;
+  /**
+   * How the page settled before the counts were sampled. `settled: false` means
+   * the wait timed out with the counts still moving, so the numbers below were
+   * read off a page that had not finished rendering — treat any diff from that
+   * run with suspicion rather than as DOM drift.
+   */
+  settle?: { settled: boolean; elapsedMs: number; observations: number };
 }
 
 export interface AttachmentLike {
@@ -116,6 +123,7 @@ export function processTestResult(
     classification: existing?.classification,
     failedTargets: [...(existing?.failedTargets ?? [])],
     stallSkips: [...(existing?.stallSkips ?? [])],
+    unsettledTargets: [...(existing?.unsettledTargets ?? [])],
   };
 
   const targetName = detail?.target ?? input.platform;
@@ -133,6 +141,9 @@ export function processTestResult(
       // Authenticated skip = content stall (auth/unreachable skips carry
       // their own authStatus and are tracked via that field instead)
       report.stallSkips.push(targetName);
+    }
+    if (detail.settle && !detail.settle.settled) {
+      report.unsettledTargets.push(targetName);
     }
     if (detail.classification) {
       report.classification = mergeClassification(existing?.classification, detail.classification);
