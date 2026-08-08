@@ -48,6 +48,34 @@ structurally unable to do its job:
   Missing or legacy-v1 baselines FAIL with the update-command hint.
 - Baselines are per-machine artifacts (gitignored), like `e2e/.env.local`.
 
+#### 1a. When counts are sampled (added 2026-08-08)
+
+A contract over match counts is only as good as the instant they are read.
+Readiness says the page has **started** rendering, not finished: `gemini_conv`
+is ready as soon as the first `.conversation-container` exists, while the
+generated image sits in the third turn behind `loading="lazy"`. Three timed
+loads put that gap at 1313 / 1973 / 1631 ms, and validation began immediately —
+so `generatedImage` intermittently read zero and failed the run at random.
+
+Every platform has such a gap. Ready → every selector name matching: gemini
+774ms, claude 1562ms, chatgpt 371ms, perplexity 168ms, notebooklm 16ms; counts
+then keep moving for a further 600–1600ms.
+
+Therefore **counts are sampled only after the page has settled**
+(`e2e/selectors/settle.ts`), and the wait sits before validation so validate and
+update are governed by the same rule — retrying the assertion alone would still
+have recorded unsettled numbers into the contract.
+
+Settled means the counts repeated `SETTLE_STABLE_RUNS` times in a row **and** at
+least `SETTLE_MIN_MS` has elapsed. The floor is not redundant: counts sit
+perfectly still while a late element is in flight (~1337ms at zero, measured),
+so stability alone can conclude inside that quiet stretch. Settling is defined
+as "counts stopped changing", not "every selector matched" — the latter would
+burn the whole timeout on a genuinely dead selector, and a late arrival changes
+the counts anyway. On timeout the run continues with the last observation and
+the target is listed in `unsettledTargets`, so a diff produced from a
+mid-render page is never mistaken for DOM drift.
+
 ### 2. First-class failure states (`auth-check.ts`, `load-readiness.ts`, `stall-tracker.ts`)
 
 - `resolveAuthStatus()` (pure) classifies post-navigation state:
