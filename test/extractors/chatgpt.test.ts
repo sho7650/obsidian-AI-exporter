@@ -888,4 +888,101 @@ describe('ChatGPTExtractor', () => {
       expect(messages[0].content).not.toContain('utm_source');
     });
   });
+
+  // ========== Deep Research sandboxed iframe (issue #283) ==========
+  describe('Deep Research reports in a cross-origin iframe (issue #283)', () => {
+    /** The report turn as ChatGPT renders it: an empty turn wrapping an iframe. */
+    const DR_TURN = `
+      <section data-turn-id="turn-dr" data-testid="conversation-turn-2" data-turn="assistant">
+        <div data-message-author-role="assistant" data-message-id="m-dr">
+          <iframe
+            title="internal://deep-research"
+            src="https://connector_openai_deep_research.web-sandbox.oaiusercontent.com?app=chatgpt"
+            sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+        </div>
+      </section>`;
+
+    const USER_TURN = `
+      <section data-turn-id="turn-q" data-testid="conversation-turn-1" data-turn="user">
+        <div data-message-author-role="user" data-message-id="m-q">
+          <div class="whitespace-pre-wrap">Research the history of movable type</div>
+        </div>
+      </section>`;
+
+    const ANSWERED_TURN = `
+      <section data-turn-id="turn-a" data-testid="conversation-turn-3" data-turn="assistant">
+        <div data-message-author-role="assistant" data-message-id="m-a">
+          <div class="markdown prose"><p>An ordinary inline answer.</p></div>
+        </div>
+      </section>`;
+
+    it('fails with an actionable error rather than saving a note with no report', async () => {
+      // The report body is unreachable from the parent page, so the only thing
+      // left to save is the user's own prompt. Saving that silently is worse
+      // than refusing: the user gets a note that looks complete and is not.
+      setChatGPTLocation('dr-only');
+      loadFixture(USER_TURN + DR_TURN);
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/deep research/i);
+      expect(result.error).toMatch(/iframe|sandbox/i);
+    });
+
+    it('keeps the rest of a mixed conversation but warns about the missing report', async () => {
+      setChatGPTLocation('dr-mixed');
+      loadFixture(USER_TURN + DR_TURN + ANSWERED_TURN);
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.messages).toHaveLength(2);
+      expect(result.warnings?.join(' ')).toMatch(/deep research/i);
+    });
+
+    it('recognises the report frame by its sandbox origin when the title changes', async () => {
+      // `title` is an internal string OpenAI can rename at any time; the
+      // sandbox host is the load-bearing part of the identification.
+      setChatGPTLocation('dr-retitled');
+      loadFixture(
+        USER_TURN +
+          `<section data-turn-id="turn-dr" data-turn="assistant">
+             <div data-message-author-role="assistant" data-message-id="m-dr">
+               <iframe src="https://connector_openai_deep_research.web-sandbox.oaiusercontent.com?app=chatgpt"></iframe>
+             </div>
+           </section>`
+      );
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/deep research/i);
+    });
+
+    it('leaves an ordinary conversation completely untouched', async () => {
+      // Detection must be inert when no report frame is present — this is what
+      // makes the change safe to ship without live re-verification.
+      setChatGPTLocation('ordinary');
+      loadFixture(USER_TURN + ANSWERED_TURN);
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.messages).toHaveLength(2);
+      expect(result.warnings?.join(' ') ?? '').not.toMatch(/deep research/i);
+    });
+
+    it('ignores unrelated iframes', async () => {
+      setChatGPTLocation('other-iframe');
+      loadFixture(
+        USER_TURN + ANSWERED_TURN + '<iframe title="ad" src="https://example.com/embed"></iframe>'
+      );
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(true);
+      expect(result.warnings?.join(' ') ?? '').not.toMatch(/deep research/i);
+    });
+  });
 });

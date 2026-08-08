@@ -1,8 +1,12 @@
 /**
  * ChatGPT Extractor
  *
- * Extracts conversations from ChatGPT (chatgpt.com)
- * Supports normal chat mode (Deep Research treated as normal conversation)
+ * Extracts conversations from ChatGPT (chatgpt.com).
+ *
+ * Deep Research reports are NOT extractable: ChatGPT renders them inside a
+ * cross-origin sandboxed iframe, which a content script on chatgpt.com cannot
+ * read (issue #283). They are detected and reported rather than silently
+ * dropped — see {@link ChatGPTExtractor.buildConversationResult}.
  *
  * @see docs/design/DES-003-chatgpt-extractor.md
  */
@@ -11,9 +15,31 @@ import { BaseExtractor, type ScrollConfig } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { generateHash } from '../../lib/hash';
 import type { HarvestEntry } from '../../lib/scroll-manager';
-import type { ConversationMessage, SyncSettings } from '../../lib/types';
+import type {
+  AIPlatform,
+  ConversationMessage,
+  ExtractionResult,
+  SyncSettings,
+} from '../../lib/types';
 
 import { SELECTORS } from './selectors/chatgpt';
+
+/**
+ * Selectors identifying a Deep Research report frame (issue #283).
+ *
+ * Deliberately NOT part of `SELECTORS` in `selectors/chatgpt.ts`: every entry
+ * of a platform's shared selector group must match at least once for the live
+ * E2E baseline to be writable, and requiring the ChatGPT test conversation to
+ * contain a Deep Research report would block every baseline update (the #402
+ * trap). These are detection-only and match nothing in an ordinary thread.
+ *
+ * The `title` is an internal string OpenAI can rename at any time; the sandbox
+ * host is the load-bearing identification, so both are tried.
+ */
+const DEEP_RESEARCH_FRAME_SELECTORS = [
+  'iframe[title="internal://deep-research"]',
+  'iframe[src*="deep_research"][src*="oaiusercontent.com"]',
+] as const;
 
 /**
  * ChatGPT conversation extractor
@@ -111,6 +137,76 @@ export class ChatGPTExtractor extends BaseExtractor {
     });
 
     return messages;
+  }
+
+  // ========== Deep Research (issue #283) ==========
+
+  /**
+   * How many Deep Research report frames are on the page.
+   *
+   * A frame is counted once even when it matches both selectors.
+   */
+  private countDeepResearchFrames(): number {
+    const frames = new Set<Element>();
+    for (const selector of DEEP_RESEARCH_FRAME_SELECTORS) {
+      document.querySelectorAll(selector).forEach(frame => frames.add(frame));
+    }
+    return frames.size;
+  }
+
+  /**
+   * Report unreadable Deep Research content instead of letting it vanish.
+   *
+   * The report body lives in a sandboxed iframe on another origin, so the turn
+   * wrapping it extracts as empty and is dropped. Left alone that produces a
+   * note holding the user's prompt and no answer — a note that looks complete
+   * and is not. Two cases:
+   *
+   * - **Nothing but the report.** Refuse the save with an explanation; a note
+   *   containing only the question is worse than no note.
+   * - **A report among ordinary turns.** Save the rest and warn, so the parts
+   *   that CAN be captured are not lost to an all-or-nothing failure.
+   *
+   * Inert when no report frame is present.
+   */
+  protected buildConversationResult(
+    messages: ConversationMessage[],
+    conversationId: string,
+    title: string,
+    source: AIPlatform
+  ): ExtractionResult {
+    const frames = this.countDeepResearchFrames();
+    if (frames === 0) {
+      return super.buildConversationResult(messages, conversationId, title, source);
+    }
+
+    console.info(`[G2O] ${frames} ChatGPT Deep Research frame(s) detected — content is unreadable`);
+    const reports = frames === 1 ? 'report' : 'reports';
+
+    if (!messages.some(message => message.role === 'assistant')) {
+      return {
+        success: false,
+        error:
+          `This ChatGPT Deep Research ${reports} cannot be exported: ChatGPT renders ` +
+          `${frames === 1 ? 'it' : 'them'} inside a sandboxed iframe on another origin, ` +
+          `which a browser extension is not allowed to read (issue #283). ` +
+          `Nothing was saved, because the only remaining content was your own prompt.`,
+      };
+    }
+
+    const result = super.buildConversationResult(messages, conversationId, title, source);
+    if (!result.success) return result;
+    return {
+      ...result,
+      warnings: [
+        ...(result.warnings ?? []),
+        `${frames} Deep Research ${reports} in this conversation ${
+          frames === 1 ? 'was' : 'were'
+        } not exported — ChatGPT renders ${frames === 1 ? 'it' : 'them'} in a sandboxed ` +
+          `cross-origin iframe that cannot be read (issue #283). The rest of the ` +
+          `conversation was saved.`,
+      ],
+    };
   }
 
   /**
