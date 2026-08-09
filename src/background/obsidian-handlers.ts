@@ -14,6 +14,7 @@ import {
   getSearchBasePath,
 } from '../lib/path-utils';
 import { lookupExistingFile, buildAppendContent } from '../lib/append-utils';
+import { applyLineEnding } from '../lib/frontmatter-parser';
 import { classifyNoteProbe, isSameConversation, type ProbeState } from '../lib/note-identity';
 import { resolveImagesForObsidian, stripImagePlaceholders } from '../lib/image-output';
 import { flattenLargeCallouts } from '../lib/callout-flatten';
@@ -113,7 +114,13 @@ async function tryAppendMode(
 
     const appendResult = buildAppendContent(lookup.content, note, settings);
     if (appendResult !== null) {
-      await client.putFile(lookup.path, maybeFlatten(appendResult.content, settings));
+      // Flatten first, restore the file's own line ending last (ADR-026).
+      // Reversing these two hands `flattenLargeCallouts()` lines ending in
+      // '\r', which its header pattern cannot match past — the callout label
+      // was dropped and a raw `[!TYPE] Label` left in the body, which in turn
+      // made the message invisible to countExistingMessages() (#406, #407).
+      const flattened = maybeFlatten(appendResult.content, settings);
+      await client.putFile(lookup.path, applyLineEnding(flattened, appendResult.eol));
       return { success: true, isNewFile: false, messagesAppended: appendResult.messagesAppended };
     }
     return { success: true, isNewFile: false, messagesAppended: 0 };

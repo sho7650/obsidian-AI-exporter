@@ -2319,6 +2319,63 @@ describe('background/index', () => {
       expect(mockClient.putFile).not.toHaveBeenCalled();
     });
 
+    it('flattens a CRLF note without losing labels or re-appending (issues #406, #407)', async () => {
+      // Flattening ran AFTER the CRLF restore, so it saw lines ending in '\r'.
+      // CALLOUT_HEADER_PATTERN's `(.*)$` cannot match past a CR (the same
+      // mechanism as #407), so the header fell through to the plain-blockquote
+      // branch: the `**Claude:**` label was dropped and a raw `[!NOTE] Claude`
+      // was left in the note text. With no label, the message is invisible to
+      // countExistingMessages() — so #406 recurs on CRLF files even once the
+      // counter reads both formats.
+      const longAnswer = Array.from({ length: 8 }, (_, i) => `> answer line ${i}`);
+      const bodyLines = [
+        '> [!QUESTION] User',
+        '> Hello',
+        '',
+        '> [!NOTE] Claude',
+        ...longAnswer,
+        '',
+        '> [!QUESTION] User',
+        '> New question',
+      ];
+      const note: ObsidianNote = {
+        ...appendNote,
+        body: bodyLines.join('\n'),
+        frontmatter: { ...appendNote.frontmatter, message_count: 3 },
+      };
+      const onDisk = [
+        '---',
+        'id: claude_abc-def',
+        'message_count: 2',
+        'modified: "2026-01-01T00:00:00.000Z"',
+        '---',
+        ...bodyLines.slice(0, -3),
+      ].join('\r\n');
+
+      mockGetSettings = vi.fn(() =>
+        Promise.resolve({ ...appendSettings, flattenLargeCallouts: true, maxCalloutLines: 5 })
+      );
+      mockClient.getFile.mockResolvedValueOnce(onDisk);
+      mockClient.putFile.mockResolvedValue(undefined);
+
+      const sendResponse = vi.fn();
+      capturedListener(
+        { action: 'saveToOutputs', outputs: ['obsidian'], data: note },
+        validSender as chrome.runtime.MessageSender,
+        sendResponse
+      );
+
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+      const written = mockClient.putFile.mock.calls[0][1] as string;
+
+      // The label survives flattening…
+      expect(written).toContain('**Claude:**');
+      // …no raw callout marker is left as body text…
+      expect(written).not.toMatch(/^\[!\w+\]/m);
+      // …and the file the user maintains as CRLF stays CRLF throughout (ADR-026).
+      expect(written).not.toMatch(/(?<!\r)\n/);
+    });
+
     it('falls back to overwrite when append mode is off', async () => {
       mockGetSettings = vi.fn(() =>
         Promise.resolve({ ...appendSettings, enableAppendMode: false })
