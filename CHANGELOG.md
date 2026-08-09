@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.12](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.11...v2.7.12) (2026-08-09)
+
+
+### Documentation
+
+* correct the ADR-026 CRLF audit and record the ordering constraint ([#428](https://github.com/sho7650/obsidian-AI-exporter/issues/428)) ([432dc62](https://github.com/sho7650/obsidian-AI-exporter/commit/432dc6271f02ad6dde2e28bcff5d7ab1cf444d7e))
+
 ## [2.7.11](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.10...v2.7.11) (2026-08-09)
 
 
