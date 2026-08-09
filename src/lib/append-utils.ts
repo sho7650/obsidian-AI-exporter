@@ -8,7 +8,7 @@
 import type { ObsidianApiClient } from './obsidian-api';
 import type { ObsidianNote, ExtensionSettings, FilenameScheme } from './types';
 import { SCAN_MAX_REQUESTS } from './constants';
-import { parseFrontmatter, updateFrontmatter, applyLineEnding } from './frontmatter-parser';
+import { parseFrontmatter, updateFrontmatter, type LineEnding } from './frontmatter-parser';
 import { classifyNoteProbe, isSameConversation, type NoteProbe } from './note-identity';
 import { countExistingMessages, extractTailMessages } from './message-counter';
 import { formatDateWithTimezone } from './date-utils';
@@ -56,10 +56,23 @@ interface FileLookupResult {
  * Result of building appended content
  */
 interface AppendResult {
-  /** Rebuilt file content (frontmatter + existing body + new messages) */
+  /**
+   * Rebuilt file content (frontmatter + existing body + new messages),
+   * **LF-normalised**.
+   *
+   * The file's own ending is NOT restored here: the caller may still transform
+   * the body (callout flattening), and those transforms are written against LF
+   * per ADR-026. Restoring early left them matching against a trailing `\r` —
+   * see {@link eol}.
+   */
   content: string;
   /** Number of new messages appended */
   messagesAppended: number;
+  /**
+   * The line ending the existing file used. The caller must apply this as the
+   * LAST step before writing, after any body transform (ADR-026).
+   */
+  eol: LineEnding;
 }
 
 /**
@@ -393,12 +406,15 @@ export function buildAppendContent(
   // 6. Rebuild: updated frontmatter + existing body + separator + new messages
   //
   // Everything above works on the LF-normalised forms parseFrontmatter returns,
-  // so the result is restored to the file's own line ending before it goes
-  // back. An append must add to the file, not rewrite every line of it (#365).
+  // and the result stays LF here. The file's own ending is restored by the
+  // caller as the last step before the write, so that any body transform it
+  // still applies also sees LF (ADR-026). An append must add to the file, not
+  // rewrite every line of it (#365).
   const content = updatedRaw + '\n' + parsed.body + '\n\n' + newMessages;
 
   return {
-    content: applyLineEnding(content, parsed.eol),
+    content,
     messagesAppended: newTotal - existingCount,
+    eol: parsed.eol,
   };
 }

@@ -6,6 +6,7 @@ import {
 } from '../../src/lib/append-utils';
 import type { ObsidianNote, ExtensionSettings, NoteFrontmatter } from '../../src/lib/types';
 import { SCAN_MAX_REQUESTS } from '../../src/lib/constants';
+import { applyLineEnding } from '../../src/lib/frontmatter-parser';
 
 // ========== extractIdSuffix ==========
 
@@ -578,7 +579,14 @@ describe('buildAppendContent', () => {
   // normalised form back is not — it would touch every line of a file we were
   // only asked to add to.
 
-  it('appends to a CRLF file without disturbing the existing bytes', () => {
+  it('reports the file CRLF ending instead of restoring it early (#406)', () => {
+    // The restore moved to the write site: the caller may still transform the
+    // body (callout flattening), and every such transform is written against
+    // LF (ADR-026). Restoring here handed flattening lines ending in '\r',
+    // whose header pattern then failed to match — dropping the callout label
+    // and, with it, the message's visibility to countExistingMessages().
+    // The end-to-end guarantee (the written file stays CRLF) is asserted in
+    // test/background/index.test.ts, which covers the flatten step too.
     const existingLines = [
       '---',
       'id: claude_test',
@@ -597,11 +605,14 @@ describe('buildAppendContent', () => {
 
     expect(result).not.toBeNull();
     expect(result!.messagesAppended).toBe(2);
-    // The whole file stays CRLF — no mixed endings anywhere.
-    expect(result!.content).not.toMatch(/(?<!\r)\n/);
-    // …and the body we were not asked to touch is preserved verbatim.
-    expect(result!.content).toContain(['> [!QUESTION] User', '> Hello'].join('\r\n'));
+    // The file's own ending is reported, not applied.
+    expect(result!.eol).toBe('\r\n');
+    expect(result!.content).not.toContain('\r');
     expect(result!.content).toContain('New question');
+    // Applying it reproduces the byte-preservation guarantee of #365.
+    const written = applyLineEnding(result!.content, result!.eol);
+    expect(written).not.toMatch(/(?<!\r)\n/);
+    expect(written).toContain(['> [!QUESTION] User', '> Hello'].join('\r\n'));
   });
 
   it('keeps an LF file on LF', () => {

@@ -68,8 +68,8 @@ describe('message-counter', () => {
     });
 
     it('strips fenced code blocks at column 0 before counting', () => {
-      // Real fenced code block (unlike blockquote-nested) exercises stripCodeBlocks()
-      // — CODE_BLOCK_PATTERN only matches ``` at start of line.
+      // Real fenced code block (unlike blockquote-nested) exercises the
+      // code-fence toggle — only ``` at column 0 opens/closes a block.
       const body = [
         '**User:**',
         '',
@@ -150,6 +150,29 @@ describe('message-counter', () => {
       const body = ['**User:**', '> Hello', '', '**Assistant:**', '> Hi there!'].join('\n');
 
       expect(countExistingMessages(body)).toBe(2);
+    });
+
+    it('counts BOTH forms in a note that mixes them (issue #406)', () => {
+      // The Obsidian save path flattens oversized callouts to `**Label:**`
+      // (callout-flatten.ts), so a saved note legitimately holds both forms.
+      // Returning only the callout tally undercounts, and append mode then
+      // re-appends that many already-present tail messages.
+      const body = [
+        '> [!QUESTION] User',
+        '> Hello',
+        '',
+        '**Claude:**',
+        '',
+        'A flattened, oversized answer',
+        '',
+        '> [!QUESTION] User',
+        '> Second question',
+        '',
+        '> [!NOTE] Claude',
+        '> Short answer',
+      ].join('\n');
+
+      expect(countExistingMessages(body)).toBe(4);
     });
 
     it('counts messages with multi-line content', () => {
