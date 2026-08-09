@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.13](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.12...v2.7.13) (2026-08-09)
+
+
+### Documentation
+
+* document the ChatGPT Deep Research limitation ([#430](https://github.com/sho7650/obsidian-AI-exporter/issues/430)) ([77fdc64](https://github.com/sho7650/obsidian-AI-exporter/commit/77fdc64ac792631eaffdd5c31e498a14582d3189))
+
 ## [2.7.12](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.11...v2.7.12) (2026-08-09)
 
 
