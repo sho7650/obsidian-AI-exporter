@@ -108,6 +108,8 @@ Gemini が生成した画像は自動的に捕捉・エクスポートされま�
 
 > **長い会話では自動スクロールを有効にしてください。** ChatGPT は一度に一部のターンしか DOM に保持せず、画面外のターンは破棄されます。自動スクロールが無効だと、その時点で表示されているターンしかエクスポートできません。
 
+> **ChatGPT の Deep Research レポートはエクスポートできません。** [Deep Research / Extended Thinking の保存](#deep-research--extended-thinking-の保存) を参照してください。
+
 ### Perplexity
 
 1. [www.perplexity.ai](https://www.perplexity.ai) で会話を開く
@@ -139,6 +141,15 @@ Gemini が生成した画像は自動的に捕捉・エクスポートされま�
 1. Deep Research レポートを含む Perplexity の会話を開く
 2. 「Sync」ボタンをクリック
 3. レポート内容が通常の会話メッセージとともに抽出されます
+
+**ChatGPT Deep Research: 非対応。**
+
+ChatGPT は Deep Research レポートを別オリジン（`*.oaiusercontent.com`）のサンドボックス iframe 内に描画するため、ブラウザ拡張機能からは読み取れません。レポートを展開しても取得できません。プロンプトだけでレポートが欠けたノートを保存するのではなく、拡張機能が状況を通知します:
+
+- Deep Research レポート _のみ_ の会話は保存されず、理由が表示されます。
+- 通常のメッセージと混在する場合は、通常のメッセージを保存し、レポートをスキップしたことを警告します。
+
+カスタム GPT を含む通常の ChatGPT 会話には影響しません。進捗は [issue #283](https://github.com/sho7650/obsidian-AI-exporter/issues/283) で管理しています。
 
 ## 出力フォーマット
 
