@@ -1,8 +1,9 @@
 # ADR-026: Normalise line endings on read, restore them on write
 
-- Status: Proposed
-- Date: 2026-08-05
-- Related: issue #365, [ADR-025](025-note-identity-probe-and-fork-diagnostics.md), issue #327
+- Status: Accepted — shipped in 2.7.3 (#407); ordering constraint added in 2.7.10 (#421)
+- Date: 2026-08-05 (amended 2026-08-09)
+- Related: issue #365, issue #406, [ADR-025](025-note-identity-probe-and-fork-diagnostics.md),
+  [ADR-028](028-message-count-survives-callout-flattening.md), issue #327
 
 ## Context
 
@@ -72,18 +73,35 @@ was never damaged, only unreadable.
 
 ### Measured blast radius
 
-| Function | LF | CRLF | lone CR |
-| --- | --- | --- | --- |
-| `parseFrontmatter().fields.id` | ok | **undefined** | `null` (unparseable) |
-| `countExistingMessages()` | 4 | 4 | **0** |
-| `extractTailMessages()` | ok | ok (CRLF retained) | **empty** |
-| `updateFrontmatter()` | ok | **mixed endings**: `"---\r\nid: x\r\nmessage_count: 4\n---"` | — |
-| `flattenLargeCallouts()` | ok | ok (CRLF retained) | — |
+| Function                       | LF  | CRLF                                                         | lone CR              |
+| ------------------------------ | --- | ------------------------------------------------------------ | -------------------- |
+| `parseFrontmatter().fields.id` | ok  | **undefined**                                                | `null` (unparseable) |
+| `countExistingMessages()`      | 4   | 4                                                            | **0**                |
+| `extractTailMessages()`        | ok  | ok (CRLF retained)                                           | **empty**            |
+| `updateFrontmatter()`          | ok  | **mixed endings**: `"---\r\nid: x\r\nmessage_count: 4\n---"` | —                    |
+| `flattenLargeCallouts()`       | ok  | endings retained, but **callout header degraded** ¹          | —                    |
 
-Only the field extraction is a functional break. But fixing it alone would
-expose the second row: `updateFrontmatter()` rewrites matched lines with `\n`
-while their neighbours keep `\r\n`, so every append to a CRLF file would leave
-it mixed.
+¹ **Corrected 2026-08-09 (#406).** This row originally read `ok (CRLF retained)`.
+The line endings _are_ retained — that much was measured correctly (15 CRLF
+breaks, 0 bare LF) — but retaining endings is not the same as being unaffected,
+and reading the row as "no CRLF problem here" is what allowed the following to
+ship. On CRLF input `CALLOUT_HEADER_PATTERN` (`/^> \[![^\]]+\][+-]? *(.*)$/`,
+no `m` flag) cannot match past the CR, exactly as `parseFrontmatter()` could not
+in row 1. The run therefore falls through to the plain-blockquote branch: the
+`**Label:**` heading is **dropped** and a bare `[!TYPE] Label` is left as body
+text. Measured on a CRLF body: 3 messages in, 2 countable out; on LF, 3 → 3.
+
+Because a message with no label is invisible to `countExistingMessages()`, this
+made the duplicate append of #406 recur on CRLF files even after the counter
+itself was fixed (ADR-028).
+
+Two functional breaks, then, not one: the field extraction above, and this. Note
+also that **`flattenLargeCallouts()` was never hardened** — it still degrades if
+handed CRLF. What protects it is the ordering constraint below, nothing else.
+
+Fixing the field extraction alone would additionally expose the
+`updateFrontmatter()` row: it rewrites matched lines with `\n` while their
+neighbours keep `\r\n`, so every append to a CRLF file would leave it mixed.
 
 ## Decision
 
@@ -95,10 +113,33 @@ it mixed.
    `extractTailMessages()` — sees LF and needs no line-ending awareness of its
    own.
 2. It also returns `eol`, the ending the source used.
-3. `buildAppendContent()` re-applies `eol` to the content it returns.
+3. `buildAppendContent()` returns LF content plus `eol`; the **caller** applies
+   `eol` immediately before writing. See the ordering constraint below.
 
 A fresh save is unaffected: it creates the file, so it defines the convention
 (LF).
+
+### Ordering constraint: restore last
+
+**The restore is the final step before the write. Every body transform runs while
+the content is still LF.**
+
+This was implied by "everything downstream sees LF" in point 1 but never written
+down, and the append path violated it: `buildAppendContent()` used to apply `eol`
+itself, and `tryAppendMode()` then flattened the restored — CRLF — content. That
+is the defect recorded in footnote ¹ above.
+
+Point 3 is therefore a load-bearing part of this decision, not an implementation
+detail. `buildAppendContent()` reports `eol` rather than applying it precisely so
+that a transform cannot be inserted between the restore and the write.
+
+The constraint generalises past flattening: it binds any body transform added
+later. Since no transform is line-ending aware — deliberately, per point 1 — the
+ordering is the only thing keeping them correct.
+
+Guarded by `test/background/append-transform-ordering.test.ts`, which asserts the
+rule (flattening is handed content containing no CR) rather than any single
+symptom, and was verified to fail when the two steps are reversed.
 
 ### Why restore rather than normalise the file
 

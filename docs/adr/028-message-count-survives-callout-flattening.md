@@ -68,6 +68,47 @@ countExistingMessages(transform(body)) === countExistingMessages(body)
 `flattenLargeCallouts` across thresholds that flatten everything, some, and
 nothing, plus the agreement property between counting and tail extraction.
 
+## Addendum (2026-08-09): the invariant was broken a second way
+
+The counter was not the only thing that could break it. The invariant also fails
+when the _writer_ stops emitting a recognisable label at all — and it did, on
+CRLF files, because of **when** the line-ending restore ran rather than anything
+in this ADR's scope.
+
+`tryAppendMode()` flattened content that `buildAppendContent()` had already
+restored to CRLF, so `flattenLargeCallouts()` saw lines ending in `\r`. Its
+header pattern cannot match past a CR, so the `**Label:**` heading was dropped
+and a bare `[!TYPE] Label` left as body text. With no label in either format, the
+message is invisible to `countExistingMessages()` no matter how many formats it
+reads — so #406 recurred on CRLF files even with the fix above in place.
+Measured: LF `3 → 3`, CRLF `3 → 2`.
+
+The fix is an ordering rule, now recorded as a first-class part of ADR-026:
+**body transforms run before the line-ending restore, and the restore is the last
+step before the write.** `buildAppendContent()` reports `eol` instead of applying
+it.
+
+### Correction to the coverage claim above
+
+The seam test covers **LF only**. That is now deliberate — after the ordering fix
+`flattenLargeCallouts()` is never handed CRLF, so a CRLF variant of the seam
+property would assert something the design no longer permits to happen. The CRLF
+path is covered where it belongs instead:
+
+- `test/background/append-transform-ordering.test.ts` — the ordering rule itself,
+  asserted as "flattening receives no CR", and verified to fail when reversed.
+- `test/background/index.test.ts` — the end-to-end outcome on a CRLF note: label
+  kept, no raw `[!TYPE]` in the body, file still CRLF throughout.
+
+### What this adds to the general rule
+
+The original rule said: anything that rewrites a saved body is part of the append
+contract. The CRLF case sharpens it — **so is anything that changes the
+_representation_ the body is in when a transform runs.** A transform that is
+correct on LF is not automatically correct on the bytes actually written, and the
+seam that matters is the one between the transform and the encoding, not only the
+one between the transform and the counter.
+
 ## Consequences
 
 - Fenced-code handling is now uniform: a single column-0 toggle, shared by both
