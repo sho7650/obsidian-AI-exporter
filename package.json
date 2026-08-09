@@ -1,6 +1,6 @@
 {
   "name": "obsidian-ai-exporter",
-  "version": "2.7.12",
+  "version": "2.7.13",
   "description": "Chrome Extension to export AI conversations from Gemini, Claude, ChatGPT, Perplexity, and Gemini Notebook (formerly NotebookLM) to Obsidian, file download, or clipboard",
   "type": "module",
   "scripts": {
