@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.10](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.9...v2.7.10) (2026-08-09)
+
+
+### Bug Fixes
+
+* count flattened callouts when appending ([#406](https://github.com/sho7650/obsidian-AI-exporter/issues/406)) ([#421](https://github.com/sho7650/obsidian-AI-exporter/issues/421)) ([e9eed60](https://github.com/sho7650/obsidian-AI-exporter/commit/e9eed60a6a1775768a3d4d4ac1852c5d66b44d1a))
+
 ## [2.7.9](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.8...v2.7.9) (2026-08-08)
 
 
