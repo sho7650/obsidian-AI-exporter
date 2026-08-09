@@ -33,11 +33,18 @@ import { SELECTORS } from './selectors/chatgpt';
  * contain a Deep Research report would block every baseline update (the #402
  * trap). These are detection-only and match nothing in an ordinary thread.
  *
- * The `title` is an internal string OpenAI can rename at any time; the sandbox
- * host is the load-bearing identification, so both are tried.
+ * The `title` is an internal string OpenAI can rename at any time, so the
+ * sandbox host is tried as well.
+ *
+ * BOTH host spellings are listed, and that is not redundancy. Issue #283
+ * recorded `connector_openai_deep_research…` with UNDERSCORES in 2026-07; a
+ * live conversation on 2026-08-09 served `connector-openai-deep-research…`
+ * with HYPHENS. The separator is evidently not stable, and an `*=` attribute
+ * match is a plain substring test, so one spelling does not cover the other.
  */
 const DEEP_RESEARCH_FRAME_SELECTORS = [
   'iframe[title="internal://deep-research"]',
+  'iframe[src*="deep-research"][src*="oaiusercontent.com"]',
   'iframe[src*="deep_research"][src*="oaiusercontent.com"]',
 ] as const;
 

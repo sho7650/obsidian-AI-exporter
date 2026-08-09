@@ -973,6 +973,78 @@ describe('ChatGPTExtractor', () => {
       expect(result.warnings?.join(' ') ?? '').not.toMatch(/deep research/i);
     });
 
+    // Markup captured from a live conversation on 2026-08-09. Faithful to the
+    // observed structure in two ways that matter:
+    //   - the assistant turn carries NO `data-message-author-role`; the role is
+    //     only on `data-turn`, so role detection depends on that attribute
+    //   - the frame sits inside a `fixed` full-viewport overlay, several levels
+    //     below the turn
+    // The host is `connector-openai-deep-research…` with HYPHENS. Issue #283
+    // recorded `connector_openai_deep_research…` with UNDERSCORES, so the
+    // src-based fallback shipped against the old spelling matched nothing.
+    const OBSERVED_SRC =
+      'https://connector-openai-deep-research.web-sandbox.oaiusercontent.com' +
+      '?app=chatgpt&darkModeType=increased&locale=en-US&deviceType=desktop';
+
+    const observedTurn = (iframeAttrs: string): string => `
+      <section data-turn-id="request-WEB:0d7f4684-0" data-testid="conversation-turn-2"
+               data-turn="assistant" dir="auto">
+        <h4 class="sr-only select-none">ChatGPT said:</h4>
+        <div class="text-base my-auto mx-auto pb-8">
+          <div class="agent-turn">
+            <div class="flex max-w-full flex-col gap-4 grow">
+              <div class="no-scrollbar fixed start-0 end-0 top-0 bottom-0 z-50">
+                <div class="relative max-w-full overflow-hidden flex-1">
+                  <iframe ${iframeAttrs} sandbox="allow-scripts allow-same-origin allow-forms"
+                          class="h-full w-full max-w-full"></iframe>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mx-auto flex-1"><div></div></div>
+        </div>
+      </section>`;
+
+    it('detects the frame markup observed live on 2026-08-09', async () => {
+      setChatGPTLocation('6a77cac1-0840-83e8-ba7c-590e2bc8e35d');
+      loadFixture(
+        USER_TURN + observedTurn(`title="internal://deep-research" src="${OBSERVED_SRC}"`)
+      );
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/deep research/i);
+    });
+
+    it('detects the observed frame by src when the title is absent', async () => {
+      // The whole point of the src fallback. Against the hyphenated host that
+      // the live page now serves, the underscore spelling from #283 misses.
+      setChatGPTLocation('6a77cac1-0840-83e8-ba7c-590e2bc8e35d');
+      loadFixture(USER_TURN + observedTurn(`src="${OBSERVED_SRC}"`));
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/deep research/i);
+    });
+
+    it('still detects the underscore host recorded in #283', async () => {
+      // Older builds/rollouts may still serve it; both spellings must work.
+      setChatGPTLocation('legacy-host');
+      loadFixture(
+        USER_TURN +
+          observedTurn(
+            'src="https://connector_openai_deep_research.web-sandbox.oaiusercontent.com?app=chatgpt"'
+          )
+      );
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/deep research/i);
+    });
+
     it('ignores unrelated iframes', async () => {
       setChatGPTLocation('other-iframe');
       loadFixture(
