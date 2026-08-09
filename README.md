@@ -108,6 +108,8 @@ Gemini-generated images are captured and exported automatically (see [Image Expo
 
 > **Keep Auto-scroll enabled for long conversations.** ChatGPT mounts only a window of turns at a time and discards the rest; with Auto-scroll off, only the turns currently on screen can be exported.
 
+> **Deep Research reports cannot be exported from ChatGPT.** See [Deep Research / Extended Thinking Export](#deep-research--extended-thinking-export).
+
 ### Perplexity
 
 1. Open a conversation on [www.perplexity.ai](https://www.perplexity.ai)
@@ -139,6 +141,15 @@ Gemini-generated images are captured and exported automatically (see [Image Expo
 1. Open a Perplexity conversation containing a Deep Research report
 2. Click the "Sync" button
 3. The report content will be extracted alongside normal conversation messages
+
+**ChatGPT Deep Research: not supported.**
+
+ChatGPT renders Deep Research reports inside a sandboxed iframe served from another origin (`*.oaiusercontent.com`), which a browser extension is not permitted to read. Expanding the report does not help. Rather than saving a note that contains your prompt and no report, the extension tells you what happened:
+
+- A conversation that is _only_ a Deep Research report is not saved, and the reason is shown.
+- A report alongside ordinary messages saves the ordinary messages and warns that the report was skipped.
+
+Normal ChatGPT conversations, including custom GPTs, are unaffected. Progress is tracked in [issue #283](https://github.com/sho7650/obsidian-AI-exporter/issues/283).
 
 ## Output Format
 
