@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.16](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.15...v2.7.16) (2026-08-13)
+
+
+### Bug Fixes
+
+* **csp:** allow the image CDN redirect target lh3.google.com ([#438](https://github.com/sho7650/obsidian-AI-exporter/issues/438)) ([a049f06](https://github.com/sho7650/obsidian-AI-exporter/commit/a049f06e13e06a51c9e8360bc290d27f8f22d923))
+
 ## [2.7.15](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.14...v2.7.15) (2026-08-13)
 
 
