@@ -94,6 +94,62 @@ describe('message-counter', () => {
       expect(countExistingMessages(body)).toBe(3);
     });
 
+    // Issue #433: the length-blind toggle counted an inner fence as a
+    // delimiter, so a note holding a Markdown-about-Markdown answer desynced
+    // and append mode wrote from the wrong offset (the #406 class, ADR-029).
+    describe('code blocks that contain other code blocks (issue #433)', () => {
+      const F3 = '`'.repeat(3);
+      const F4 = '`'.repeat(4);
+
+      /** A 4-message note whose second message holds `codeLines` as a block. */
+      function bodyWith(codeLines: readonly string[]): string {
+        return [
+          '**User:**',
+          '',
+          'q1',
+          '',
+          '**Claude:**',
+          '',
+          ...codeLines,
+          '',
+          '**User:**',
+          '',
+          'q2',
+          '',
+          '**Claude:**',
+          '',
+          'a2',
+        ].join('\n');
+      }
+
+      it('counts across a properly nested block', () => {
+        const body = bodyWith([`${F4}markdown`, '# Title', `${F3}python`, 'print(1)', F3, F4]);
+        expect(countExistingMessages(body)).toBe(4);
+        expect(countExistingMessages(extractTailMessages(body, 2))).toBe(2);
+      });
+
+      it('counts across a block that shows an opening fence only', () => {
+        // "Put this at the top of the file" — the snippet is an opener with no
+        // closer, so the note holds an odd number of column-0 fence lines.
+        const body = bodyWith([`${F4}markdown`, 'Put this at the top:', `${F3}md`, F4]);
+        expect(countExistingMessages(body)).toBe(4);
+        expect(extractTailMessages(body, 2)).not.toBe('');
+        expect(countExistingMessages(extractTailMessages(body, 2))).toBe(2);
+      });
+
+      it('still hides message-shaped lines inside the inner block', () => {
+        const body = bodyWith([`${F4}markdown`, `${F3}md`, '**User:**', '**Claude:**', F3, F4]);
+        expect(countExistingMessages(body)).toBe(4);
+      });
+
+      it('does not let a tilde fence open a block and hide messages', () => {
+        // The writer never emits tildes; a stray column-0 `~~~` in a note must
+        // stay inert rather than swallowing every message after it (ADR-029).
+        const body = bodyWith(['~~~']);
+        expect(countExistingMessages(body)).toBe(4);
+      });
+    });
+
     it('handles ChatGPT and Perplexity labels', () => {
       const body = [
         '> [!QUESTION] User',
