@@ -17,6 +17,7 @@ This extension extracts conversations from Google Gemini (gemini.google.com), Cl
 • Image export - Gemini-generated images embedded in your vault, downloaded as files, or stripped for clipboard
 • Configurable timezone for frontmatter dates
 • LaTeX math formula preservation ($$...$$ and $...$) across all platforms
+• Nested code blocks - a code block inside a code block exports intact
 • Web search results saved as collapsible callouts (Claude)
 • Append mode - only new messages are added to existing notes
 • Optional `## ` question headers for TOC navigation in long conversations
