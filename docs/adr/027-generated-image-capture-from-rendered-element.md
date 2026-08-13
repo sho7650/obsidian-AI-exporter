@@ -52,7 +52,9 @@ CDN sends no `Access-Control-Allow-Origin` — the image simply fails to load.
 Chrome's own guidance is to route such fetches through the service worker, which
 is what ADR-021 already does, and the same guidance warns that "a malicious web
 page may abuse the message handler", which is why `isAllowedImageSourceUrl()`
-stays exactly as it is.
+stays exactly as it is. It still does:
+[ADR-030](030-image-cdn-redirect-host.md) had to allow a new CDN host in 2026-08
+and deliberately allowed it in the manifest only, leaving this guard untouched.
 
 ### Why nobody noticed which step failed
 

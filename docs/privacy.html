@@ -55,7 +55,7 @@
     <li><strong>notebook.google.com</strong>: To extract Gemini Notebook conversation content (read-only)</li>
     <li><strong>notebooklm.google.com</strong>: Legacy NotebookLM host, redirected by Google to notebook.google.com (read-only)</li>
     <li><strong>Your Obsidian instance</strong>: To save files to your Obsidian vault via Local REST API (when Obsidian output is enabled). By default this is <code>127.0.0.1</code> (localhost) over HTTP. Users can optionally configure HTTPS or a LAN host address.</li>
-    <li><strong>googleusercontent.com</strong>: To download AI-generated images so they can be saved with the conversation (only when image export is enabled, and only for images contained in the conversation you are exporting). This is Google's image CDN — the same host the AI page already loads those images from. The request downloads an image; no conversation content or personal data is sent.</li>
+    <li><strong>googleusercontent.com and lh3.google.com</strong>: To download AI-generated images so they can be saved with the conversation (only when image export is enabled, and only for images contained in the conversation you are exporting). These are Google's image CDN — the same CDN the AI page already loads those images from, which redirects the download from the first host to the second. The request downloads an image; no conversation content or personal data is sent.</li>
   </ul>
   <p>Your conversation content is never sent to any third party. It goes only to the Obsidian instance you configure, on your local machine or local network. We collect no analytics or telemetry, and we operate no servers of our own.</p>
 
@@ -82,6 +82,7 @@
     <tr><td>Host: notebook.google.com</td><td>Inject the sync button on Gemini Notebook pages</td></tr>
     <tr><td>Host: notebooklm.google.com</td><td>Inject the sync button on legacy NotebookLM URLs</td></tr>
     <tr><td>Host: *.googleusercontent.com</td><td>Download AI-generated images for export (image export only). The browser blocks the page itself from fetching these, so the extension downloads them.</td></tr>
+    <tr><td>Host: lh3.google.com</td><td>The image CDN redirects the download to this host, and the redirect is blocked unless it is listed too.</td></tr>
     <tr><td>Host: 127.0.0.1 (HTTP &amp; HTTPS)</td><td>Communicate with Obsidian's local API on localhost</td></tr>
     <tr><td>Optional: other hosts</td><td>Requested at runtime if you configure a non-localhost API URL (e.g., LAN access). You will see a Chrome permission prompt before any connection is made.</td></tr>
   </table>
