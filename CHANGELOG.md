@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.15](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.14...v2.7.15) (2026-08-13)
+
+
+### Documentation
+
+* document nested code block fencing in README and store listings ([#436](https://github.com/sho7650/obsidian-AI-exporter/issues/436)) ([08000cc](https://github.com/sho7650/obsidian-AI-exporter/commit/08000cc52d02fab784ea506335acf70a938d6d3c))
+
 ## [2.7.14](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.13...v2.7.14) (2026-08-13)
 
 
