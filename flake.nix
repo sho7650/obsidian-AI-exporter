@@ -2,7 +2,7 @@
   description = "gemini2obsidian dev environment + task surface (Node toolchain + system deps)";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-25.11-darwin";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
   };
 
   outputs =
