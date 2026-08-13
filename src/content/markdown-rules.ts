@@ -7,6 +7,7 @@
 
 import TurndownService from 'turndown';
 import { MAX_LANG_HINT_LENGTH, MAX_MATH_LENGTH } from '../lib/constants';
+import { fenceCodeBlock, nextFenceState, type OpenFence } from '../lib/code-fence';
 
 /** Leading blockquote prefix (one or more `> ` markers) to preserve as-is. */
 const BLOCKQUOTE_PREFIX_PATTERN = /^(\s*>\s*)+/;
@@ -57,20 +58,25 @@ function escapeSpecialCharsInLine(line: string, pattern: RegExp): string {
 /**
  * Escape target characters across Markdown text, skipping fenced code blocks
  * (where the characters are already literal in Obsidian).
+ *
+ * Fence state comes from {@link nextFenceState}, which is length- and
+ * character-aware: an inner fence inside a longer block is content, not a
+ * delimiter. A length-blind toggle used to lose track there and write escaped
+ * `\<div\>` into the middle of a code block (issue #433, ADR-029).
+ *
+ * Both fence characters open a block here — a user may paste a tilde-fenced
+ * block, and its contents deserve the same protection.
  */
 function escapeByLine(text: string, pattern: RegExp): string {
   const lines = text.split('\n');
-  let inFencedBlock = false;
+  // Delimiters may sit inside a blockquote (`> ```), so markers are stripped
+  // before matching.
+  let fence: OpenFence = null;
 
   const result = lines.map(line => {
-    // Detect fenced code delimiter (may be inside a blockquote)
-    const stripped = line.replace(/^(\s*>\s*)*/, '');
-    if (/^`{3,}/.test(stripped)) {
-      inFencedBlock = !inFencedBlock;
-      return line;
-    }
-
-    if (inFencedBlock) return line;
+    const step = nextFenceState(fence, line, { stripBlockquote: true });
+    fence = step.state;
+    if (step.isDelimiter || fence !== null) return line;
 
     return escapeSpecialCharsInLine(line, pattern);
   });
@@ -126,7 +132,7 @@ turndown.addRule('codeBlocks', {
     const lang = langMatch ? langMatch[1] : '';
 
     const code = codeElement.textContent || '';
-    return `\n\`\`\`${lang}\n${code.trim()}\n\`\`\`\n`;
+    return fenceCodeBlock(code, lang);
   },
 });
 
@@ -180,7 +186,7 @@ turndown.addRule('codemirrorCodeBlocks', {
       }
     }
 
-    return `\n\`\`\`${lang}\n${code.trim()}\n\`\`\`\n`;
+    return fenceCodeBlock(code, lang);
   },
 });
 

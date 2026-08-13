@@ -115,6 +115,13 @@ one between the transform and the counter.
   functions. The previous regex strip required a closing fence to take effect;
   the toggle treats an unterminated fence as opening a block, matching what
   `extractTailMessages()` already did. All pre-existing tests hold.
+
+  **Superseded in part by [ADR-029](029-code-fence-sizing-and-tracking.md).** The
+  toggle was length-blind, so an inner fence inside a longer block flipped it and
+  desynced the count — this same failure class, reached from issue #433 instead of
+  a flattened callout. It is now a length- and character-aware tracker shared with
+  `escapeByLine()`. The column-0 policy and the unterminated-fence decision
+  recorded above survive unchanged.
 - Notes already corrupted are not repaired. The duplicated block must be deleted
   once by hand; the corrected count keeps the file stable afterwards.
 - **The general rule this encodes:** anything that rewrites a note body after

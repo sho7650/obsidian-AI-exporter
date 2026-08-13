@@ -515,6 +515,70 @@ describe('buildAppendContent', () => {
     expect(result).toBeNull();
   });
 
+  // ADR-029 / ADR-025 style: a note whose body ends inside a fenced code block
+  // is the one shape that can make the count wrong in a way that produces no
+  // other signal — an overcount returns null here and the caller reports a
+  // successful no-op. Name it, so a field report is actionable.
+  describe('unterminated code fence diagnostic', () => {
+    const F3 = '`'.repeat(3);
+
+    function existingWith(bodyLines: readonly string[]): string {
+      return [
+        '---',
+        'id: claude_test',
+        'message_count: 2',
+        'modified: "2026-01-01"',
+        '---',
+        ...bodyLines,
+      ].join('\n');
+    }
+
+    it('reports the open fence when the body ends inside a code block', () => {
+      const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+      const existing = existingWith([
+        '> [!QUESTION] User',
+        '> Hello',
+        '',
+        '> [!NOTE] Claude',
+        '> Here:',
+        '',
+        `${F3}markdown`,
+        'unterminated',
+      ]);
+
+      buildAppendContent(existing, testNote, testSettings);
+
+      expect(info).toHaveBeenCalledWith(
+        '[G2O] Existing note body ends inside a fenced code block',
+        expect.objectContaining({
+          id: testNote.frontmatter.id,
+          fence: { char: '`', length: 3 },
+        })
+      );
+      info.mockRestore();
+    });
+
+    it('stays quiet when every fence is closed', () => {
+      const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+      const existing = existingWith([
+        '> [!QUESTION] User',
+        '> Hello',
+        '',
+        '> [!NOTE] Claude',
+        '> Here:',
+        '',
+        `${F3}markdown`,
+        'closed',
+        F3,
+      ]);
+
+      buildAppendContent(existing, testNote, testSettings);
+
+      expect(info).not.toHaveBeenCalled();
+      info.mockRestore();
+    });
+  });
+
   it('returns null when existing body has no detectable messages', () => {
     const existing = '---\nid: test\nmessage_count: 2\n---\nJust some text';
     const result = buildAppendContent(existing, testNote, testSettings);

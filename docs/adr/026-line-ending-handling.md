@@ -178,6 +178,12 @@ remain ordinary characters inside a value.
 - A BOM-prefixed file still fails `content.startsWith('---')` and is reported as
   `unparseable`. That is a different defect and is left alone deliberately —
   ADR-025's states exist precisely so the next report can name it.
+- The LF precondition this ADR establishes is what the code-fence tracker of
+  [ADR-029](029-code-fence-sizing-and-tracking.md) is written against. Its closing
+  rule — "only spaces or tabs after the fence run" — is the exact shape an unmatched
+  CR breaks, which is the failure this ADR's addendum in ADR-028 already cost once,
+  so that tracker tolerates a trailing `\r` as defence in depth rather than relying
+  on the ordering alone.
 
 ## Alternatives considered
 
