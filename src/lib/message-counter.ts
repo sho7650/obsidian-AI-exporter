@@ -6,6 +6,7 @@
  */
 
 import { ALL_PLATFORM_LABELS } from './constants';
+import { nextFenceState, type OpenFence } from './code-fence';
 
 /**
  * Build label alternation from ALL_PLATFORM_LABELS: "User|Gemini Notebook|...".
@@ -41,25 +42,57 @@ const MESSAGE_START_PATTERN = new RegExp(
  * {@link countExistingMessages} and {@link extractTailMessages} read it, so
  * the count and the offset it is used at cannot drift apart.
  */
-function scanMessageStarts(lines: readonly string[]): number[] {
+interface BodyScan {
+  /** Line indices at which a message starts. */
+  readonly starts: readonly number[];
+  /** Fence still open when the body ran out, or null. */
+  readonly openFence: OpenFence;
+}
+
+function scanBody(lines: readonly string[]): BodyScan {
   const starts: number[] = [];
-  let inCodeBlock = false;
+  let fence: OpenFence = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Only column-0 fences are tracked: inside a callout every line carries a
-    // `> ` prefix, and a nested `> > [!TYPE] Label` cannot match a start anyway.
-    if (line.startsWith('```')) {
-      inCodeBlock = !inCodeBlock;
-      continue;
-    }
-    if (inCodeBlock) continue;
+    // Only column-0 backtick fences are tracked, for two separate reasons:
+    //
+    // - Blockquote markers are NOT stripped: inside a callout every line
+    //   carries a `> ` prefix, and a nested `> > [!TYPE] Label` cannot match a
+    //   start anyway (ADR-028).
+    // - Tildes are NOT recognised: the writer only ever emits backtick fences,
+    //   so a column-0 `~~~` in a note is prose. Honouring it would open a block
+    //   that hides every message after it — silently stalling append mode
+    //   (ADR-029).
+    //
+    // The tracker itself is length- and character-aware, so a fence nested
+    // inside a longer one is content rather than a delimiter (issue #433).
+    const step = nextFenceState(fence, line, { openChars: ['`'] });
+    fence = step.state;
+    if (step.isDelimiter || fence !== null) continue;
 
     if (MESSAGE_START_PATTERN.test(line)) starts.push(i);
   }
 
-  return starts;
+  return { starts, openFence: fence };
+}
+
+/** Line indices at which a message starts. */
+function scanMessageStarts(lines: readonly string[]): readonly number[] {
+  return scanBody(lines).starts;
+}
+
+/**
+ * The fence still open when `body` ended, or null when every fence is closed.
+ *
+ * A body that ends inside a code block is the shape where the count can be
+ * wrong with no other symptom: an overcount makes `buildAppendContent()`
+ * return null, and the caller then reports a perfectly successful no-op
+ * (ADR-029).
+ */
+export function unterminatedFence(body: string): OpenFence {
+  return scanBody(body.split('\n')).openFence;
 }
 
 /**
