@@ -2,7 +2,12 @@
 
 ## Status
 
-Accepted (2026-07-27)
+Accepted (2026-07-27). **Amended by
+[ADR-030](030-image-cdn-redirect-host.md) (2026-08-13)**: the Decision below
+observes that the request "redirects from `/gg/` to `/rd-gg/` on the same host".
+Google later moved that redirect target to `lh3.google.com`, which no wildcard
+over the source domain can cover, so the redirect target is now allow-listed as
+a host of its own — connectable, but still not an accepted image source.
 
 ## Context
 

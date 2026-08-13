@@ -60,8 +60,41 @@ export function isAllowedImageMime(mimeType: string): boolean {
 /**
  * Host suffix serving AI-generated images that must be fetched by the
  * background worker rather than the page (see {@link isAllowedImageSourceUrl}).
+ *
+ * This is the **source** allow-list: the hosts a caller may name. Hosts the CDN
+ * merely redirects into are a different list — {@link IMAGE_CDN_REDIRECT_HOSTS}.
  */
 export const IMAGE_CDN_DOMAIN = 'googleusercontent.com';
+
+/**
+ * Exact hosts the image CDN redirects **into**, which the extension must be
+ * able to connect to but must never accept as a source.
+ *
+ * ADR-021 wildcarded the CDN subdomain and noted that the observed request
+ * "redirects from `/gg/` to `/rd-gg/` on the same host". That stopped being
+ * true: the redirect target moved to `lh3.google.com`, and because CSP is
+ * enforced against every hop of a redirect chain, the fetch died on the hop
+ * rather than on the request the extension actually made (ADR-030).
+ *
+ * These hosts are deliberately absent from {@link isAllowedImageSourceUrl}:
+ * the extension never chooses such a URL — the browser follows a 30x into it —
+ * so accepting one from a message would only widen what an attacker can name.
+ */
+export const IMAGE_CDN_REDIRECT_HOSTS: readonly string[] = ['lh3.google.com'];
+
+/**
+ * Every host the extension's own fetch chain has to reach, and therefore every
+ * host that must appear in BOTH `host_permissions` and the manifest CSP
+ * `connect-src` — host permissions grant permission, CSP still governs the
+ * connection, and a host missing from either one fails.
+ *
+ * The first entry stands in for the `*.${IMAGE_CDN_DOMAIN}` wildcard, whose
+ * subdomain rotates (lh3/lh4/lh5/…). Read by `test/arch/csp-connect-src.test.ts`.
+ */
+export const IMAGE_CONNECT_HOSTS: readonly string[] = [
+  `lh3.${IMAGE_CDN_DOMAIN}`,
+  ...IMAGE_CDN_REDIRECT_HOSTS,
+];
 
 /**
  * True when `url` is a remote image source the background worker may fetch.
@@ -79,7 +112,8 @@ export const IMAGE_CDN_DOMAIN = 'googleusercontent.com';
  * ports, and look-alike suffixes (`evilgoogleusercontent.com`) cannot slip past.
  *
  * `blob:` URLs are intentionally rejected: only the page can resolve those, and
- * the content script keeps that path.
+ * the content script keeps that path. So are the CDN's redirect targets
+ * ({@link IMAGE_CDN_REDIRECT_HOSTS}) — reachable is not the same as nameable.
  */
 export function isAllowedImageSourceUrl(url: string): boolean {
   let parsed: URL;

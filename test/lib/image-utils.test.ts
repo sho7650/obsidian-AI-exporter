@@ -8,6 +8,7 @@ import {
   isAllowedImageMime,
   isLikelyBase64,
   isAllowedImageSourceUrl,
+  IMAGE_CDN_REDIRECT_HOSTS,
 } from '../../src/lib/image-utils';
 
 describe('mimeToExtension', () => {
@@ -168,6 +169,14 @@ describe('isAllowedImageSourceUrl', () => {
 
   it('rejects unrelated hosts', () => {
     expect(isAllowedImageSourceUrl('https://127.0.0.1:27123/vault/secret.md')).toBe(false);
+  });
+
+  it.each(IMAGE_CDN_REDIRECT_HOSTS)('rejects the redirect target %s', host => {
+    // Deliberately connectable (manifest CSP + host_permissions) and
+    // deliberately not a source: the browser may take us there by following a
+    // 30x, but nothing may send us there by naming it (ADR-030). The reachable
+    // half is asserted in test/arch/csp-connect-src.test.ts.
+    expect(isAllowedImageSourceUrl(`https://${host}/rd-gg/ACRwjas`)).toBe(false);
   });
 
   it('rejects non-http schemes', () => {

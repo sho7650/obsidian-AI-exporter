@@ -265,7 +265,7 @@ Gemini-generated images are exported alongside the conversation (enabled by defa
 - **File download**: the Markdown file and each image are downloaded as separate files.
 - **Clipboard**: image placeholders are stripped (no binary is copied).
 
-Gemini serves generated images either from `blob:` URLs, which only the page can read, or from Google's image CDN (`googleusercontent.com`). The extension reads `blob:` URLs in the page and downloads CDN-hosted images in the background worker — the browser blocks the page from fetching them directly. This is why the extension requests access to `googleusercontent.com`; it is used only to download images you asked to export.
+Gemini serves generated images either from `blob:` URLs, which only the page can read, or from Google's image CDN (`googleusercontent.com`). The extension reads `blob:` URLs in the page and downloads CDN-hosted images in the background worker — the browser blocks the page from fetching them directly. That CDN redirects the download to `lh3.google.com`, so the extension requests access to both hosts; they are used only to download images you asked to export.
 
 Guards: up to 20 images per note and 10 MB per image. Append mode strips image placeholders (image handling in append mode is deferred). If an image cannot be saved, the note is still written and a warning names the images that were skipped.
 
@@ -371,7 +371,7 @@ This extension:
 
 - Does **not** collect your data, and sends **no** analytics or telemetry anywhere
 - Sends your conversations only to your Obsidian instance (default: 127.0.0.1, configurable for LAN access)
-- Downloads generated images from Google's image CDN (`googleusercontent.com`) when image export is enabled — the same host the AI page already loads them from, and only for images in the conversation you are exporting
+- Downloads generated images from Google's image CDN (`googleusercontent.com`, which redirects to `lh3.google.com`) when image export is enabled — the same CDN the AI page already loads them from, and only for images in the conversation you are exporting
 - Stores API key locally in your browser (not synced to cloud)
 
 See our [Privacy Policy](https://sho7650.github.io/obsidian-AI-exporter/privacy.html) for details.

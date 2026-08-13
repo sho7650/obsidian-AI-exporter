@@ -108,27 +108,31 @@ The extension allows users to copy exported conversation content to their clipbo
 Dashboard field: ホスト権限が必要な理由 / "Host permission justification". Limit 1000.
 
 Must name every entry in `manifest.host_permissions`. The `127.0.0.1` HTTP and
-HTTPS entries are one justification; the numbering is for the reviewer, not the
-manifest.
+HTTPS entries are one justification, and so are the two image-CDN hosts — one
+purpose, two hosts, because the first redirects into the second (ADR-030). The
+numbering is for the reviewer, not the manifest.
 
 <!-- field: host_permissions, limit: 1000 -->
 
 ```text
-Eight host permissions are required:
+Nine host permissions are required:
 
 1. gemini.google.com - inject the "Sync to Obsidian" button and read conversation content from Gemini pages. Read-only.
-2-6. claude.ai, chatgpt.com, www.perplexity.ai, notebook.google.com (Gemini Notebook) and notebooklm.google.com (its former host, still redirected there) - the same button and read-only access, on those sites.
+2-6. claude.ai, chatgpt.com, www.perplexity.ai, notebook.google.com (Gemini Notebook) and notebooklm.google.com (former host, still redirected) - the same button and read-only access, on those sites.
 
-7. *.googleusercontent.com - download AI-generated images so they can be saved with the conversation, when the user turns on image export. This is the same Google image CDN the AI page already loads them from; Chrome blocks the page from fetching them, so the extension does it. Images only: no conversation content or user data is sent.
+7-8. *.googleusercontent.com and lh3.google.com - download AI-generated images to save with the conversation, when image export is on. Both are Google image CDN hosts: the page loads images from the first, which redirects to the second. Chrome blocks the page from fetching them, so the extension does. Images only: no conversation content or user data is sent.
 
-8. 127.0.0.1 (localhost, HTTP and HTTPS) - communicate with Obsidian's Local REST API plugin on the user's own machine, saving conversations to their vault.
+9. 127.0.0.1 (localhost, HTTP and HTTPS) - communicate with Obsidian's Local REST API plugin on the user's own machine, saving conversations to their vault.
 
-Conversation content is never sent to a third party; it goes only to the user's own Obsidian instance. No analytics or telemetry.
+Conversation content goes only to the user's own Obsidian instance, never to a third party. No analytics or telemetry.
 ```
 
-995 characters — matches the live dashboard value. Only 5 characters of headroom
-remain: adding a host will require compressing this text, not just appending to
-it.
+997 characters. 3 characters of headroom remain: a tenth host means compressing
+this text again, not appending to it. The ninth host (2026-08-13, ADR-030) was
+absorbed by merging the two CDN entries into `7-8.` and trimming prose, not by
+dropping any host — every entry of `host_permissions` must appear here verbatim,
+and `test/arch/platform-ssot.test.ts` keeps the per-platform hosts in the
+manifest, so none of them can be folded into a wildcard.
 
 ---
 
