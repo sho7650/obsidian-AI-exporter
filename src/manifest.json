@@ -26,11 +26,12 @@
     "https://notebook.google.com/*",
     "https://notebooklm.google.com/*",
     "https://*.googleusercontent.com/*",
+    "https://lh3.google.com/*",
     "http://127.0.0.1/*",
     "https://127.0.0.1/*"
   ],
   "content_security_policy": {
-    "extension_pages": "default-src 'self'; script-src 'self'; connect-src 'self' http://127.0.0.1:* https://127.0.0.1:* https://*.googleusercontent.com; object-src 'none'; frame-src 'none'; style-src 'self'"
+    "extension_pages": "default-src 'self'; script-src 'self'; connect-src 'self' http://127.0.0.1:* https://127.0.0.1:* https://*.googleusercontent.com https://lh3.google.com; object-src 'none'; frame-src 'none'; style-src 'self'"
   },
   "background": {
     "service_worker": "src/background/service-worker.ts",
