@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.17](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.16...v2.7.17) (2026-08-13)
+
+
+### Miscellaneous
+
+* **build:** stop emitting modulepreload links for extension pages ([#440](https://github.com/sho7650/obsidian-AI-exporter/issues/440)) ([1661344](https://github.com/sho7650/obsidian-AI-exporter/commit/1661344f6264c9cc032779fbeea8cd4ff572f92a))
+
 ## [2.7.16](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.15...v2.7.16) (2026-08-13)
 
 
