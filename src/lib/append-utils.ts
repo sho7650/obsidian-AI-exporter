@@ -10,7 +10,7 @@ import type { ObsidianNote, ExtensionSettings, FilenameScheme } from './types';
 import { SCAN_MAX_REQUESTS } from './constants';
 import { parseFrontmatter, updateFrontmatter, type LineEnding } from './frontmatter-parser';
 import { classifyNoteProbe, isSameConversation, type NoteProbe } from './note-identity';
-import { countExistingMessages, extractTailMessages } from './message-counter';
+import { countExistingMessages, extractTailMessages, unterminatedFence } from './message-counter';
 import { formatDateWithTimezone } from './date-utils';
 
 /**
@@ -385,6 +385,22 @@ export function buildAppendContent(
 
   // 2. Count existing messages
   const existingCount = countExistingMessages(parsed.body);
+
+  // A body that ends inside a fenced code block hides every message after the
+  // opening fence, so the count can be wrong while every other signal stays
+  // clean: an overcount returns null below and the caller reports a successful
+  // no-op. Name the condition rather than letting it vanish (ADR-029, and the
+  // same reasoning as the append-lookup miss log in ADR-025).
+  const openFence = unterminatedFence(parsed.body);
+  if (openFence) {
+    console.info('[G2O] Existing note body ends inside a fenced code block', {
+      id: note.frontmatter.id,
+      fence: openFence,
+      countedMessages: existingCount,
+      expectedMessages: note.frontmatter.message_count,
+    });
+  }
+
   if (existingCount === 0) return null; // Cannot detect message boundaries
 
   // 3. Compare counts
