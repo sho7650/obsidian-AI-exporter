@@ -293,6 +293,24 @@ export class PerplexityExtractor extends BaseExtractor {
       tagged.push({ type: 'response', element: el });
     }
 
+    // An answer that is NOT inside a markdown-content placeholder (issue #444).
+    //
+    // Perplexity now serves two layouts at once. Under the newer one the
+    // placeholder is present but empty and the answer renders as its sibling,
+    // so anchoring only on the placeholder loses every assistant message while
+    // the user query — read from a different subtree — survives alone.
+    //
+    // Collecting these unconditionally is safe rather than clever: under the
+    // old layout every answer prose IS inside a placeholder, so this set is
+    // empty and nothing is added twice. Deep Research cards are skipped
+    // because the report path below already owns them, and a card nests an
+    // `inline` prose of its own that would otherwise be counted as an answer.
+    for (const prose of this.queryAllWithFallback<HTMLElement>(SELECTORS.answerProse)) {
+      if (this.isInside(prose, SELECTORS.markdownContent)) continue;
+      if (this.isInside(prose, SELECTORS.deepResearchCard)) continue;
+      tagged.push({ type: 'response', element: prose });
+    }
+
     for (const card of this.queryAllWithFallback<HTMLElement>(SELECTORS.deepResearchCard)) {
       const proseEl = this.queryWithFallback<HTMLElement>(SELECTORS.deepResearchProse, card);
       if (proseEl) {
@@ -301,6 +319,18 @@ export class PerplexityExtractor extends BaseExtractor {
     }
 
     return tagged;
+  }
+
+  /** True when `el` sits inside an element matching any of `selectors`. */
+  private isInside(el: HTMLElement, selectors: readonly string[]): boolean {
+    return selectors.some(selector => {
+      try {
+        return el.closest(selector) !== null;
+      } catch {
+        // An invalid selector must not abort extraction; treat it as no match.
+        return false;
+      }
+    });
   }
 
   /**
