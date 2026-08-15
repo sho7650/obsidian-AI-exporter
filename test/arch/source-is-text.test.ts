@@ -16,6 +16,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { describe, it, expect } from 'vitest';
 
 const root = path.resolve(import.meta.dirname, '../..');
@@ -25,22 +26,22 @@ const TEXT_EXTENSIONS = ['.ts', '.tsx', '.mts', '.js', '.mjs', '.json', '.css', 
 /** Control characters a text file may legitimately hold. */
 const ALLOWED_CONTROL_CODES = new Set([0x09, 0x0a, 0x0d]);
 
-function collectFiles(dir: string): string[] {
-  if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      // results/ holds generated run reports; node_modules is not ours.
-      if (entry.name === 'node_modules' || entry.name === 'results') return [];
-      return collectFiles(full);
-    }
-    return entry.isFile() && TEXT_EXTENSIONS.includes(path.extname(entry.name)) ? [full] : [];
-  });
-}
-
-const sources = SCANNED_DIRS.flatMap(dir => collectFiles(path.join(root, dir))).map(f =>
-  path.relative(root, f)
-);
+/**
+ * Tracked files only.
+ *
+ * Walking the directories instead would sweep in per-machine artifacts that
+ * happen to live under them — `e2e/baselines/*.json`, `e2e/auth/state.json` —
+ * which makes the result depend on whose laptop is running it and has this
+ * check reading an auth artifact for no reason. Only committed files can carry
+ * a byte into a diff, so only committed files are in scope.
+ */
+const sources = execFileSync('git', ['ls-files', '-z', ...SCANNED_DIRS], {
+  cwd: root,
+  encoding: 'utf-8',
+  maxBuffer: 32 * 1024 * 1024,
+})
+  .split('\0')
+  .filter(rel => rel.length > 0 && TEXT_EXTENSIONS.includes(path.extname(rel)));
 
 /** Offsets of every disallowed control byte, with a little context. */
 function findControlBytes(rel: string): string[] {
