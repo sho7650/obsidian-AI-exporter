@@ -124,7 +124,7 @@ update **refused the Claude conversation group** because `SELECTORS:conversation
 (`.group[style*="height: auto"]`) matched zero elements — a dead selector that predates this change
 and that the count axis had already been failing on. Since a v2 file is replaced wholesale, that
 platform's baseline now holds only its Deep Research group and its conversation test reports
-`missing_groups` until the selector is fixed. Tracked separately.
+`missing_groups` until the selector is fixed. Tracked in [#446](https://github.com/sho7650/obsidian-AI-exporter/issues/446).
 
 ## Consequences
 
