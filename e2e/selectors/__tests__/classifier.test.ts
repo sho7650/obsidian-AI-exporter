@@ -10,6 +10,7 @@ function makeResult(overrides: Partial<SelectorResult> = {}): SelectorResult {
     selector: '.test',
     index: 0,
     matchCount: 1,
+    nonEmptyCount: 1,
     ...overrides,
   };
 }

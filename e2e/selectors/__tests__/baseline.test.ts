@@ -20,6 +20,7 @@ function makeEntry(overrides: Partial<BaselineEntry> = {}): BaselineEntry {
     name: 'testSelector',
     selector: '.test',
     matchCount: 5,
+    nonEmptyCount: 5,
     ...overrides,
   };
 }
@@ -100,13 +101,13 @@ describe('updateBaselineGroups', () => {
   beforeEach(cleanup);
   afterEach(cleanup);
 
-  it('writes a v2 file containing the given group', () => {
+  it('writes a v3 file containing the given group', () => {
     updateBaselineGroups(platform, {
       SELECTORS: [makeEntry({ matchCount: 3 })],
     });
 
     const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-    expect(raw.version).toBe(2);
+    expect(raw.version).toBe(3);
     expect(typeof raw.updatedAt).toBe('string');
     expect(raw.groups.SELECTORS).toHaveLength(1);
     expect(raw.groups.SELECTORS[0].matchCount).toBe(3);

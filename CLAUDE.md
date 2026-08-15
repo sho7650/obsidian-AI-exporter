@@ -116,6 +116,14 @@ Consequently:
   offender. Fix the selector (a fallback the platform no longer renders should be deleted, as
   in #401) or the test conversation — never work around it by relaxing the baseline contract,
   which exists because v1's zero entries made `lost` undetectable (ADR-016).
+- The baseline also records **how many matches carry content** (`nonEmptyCount`), because a
+  container can keep matching after its content moves elsewhere — that is how a Perplexity
+  layout change lost every assistant message while the contract stayed green (#444, ADR-031).
+  A `>0 → 0` drop blocks the run. Selectors that are legitimately empty (`citationSpacer`,
+  `generatedImage`) record `0` and can never drop, so they need no exception; but for the
+  containers in `CONTENT_REQUIRED` an empty match is refused at update time with
+  `refusing to record matched-but-empty selectors` — recording zero there would make content
+  loss undetectable for good. Fix the selector or the test conversation, never the contract.
 
 Load the extension in Chrome: `chrome://extensions` → Load unpacked → select `dist/` folder
 
