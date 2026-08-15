@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.18...v2.8.0) (2026-08-15)
+
+
+### Features
+
+* **e2e:** record how many selector matches carry content ([#447](https://github.com/sho7650/obsidian-AI-exporter/issues/447)) ([f177c76](https://github.com/sho7650/obsidian-AI-exporter/commit/f177c7663b54da1ecaa824c390fc0d4a063bee81))
+
 ## [2.7.18](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.7.17...v2.7.18) (2026-08-13)
 
 
