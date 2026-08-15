@@ -37,6 +37,7 @@ function makePlatform(overrides: Partial<PlatformReport> = {}): PlatformReport {
     },
     failedTargets: [],
     stallSkips: [],
+    unsettledTargets: [],
     ...overrides,
   };
 }
