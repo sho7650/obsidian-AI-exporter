@@ -251,7 +251,7 @@ export function compareWithBaseline(
   current: readonly BaselineEntry[],
   baseline: readonly BaselineEntry[]
 ): BaselineComparison[] {
-  const keyOf = (e: BaselineEntry): string => `${e.group} ${e.name} ${e.selector}`;
+  const keyOf = (e: BaselineEntry): string => `${e.group}\u0000${e.name}\u0000${e.selector}`;
   const currentByKey = new Map(current.map(c => [keyOf(c), c]));
   const baselineKeys = new Set(baseline.map(keyOf));
 
