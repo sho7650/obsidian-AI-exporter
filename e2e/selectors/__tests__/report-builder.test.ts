@@ -19,6 +19,7 @@ function makeSelectorResult(overrides: Partial<SelectorResult> = {}): SelectorRe
     selector: '.turn',
     index: 0,
     matchCount: 3,
+    nonEmptyCount: 1,
     ...overrides,
   };
 }

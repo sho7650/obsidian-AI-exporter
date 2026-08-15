@@ -5,6 +5,7 @@
  * WARN includes both the failed primary and working fallback for debugging.
  */
 
+import { BLOCKING_STATUSES, BLOCKING_CONTENT_STATUSES } from './baseline';
 import type { BaselineComparison } from './baseline';
 
 export interface SelectorResult {
@@ -15,6 +16,8 @@ export interface SelectorResult {
   /** 0 = primary, 1+ = fallback */
   index: number;
   matchCount: number;
+  /** Matches whose textContent is non-empty (ADR-031). */
+  nonEmptyCount: number;
 }
 
 export interface WarnDetail {
@@ -75,9 +78,17 @@ export function classifyResults(
     }
   }
 
-  const baselineIssues = baselineComparisons.filter(c => c.status !== 'match');
-  const baselineBlocking = baselineIssues.filter(c => c.status !== 'degraded');
-  const baselineAdvisory = baselineIssues.filter(c => c.status === 'degraded');
+  // Blocking is decided by consulting the blocking lists, never by excluding
+  // one known-advisory status: the exclusion form silently promoted every
+  // status added later — `content_degraded` would have blocked runs (#445).
+  const baselineIssues = baselineComparisons.filter(
+    c => c.status !== 'match' || (c.contentStatus !== undefined && c.contentStatus !== 'content_ok')
+  );
+  const isBlocking = (c: BaselineComparison): boolean =>
+    BLOCKING_STATUSES.includes(c.status) ||
+    (c.contentStatus !== undefined && BLOCKING_CONTENT_STATUSES.includes(c.contentStatus));
+  const baselineBlocking = baselineIssues.filter(isBlocking);
+  const baselineAdvisory = baselineIssues.filter(c => !isBlocking(c));
 
   return { pass, warn, fail, baselineBlocking, baselineAdvisory };
 }

@@ -7,11 +7,24 @@
 
 import type { ClassificationResult } from './classifier';
 import type { AuthStatus } from './auth-check';
+import type { BaselineComparison } from './baseline';
 
 interface NotificationConfig {
   obsidianUrl: string;
   obsidianApiKey: string;
   vaultPath: string;
+}
+
+
+/**
+ * Content column for a baseline row: "3 -> 0" plus the verdict.
+ *
+ * Without it a content_lost row reads "match | 3 | 3" — the count axis is
+ * unchanged, which is exactly what made issue #444 invisible (ADR-031).
+ */
+function formatContent(b: BaselineComparison): string {
+  if (b.contentStatus === undefined) return '-';
+  return `${b.baselineNonEmpty} -> ${b.currentNonEmpty} (${b.contentStatus})`;
 }
 
 export interface PlatformReport {
@@ -205,12 +218,13 @@ export function generateMarkdown(report: ValidationReport): string {
           '',
           'Intentional selector changes must be recorded via `npm run e2e:baseline:update`.',
           '',
-          '| Selector | Status | Baseline | Current |',
-          '|----------|--------|----------|---------|'
+          '| Selector | Status | Baseline | Current | Content |',
+          '|----------|--------|----------|---------|---------|'
         );
         for (const b of c.baselineBlocking) {
           sections.push(
-            `| ${b.group}:${b.name} \`${b.selector}\` | ${b.status} | ${b.baselineCount} | ${b.currentCount} |`
+            `| ${b.group}:${b.name} \`${b.selector}\` | ${b.contentStatus === 'content_lost' ? b.contentStatus : b.status} | ` +
+              `${b.baselineCount} | ${b.currentCount} | ${formatContent(b)} |`
           );
         }
         sections.push('');
@@ -220,12 +234,12 @@ export function generateMarkdown(report: ValidationReport): string {
         sections.push(
           '### 📉 Baseline Degradation (advisory)',
           '',
-          '| Selector | Baseline | Current |',
-          '|----------|----------|---------|'
+          '| Selector | Baseline | Current | Content |',
+          '|----------|----------|---------|---------|'
         );
         for (const b of c.baselineAdvisory) {
           sections.push(
-            `| ${b.group}:${b.name} \`${b.selector}\` | ${b.baselineCount} | ${b.currentCount} |`
+            `| ${b.group}:${b.name} \`${b.selector}\` | ${b.baselineCount} | ${b.currentCount} | ${formatContent(b)} |`
           );
         }
         sections.push('');

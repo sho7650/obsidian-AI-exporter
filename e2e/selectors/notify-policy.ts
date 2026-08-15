@@ -55,10 +55,12 @@ export function buildStateFingerprint(report: ValidationReport): NotifyStateFing
           .sort(),
         failures: (c?.fail ?? []).map(f => `${f.group}:${f.name}:${f.selector}`).sort(),
         baselineBlocking: (c?.baselineBlocking ?? [])
-          .map(b => `${b.group}:${b.name}:${b.selector}:${b.status}`)
+          .map(b => `${b.group}:${b.name}:${b.selector}:${b.status}:${b.contentStatus ?? '-'}`)
           .sort(),
+        // The status belongs in the advisory fingerprint too: with more than one
+        // advisory verdict, a swap between them would otherwise go unnotified.
         baselineAdvisory: (c?.baselineAdvisory ?? [])
-          .map(b => `${b.group}:${b.name}:${b.selector}`)
+          .map(b => `${b.group}:${b.name}:${b.selector}:${b.status}:${b.contentStatus ?? '-'}`)
           .sort(),
       };
     });

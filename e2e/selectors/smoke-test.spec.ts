@@ -114,11 +114,25 @@ async function validateSelectors(
   for (const [name, selectorList] of Object.entries(selectors)) {
     for (let i = 0; i < selectorList.length; i++) {
       const selector = selectorList[i];
-      const matchCount = await page.evaluate(
-        (sel: string) => document.querySelectorAll(sel).length,
-        selector
-      );
-      results.push({ platform, group: groupName, name, selector, index: i, matchCount });
+      // Presence AND content, in one round trip. Presence alone cannot see a
+      // container that keeps matching after its content moved elsewhere —
+      // which is how issue #444 stayed green here (ADR-031).
+      const { matchCount, nonEmptyCount } = await page.evaluate((sel: string) => {
+        const els = [...document.querySelectorAll(sel)];
+        return {
+          matchCount: els.length,
+          nonEmptyCount: els.filter(el => (el.textContent ?? '').trim().length > 0).length,
+        };
+      }, selector);
+      results.push({
+        platform,
+        group: groupName,
+        name,
+        selector,
+        index: i,
+        matchCount,
+        nonEmptyCount,
+      });
     }
   }
 
@@ -126,10 +140,16 @@ async function validateSelectors(
 }
 
 /**
- * Match count of every selector across every group, in a stable order.
+ * Match count AND content count of every selector, interleaved, in a stable
+ * order.
  *
  * Feeds the settle wait: the signature it compares is just these numbers joined,
  * so any element still arriving shows up as a change.
+ *
+ * The content half has to be in here, not sampled afterwards. Content arrives
+ * *after* presence — an empty placeholder is literally the presence-before-
+ * content state — so a content metric read before the page settles is the same
+ * random-failure pattern ADR-016 §1a was written to remove.
  */
 async function sampleCounts(
   page: Page,
@@ -137,7 +157,11 @@ async function sampleCounts(
 ): Promise<number[]> {
   const flat = Object.values(selectorGroups).flatMap(group => Object.values(group).flat());
   return page.evaluate(
-    (sels: string[]) => sels.map(sel => document.querySelectorAll(sel).length),
+    (sels: string[]) =>
+      sels.flatMap(sel => {
+        const els = [...document.querySelectorAll(sel)];
+        return [els.length, els.filter(el => (el.textContent ?? '').trim().length > 0).length];
+      }),
     flat
   );
 }
