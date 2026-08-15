@@ -57,8 +57,24 @@ baselines unwritable.
 placeholder is literally the presence-before-content state — so sampling it before the page settles
 reproduces the random failures §1a was written to remove. `observe()` joins whatever array it is
 given, so `sampleCounts()` now returns `[count₀, nonEmpty₀, count₁, nonEmpty₁, …]` and `settle.ts`
-is unchanged. The cost is behavioural, not structural: a still-moving content half can push a target
-to `SETTLE_TIMEOUT_MS`. **This has not yet been measured on the live daemon** — see Consequences.
+is unchanged.
+
+The feared cost did not materialise. Measured on the daemon, all seven targets, count-only vs
+count+content:
+
+| target | before (ms) | after (ms) |
+| --- | --- | --- |
+| gemini_conv | 2748 | 2760 |
+| gemini_dr | 2745 | 2752 |
+| claude_conv | 2749 | 2755 |
+| claude_dr | 2741 | 2744 |
+| chatgpt_conv | 2743 | 2753 |
+| perplexity_conv | 2746 | 2750 |
+| notebooklm_conv | 2751 | 2749 |
+
+Every target settled in both runs, at 10 observations each; suite wall clock 47.9 s → 45.4 s. The
+content half tracks the count half closely enough on these pinned conversations that it costs
+nothing, so the signature keeps the exact counts rather than booleanising them.
 
 **4. Blocking is decided by consulting the blocking lists.** `classifyResults()` previously derived
 blocking by *excluding* one known-advisory status (`status !== 'degraded'`), which silently promoted
@@ -76,6 +92,40 @@ permits injection over a `connectOverCDP` session (`bypassCSP` is a `newContext(
 unavailable there). Not attempted here; recorded so the next person does not rediscover the
 constraint.
 
+## Verified on the live daemon
+
+The maintainer's pinned Perplexity conversation still serves the **old** layout, so the detector
+cannot be proven by waiting for the rollout. It was proven by making the live page misbehave on
+purpose: measure the untouched page, empty the `markdown-content` placeholders in-page, measure
+again, and run both samples through the real baseline file and the real comparison/classification
+code.
+
+```
+BEFORE (untouched live page)
+  blocking: []   advisory: []
+
+AFTER (placeholders emptied — imitates the reported layout)
+  blocking: [ markdownContent [match/content_lost] 2->0 ]
+  advisory: [ proseContent [degraded/content_degraded] 4->2, citation … , citationSpacer [degraded/content_ok] 0->0, … ]
+```
+
+Three things this shows that the unit tests cannot:
+
+- `status` stayed **`match`** while `contentStatus` was `content_lost` — the count axis alone would
+  have reported nothing, which is precisely #444.
+- The advisory rows are honest collateral: the prose and citations that lived *inside* those
+  placeholders went with them.
+- `citationSpacer` shows `degraded/content_ok` — its count dropped, but the content axis stayed
+  quiet for a selector that was legitimately empty to begin with. That is the self-calibration of
+  Decision 2, observed on live data rather than in a fixture.
+
+The baseline regeneration also exercised Decision 2's refusal path in the other direction: the
+update **refused the Claude conversation group** because `SELECTORS:conversationBlock`
+(`.group[style*="height: auto"]`) matched zero elements — a dead selector that predates this change
+and that the count axis had already been failing on. Since a v2 file is replaced wholesale, that
+platform's baseline now holds only its Deep Research group and its conversation test reports
+`missing_groups` until the selector is fixed. Tracked separately.
+
 ## Consequences
 
 - **One `e2e:baseline:update` per machine.** v2 files load as `legacy`, and the run already fails
@@ -84,10 +134,9 @@ constraint.
 - **A rolled-out machine now fails loudly instead of recording zero.** That is the intended trade:
   an operator sees `refusing to record matched-but-empty selectors` and investigates, rather than
   silently enshrining blindness.
-- **Settle timing is unmeasured.** The content half may keep moving on streaming answers, pushing a
-  target to the 15 s settle timeout against a 90 s per-test budget (7 targets). If churn proves bad,
-  booleanize the content half in the *signature* while still recording the exact count in the
-  baseline. Numbers must be recorded here after the first supervised live run.
+- **Settle timing measured, no regression.** See the table above; if a future platform does churn,
+  booleanise the content half in the *signature* while still recording the exact count in the
+  baseline.
 - **Neither this nor the deferred probe sees a rollout the validating machine has not received.**
   The maintainer's pinned thread still serves the old layout, so both stay green on his machine
   until the rollout reaches him. The only rollout-independent detector is a fixture pair in CI,
