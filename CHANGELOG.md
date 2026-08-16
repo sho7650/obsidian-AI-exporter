@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.9.0...v2.9.1) (2026-08-16)
+
+
+### Documentation
+
+* document the auto-scroll timeouts where users actually look ([#456](https://github.com/sho7650/obsidian-AI-exporter/issues/456)) ([8405ef3](https://github.com/sho7650/obsidian-AI-exporter/commit/8405ef396c7250a28aae8d9ca3f7adbeccd7cec3))
+
 ## [2.9.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.8.2...v2.9.0) (2026-08-16)
 
 
