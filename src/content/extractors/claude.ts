@@ -29,9 +29,8 @@ export class ClaudeExtractor extends BaseExtractor {
   /**
    * Apply user settings: enable/disable tool content extraction and auto-scroll
    */
-  applySettings(settings: SyncSettings): void {
+  protected applyPlatformSettings(settings: SyncSettings): void {
     this.enableToolContent = settings.enableToolContent ?? false;
-    this.enableAutoScroll = settings.enableAutoScroll ?? false;
   }
 
   // ========== Platform Detection ==========

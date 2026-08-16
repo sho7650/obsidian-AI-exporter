@@ -42,6 +42,21 @@ export interface NoteProbe {
   state: ProbeState;
   /** The id actually read from the file, when it had a scalar one. */
   foundId?: string;
+  /**
+   * `message_count` from the probed file, when it had a usable numeric one.
+   *
+   * Reported, never acted on: this module classifies, and the save path
+   * decides what a smaller incoming count means (ADR-033).
+   */
+  messageCount?: number;
+}
+
+/** `message_count` as a positive integer, or undefined when absent/unusable. */
+function readCount(fields: Record<string, string | string[]>): number | undefined {
+  const raw = fields.message_count;
+  if (typeof raw !== 'string') return undefined;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
 /**
@@ -60,9 +75,8 @@ export function classifyNoteProbe(content: string | null, expectedId: string): N
   const id = parsed.fields.id;
   if (typeof id !== 'string' || id === '') return { state: 'no-id' };
 
-  return id === expectedId
-    ? { state: 'same-conversation', foundId: id }
-    : { state: 'different-id', foundId: id };
+  if (id !== expectedId) return { state: 'different-id', foundId: id };
+  return { state: 'same-conversation', foundId: id, messageCount: readCount(parsed.fields) };
 }
 
 /** True when the probe proves the file holds the conversation being saved. */

@@ -126,6 +126,7 @@ export function conversationToNote(data: ConversationData, options: TemplateOpti
   const contentHash = generateContentHash(body);
 
   return {
+    ...(data.truncated ? { truncated: true } : {}),
     fileName,
     frontmatter,
     body,

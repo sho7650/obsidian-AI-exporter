@@ -5,7 +5,9 @@ import type {
   ExtensionSettings,
   ConversationMessage,
   ConversationData,
+  SyncSettings,
 } from '../../src/lib/types';
+import { DEFAULT_SYNC_SETTINGS } from '../../src/lib/settings-schema';
 
 // Concrete implementation for testing abstract BaseExtractor
 class TestExtractor extends BaseExtractor {
@@ -555,5 +557,69 @@ describe('BaseExtractor', () => {
       // just confirm it remains functional
       expect(extractor.platform).toBe('gemini');
     });
+  });
+});
+
+/**
+ * Settings reach the engine (issue #449, ADR-032).
+ *
+ * Three extractors override applySettings today, each repeating
+ * `enableAutoScroll`. Assigning the deadlines in BaseExtractor would be
+ * silently dropped by every one of them, so the shared assignment moves into a
+ * template method and platforms get a hook instead.
+ */
+describe('BaseExtractor.applySettings — shared settings reach every platform', () => {
+  class HookExtractor extends BaseExtractor {
+    readonly platform = 'claude' as const;
+    platformSeen: SyncSettings | null = null;
+
+    canExtract(): boolean {
+      return true;
+    }
+    getConversationId(): string {
+      return 'id';
+    }
+    getTitle(): string {
+      return 'title';
+    }
+    extractMessages(): ConversationMessage[] {
+      return [];
+    }
+    protected applyPlatformSettings(settings: SyncSettings): void {
+      this.platformSeen = settings;
+    }
+    /** Test-only view of the protected deadlines. */
+    deadlines(): { idleMs: number; maxMs: number } {
+      return this.scrollDeadlines;
+    }
+  }
+
+  function settingsWith(overrides: Partial<SyncSettings>): SyncSettings {
+    return { ...DEFAULT_SYNC_SETTINGS, ...overrides };
+  }
+
+  it('derives the deadlines from the user settings, in milliseconds', () => {
+    const extractor = new HookExtractor();
+
+    extractor.applySettings(settingsWith({ scrollIdleTimeoutSec: 45, scrollMaxTimeoutSec: 900 }));
+
+    expect(extractor.deadlines()).toEqual({ idleMs: 45_000, maxMs: 900_000 });
+  });
+
+  it('still gives a platform its own settings through the hook', () => {
+    const extractor = new HookExtractor();
+
+    extractor.applySettings(settingsWith({ enableAutoScroll: true }));
+
+    expect(extractor.enableAutoScroll).toBe(true);
+    expect(extractor.platformSeen).not.toBeNull();
+  });
+
+  it('falls back to the shipped deadlines when the settings omit them', () => {
+    const extractor = new HookExtractor();
+
+    extractor.applySettings({ ...DEFAULT_SYNC_SETTINGS, scrollIdleTimeoutSec: undefined as never });
+
+    expect(extractor.deadlines()).toEqual({ idleMs: 15_000, maxMs: 300_000 });
   });
 });

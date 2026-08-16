@@ -163,6 +163,42 @@
                   </span>
                 </label>
               </div>
+
+              <div id="scrollTimeoutGroup">
+                <div class="form-group">
+                  <label for="scrollIdleTimeoutSec" data-i18n="settings_scrollIdleTimeout"
+                    >Auto-scroll idle timeout (seconds)</label
+                  >
+                  <input
+                    type="number"
+                    id="scrollIdleTimeoutSec"
+                    min="5"
+                    max="600"
+                    step="5"
+                    value="15"
+                  />
+                  <p class="help" data-i18n="settings_scrollIdleTimeoutHelp">
+                    Give up when no new messages load for this long.
+                  </p>
+                </div>
+
+                <div class="form-group">
+                  <label for="scrollMaxTimeoutSec" data-i18n="settings_scrollMaxTimeout"
+                    >Auto-scroll time limit (seconds)</label
+                  >
+                  <input
+                    type="number"
+                    id="scrollMaxTimeoutSec"
+                    min="30"
+                    max="3600"
+                    step="30"
+                    value="300"
+                  />
+                  <p class="help" data-i18n="settings_scrollMaxTimeoutHelp">
+                    Hard limit for one auto-scroll pass.
+                  </p>
+                </div>
+              </div>
             </section>
 
             <!-- Obsidian API Settings -->

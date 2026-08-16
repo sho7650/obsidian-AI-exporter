@@ -16,6 +16,7 @@ import {
 import { lookupExistingFile, buildAppendContent } from '../lib/append-utils';
 import { applyLineEnding } from '../lib/frontmatter-parser';
 import { classifyNoteProbe, isSameConversation, type ProbeState } from '../lib/note-identity';
+import { evaluateTruncationGuard } from '../lib/truncation-guard';
 import { resolveImagesForObsidian, stripImagePlaceholders } from '../lib/image-output';
 import { flattenLargeCallouts } from '../lib/callout-flatten';
 import { base64ToBytes } from '../lib/image-utils';
@@ -112,6 +113,12 @@ async function tryAppendMode(
     }
     rememberAppendPath(note.frontmatter.id, lookup.path);
 
+    const refusal = refuseTruncatedOverwrite(
+      note,
+      classifyNoteProbe(lookup.content, note.frontmatter.id).messageCount
+    );
+    if (refusal) return refusal;
+
     const appendResult = buildAppendContent(lookup.content, note, settings);
     if (appendResult !== null) {
       // Flatten first, restore the file's own line ending last (ADR-026).
@@ -207,6 +214,9 @@ async function saveFreshNote(
     });
   }
 
+  const refusal = refuseTruncatedOverwrite(note, target.existingMessageCount);
+  if (refusal) return refusal;
+
   const { note: saveNote, failedImages } = await prepareNoteImages(
     client,
     settings,
@@ -299,6 +309,8 @@ interface WritableTarget {
   renamed: boolean;
   /** What each probed candidate name held, in probe order (issue #365). */
   probes: readonly ProbeOutcome[];
+  /** `message_count` of the note being replaced, when it had one (#449). */
+  existingMessageCount?: number;
 }
 
 /** What one candidate file name held when it was probed. */
@@ -308,6 +320,49 @@ interface ProbeOutcome {
   state: ProbeState;
   /** The id actually read from that file, when it had one. */
   foundId?: string;
+}
+
+/**
+ * Refuse to replace a longer note with a capture that stopped early (#449).
+ *
+ * Returns the failure to hand back, or null when the write may proceed. Every
+ * unknown fails open — see ADR-033 for why uncertainty is not policed here.
+ */
+function refuseTruncatedOverwrite(
+  note: ObsidianNote,
+  existingMessageCount: number | undefined
+): SaveResponse | null {
+  const verdict = evaluateTruncationGuard({
+    truncated: note.truncated === true,
+    incomingCount: note.frontmatter.message_count,
+    existingCount: existingMessageCount,
+  });
+
+  if (!verdict.blocked) {
+    if (verdict.countDropped) {
+      console.info('[G2O Background] Message count dropped but the capture was complete', {
+        id: note.frontmatter.id,
+        incoming: note.frontmatter.message_count,
+        existing: existingMessageCount,
+      });
+    }
+    return null;
+  }
+
+  console.warn('[G2O Background] Refused to overwrite a longer note with a partial capture', {
+    id: note.frontmatter.id,
+    fileName: note.fileName,
+    incoming: verdict.incomingCount,
+    existing: verdict.existingCount,
+  });
+  return {
+    success: false,
+    error:
+      `Save cancelled: this sync captured ${verdict.incomingCount} messages but the existing ` +
+      `note has ${verdict.existingCount}. Auto-scroll stopped before reaching the top. Raise ` +
+      `the auto-scroll timeouts in Settings, or scroll to the top of the conversation ` +
+      `manually, then sync again.`,
+  };
 }
 
 /**
@@ -341,7 +396,14 @@ async function resolveCollisionFreePath(
       return { path, fileName, isNewFile: true, renamed: attempt > 0, probes };
     }
     if (isSameConversation(probe)) {
-      return { path, fileName, isNewFile: false, renamed: attempt > 0, probes };
+      return {
+        path,
+        fileName,
+        isNewFile: false,
+        renamed: attempt > 0,
+        probes,
+        existingMessageCount: probe.messageCount,
+      };
     }
     // Occupied by a different conversation, or holding something we cannot
     // identify (empty / unparseable / no id): never overwrite — try the next

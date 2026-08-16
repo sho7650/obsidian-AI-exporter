@@ -29,6 +29,8 @@ const storedSettings: ExtensionSettings = {
   vaultPath: 'AI/Gemini',
   imageVaultPath: 'AI/Gemini/images',
   maxCalloutLines: 200,
+  scrollIdleTimeoutSec: 15,
+  scrollMaxTimeoutSec: 300,
   enableAutoScroll: true,
   enableAppendMode: false,
   enableToolContent: false,
@@ -82,6 +84,10 @@ function buildPopupDom(): void {
       <input type="text" id="vaultPath" />
       <input type="text" id="imageVaultPath" />
       <input type="number" id="maxCalloutLines" />
+      <div id="scrollTimeoutGroup">
+        <input type="number" id="scrollIdleTimeoutSec" />
+        <input type="number" id="scrollMaxTimeoutSec" />
+      </div>
     </section>
     ${switches}
     <select id="messageFormat">
@@ -462,5 +468,72 @@ describe('popup/app', () => {
       expect(statusEl().className).toBe('status error');
       errorSpy.mockRestore();
     });
+  });
+});
+
+/**
+ * Auto-scroll deadlines in the popup (issue #449, ADR-032).
+ *
+ * The whole point of making them settable is that a user who hits the limit can
+ * raise it, so the inputs must round-trip and must refuse to write nonsense.
+ */
+describe('auto-scroll timeout settings', () => {
+  async function initWith(overrides: Record<string, unknown>): Promise<void> {
+    buildPopupDom();
+    vi.mocked(getSettings).mockResolvedValue({ ...storedSettings, ...overrides });
+    await initPopup();
+  }
+
+  async function saveAndRead(): Promise<Record<string, unknown>> {
+    vi.mocked(saveSettings).mockResolvedValue(undefined);
+    el('saveBtn').click();
+    await vi.waitFor(() => expect(saveSettings).toHaveBeenCalled());
+    return vi.mocked(saveSettings).mock.calls[0][0] as unknown as Record<string, unknown>;
+  }
+
+  it('populates both inputs from stored settings', async () => {
+    await initWith({ scrollIdleTimeoutSec: 60, scrollMaxTimeoutSec: 1800 });
+
+    expect(el<HTMLInputElement>('scrollIdleTimeoutSec').value).toBe('60');
+    expect(el<HTMLInputElement>('scrollMaxTimeoutSec').value).toBe('1800');
+  });
+
+  it('saves edited values', async () => {
+    await initWith({});
+    el<HTMLInputElement>('scrollIdleTimeoutSec').value = '45';
+    el<HTMLInputElement>('scrollMaxTimeoutSec').value = '900';
+
+    expect(await saveAndRead()).toMatchObject({
+      scrollIdleTimeoutSec: 45,
+      scrollMaxTimeoutSec: 900,
+    });
+  });
+
+  it('falls back to the default when a field is emptied or unparseable', async () => {
+    await initWith({});
+    el<HTMLInputElement>('scrollIdleTimeoutSec').value = '';
+    el<HTMLInputElement>('scrollMaxTimeoutSec').value = 'abc';
+
+    expect(await saveAndRead()).toMatchObject({
+      scrollIdleTimeoutSec: 15,
+      scrollMaxTimeoutSec: 300,
+    });
+  });
+
+  it('clamps a value below the floor rather than saving something unusable', async () => {
+    await initWith({});
+    el<HTMLInputElement>('scrollIdleTimeoutSec').value = '2';
+    el<HTMLInputElement>('scrollMaxTimeoutSec').value = '1';
+
+    expect(await saveAndRead()).toMatchObject({
+      scrollIdleTimeoutSec: 5,
+      scrollMaxTimeoutSec: 30,
+    });
+  });
+
+  it('hides the timeouts when auto-scroll is off', async () => {
+    await initWith({ enableAutoScroll: false });
+
+    expect(el('scrollTimeoutGroup').style.display).toBe('none');
   });
 });

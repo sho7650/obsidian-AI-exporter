@@ -61,6 +61,8 @@ export interface ConversationData {
   images?: ExtractedImage[];
   extractedAt: Date;
   metadata: ConversationMetadata;
+  /** Auto-scroll stopped early, so earlier messages may be missing (#449). */
+  truncated?: boolean;
 }
 
 /**
@@ -113,6 +115,15 @@ export interface ConversationMetadata {
  */
 export interface ObsidianNote {
   fileName: string;
+  /**
+   * The extraction stopped before reaching the top of the conversation, so
+   * this note may be missing earlier messages (issue #449).
+   *
+   * Structured rather than inferred from `warnings`: a reader that parses the
+   * writer's prose is the seam ADR-028 was written about. Never written to
+   * frontmatter — it describes this capture, not the conversation.
+   */
+  truncated?: boolean;
   frontmatter: NoteFrontmatter;
   body: string;
   contentHash: string;
@@ -241,6 +252,13 @@ export interface SyncSettings {
   flattenLargeCallouts: boolean;
   /** Line threshold for {@link flattenLargeCallouts}. Default 200. */
   maxCalloutLines: number;
+  /**
+   * Give up auto-scrolling when nothing has progressed for this many seconds.
+   * Default 15 (issue #449).
+   */
+  scrollIdleTimeoutSec: number;
+  /** Absolute cap on one auto-scroll pass, in seconds. Default 300. */
+  scrollMaxTimeoutSec: number;
 }
 
 /**

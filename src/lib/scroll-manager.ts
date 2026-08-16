@@ -14,26 +14,158 @@ import {
   SCROLL_ACCUMULATE_POLL_INTERVAL,
   SCROLL_ACCUMULATE_STEP_FACTOR,
   SCROLL_ACCUMULATE_MIN_STEP,
+  DEFAULT_SCROLL_IDLE_TIMEOUT_SEC,
+  DEFAULT_SCROLL_MAX_TIMEOUT_SEC,
 } from './constants';
 
+/** Why an auto-scroll pass ended. */
+export type ScrollStopReason = 'complete' | 'idle-timeout' | 'max-timeout';
+
+/** The two deadlines governing one auto-scroll pass, in milliseconds. */
+export interface ScrollDeadlines {
+  /** Give up after this long without progress. */
+  readonly idleMs: number;
+  /** Absolute cap on the whole pass. */
+  readonly maxMs: number;
+}
+
+/** The shipped deadlines, used when a caller supplies none. */
+export const DEFAULT_SCROLL_DEADLINES: ScrollDeadlines = {
+  idleMs: SCROLL_IDLE_TIMEOUT,
+  maxMs: SCROLL_MAX_TIMEOUT,
+};
+
 /**
- * Progress-aware accumulation deadline (issue #360, ADR-018).
+ * The user's configured deadlines, in milliseconds.
  *
- * A scroll pass keeps running while it is still making progress: the pass is
- * live until either nothing has progressed for {@link SCROLL_IDLE_TIMEOUT}
- * (a stuck/broken scroll) or the absolute {@link SCROLL_MAX_TIMEOUT} safety cap
- * is reached. Callers reset `lastProgressTime` on every iteration that makes
- * progress, so a genuinely-long conversation is never cut off mid-scroll. What
- * counts as progress is engine-specific: newly-loaded elements for Gemini's
- * infinite-scroller, a new turn *or* upward scroll movement for the virtualized
- * engine (see {@link scrollUpUntilStable}).
- *
- * @param startTime When the pass began (`Date.now()`).
- * @param lastProgressTime When the pass last made progress (`Date.now()`).
+ * The single conversion point: settings are stored in seconds because that is
+ * what the popup shows, and nothing else in the codebase has to know that.
  */
-function withinDeadline(startTime: number, lastProgressTime: number): boolean {
+export function resolveScrollDeadlines(settings: {
+  scrollIdleTimeoutSec?: number;
+  scrollMaxTimeoutSec?: number;
+}): ScrollDeadlines {
+  return {
+    idleMs: (settings.scrollIdleTimeoutSec ?? DEFAULT_SCROLL_IDLE_TIMEOUT_SEC) * 1000,
+    maxMs: (settings.scrollMaxTimeoutSec ?? DEFAULT_SCROLL_MAX_TIMEOUT_SEC) * 1000,
+  };
+}
+
+/**
+ * Progress-aware deadline (issue #360, ADR-018; reason added in ADR-032).
+ *
+ * A pass keeps running while it is still making progress — callers reset
+ * `lastProgressTime` on every iteration that progresses, so a genuinely long
+ * conversation is never cut off mid-scroll. What counts as progress is
+ * engine-specific: newly-loaded elements for Gemini's infinite-scroller, a new
+ * turn *or* upward scroll movement for the virtualized engine (ADR-024).
+ *
+ * Returns null while the pass may continue; otherwise which deadline was
+ * crossed **first**.
+ *
+ * Deciding by "check idle, then check the cap" would be wrong as soon as the
+ * deadlines are user-set: `idleMs > maxMs` is reachable, and the naive order
+ * would then blame the idle deadline for a stop the ceiling caused. Comparing
+ * the two absolute instants costs one extra comparison and cannot mis-report —
+ * which is the whole point, because a report the user cannot trust is what
+ * made issue #449 undiagnosable.
+ */
+function crossedDeadline(
+  startTime: number,
+  lastProgressTime: number,
+  deadlines: ScrollDeadlines
+): Exclude<ScrollStopReason, 'complete'> | null {
   const now = Date.now();
-  return now - lastProgressTime < SCROLL_IDLE_TIMEOUT && now - startTime < SCROLL_MAX_TIMEOUT;
+  const idleAt = lastProgressTime + deadlines.idleMs;
+  const maxAt = startTime + deadlines.maxMs;
+  if (now < idleAt && now < maxAt) return null;
+  if (now >= idleAt && now >= maxAt) return idleAt <= maxAt ? 'idle-timeout' : 'max-timeout';
+  return now >= idleAt ? 'idle-timeout' : 'max-timeout';
+}
+
+/** Seconds, for log and warning text: `15` not `15000`. */
+function seconds(ms: number): number {
+  return Math.round(ms / 1000);
+}
+
+/**
+ * The single end-of-pass summary, shared by both engines.
+ *
+ * Carries elapsed time and iteration count as well as the reason, so the next
+ * field report needs no arithmetic to work out which deadline fired — the
+ * absence of that information is why #449 took a live investigation.
+ */
+function logScrollStop(
+  stopReason: ScrollStopReason,
+  captured: number,
+  unit: 'turns' | 'elements',
+  iterations: number,
+  elapsedMs: number,
+  deadlines: ScrollDeadlines
+): void {
+  const tail =
+    `${captured} ${unit} after ${iterations} iterations ` +
+    `(elapsed ${(elapsedMs / 1000).toFixed(1)}s, idle ${seconds(deadlines.idleMs)}s, ` +
+    `cap ${seconds(deadlines.maxMs)}s)`;
+
+  if (stopReason === 'complete') {
+    console.info(`[G2O] Auto-scroll complete — ${tail}`);
+    return;
+  }
+  const cause =
+    stopReason === 'idle-timeout'
+      ? `no progress for ${seconds(deadlines.idleMs)}s`
+      : `reached the ${seconds(deadlines.maxMs)}s limit`;
+  console.warn(`[G2O] Auto-scroll stopped: ${cause} — ${tail}`);
+}
+
+/**
+ * The user-facing warning for a partial pass, or undefined when the pass
+ * completed.
+ *
+ * Both engines route through this, replacing two byte-identical literals that
+ * had already drifted apart once in wording.
+ */
+export function describeScrollStop(
+  stopReason: ScrollStopReason,
+  captured: number,
+  deadlines: ScrollDeadlines = DEFAULT_SCROLL_DEADLINES
+): string | undefined {
+  if (stopReason === 'complete') return undefined;
+  const cause =
+    stopReason === 'idle-timeout'
+      ? `stopped after ${seconds(deadlines.idleMs)}s with no progress`
+      : `hit its ${seconds(deadlines.maxMs)}s time limit`;
+  return (
+    `Auto-scroll ${cause}; earlier messages may be missing ` +
+    `(${captured} turns captured). Raise the auto-scroll timeouts in Settings and sync again.`
+  );
+}
+
+/** Count, log and package the partial result of a timed-out element-load pass. */
+function partialElementResult(
+  stopReason: Exclude<ScrollStopReason, 'complete'>,
+  elementSelector: string,
+  iterations: number,
+  startTime: number,
+  deadlines: ScrollDeadlines
+): ScrollResult {
+  const elementCount = countElements(elementSelector);
+  logScrollStop(
+    stopReason,
+    elementCount,
+    'elements',
+    iterations,
+    Date.now() - startTime,
+    deadlines
+  );
+  return {
+    fullyLoaded: false,
+    elementCount,
+    scrollIterations: iterations,
+    skipped: false,
+    stopReason,
+  };
 }
 
 /**
@@ -48,6 +180,8 @@ export interface ScrollResult {
   scrollIterations: number;
   /** Whether scrolling was unnecessary (already at top or no container) */
   skipped: boolean;
+  /** Which deadline ended the pass, or 'complete' (ADR-032). */
+  stopReason: ScrollStopReason;
 }
 
 /**
@@ -80,7 +214,8 @@ function countElements(selector: string): number {
  */
 export async function ensureAllElementsLoaded(
   container: HTMLElement,
-  elementSelector: string
+  elementSelector: string,
+  deadlines: ScrollDeadlines = DEFAULT_SCROLL_DEADLINES
 ): Promise<ScrollResult> {
   const initialCount = countElements(elementSelector);
 
@@ -89,7 +224,13 @@ export async function ensureAllElementsLoaded(
       `[G2O] scrollTop=0, scrollHeight=${container.scrollHeight}, ` +
         `clientHeight=${container.clientHeight}, elements=${initialCount}`
     );
-    return { fullyLoaded: true, elementCount: initialCount, scrollIterations: 0, skipped: true };
+    return {
+      fullyLoaded: true,
+      elementCount: initialCount,
+      scrollIterations: 0,
+      skipped: true,
+      stopReason: 'complete',
+    };
   }
 
   console.info(
@@ -103,7 +244,12 @@ export async function ensureAllElementsLoaded(
   const startTime = Date.now();
   let lastProgressTime = startTime;
 
-  while (withinDeadline(startTime, lastProgressTime)) {
+  for (;;) {
+    const stopReason = crossedDeadline(startTime, lastProgressTime, deadlines);
+    if (stopReason !== null) {
+      return partialElementResult(stopReason, elementSelector, iterations, startTime, deadlines);
+    }
+
     // Re-arm: if already at top, scroll to bottom first so the next
     // scroll-to-0 crosses the onScrolledTopPastThreshold edge trigger.
     if (container.scrollTop === 0) {
@@ -126,14 +272,20 @@ export async function ensureAllElementsLoaded(
     if (currentCount === previousCount) {
       stableCount++;
       if (stableCount >= SCROLL_STABILITY_THRESHOLD) {
-        console.info(
-          `[G2O] DOM stabilized after ${iterations} iterations with ${currentCount} elements`
+        logScrollStop(
+          'complete',
+          currentCount,
+          'elements',
+          iterations,
+          Date.now() - startTime,
+          deadlines
         );
         return {
           fullyLoaded: true,
           elementCount: currentCount,
           scrollIterations: iterations,
           skipped: false,
+          stopReason: 'complete',
         };
       }
     } else {
@@ -143,18 +295,6 @@ export async function ensureAllElementsLoaded(
       lastProgressTime = Date.now(); // progress → reset the idle deadline
     }
   }
-
-  const finalCount = countElements(elementSelector);
-  console.warn(
-    `[G2O] Auto-scroll timed out (no new elements for ${SCROLL_IDLE_TIMEOUT / 1000}s) ` +
-      `with ${finalCount} elements`
-  );
-  return {
-    fullyLoaded: false,
-    elementCount: finalCount,
-    scrollIterations: iterations,
-    skipped: false,
-  };
 }
 
 // ============================================================
@@ -190,6 +330,8 @@ export interface AccumulateResult<T> {
   iterations: number;
   /** Whether scrolling was unnecessary (already at the top). */
   skipped: boolean;
+  /** Which deadline ended the pass, or 'complete' (ADR-032). */
+  stopReason: ScrollStopReason;
 }
 
 /**
@@ -297,50 +439,27 @@ function dedupeKeys(keys: readonly string[]): string[] {
  */
 export async function accumulateWhileScrolling<T>(
   container: HTMLElement,
-  harvest: () => HarvestEntry<T>[]
+  harvest: () => HarvestEntry<T>[],
+  deadlines: ScrollDeadlines = DEFAULT_SCROLL_DEADLINES
 ): Promise<AccumulateResult<T>> {
-  const content = new Map<string, T>();
-  const orderIndex = new Map<string, number>();
-  let order: string[] = [];
+  const passStart = Date.now();
+  const acc = createAccumulator(harvest);
 
-  const ingest = (): void => {
-    const window = harvest();
-    for (const entry of window) {
-      content.set(entry.key, entry.value); // last write wins → freshest content
-      if (entry.order !== undefined) orderIndex.set(entry.key, entry.order);
-    }
-    order = mergeWindow(
-      order,
-      window.map(e => e.key)
-    );
-  };
-
-  const toItems = (): T[] => resolveOrder(order, orderIndex).map(key => content.get(key) as T);
-
-  // Seed at the true bottom so the newest turns are mounted before harvesting.
-  // Sync may start with the view scrolled up (issue #348): the last turn is then
-  // below the fold and unmounted, and because we only ever scroll *up* from the
-  // seed, an unmounted tail would be lost forever. Jumping to scrollHeight first
-  // pins the newest window; a conversation that fits has no scroll range and
-  // stays at the top, so the skip path below still applies.
-  container.scrollTop = container.scrollHeight;
-  await delay(SCROLL_ACCUMULATE_POLL_INTERVAL);
-  ingest();
-
-  if (container.scrollTop <= 0) {
+  if (await seedAtBottom(container, acc.ingest)) {
     console.info('[G2O] scrollTop=0 on open, conversation fits without scrolling');
     return {
-      items: toItems(),
+      items: acc.toItems(),
       fullyLoaded: true,
-      itemCount: content.size,
+      itemCount: acc.size,
       iterations: 0,
       skipped: true,
+      stopReason: 'complete',
     };
   }
 
   console.info(
     `[G2O] Virtualized conversation — scrollTop=${container.scrollTop}, ` +
-      `${content.size} turns mounted, accumulating by scrolling up`
+      `${acc.size} turns mounted, accumulating by scrolling up`
   );
 
   const step = Math.max(
@@ -348,26 +467,67 @@ export async function accumulateWhileScrolling<T>(
     Math.floor(container.clientHeight * SCROLL_ACCUMULATE_STEP_FACTOR)
   );
 
-  const { iterations, fullyLoaded } = await scrollUpUntilStable(container, step, () => {
-    const before = content.size;
-    ingest();
-    return content.size > before;
+  const { iterations, stopReason } = await scrollUpUntilStable(container, step, deadlines, () => {
+    const before = acc.size;
+    acc.ingest();
+    return acc.size > before;
   });
 
-  logAccumulation(fullyLoaded, content.size, iterations);
-  return { items: toItems(), fullyLoaded, itemCount: content.size, iterations, skipped: false };
+  logScrollStop(stopReason, acc.size, 'turns', iterations, Date.now() - passStart, deadlines);
+  return {
+    items: acc.toItems(),
+    fullyLoaded: stopReason === 'complete',
+    itemCount: acc.size,
+    iterations,
+    skipped: false,
+    stopReason,
+  };
 }
 
-/** Log the outcome of an upward accumulation pass (stabilized vs timed out). */
-function logAccumulation(fullyLoaded: boolean, turns: number, iterations: number): void {
-  if (fullyLoaded) {
-    console.info(`[G2O] Accumulated ${turns} turns after ${iterations} scroll iterations`);
-  } else {
-    console.warn(
-      `[G2O] Auto-scroll accumulation timed out (no new turns for ` +
-        `${SCROLL_IDLE_TIMEOUT / 1000}s) with ${turns} turns`
-    );
-  }
+/** Turns accumulated across windows: de-duplicated by key, ordered once at the end. */
+function createAccumulator<T>(harvest: () => HarvestEntry<T>[]): {
+  ingest: () => void;
+  toItems: () => T[];
+  readonly size: number;
+} {
+  const content = new Map<string, T>();
+  const orderIndex = new Map<string, number>();
+  let order: string[] = [];
+
+  return {
+    ingest: () => {
+      const window = harvest();
+      for (const entry of window) {
+        content.set(entry.key, entry.value); // last write wins → freshest content
+        if (entry.order !== undefined) orderIndex.set(entry.key, entry.order);
+      }
+      order = mergeWindow(
+        order,
+        window.map(e => e.key)
+      );
+    },
+    toItems: () => resolveOrder(order, orderIndex).map(key => content.get(key) as T),
+    get size() {
+      return content.size;
+    },
+  };
+}
+
+/**
+ * Pin the newest window before harvesting, and report whether the conversation
+ * fits without scrolling at all.
+ *
+ * Sync may start with the view scrolled up (issue #348): the last turn is then
+ * below the fold and unmounted, and because we only ever scroll *up* from the
+ * seed, an unmounted tail would be lost forever. Jumping to scrollHeight first
+ * pins the newest window; a conversation that fits has no scroll range and
+ * stays at the top.
+ */
+async function seedAtBottom(container: HTMLElement, ingest: () => void): Promise<boolean> {
+  container.scrollTop = container.scrollHeight;
+  await delay(SCROLL_ACCUMULATE_POLL_INTERVAL);
+  ingest();
+  return container.scrollTop <= 0;
 }
 
 /**
@@ -401,14 +561,18 @@ function logAccumulation(fullyLoaded: boolean, turns: number, iterations: number
 async function scrollUpUntilStable(
   container: HTMLElement,
   step: number,
+  deadlines: ScrollDeadlines,
   onWindow: () => boolean
-): Promise<{ iterations: number; fullyLoaded: boolean }> {
+): Promise<{ iterations: number; stopReason: ScrollStopReason }> {
   let stable = 0;
   let iterations = 0;
   const startTime = Date.now();
   let lastProgressTime = startTime;
 
-  while (withinDeadline(startTime, lastProgressTime)) {
+  for (;;) {
+    const stopReason = crossedDeadline(startTime, lastProgressTime, deadlines);
+    if (stopReason !== null) return { iterations, stopReason };
+
     const before = container.scrollTop;
     const wasAtTop = before <= 0;
     container.scrollTop = Math.max(0, before - step);
@@ -430,8 +594,7 @@ async function scrollUpUntilStable(
     if (grew) {
       stable = 0;
     } else if (wasAtTop && ++stable >= SCROLL_STABILITY_THRESHOLD) {
-      return { iterations, fullyLoaded: true };
+      return { iterations, stopReason: 'complete' };
     }
   }
-  return { iterations, fullyLoaded: false };
 }

@@ -161,6 +161,13 @@ describe('ClaudeExtractor auto-scroll (virtualization)', () => {
     const result = await promise;
 
     expect(result.success).toBe(true);
-    expect(result.warnings?.some(w => w.includes('Auto-scroll timed out'))).toBe(true);
+    // Progress never stops (a new turn every scroll), so only the absolute cap
+    // can end this pass — and the warning must say so rather than blaming the
+    // idle deadline, which is the confusion issue #449 reported.
+    const warning = result.warnings?.find(w => w.startsWith('Auto-scroll'));
+    expect(warning).toBeDefined();
+    expect(warning).toMatch(/time limit/);
+    expect(warning).not.toMatch(/no progress/);
+    expect(warning).toContain('turns captured');
   });
 });
