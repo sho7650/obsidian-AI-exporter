@@ -541,3 +541,172 @@ describe('accumulateWhileScrolling', () => {
     expect(result.items).toEqual(['final']);
   });
 });
+
+/**
+ * Which deadline ended a pass (issue #449, ADR-032).
+ *
+ * A user reported "timed out (no new turns for 15s) with 27 turns" on a
+ * 446-message conversation and concluded from that sentence that the stop was
+ * idle-based rather than the 300s ceiling. They could not have known: both
+ * engines emitted the same sentence whichever deadline fired, and the
+ * arithmetic (257,486px at 511px/step ≈ 504 iterations needed, ~500-714
+ * affordable inside 300s) is genuinely ambiguous.
+ */
+describe('scroll stop reason', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  /** A scroller that refuses to move and never surfaces a new turn. */
+  function createStuckList(): {
+    container: HTMLElement;
+    harvest: () => Array<{ key: string; value: string }>;
+  } {
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'scrollTop', {
+      get: () => 5_000, // every write is ignored: the position never changes
+      set: () => {},
+      configurable: true,
+    });
+    Object.defineProperty(container, 'clientHeight', { get: () => 900, configurable: true });
+    Object.defineProperty(container, 'scrollHeight', { get: () => 5_900, configurable: true });
+    return { container, harvest: () => [{ key: 'k0', value: 'v0' }] };
+  }
+
+  it('reports idle-timeout when the scroller stops responding', async () => {
+    const { container, harvest } = createStuckList();
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.fullyLoaded).toBe(false);
+    expect(result.stopReason).toBe('idle-timeout');
+  });
+
+  it('reports max-timeout when the pass keeps progressing past the ceiling', async () => {
+    // Moves every iteration and mounts new turns, so the idle deadline never
+    // fires; only the absolute cap can end it. 400ms per iteration against a
+    // 300s cap allows ~750 iterations, and reaching the top needs 2000.
+    const { container, harvest } = createVirtualList({
+      total: 4_000,
+      windowSize: 4,
+      clientHeight: 1_000,
+      maxScroll: 1_200_000,
+    });
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.fullyLoaded).toBe(false);
+    expect(result.stopReason).toBe('max-timeout');
+  });
+
+  it('reports complete when the top is reached', async () => {
+    const { container, harvest } = createVirtualList({ total: 12, windowSize: 4 });
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.stopReason).toBe('complete');
+  });
+
+  it('reports complete when the conversation needs no scrolling at all', async () => {
+    const { container, harvest } = createVirtualList({ total: 3, windowSize: 4 });
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.skipped).toBe(true);
+    expect(result.stopReason).toBe('complete');
+  });
+
+  it('keeps fullyLoaded and stopReason in agreement', async () => {
+    // Two fields describing one fact must never disagree.
+    const cases = [
+      createVirtualList({ total: 12, windowSize: 4 }),
+      createVirtualList({ total: 3, windowSize: 4 }),
+      createStuckList(),
+    ];
+
+    for (const { container, harvest } of cases) {
+      const promise = accumulateWhileScrolling(container, harvest);
+      await vi.runAllTimersAsync();
+      const result = await promise;
+      expect(result.fullyLoaded).toBe(result.stopReason === 'complete');
+    }
+  });
+
+  it('logs a different sentence for each deadline, and never blames idle for the ceiling', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const stuck = createStuckList();
+    let promise = accumulateWhileScrolling(stuck.container, stuck.harvest);
+    await vi.runAllTimersAsync();
+    await promise;
+    const idleMessage = warn.mock.calls.map(c => String(c[0])).join('\n');
+
+    warn.mockClear();
+    const long = createVirtualList({
+      total: 4_000,
+      windowSize: 4,
+      clientHeight: 1_000,
+      maxScroll: 1_200_000,
+    });
+    promise = accumulateWhileScrolling(long.container, long.harvest);
+    await vi.runAllTimersAsync();
+    await promise;
+    const capMessage = warn.mock.calls.map(c => String(c[0])).join('\n');
+
+    expect(idleMessage).not.toBe(capMessage);
+    expect(capMessage).not.toMatch(/no new turns|no progress/i);
+    expect(idleMessage).toMatch(/no progress/i);
+  });
+
+  it('reports max-timeout when the caller sets an idle deadline longer than the cap', async () => {
+    // Reachable once the deadlines are user-set: whichever threshold is crossed
+    // first has to win, or the report lies.
+    const { container, harvest } = createStuckList();
+
+    const promise = accumulateWhileScrolling(container, harvest, {
+      idleMs: 60_000,
+      maxMs: 5_000,
+    });
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.stopReason).toBe('max-timeout');
+  });
+
+  it('honours a caller-supplied idle deadline', async () => {
+    const { container, harvest } = createStuckList();
+
+    const promise = accumulateWhileScrolling(container, harvest, {
+      idleMs: 2_000,
+      maxMs: 300_000,
+    });
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    // 2000ms / 400ms poll ≈ 5 iterations, versus ~38 at the 15s default.
+    expect(result.stopReason).toBe('idle-timeout');
+    expect(result.iterations).toBeLessThan(10);
+  });
+
+  it('falls back to the shipped 15s/300s deadlines when none are supplied', async () => {
+    const { container, harvest } = createStuckList();
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    // 15_000 / 400 ≈ 38 iterations before the idle deadline fires.
+    expect(result.iterations).toBeGreaterThan(30);
+    expect(result.iterations).toBeLessThan(45);
+  });
+});
