@@ -39,6 +39,16 @@ export const SELECTORS = {
     '.whitespace-pre-wrap.break-words', // Legacy inner <p> (LOW fallback)
   ],
 
+  // The virtual-row wrapper of one conversation turn.
+  //
+  // Read by isInDismissedPanel() to tell a real turn from a dismissed Deep
+  // Research / Artifact panel: turns live inside a row, the artifact panel does
+  // not (measured live 2026-08-16). Also the accumulation key for virtualized
+  // scrolling, where its numeric value is the conversation order.
+  conversationRow: [
+    '[data-index]', // Virtual row (HIGH)
+  ],
+
   // Assistant response selectors
   assistantResponse: [
     '.font-claude-response', // Semantic (HIGH)
