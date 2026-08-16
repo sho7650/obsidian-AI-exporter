@@ -66,7 +66,19 @@ export class ClaudeExtractor extends BaseExtractor {
    * the conversation as a stale extra assistant turn.
    */
   private isInDismissedPanel(element: Element): boolean {
-    return element.closest('[inert], [aria-hidden="true"]') !== null;
+    if (element.closest('[inert], [aria-hidden="true"]') === null) return false;
+
+    // `inert` alone is not enough to call something dismissed: Claude also uses
+    // it for the collapsed overflow of a LONG message, so treating every inert
+    // ancestor as a closed panel silently dropped the user's own prompt from
+    // the export while the reply survived.
+    //
+    // Measured live via CDP on one account, same day: user turns of 16 / 54 /
+    // 182 characters sit outside `[inert]`, a 597-character one sits inside it,
+    // and `#markdown-artifact` sits outside any `[data-index]` row. So position
+    // — not the attribute — is what separates a conversation turn from a
+    // dismissed panel.
+    return element.closest(SELECTORS.conversationRow[0]) === null;
   }
 
   // ========== ID & Title Extraction ==========
@@ -203,7 +215,8 @@ export class ClaudeExtractor extends BaseExtractor {
       // `data-index` is monotonic in conversation order; use it both as the
       // stable de-dup key and as the ordering signal so accumulation can sort by
       // it (robust against mergeWindow scramble — issue #352).
-      const dataIndex = item.element.closest('[data-index]')?.getAttribute('data-index');
+      const row = item.element.closest(SELECTORS.conversationRow[0]);
+      const dataIndex = row?.getAttribute('data-index');
       const parsed = dataIndex !== undefined && dataIndex !== null ? Number(dataIndex) : NaN;
       const key = dataIndex ? `idx-${dataIndex}` : `${item.type}-${generateHash(content)}`;
       const order = Number.isFinite(parsed) ? parsed : undefined;
