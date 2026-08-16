@@ -25,6 +25,7 @@ import {
 import {
   accumulateWhileScrolling,
   describeScrollStop,
+  resolveScrollDeadlines,
   DEFAULT_SCROLL_DEADLINES,
   type HarvestEntry,
   type ScrollDeadlines,
@@ -201,7 +202,21 @@ export abstract class BaseExtractor implements IConversationExtractor {
    * Apply user settings before extraction.
    * Override in subclasses that have platform-specific settings.
    */
-  applySettings(_settings: SyncSettings): void {
+  applySettings(settings: SyncSettings): void {
+    this.enableAutoScroll = settings.enableAutoScroll ?? false;
+    this.scrollDeadlines = resolveScrollDeadlines(settings);
+    this.applyPlatformSettings(settings);
+  }
+
+  /**
+   * Hook: settings only one platform cares about.
+   *
+   * Overriding `applySettings` instead would drop whatever the base class
+   * assigns — which is exactly how the auto-scroll deadlines would have gone
+   * missing on all three virtualized platforms (ADR-032). Guarded by
+   * test/arch/extractor-settings-hook.test.ts.
+   */
+  protected applyPlatformSettings(_settings: SyncSettings): void {
     // no-op by default
   }
 

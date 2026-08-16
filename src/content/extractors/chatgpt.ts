@@ -15,12 +15,7 @@ import { BaseExtractor, type ScrollConfig } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { generateHash } from '../../lib/hash';
 import type { HarvestEntry } from '../../lib/scroll-manager';
-import type {
-  AIPlatform,
-  ConversationMessage,
-  ExtractionResult,
-  SyncSettings,
-} from '../../lib/types';
+import type { AIPlatform, ConversationMessage, ExtractionResult } from '../../lib/types';
 
 import { SELECTORS } from './selectors/chatgpt';
 
@@ -60,9 +55,6 @@ export class ChatGPTExtractor extends BaseExtractor {
   /**
    * Apply user settings: enable/disable auto-scroll for virtualized history.
    */
-  applySettings(settings: SyncSettings): void {
-    this.enableAutoScroll = settings.enableAutoScroll ?? false;
-  }
 
   // ========== ID & Title Extraction ==========
 

@@ -38,11 +38,8 @@ export class GeminiExtractor extends BaseExtractor {
   /** Reasons images could not be captured, surfaced as a warning (issue: revoked blob URLs). */
   private imageFailures: string[] = [];
 
-  /**
-   * Apply user settings: enable/disable auto-scroll
-   */
-  applySettings(settings: SyncSettings): void {
-    this.enableAutoScroll = settings.enableAutoScroll ?? false;
+  /** Apply the settings only Gemini has; the shared ones live in BaseExtractor. */
+  protected applyPlatformSettings(settings: SyncSettings): void {
     this.enableImageExport = settings.enableImageExport ?? true;
   }
 
