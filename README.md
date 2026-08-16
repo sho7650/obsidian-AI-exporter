@@ -101,6 +101,8 @@ Gemini-generated images are captured and exported automatically (see [Image Expo
 
 > **Keep Auto-scroll enabled for long conversations.** Claude mounts only a window of turns at a time and discards the rest; with Auto-scroll off, only the turns currently on screen can be exported.
 
+> **Very long conversations may need more time.** Auto-scroll gives up after 15 seconds without progress, or 300 seconds in total. If the export warns that it stopped early, raise **Auto-scroll idle timeout** or **Auto-scroll time limit** in Advanced Settings — the warning names which one it hit — and sync again.
+
 ### ChatGPT
 
 1. Open a conversation on [chatgpt.com](https://chatgpt.com) (regular chats and custom GPTs via `/g/` URLs are both supported)
@@ -108,6 +110,8 @@ Gemini-generated images are captured and exported automatically (see [Image Expo
 3. The conversation will be exported with the same output options as Gemini
 
 > **Keep Auto-scroll enabled for long conversations.** ChatGPT mounts only a window of turns at a time and discards the rest; with Auto-scroll off, only the turns currently on screen can be exported.
+
+> **Very long conversations may need more time.** Auto-scroll gives up after 15 seconds without progress, or 300 seconds in total. If the export warns that it stopped early, raise **Auto-scroll idle timeout** or **Auto-scroll time limit** in Advanced Settings — the warning names which one it hit — and sync again.
 
 > **Deep Research reports cannot be exported from ChatGPT.** See [Deep Research / Extended Thinking Export](#deep-research--extended-thinking-export).
 
@@ -256,6 +260,8 @@ Choose how exported note filenames are built (Advanced Settings → **Filename s
 - **`title-date`**: `{title}-{YYYY}-{MM}-{DD}.md` — uses the local save date.
 
 If the intended filename is already occupied by a _different_ conversation, the extension writes to a safe alternative name instead of overwriting it.
+
+An export whose auto-scroll stopped early is also refused rather than written, when the note already in your vault holds more messages than the export captured. Nothing is overwritten and the message tells you both counts, so a partial capture can never replace a complete note.
 
 ## Image Export
 
