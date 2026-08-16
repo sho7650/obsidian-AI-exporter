@@ -1894,3 +1894,134 @@ console.log(x);</code></pre>
     });
   });
 });
+
+/**
+ * Long user messages are collapsed behind an `inert` wrapper.
+ *
+ * Claude does not only use `inert` for a dismissed Deep Research / Artifact
+ * panel (#352). It also uses it for the overflow of a **collapsed long user
+ * message**, and `isInDismissedPanel()` could not tell the two apart, so the
+ * user's own prompt vanished from the export while the reply survived.
+ *
+ * Measured live via CDP (2026-08-16), same account, same day:
+ *
+ * | conversation | user turn | inside `[inert]` |
+ * | ------------ | --------- | ---------------- |
+ * | pinned test  | 16 / 54 / 182 chars | no  |
+ * | reported     | 597 chars           | YES |
+ *
+ * The structural discriminator is where the element sits: conversation turns
+ * live inside a `[data-index]` row, and the artifact panel does not
+ * (`#markdown-artifact` measured at `closest('[data-index]') === null`).
+ */
+describe('collapsed long user messages (issue: first comment missing)', () => {
+  /** The reported shape: a real turn whose overflow wrapper carries `inert`. */
+  const COLLAPSED_USER_TURN = `
+    <div data-index="0">
+      <div class="group/message-row">
+        <div class="relative">
+          <div id="_r_du_" class="overflow-hidden">
+            <div inert>
+              <div class="grid">
+                <div data-testid="user-message">
+                  <p class="whitespace-pre-wrap break-words">A very long pasted requirement</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div data-index="1">
+      <div class="font-claude-response">
+        <div class="standard-markdown"><p>The reply</p></div>
+      </div>
+    </div>
+  `;
+
+  let extractor: ClaudeExtractor;
+
+  beforeEach(() => {
+    extractor = new ClaudeExtractor();
+    clearFixture();
+    setClaudeLocation('dee90067');
+  });
+
+  afterEach(() => {
+    clearFixture();
+    resetLocation();
+  });
+
+  it('extracts a user message whose turn is partly inert', () => {
+    loadFixture(COLLAPSED_USER_TURN);
+
+    const messages = extractor.extractMessages();
+
+    expect(messages.map(m => m.role)).toEqual(['user', 'assistant']);
+    expect(messages[0].content).toContain('very long pasted requirement');
+  });
+
+  it('reports both counts, with no missing-user warning', async () => {
+    loadFixture(COLLAPSED_USER_TURN);
+
+    const result = await extractor.extract();
+
+    expect(result.success).toBe(true);
+    expect(result.warnings ?? []).not.toContain('No user messages found');
+    expect(result.data?.metadata.userMessageCount).toBe(1);
+    expect(result.data?.metadata.assistantMessageCount).toBe(1);
+  });
+
+  it('still ignores a dismissed panel outside the conversation rows (issue #352)', () => {
+    // The regression this must not undo: a closed artifact keeps its
+    // .font-claude-response and would otherwise leak in as a stale extra turn.
+    loadFixture(`
+      <div data-index="0">
+        <div data-testid="user-message">
+          <p class="whitespace-pre-wrap break-words">Question</p>
+        </div>
+      </div>
+      <div data-index="1">
+        <div class="font-claude-response">
+          <div class="standard-markdown"><p>Answer</p></div>
+        </div>
+      </div>
+      <div inert aria-hidden="true">
+        <div class="font-claude-response">
+          <div class="standard-markdown"><p>Lingering closed report</p></div>
+        </div>
+      </div>
+    `);
+
+    const messages = extractor.extractMessages();
+
+    expect(messages.map(m => m.role)).toEqual(['user', 'assistant']);
+    expect(messages.some(m => m.content.includes('Lingering'))).toBe(false);
+  });
+
+  it('extracts a collapsed assistant response too', () => {
+    // Not observed live, but it runs through the same guard: if Claude ever
+    // collapses a long reply, the reply must not vanish either.
+    loadFixture(`
+      <div data-index="0">
+        <div data-testid="user-message">
+          <p class="whitespace-pre-wrap break-words">Question</p>
+        </div>
+      </div>
+      <div data-index="1">
+        <div class="overflow-hidden">
+          <div inert>
+            <div class="font-claude-response">
+              <div class="standard-markdown"><p>A very long reply</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `);
+
+    const messages = extractor.extractMessages();
+
+    expect(messages.map(m => m.role)).toEqual(['user', 'assistant']);
+    expect(messages[1].content).toContain('very long reply');
+  });
+});

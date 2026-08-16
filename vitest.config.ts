@@ -5,6 +5,18 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],
+    // Keep the console output of PASSING tests out of the run.
+    //
+    // The scroll engines log one line per iteration by design - that debug
+    // trail is the instrument ADR-032 added for field reports - and the tests
+    // simulate hundreds of iterations, so a CI run printed 10,400 lines of
+    // which 2,600 were scroll iterations. Real failures drown in that.
+    //
+    // Only the DEFAULT reporter was affected: the minimal reporter vitest picks
+    // locally already sets 'passed-only', so the noise was invisible on a
+    // developer machine and only ever appeared in CI. Setting it here makes the
+    // two agree. Logs from FAILING tests are still printed in full.
+    silent: 'passed-only',
     include: ['test/**/*.test.ts', 'e2e/**/*.test.ts'],
     // E2E test timeout extension
     testTimeout: 30000,
