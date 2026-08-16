@@ -12,13 +12,12 @@ import type { SelectorGroup, ComputedSelectors } from './types';
  * CSS Selectors for normal chat extraction
  */
 export const SELECTORS = {
-  // Conversation block selectors (each message block)
-  // Stability: HIGH → LOW order for fallback
-  conversationBlock: [
-    '.group[style*="height: auto"]', // Structure-based (HIGH)
-    '[data-test-render-count]', // Test attribute (LOW)
-    '.group', // Generic (MEDIUM)
-  ],
+  // NOTE: a conversationBlock group used to live here. It was removed in
+  // 2026-08 (issue #446): nothing in the extractor ever queried it — messages
+  // are found through userMessage / assistantResponse — while its primary
+  // (`.group[style*="height: auto"]`) became unmatchable when Claude stopped
+  // writing that inline style, which blocked the whole platform baseline. A
+  // selector no code reads is a contract obligation with no payoff.
 
   // User message content selectors
   //

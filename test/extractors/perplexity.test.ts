@@ -984,4 +984,133 @@ describe('PerplexityExtractor', () => {
       expect(messages[4].content).toContain('Summary of the report');
     });
   });
+
+  /**
+   * Issue #444. Perplexity rolled out a layout that keeps
+   * `div[id^="markdown-content-"]` as an EMPTY placeholder and renders the
+   * answer beside it. Both layouts are served concurrently, so the extractor
+   * has to read either one without double-counting the other.
+   *
+   * The fixtures below mirror the class lists measured on live threads:
+   *
+   * - answer prose (BOTH layouts): `prose dark:prose-invert inline leading-relaxed …`
+   * - Deep Research card prose:    `… prose dark:prose-invert max-w-none text-sm`,
+   *   plus an `inline` prose nested INSIDE the card — which is why "collect
+   *   every .prose" is wrong and the card has to be excluded explicitly.
+   */
+  describe('Answers rendered outside the markdown-content placeholder (issue #444)', () => {
+    const ANSWER_PROSE_CLASS =
+      'prose dark:prose-invert inline leading-relaxed break-words min-w-0 [word-break:break-word]';
+
+    beforeEach(() => {
+      setPerplexityLocation('conv-444');
+    });
+
+    it('extracts the answer when the placeholder is empty', () => {
+      loadFixture(`
+        <div class="group/query"><span class="select-text">What is a modern email signature?</span></div>
+        <div class="relative font-sans text-base">
+          <div id="markdown-content-0" class="gap-y-4 after:clear-both after:block"></div>
+        </div>
+        <div class="flex flex-col flex-1 min-w-0 gap-4">
+          <div class="contents">
+            <div class="break-words min-w-0 flex-1">
+              <div>
+                <div class="${ANSWER_PROSE_CLASS}">
+                  <p>Use a hosted PNG under 240px wide.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `);
+
+      const messages = extractor.extractMessages();
+
+      expect(messages.map(m => m.role)).toEqual(['user', 'assistant']);
+      expect(messages[1].content).toContain('Use a hosted PNG');
+    });
+
+    it('keeps every answer of a multi-turn thread, in order', () => {
+      const turn = (q: string, a: string, i: number): string => `
+        <div class="group/query"><span class="select-text">${q}</span></div>
+        <div class="relative font-sans text-base">
+          <div id="markdown-content-${i}" class="gap-y-4"></div>
+        </div>
+        <div class="contents"><div class="break-words min-w-0 flex-1"><div>
+          <div class="${ANSWER_PROSE_CLASS}"><p>${a}</p></div>
+        </div></div></div>
+      `;
+      loadFixture(turn('q1', 'answer one', 0) + turn('q2', 'answer two', 1));
+
+      const messages = extractor.extractMessages();
+
+      expect(messages.map(m => m.role)).toEqual(['user', 'assistant', 'user', 'assistant']);
+      expect(messages[1].content).toContain('answer one');
+      expect(messages[3].content).toContain('answer two');
+    });
+
+    it('does not double-count when the prose IS inside the placeholder (old layout)', () => {
+      loadFixture(`
+        <div class="group/query"><span class="select-text">q</span></div>
+        <div class="relative font-sans text-base">
+          <div id="markdown-content-0" class="gap-y-4">
+            <div class="has-inline-images my-2">
+              <div><div class="${ANSWER_PROSE_CLASS}"><p>only answer</p></div></div>
+            </div>
+          </div>
+        </div>
+      `);
+
+      const messages = extractor.extractMessages();
+
+      expect(messages.map(m => m.role)).toEqual(['user', 'assistant']);
+      expect(messages.filter(m => m.role === 'assistant')).toHaveLength(1);
+    });
+
+    it('does not mistake a Deep Research card for a second answer', () => {
+      // The card carries an `inline` prose of its own; the extractor already
+      // routes the card through the report path, so it must not be collected
+      // again by the placeholder fallback.
+      loadFixture(`
+        <div class="group/query"><span class="select-text">q</span></div>
+        <div class="relative font-sans text-base">
+          <div id="markdown-content-0" class="gap-y-4"></div>
+        </div>
+        <div class="bg-raised rounded-lg">
+          <div class="overflow-hidden px-4 py-3 prose dark:prose-invert max-w-none text-sm">
+            <div class="${ANSWER_PROSE_CLASS}"><p>report body</p></div>
+          </div>
+        </div>
+        <div class="contents"><div class="break-words min-w-0 flex-1"><div>
+          <div class="${ANSWER_PROSE_CLASS}"><p>the actual answer</p></div>
+        </div></div></div>
+      `);
+
+      const messages = extractor.extractMessages();
+      const assistant = messages.filter(m => m.role === 'assistant');
+
+      expect(assistant).toHaveLength(2);
+      expect(assistant.filter(m => m.content.includes('report body'))).toHaveLength(1);
+      expect(assistant.filter(m => m.content.includes('the actual answer'))).toHaveLength(1);
+    });
+
+    it('reports success without the missing-assistant warning', async () => {
+      loadFixture(`
+        <div class="group/query"><span class="select-text">q</span></div>
+        <div class="relative font-sans text-base">
+          <div id="markdown-content-0" class="gap-y-4"></div>
+        </div>
+        <div class="contents"><div class="break-words min-w-0 flex-1"><div>
+          <div class="${ANSWER_PROSE_CLASS}"><p>an answer</p></div>
+        </div></div></div>
+      `);
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(true);
+      expect(result.warnings ?? []).not.toContain('No assistant messages found');
+      expect(result.data?.metadata.assistantMessageCount).toBe(1);
+    });
+  });
 });

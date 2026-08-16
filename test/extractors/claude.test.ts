@@ -633,8 +633,11 @@ describe('ClaudeExtractor', () => {
 
   // ========== 6.3.7 Fallback Selectors (12 tests) ==========
   describe('Fallback Selectors', () => {
-    describe('conversationBlock selectors', () => {
-      it('works with primary selector (.group[style])', async () => {
+    // These pin that extraction is independent of the message WRAPPER shape:
+    // Claude has changed it repeatedly, and the selector group that used to
+    // describe it was removed in #446 because no code read it.
+    describe('message wrapper shapes', () => {
+      it('works when turns are wrapped in .group with an inline height style', async () => {
         setClaudeLocation('test-123');
         loadFixture(`
           <div class="group" style="height: auto;">
@@ -652,7 +655,7 @@ describe('ClaudeExtractor', () => {
         expect(result.data?.messages.length).toBeGreaterThan(0);
       });
 
-      it('works with secondary selector ([data-test-render-count])', async () => {
+      it('works when turns are wrapped in [data-test-render-count]', async () => {
         setClaudeLocation('test-123');
         loadFixture(`
           <div data-test-render-count="2">
@@ -668,7 +671,7 @@ describe('ClaudeExtractor', () => {
         expect(result.success).toBe(true);
       });
 
-      it('works with tertiary selector (.group)', async () => {
+      it('works when turns are wrapped in a bare .group', async () => {
         setClaudeLocation('test-123');
         loadFixture(`
           <div class="group">

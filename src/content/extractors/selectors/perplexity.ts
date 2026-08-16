@@ -28,6 +28,22 @@ export const SELECTORS = {
     '.prose', // Fallback (LOW)
   ],
 
+  // The answer block itself, wherever it is mounted.
+  //
+  // 2026-08 (issue #444): a rollout keeps `markdownContent` as an EMPTY
+  // placeholder and renders the answer beside it. The class list of the answer
+  // prose is identical under both layouts, so this selector finds it either
+  // way; what differs is only whether it sits inside the placeholder.
+  //
+  // `inline` is what separates it from a Deep Research card's own prose
+  // (`… max-w-none text-sm`). That is a narrowing, not the guard: a card also
+  // nests an `inline` prose, so perplexity.ts additionally excludes anything
+  // inside a deepResearchCard, which the report path already owns.
+  answerProse: [
+    '.prose.dark\\:prose-invert.inline', // Answer block (HIGH)
+    '.prose.inline', // Without the theme class (MEDIUM)
+  ],
+
   // Deep Research report card container. Matches generic raised panels too;
   // the extractor only tags a card as a report when deepResearchProse is
   // found inside it (perplexity.ts collectTaggedElements).
