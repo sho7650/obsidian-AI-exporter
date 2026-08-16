@@ -1410,3 +1410,50 @@ describe('conversationToNote with toolContent', () => {
     expect(note.body).toContain('Hi there!');
   });
 });
+
+/**
+ * The truncation flag rides on the note but never on the note's content
+ * (issue #449, ADR-033).
+ */
+describe('conversationToNote — truncated capture', () => {
+  const options: TemplateOptions = {
+    includeId: true,
+    includeTitle: true,
+    includeTags: true,
+    includeSource: true,
+    includeDates: true,
+    includeMessageCount: true,
+    messageFormat: 'callout',
+    userCalloutType: 'QUESTION',
+    assistantCalloutType: 'NOTE',
+    timezone: 'UTC',
+  };
+
+  function data(truncated?: boolean): ConversationData {
+    return {
+      id: 'c1',
+      title: 'T',
+      url: 'https://claude.ai/chat/c1',
+      source: 'claude',
+      messages: [{ role: 'user', content: 'q', id: 'm1', index: 0 }],
+      extractedAt: new Date('2026-08-16T00:00:00Z'),
+      metadata: { messageCount: 1, userMessageCount: 1, assistantMessageCount: 0 },
+      ...(truncated === undefined ? {} : { truncated }),
+    } as ConversationData;
+  }
+
+  it('carries the flag to the note so the background can act on it', () => {
+    expect(conversationToNote(data(true), options).truncated).toBe(true);
+  });
+
+  it('omits the flag entirely for a complete capture', () => {
+    expect('truncated' in conversationToNote(data(), options)).toBe(false);
+    expect('truncated' in conversationToNote(data(false), options)).toBe(false);
+  });
+
+  it('never leaks the flag into the note frontmatter', () => {
+    const note = conversationToNote(data(true), options);
+
+    expect(JSON.stringify(note.frontmatter)).not.toContain('truncated');
+  });
+});

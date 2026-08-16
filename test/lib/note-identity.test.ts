@@ -93,6 +93,7 @@ describe('line endings (issue #365 regression)', () => {
     expect(classifyNoteProbe(lines.join('\r\n'), ID)).toEqual({
       state: 'same-conversation',
       foundId: ID,
+      messageCount: 239,
     });
   });
 
@@ -100,6 +101,7 @@ describe('line endings (issue #365 regression)', () => {
     expect(classifyNoteProbe(lines.join('\r'), ID)).toEqual({
       state: 'same-conversation',
       foundId: ID,
+      messageCount: 239,
     });
   });
 
@@ -122,5 +124,50 @@ describe('isSameConversation', () => {
 
   it.each(NOT_OURS)('is false for %s — every negative still means "do not touch"', state => {
     expect(isSameConversation({ state })).toBe(false);
+  });
+});
+
+/**
+ * The probe reports the existing note's message count (issue #449, ADR-033).
+ *
+ * It stays a classifier: it reads the number, it decides nothing. The policy
+ * that uses it lives in the save path.
+ */
+describe('classifyNoteProbe — message count', () => {
+  const withFrontmatter = (fields: string): string => `---\n${fields}\n---\n\nbody`;
+
+  it('exposes a numeric message_count', () => {
+    const probe = classifyNoteProbe(
+      withFrontmatter('id: claude_x\nmessage_count: 446'),
+      'claude_x'
+    );
+
+    expect(probe.state).toBe('same-conversation');
+    expect(probe.messageCount).toBe(446);
+  });
+
+  it('leaves it undefined when the field is absent', () => {
+    const probe = classifyNoteProbe(withFrontmatter('id: claude_x'), 'claude_x');
+
+    expect(probe.state).toBe('same-conversation');
+    expect(probe.messageCount).toBeUndefined();
+  });
+
+  it('leaves it undefined when the field is not a number', () => {
+    const probe = classifyNoteProbe(
+      withFrontmatter('id: claude_x\nmessage_count: many'),
+      'claude_x'
+    );
+
+    expect(probe.messageCount).toBeUndefined();
+  });
+
+  it('still classifies a different conversation without reading its count', () => {
+    const probe = classifyNoteProbe(
+      withFrontmatter('id: claude_other\nmessage_count: 446'),
+      'claude_x'
+    );
+
+    expect(probe.state).toBe('different-id');
   });
 });
