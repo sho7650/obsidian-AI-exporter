@@ -95,7 +95,18 @@ export function validateMessageContent(message: ExtensionMessage): boolean {
 /**
  * Validate note data structure
  */
+/**
+ * The truncation flag is the one optional field the content script may add to
+ * a note (issue #449); anything else in its place is a malformed message.
+ */
+function hasValidTruncatedFlag(note: unknown): boolean {
+  if (typeof note !== 'object' || note === null) return true;
+  const flag = (note as { truncated?: unknown }).truncated;
+  return flag === undefined || typeof flag === 'boolean';
+}
+
 function validateNoteData(note: ObsidianNote | undefined): boolean {
+  if (!hasValidTruncatedFlag(note)) return false;
   // Messages arrive as unvalidated JSON: data may be absent despite the type
   if (!note || typeof note !== 'object') {
     return false;

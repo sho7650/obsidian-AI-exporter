@@ -116,14 +116,15 @@ export abstract class BaseExtractor implements IConversationExtractor {
       }
 
       console.info(`[G2O] Extracting ${this.platformLabel} conversation`);
-      const { messages, warning } = await this.collectMessages();
+      const { messages, warning, truncated } = await this.collectMessages();
       const conversationId = this.getConversationId() || `${this.platform}-${Date.now()}`;
       const title = this.getTitle();
       const result = this.buildConversationResult(messages, conversationId, title, this.platform);
-      if (warning && result.success) {
-        return { ...result, warnings: [...(result.warnings ?? []), warning] };
-      }
-      return result;
+      if (!result.success) return result;
+      const data = truncated && result.data ? { ...result.data, truncated } : result.data;
+      return warning
+        ? { ...result, data, warnings: [...(result.warnings ?? []), warning] }
+        : { ...result, data };
     } catch (error) {
       console.error(`[G2O] ${this.platformLabel} extraction error:`, error);
       return {
@@ -172,6 +173,8 @@ export abstract class BaseExtractor implements IConversationExtractor {
   protected async collectMessages(): Promise<{
     messages: ConversationMessage[];
     warning?: string;
+    /** The pass ended on a deadline, so earlier messages may be missing (#449). */
+    truncated?: boolean;
   }> {
     const config = this.getScrollConfig();
     if (!this.enableAutoScroll || !config) {
@@ -193,7 +196,7 @@ export abstract class BaseExtractor implements IConversationExtractor {
     const messages = result.items.map((message, index) => ({ ...message, index }));
 
     const warning = describeScrollStop(result.stopReason, result.itemCount, this.scrollDeadlines);
-    return warning ? { messages, warning } : { messages };
+    return warning ? { messages, warning, truncated: true } : { messages };
   }
 
   // ========== Settings ==========
