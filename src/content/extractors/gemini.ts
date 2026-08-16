@@ -6,7 +6,11 @@
 import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { extractErrorMessage } from '../../lib/error-utils';
-import { ensureAllElementsLoaded, type ScrollResult } from '../../lib/scroll-manager';
+import {
+  ensureAllElementsLoaded,
+  describeScrollStop,
+  type ScrollResult,
+} from '../../lib/scroll-manager';
 import { captureImage } from '../image-capture';
 import type {
   SyncSettings,
@@ -85,10 +89,16 @@ export class GeminiExtractor extends BaseExtractor {
       // Fetch captured generated images (blob → base64) and attach to the data.
       const result = await this.attachImages(baseResult);
 
-      if (scrollResult && !scrollResult.fullyLoaded && !scrollResult.skipped) {
-        const warning =
-          `Auto-scroll timed out before reaching the top. ` +
-          `Some earlier messages may be missing (${scrollResult.elementCount} turns loaded).`;
+      // One builder for both engines: this warning used to be a byte-identical
+      // literal here and in BaseExtractor.collectMessages() (ADR-032).
+      const warning = scrollResult
+        ? describeScrollStop(
+            scrollResult.stopReason,
+            scrollResult.elementCount,
+            this.scrollDeadlines
+          )
+        : undefined;
+      if (warning) {
         return { ...result, warnings: [...(result.warnings ?? []), warning] };
       }
       return result;
@@ -100,14 +110,30 @@ export class GeminiExtractor extends BaseExtractor {
 
   private async runAutoScroll(): Promise<ScrollResult> {
     if (!this.enableAutoScroll) {
-      return { fullyLoaded: true, elementCount: 0, scrollIterations: 0, skipped: true };
+      return {
+        fullyLoaded: true,
+        elementCount: 0,
+        scrollIterations: 0,
+        skipped: true,
+        stopReason: 'complete',
+      };
     }
     const container = this.queryWithFallback<HTMLElement>(SELECTORS.scrollContainer);
     if (!container) {
       console.info('[G2O] No scroll container found, skipping auto-scroll');
-      return { fullyLoaded: true, elementCount: 0, scrollIterations: 0, skipped: true };
+      return {
+        fullyLoaded: true,
+        elementCount: 0,
+        scrollIterations: 0,
+        skipped: true,
+        stopReason: 'complete',
+      };
     }
-    return ensureAllElementsLoaded(container, COMPUTED_SELECTORS.conversationTurn);
+    return ensureAllElementsLoaded(
+      container,
+      COMPUTED_SELECTORS.conversationTurn,
+      this.scrollDeadlines
+    );
   }
 
   /** Expose platform selectors to BaseExtractor's DR title/content helpers. */

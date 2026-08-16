@@ -1173,7 +1173,7 @@ describe('GeminiExtractor', () => {
       // All turns should be in result
       expect(result.data!.messages.length).toBeGreaterThanOrEqual(4);
       // No timeout warning
-      const timeoutWarning = result.warnings?.find(w => w.includes('Auto-scroll timed out'));
+      const timeoutWarning = result.warnings?.find(w => w.startsWith('Auto-scroll'));
       expect(timeoutWarning).toBeUndefined();
     });
 
@@ -1208,9 +1208,12 @@ describe('GeminiExtractor', () => {
 
       expect(result.success).toBe(true);
       expect(result.warnings).toBeDefined();
-      const timeoutWarning = result.warnings!.find(w => w.includes('Auto-scroll timed out'));
+      // Elements keep arriving, so the pass ends at the cap, not on idleness.
+      const timeoutWarning = result.warnings!.find(w => w.startsWith('Auto-scroll'));
       expect(timeoutWarning).toBeDefined();
-      expect(timeoutWarning).toContain('turns loaded');
+      expect(timeoutWarning).toMatch(/time limit/);
+      expect(timeoutWarning).not.toMatch(/no progress/);
+      expect(timeoutWarning).toContain('turns captured');
     });
 
     it('keeps loading a long conversation past the old 30s wall while turns keep arriving (issue #360)', async () => {
@@ -1249,7 +1252,7 @@ describe('GeminiExtractor', () => {
       const result = await extractPromise;
 
       expect(result.success).toBe(true);
-      const timeoutWarning = result.warnings?.find(w => w.includes('Auto-scroll timed out'));
+      const timeoutWarning = result.warnings?.find(w => w.startsWith('Auto-scroll'));
       expect(timeoutWarning).toBeUndefined();
       // Far more than the ~25 turns an old 30s wall could load before cutting off.
       expect(result.data!.messages.length).toBeGreaterThanOrEqual(150);
@@ -1356,7 +1359,7 @@ describe('GeminiExtractor', () => {
       // Should have at least 2 warnings: "No user messages found" + timeout
       expect(result.warnings!.length).toBeGreaterThanOrEqual(2);
       expect(result.warnings!.some(w => w.includes('No user messages found'))).toBe(true);
-      expect(result.warnings!.some(w => w.includes('Auto-scroll timed out'))).toBe(true);
+      expect(result.warnings!.some(w => w.startsWith('Auto-scroll'))).toBe(true);
     });
   });
 });

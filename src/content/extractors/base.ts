@@ -22,7 +22,13 @@ import {
   MAX_DEEP_RESEARCH_TITLE_LENGTH,
   PLATFORM_LABELS,
 } from '../../lib/constants';
-import { accumulateWhileScrolling, type HarvestEntry } from '../../lib/scroll-manager';
+import {
+  accumulateWhileScrolling,
+  describeScrollStop,
+  DEFAULT_SCROLL_DEADLINES,
+  type HarvestEntry,
+  type ScrollDeadlines,
+} from '../../lib/scroll-manager';
 import { platformForHost } from '../../lib/platform-registry';
 
 /**
@@ -47,6 +53,11 @@ export abstract class BaseExtractor implements IConversationExtractor {
 
   /** Whether to auto-scroll to load lazily-rendered history (set from settings). */
   enableAutoScroll = false;
+  /**
+   * Deadlines for one auto-scroll pass. Replaced from user settings in
+   * applySettings(); the default reproduces the shipped 15s/300s (ADR-032).
+   */
+  protected scrollDeadlines: ScrollDeadlines = DEFAULT_SCROLL_DEADLINES;
 
   abstract getConversationId(): string | null;
   abstract getTitle(): string;
@@ -172,19 +183,16 @@ export abstract class BaseExtractor implements IConversationExtractor {
       return { messages: this.extractMessages() };
     }
 
-    const result = await accumulateWhileScrolling(container, () => config.harvest());
+    const result = await accumulateWhileScrolling(
+      container,
+      () => config.harvest(),
+      this.scrollDeadlines
+    );
     // Re-index into contiguous conversation order after de-duplication.
     const messages = result.items.map((message, index) => ({ ...message, index }));
 
-    if (result.fullyLoaded || result.skipped) {
-      return { messages };
-    }
-    return {
-      messages,
-      warning:
-        `Auto-scroll timed out before reaching the top. ` +
-        `Some earlier messages may be missing (${result.itemCount} turns loaded).`,
-    };
+    const warning = describeScrollStop(result.stopReason, result.itemCount, this.scrollDeadlines);
+    return warning ? { messages, warning } : { messages };
   }
 
   // ========== Settings ==========
