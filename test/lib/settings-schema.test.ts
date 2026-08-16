@@ -84,3 +84,65 @@ describe('normalizeSyncSettings', () => {
     ).toBeUndefined();
   });
 });
+
+/**
+ * User-settable auto-scroll deadlines (issue #449, ADR-032).
+ *
+ * A 446-message conversation stopped at 27 turns. Rather than guess at the
+ * cause, the two deadlines become settings the user can raise. Sync storage is
+ * cross-device and therefore untrusted at load time, so the schema clamps —
+ * and clamps rather than rejects, because this is the migration boundary.
+ */
+describe('normalizeSyncSettings — auto-scroll deadlines', () => {
+  it('defaults to the shipped 15s / 300s', () => {
+    expect(DEFAULT_SYNC_SETTINGS.scrollIdleTimeoutSec).toBe(15);
+    expect(DEFAULT_SYNC_SETTINGS.scrollMaxTimeoutSec).toBe(300);
+  });
+
+  it('preserves values inside the allowed range', () => {
+    const result = normalizeSyncSettings({ scrollIdleTimeoutSec: 60, scrollMaxTimeoutSec: 1800 });
+    expect(result.scrollIdleTimeoutSec).toBe(60);
+    expect(result.scrollMaxTimeoutSec).toBe(1800);
+  });
+
+  it('falls back to the default for junk', () => {
+    for (const bad of ['abc', null, undefined, 1.5, -1, 0, {}, []]) {
+      const result = normalizeSyncSettings({ scrollIdleTimeoutSec: bad, scrollMaxTimeoutSec: bad });
+      expect(result.scrollIdleTimeoutSec).toBe(15);
+      expect(result.scrollMaxTimeoutSec).toBe(300);
+    }
+  });
+
+  it('clamps out-of-range values instead of discarding them', () => {
+    const low = normalizeSyncSettings({ scrollIdleTimeoutSec: 1, scrollMaxTimeoutSec: 5 });
+    expect(low.scrollIdleTimeoutSec).toBe(5);
+    expect(low.scrollMaxTimeoutSec).toBe(30);
+
+    const high = normalizeSyncSettings({
+      scrollIdleTimeoutSec: 100_000,
+      scrollMaxTimeoutSec: 100_000,
+    });
+    expect(high.scrollIdleTimeoutSec).toBe(600);
+    expect(high.scrollMaxTimeoutSec).toBe(3600);
+  });
+
+  it('migrates settings written before the fields existed, preserving the rest', () => {
+    // The shape a v2.8.1 install has in sync storage: no deadline keys at all.
+    const v281 = {
+      obsidianUrl: 'http://127.0.0.1:27123',
+      vaultPath: 'AI/{platform}',
+      enableAutoScroll: true,
+      enableAppendMode: true,
+      maxCalloutLines: 50,
+    };
+    const result = normalizeSyncSettings(v281);
+
+    expect(result.obsidianUrl).toBe('http://127.0.0.1:27123');
+    expect(result.vaultPath).toBe('AI/{platform}');
+    expect(result.enableAutoScroll).toBe(true);
+    expect(result.enableAppendMode).toBe(true);
+    expect(result.maxCalloutLines).toBe(50);
+    expect(result.scrollIdleTimeoutSec).toBe(15);
+    expect(result.scrollMaxTimeoutSec).toBe(300);
+  });
+});
