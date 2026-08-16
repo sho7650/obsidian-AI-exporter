@@ -16,11 +16,11 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 - **Artifact support**: Extract Claude Artifacts with inline citations and sources
 - **Image export**: Gemini-generated images are saved alongside the conversation — embedded in your vault, downloaded as files, or stripped for clipboard
 - **Source citations**: Gemini Notebook chat citations are exported as footnotes
-- **Auto-scroll**: Automatically loads all messages in long conversations, including virtualized (windowed) Claude and ChatGPT threads
+- **Auto-scroll**: Automatically loads all messages in long conversations, including virtualized (windowed) Claude and ChatGPT threads — its two timeouts are configurable (idle, default 15s; total, default 300s) for very long threads
 - **Append mode**: Only new messages are added to existing notes
 - **Filename schemes**: Choose `title-id` (default) or `title-date` naming for exported notes
 - **Vault path templates**: Organize with `{platform}` and date tokens (`{YYYY}`, `{MM}`, …) for auto-sorting
-- **Filename collision safety**: Never overwrites a note belonging to a different conversation
+- **Filename collision safety**: Never overwrites a note belonging to a different conversation, and never replaces a complete note with a partially-loaded one
 - **Tool content support**: Optionally include Claude's web search results and tool activity as collapsible `[!ABSTRACT]` callouts
 - **Question headers (optional)**: Prepend a `## ` heading (first 60 chars of the question) before each user message for TOC navigation in long conversations
 - **Large-callout flattening**: Optionally flatten very long messages to plain text when saving to Obsidian, avoiding renderer slowdowns; the line threshold is configurable (default 200)
