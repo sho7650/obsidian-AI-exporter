@@ -67,6 +67,21 @@ export async function getSettings(): Promise<ExtensionSettings> {
  * Separates secure settings (API Key) to local storage
  * and non-sensitive settings to sync storage.
  */
+/** Scalar settings copied to sync storage verbatim (the structured ones merge). */
+const PASS_THROUGH_KEYS = [
+  'obsidianUrl',
+  'vaultPath',
+  'imageVaultPath',
+  'enableAutoScroll',
+  'enableAppendMode',
+  'enableToolContent',
+  'enableImageExport',
+  'flattenLargeCallouts',
+  'scrollIdleTimeoutSec',
+  'scrollMaxTimeoutSec',
+  'maxCalloutLines',
+] as const;
+
 export async function saveSettings(settings: Partial<ExtensionSettings>): Promise<void> {
   try {
     // Read sync storage once upfront (replaces separate getSettings() + sync.get calls)
@@ -83,17 +98,6 @@ export async function saveSettings(settings: Partial<ExtensionSettings>): Promis
     // Save non-sensitive data to sync storage. Simple scalar fields pass
     // through directly; templateOptions/outputOptions merge with defaults.
     const syncData: Partial<SyncSettings> = {};
-    const PASS_THROUGH_KEYS = [
-      'obsidianUrl',
-      'vaultPath',
-      'imageVaultPath',
-      'enableAutoScroll',
-      'enableAppendMode',
-      'enableToolContent',
-      'enableImageExport',
-      'flattenLargeCallouts',
-      'maxCalloutLines',
-    ] as const;
     for (const key of PASS_THROUGH_KEYS) {
       if (settings[key] !== undefined) {
         (syncData[key] as SyncSettings[typeof key]) = settings[key] as SyncSettings[typeof key];

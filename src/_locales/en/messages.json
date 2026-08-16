@@ -7,7 +7,6 @@
     "message": "Export AI conversations from Gemini, Claude, ChatGPT, Perplexity, and Gemini Notebook to Obsidian via Local REST API",
     "description": "Extension description shown in browser and store"
   },
-
   "ui_syncButton": {
     "message": "Sync to Obsidian",
     "description": "Text on the floating sync button"
@@ -16,7 +15,6 @@
     "message": "Syncing...",
     "description": "Text shown while syncing"
   },
-
   "settings_title": {
     "message": "Settings",
     "description": "Settings page title"
@@ -157,7 +155,6 @@
     "message": "Hide API key",
     "description": "Tooltip for hide API key button"
   },
-
   "toast_success_created": {
     "message": "Created: $FILE$",
     "description": "Success message when file is created",
@@ -212,7 +209,6 @@
     "message": "Some content may not have been extracted",
     "description": "Warning when partial extraction"
   },
-
   "error_invalidApiKey": {
     "message": "Invalid API key format",
     "description": "Error for invalid API key"
@@ -249,7 +245,6 @@
     "message": "Invalid API URL. Must be http:// or https:// URL",
     "description": "Error for invalid API URL"
   },
-
   "status_connectionSuccess": {
     "message": "Connection successful!",
     "description": "Success status for connection test"
@@ -262,7 +257,6 @@
     "message": "Testing connection...",
     "description": "Status while testing connection"
   },
-
   "settings_outputDestinations": {
     "message": "Output Destinations",
     "description": "Section title for output destinations"
@@ -347,7 +341,6 @@
     "message": "clipboard",
     "description": "Clipboard output name"
   },
-
   "settings_enableAppendMode": {
     "message": "Append Mode",
     "description": "Label for append mode toggle"
@@ -400,7 +393,6 @@
     "message": "Messages longer than this many lines are saved as plain text (Obsidian only).",
     "description": "Help text for max callout lines input"
   },
-
   "toast_appended": {
     "message": "$COUNT$ new message(s) appended",
     "description": "Toast when messages are appended",
@@ -414,5 +406,17 @@
   "toast_noNewMessages": {
     "message": "No new messages to append",
     "description": "Toast when no new messages found"
+  },
+  "settings_scrollIdleTimeout": {
+    "message": "Auto-scroll idle timeout (seconds)"
+  },
+  "settings_scrollIdleTimeoutHelp": {
+    "message": "Give up when no new messages load for this long. Raise it on slow pages or very long conversations. Default 15."
+  },
+  "settings_scrollMaxTimeout": {
+    "message": "Auto-scroll time limit (seconds)"
+  },
+  "settings_scrollMaxTimeoutHelp": {
+    "message": "Hard limit for one auto-scroll pass. A conversation of several hundred messages can need more than the default 300."
   }
 }

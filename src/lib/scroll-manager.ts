@@ -14,6 +14,8 @@ import {
   SCROLL_ACCUMULATE_POLL_INTERVAL,
   SCROLL_ACCUMULATE_STEP_FACTOR,
   SCROLL_ACCUMULATE_MIN_STEP,
+  DEFAULT_SCROLL_IDLE_TIMEOUT_SEC,
+  DEFAULT_SCROLL_MAX_TIMEOUT_SEC,
 } from './constants';
 
 /** Why an auto-scroll pass ended. */
@@ -32,6 +34,22 @@ export const DEFAULT_SCROLL_DEADLINES: ScrollDeadlines = {
   idleMs: SCROLL_IDLE_TIMEOUT,
   maxMs: SCROLL_MAX_TIMEOUT,
 };
+
+/**
+ * The user's configured deadlines, in milliseconds.
+ *
+ * The single conversion point: settings are stored in seconds because that is
+ * what the popup shows, and nothing else in the codebase has to know that.
+ */
+export function resolveScrollDeadlines(settings: {
+  scrollIdleTimeoutSec?: number;
+  scrollMaxTimeoutSec?: number;
+}): ScrollDeadlines {
+  return {
+    idleMs: (settings.scrollIdleTimeoutSec ?? DEFAULT_SCROLL_IDLE_TIMEOUT_SEC) * 1000,
+    maxMs: (settings.scrollMaxTimeoutSec ?? DEFAULT_SCROLL_MAX_TIMEOUT_SEC) * 1000,
+  };
+}
 
 /**
  * Progress-aware deadline (issue #360, ADR-018; reason added in ADR-032).

@@ -8,7 +8,16 @@
  */
 
 import type { SyncSettings, TemplateOptions, OutputOptions } from './types';
-import { DEFAULT_OBSIDIAN_URL, DEFAULT_MAX_CALLOUT_LINES } from './constants';
+import {
+  DEFAULT_OBSIDIAN_URL,
+  DEFAULT_MAX_CALLOUT_LINES,
+  DEFAULT_SCROLL_IDLE_TIMEOUT_SEC,
+  DEFAULT_SCROLL_MAX_TIMEOUT_SEC,
+  MIN_SCROLL_IDLE_TIMEOUT_SEC,
+  MAX_SCROLL_IDLE_TIMEOUT_SEC,
+  MIN_SCROLL_MAX_TIMEOUT_SEC,
+  MAX_SCROLL_MAX_TIMEOUT_SEC,
+} from './constants';
 
 const MESSAGE_FORMATS = ['callout', 'plain', 'blockquote'] as const;
 const FILENAME_SCHEMES = ['title-id', 'title-date'] as const;
@@ -45,6 +54,8 @@ export const DEFAULT_SYNC_SETTINGS: SyncSettings = {
   imageVaultPath: 'AI/{platform}/images',
   flattenLargeCallouts: true,
   maxCalloutLines: DEFAULT_MAX_CALLOUT_LINES,
+  scrollIdleTimeoutSec: DEFAULT_SCROLL_IDLE_TIMEOUT_SEC,
+  scrollMaxTimeoutSec: DEFAULT_SCROLL_MAX_TIMEOUT_SEC,
 };
 
 // --- Field coercion helpers ---
@@ -59,6 +70,19 @@ function asString(value: unknown, fallback: string): string {
 
 function asPositiveInt(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+/**
+ * A whole number inside [min, max], or the fallback.
+ *
+ * Out-of-range values are CLAMPED, not discarded: this runs at the migration
+ * boundary on values that may have been written by another device or a future
+ * build, and moving such a value into range preserves the user's intent where
+ * dropping it would silently reset their setting (ADR-032).
+ */
+function asIntInRange(value: unknown, min: number, max: number, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) return fallback;
+  return Math.min(Math.max(value, min), max);
 }
 
 function asEnum<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
@@ -151,5 +175,17 @@ export function normalizeSyncSettings(raw: unknown): SyncSettings {
     imageVaultPath: asString(raw.imageVaultPath, d.imageVaultPath),
     flattenLargeCallouts: asBoolean(raw.flattenLargeCallouts, d.flattenLargeCallouts),
     maxCalloutLines: asPositiveInt(raw.maxCalloutLines, d.maxCalloutLines),
+    scrollIdleTimeoutSec: asIntInRange(
+      raw.scrollIdleTimeoutSec,
+      MIN_SCROLL_IDLE_TIMEOUT_SEC,
+      MAX_SCROLL_IDLE_TIMEOUT_SEC,
+      d.scrollIdleTimeoutSec
+    ),
+    scrollMaxTimeoutSec: asIntInRange(
+      raw.scrollMaxTimeoutSec,
+      MIN_SCROLL_MAX_TIMEOUT_SEC,
+      MAX_SCROLL_MAX_TIMEOUT_SEC,
+      d.scrollMaxTimeoutSec
+    ),
   };
 }

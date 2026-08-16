@@ -19,6 +19,12 @@ import {
   DEFAULT_OBSIDIAN_URL,
   DEFAULT_MAX_CALLOUT_LINES,
   VALID_MESSAGE_FORMATS,
+  DEFAULT_SCROLL_IDLE_TIMEOUT_SEC,
+  DEFAULT_SCROLL_MAX_TIMEOUT_SEC,
+  MIN_SCROLL_IDLE_TIMEOUT_SEC,
+  MAX_SCROLL_IDLE_TIMEOUT_SEC,
+  MIN_SCROLL_MAX_TIMEOUT_SEC,
+  MAX_SCROLL_MAX_TIMEOUT_SEC,
 } from '../lib/constants';
 import { getMessage } from '../lib/i18n';
 import { sendMessage } from '../lib/messaging';
@@ -102,6 +108,9 @@ function queryElements() {
     imageVaultPath: getElement<HTMLInputElement>('imageVaultPath'),
     flattenLargeCallouts: getElement<HTMLInputElement>('flattenLargeCallouts'),
     maxCalloutLines: getElement<HTMLInputElement>('maxCalloutLines'),
+    scrollIdleTimeoutSec: getElement<HTMLInputElement>('scrollIdleTimeoutSec'),
+    scrollMaxTimeoutSec: getElement<HTMLInputElement>('scrollMaxTimeoutSec'),
+    scrollTimeoutGroup: getElement<HTMLElement>('scrollTimeoutGroup'),
     timezone: getElement<HTMLSelectElement>('timezone'),
     timezoneGroup: getElement<HTMLElement>('timezoneGroup'),
     testBtn: getElement<HTMLButtonElement>('testBtn'),
@@ -151,6 +160,7 @@ function populateForm(settings: ExtensionSettings): void {
   elements.imageVaultPath.value = settings.imageVaultPath || '';
   elements.flattenLargeCallouts.checked = settings.flattenLargeCallouts ?? true;
   elements.maxCalloutLines.value = String(settings.maxCalloutLines ?? DEFAULT_MAX_CALLOUT_LINES);
+  populateScrollTimeouts(settings);
 
   // Update Obsidian settings section visibility
   updateObsidianSettingsVisibility();
@@ -210,6 +220,7 @@ function setupEventListeners(): void {
 
   // Show/hide timezone when includeDates changes
   elements.includeDates.addEventListener('change', updateTimezoneVisibility);
+  elements.enableAutoScroll.addEventListener('change', updateScrollTimeoutVisibility);
 
   // Show/hide callout settings based on message format
   elements.messageFormat.addEventListener('change', updateCalloutSettingsVisibility);
@@ -317,6 +328,25 @@ function updateTimezoneVisibility(): void {
   setGroupVisible(elements.timezoneGroup, elements.includeDates.checked);
 }
 
+/** Fill the auto-scroll deadline inputs and match their visibility to the toggle. */
+function populateScrollTimeouts(settings: ExtensionSettings): void {
+  elements.scrollIdleTimeoutSec.value = String(
+    settings.scrollIdleTimeoutSec ?? DEFAULT_SCROLL_IDLE_TIMEOUT_SEC
+  );
+  elements.scrollMaxTimeoutSec.value = String(
+    settings.scrollMaxTimeoutSec ?? DEFAULT_SCROLL_MAX_TIMEOUT_SEC
+  );
+  updateScrollTimeoutVisibility();
+}
+
+/**
+ * The deadlines only govern auto-scroll, so showing them while it is off would
+ * offer a control that does nothing (issue #449).
+ */
+function updateScrollTimeoutVisibility(): void {
+  setGroupVisible(elements.scrollTimeoutGroup, elements.enableAutoScroll.checked);
+}
+
 function updateCalloutSettingsVisibility(): void {
   setGroupVisible(elements.calloutSettingsGroup, elements.messageFormat.value === 'callout');
 }
@@ -381,10 +411,33 @@ function collectSettings(): ExtensionSettings {
     imageVaultPath: elements.imageVaultPath.value.trim() || 'AI/{platform}/images',
     flattenLargeCallouts: elements.flattenLargeCallouts.checked,
     maxCalloutLines: parseCalloutLines(elements.maxCalloutLines.value),
+    scrollIdleTimeoutSec: parseSeconds(
+      elements.scrollIdleTimeoutSec.value,
+      MIN_SCROLL_IDLE_TIMEOUT_SEC,
+      MAX_SCROLL_IDLE_TIMEOUT_SEC,
+      DEFAULT_SCROLL_IDLE_TIMEOUT_SEC
+    ),
+    scrollMaxTimeoutSec: parseSeconds(
+      elements.scrollMaxTimeoutSec.value,
+      MIN_SCROLL_MAX_TIMEOUT_SEC,
+      MAX_SCROLL_MAX_TIMEOUT_SEC,
+      DEFAULT_SCROLL_MAX_TIMEOUT_SEC
+    ),
   };
 }
 
 /** Parse the max-callout-lines input, clamping to a sane positive range. */
+/**
+ * Seconds from a number input: empty or unparseable falls back to the default,
+ * out of range is clamped rather than rejected, so Save is never blocked by a
+ * value the user can see and correct (ADR-032).
+ */
+function parseSeconds(raw: string, min: number, max: number, fallback: number): number {
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.min(Math.max(n, min), max);
+}
+
 function parseCalloutLines(raw: string): number {
   const n = Number.parseInt(raw, 10);
   if (!Number.isFinite(n) || n < 1) return DEFAULT_MAX_CALLOUT_LINES;

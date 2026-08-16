@@ -5,14 +5,12 @@
   "extDescription": {
     "message": "Gemini、Claude、ChatGPT、Perplexity、Gemini Notebook（旧 NotebookLM）の AI 会話を Obsidian へエクスポート（Local REST API 経由）"
   },
-
   "ui_syncButton": {
     "message": "Obsidian に同期"
   },
   "ui_syncing": {
     "message": "同期中..."
   },
-
   "settings_title": {
     "message": "設定"
   },
@@ -118,17 +116,20 @@
   "settings_hideApiKey": {
     "message": "API キーを隠す"
   },
-
   "toast_success_created": {
     "message": "作成しました: $FILE$",
     "placeholders": {
-      "file": { "content": "$1" }
+      "file": {
+        "content": "$1"
+      }
     }
   },
   "toast_success_updated": {
     "message": "更新しました: $FILE$",
     "placeholders": {
-      "file": { "content": "$1" }
+      "file": {
+        "content": "$1"
+      }
     }
   },
   "toast_error_noApiKey": {
@@ -143,7 +144,9 @@
   "toast_error_saveFailed": {
     "message": "保存に失敗しました: $ERROR$",
     "placeholders": {
-      "error": { "content": "$1" }
+      "error": {
+        "content": "$1"
+      }
     }
   },
   "toast_info_extracting": {
@@ -155,7 +158,6 @@
   "toast_warning_partial": {
     "message": "一部のコンテンツが抽出できなかった可能性があります"
   },
-
   "error_invalidApiKey": {
     "message": "API キーの形式が無効です"
   },
@@ -183,7 +185,6 @@
   "error_invalidUrl": {
     "message": "無効な API URL です。http:// または https:// で始まる URL を入力してください"
   },
-
   "status_connectionSuccess": {
     "message": "接続に成功しました！"
   },
@@ -193,7 +194,6 @@
   "status_testing": {
     "message": "接続をテスト中..."
   },
-
   "settings_outputDestinations": {
     "message": "出力先"
   },
@@ -215,7 +215,9 @@
   "success_partialOutputs": {
     "message": "一部成功: $DETAILS$",
     "placeholders": {
-      "details": { "content": "$1" }
+      "details": {
+        "content": "$1"
+      }
     }
   },
   "error_noOutputSelected": {
@@ -242,7 +244,9 @@
   "error_outputFailed": {
     "message": "$OUTPUT$への保存に失敗しました",
     "placeholders": {
-      "output": { "content": "$1" }
+      "output": {
+        "content": "$1"
+      }
     }
   },
   "output_obsidian": {
@@ -254,7 +258,6 @@
   "output_clipboard": {
     "message": "クリップボード"
   },
-
   "settings_enableToolContent": {
     "message": "ツール/検索結果を含める"
   },
@@ -287,5 +290,17 @@
   },
   "settings_maxCalloutLinesHelp": {
     "message": "この行数を超えるメッセージはプレーンテキストで保存されます（Obsidian のみ）。"
+  },
+  "settings_scrollIdleTimeout": {
+    "message": "自動スクロールのアイドル待機時間（秒）"
+  },
+  "settings_scrollIdleTimeoutHelp": {
+    "message": "この秒数のあいだ新しいメッセージが読み込まれない場合に中断します。ページが遅いときや非常に長い会話では大きくしてください。既定値は 15 です。"
+  },
+  "settings_scrollMaxTimeout": {
+    "message": "自動スクロールの上限時間（秒）"
+  },
+  "settings_scrollMaxTimeoutHelp": {
+    "message": "1 回の自動スクロールに費やす上限時間です。数百メッセージある会話では既定値の 300 を超えることがあります。"
   }
 }

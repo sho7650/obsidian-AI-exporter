@@ -241,6 +241,13 @@ export interface SyncSettings {
   flattenLargeCallouts: boolean;
   /** Line threshold for {@link flattenLargeCallouts}. Default 200. */
   maxCalloutLines: number;
+  /**
+   * Give up auto-scrolling when nothing has progressed for this many seconds.
+   * Default 15 (issue #449).
+   */
+  scrollIdleTimeoutSec: number;
+  /** Absolute cap on one auto-scroll pass, in seconds. Default 300. */
+  scrollMaxTimeoutSec: number;
 }
 
 /**

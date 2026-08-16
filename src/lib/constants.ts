@@ -239,6 +239,23 @@ export const SCROLL_IDLE_TIMEOUT = 15000;
 /** Absolute safety cap on a single accumulation pass (ms). */
 export const SCROLL_MAX_TIMEOUT = 300000;
 
+// Both deadlines are user-settable (issue #449, ADR-032): rather than guess why
+// a 446-message conversation stalled, the user can raise them. Stored and shown
+// in SECONDS - the unit the popup displays - so no conversion can go stale; the
+// single x1000 happens at resolveScrollDeadlines().
+
+/** Default idle deadline in seconds, matching {@link SCROLL_IDLE_TIMEOUT}. */
+export const DEFAULT_SCROLL_IDLE_TIMEOUT_SEC = 15;
+/** Default absolute cap in seconds, matching {@link SCROLL_MAX_TIMEOUT}. */
+export const DEFAULT_SCROLL_MAX_TIMEOUT_SEC = 300;
+/** Floor for the idle deadline: below one stability window it can never settle. */
+export const MIN_SCROLL_IDLE_TIMEOUT_SEC = 5;
+export const MAX_SCROLL_IDLE_TIMEOUT_SEC = 600;
+/** Floor for the cap; anything shorter cannot finish a virtualized pass. */
+export const MIN_SCROLL_MAX_TIMEOUT_SEC = 30;
+/** One hour: a bound a human can be held to, and far beyond any real need. */
+export const MAX_SCROLL_MAX_TIMEOUT_SEC = 3600;
+
 /** Number of consecutive unchanged element counts to consider loading complete */
 export const SCROLL_STABILITY_THRESHOLD = 3;
 
