@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.9.1...v2.10.0) (2026-08-23)
+
+
+### Features
+
+* **ui:** keep a sync-status badge on screen after the sync ends ([#459](https://github.com/sho7650/obsidian-AI-exporter/issues/459)) ([8e5c624](https://github.com/sho7650/obsidian-AI-exporter/commit/8e5c624b81ca26e8da6d3b48162ad5740faabc1f)), closes [#458](https://github.com/sho7650/obsidian-AI-exporter/issues/458)
+
 ## [2.9.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.9.0...v2.9.1) (2026-08-16)
 
 
