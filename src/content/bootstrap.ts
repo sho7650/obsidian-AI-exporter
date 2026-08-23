@@ -22,6 +22,9 @@ import {
   showWarningToast,
   showToast,
 } from './ui';
+import { showSyncBadge, clearSyncBadge } from './ui-badge';
+import { buildSyncStatus, buildFailedSyncStatus, type SyncStatus } from './sync-status';
+import { startConversationWatcher, type StopWatching } from './conversation-watcher';
 import { sendMessage } from '../lib/messaging';
 import {
   AUTO_SAVE_CHECK_INTERVAL,
@@ -211,6 +214,58 @@ export async function initialize(): Promise<void> {
 }
 
 /**
+ * Stops the watcher that clears the badge on a conversation change, or null
+ * when no badge is on screen. Module-level because the badge outlives the
+ * `handleSync()` call that created it.
+ */
+let stopConversationWatch: StopWatching | null = null;
+
+function stopWatchingConversation(): void {
+  stopConversationWatch?.();
+  stopConversationWatch = null;
+}
+
+/** The conversation the page is currently showing, or null. */
+function currentConversationKey(): string | null {
+  return getExtractor()?.getConversationId() ?? null;
+}
+
+/**
+ * Show the persistent status badge and keep it honest (issue #458).
+ *
+ * The badge reports the last sync, not that the conversation is current — new
+ * messages do not clear it. What it must never do is describe a DIFFERENT
+ * conversation, so it is dropped the moment the user navigates away. Every
+ * platform navigates without reloading the document (measured 2026-08-23),
+ * which is why this needs a watcher at all.
+ */
+function presentSyncStatus(status: SyncStatus): void {
+  stopWatchingConversation();
+
+  showSyncBadge(status, { onDismiss: stopWatchingConversation });
+
+  stopConversationWatch = startConversationWatcher({
+    initialKey: status.conversationKey,
+    getKey: currentConversationKey,
+    onChanged: () => {
+      clearSyncBadge();
+      stopWatchingConversation();
+    },
+  });
+}
+
+/** Report a sync that failed before any destination ran. */
+function presentSyncFailure(error: string): void {
+  presentSyncStatus(
+    buildFailedSyncStatus({
+      error,
+      conversationKey: currentConversationKey(),
+      at: new Date(),
+    })
+  );
+}
+
+/**
  * Get enabled output destinations from settings
  */
 function getEnabledOutputs(settings: ContentScriptSettings): OutputDestination[] {
@@ -306,6 +361,34 @@ function displaySaveResults(
 }
 
 /**
+ * Report a finished sync in both channels: the transient toast and the badge
+ * that outlives it. Kept together so the two can never disagree.
+ */
+function reportSyncResult(
+  saveResult: MultiOutputResponse,
+  fileName: string,
+  conversationKey: string | null,
+  extractionWarnings?: string[]
+): void {
+  displaySaveResults(saveResult, fileName, extractionWarnings);
+  presentSyncStatus(
+    buildSyncStatus({
+      saveResult,
+      fileName,
+      warnings: extractionWarnings,
+      conversationKey,
+      at: new Date(),
+    })
+  );
+}
+
+/** Report a sync that never reached a destination, in both channels. */
+function reportSyncFailure(message: string): void {
+  showErrorToast(message);
+  presentSyncFailure(message);
+}
+
+/**
  * Handle sync button click
  */
 export async function handleSync(): Promise<void> {
@@ -320,14 +403,14 @@ export async function handleSync(): Promise<void> {
     // Validate output configuration
     const configError = await validateOutputConfig(settings, enabledOutputs);
     if (configError) {
-      showErrorToast(configError);
+      reportSyncFailure(configError);
       return;
     }
 
     // Extract conversation using appropriate extractor
     const extractor = getExtractor();
     if (!extractor || !extractor.canExtract()) {
-      showErrorToast('Not on a valid conversation page');
+      reportSyncFailure('Not on a valid conversation page');
       return;
     }
 
@@ -338,7 +421,7 @@ export async function handleSync(): Promise<void> {
     // Validate extraction
     const validation = extractor.validate(result);
     if (!validation.isValid) {
-      showErrorToast(validation.errors.join(', ') || 'Extraction failed');
+      reportSyncFailure(validation.errors.join(', ') || 'Extraction failed');
       return;
     }
 
@@ -349,7 +432,7 @@ export async function handleSync(): Promise<void> {
     }
 
     if (!result.data) {
-      showErrorToast('No conversation data extracted');
+      reportSyncFailure('No conversation data extracted');
       return;
     }
 
@@ -366,10 +449,10 @@ export async function handleSync(): Promise<void> {
     showToast('Saving...', 'info', INFO_TOAST_DURATION);
     const saveResult = await saveToOutputs(note, enabledOutputs);
 
-    displaySaveResults(saveResult, note.fileName, result.warnings);
+    reportSyncResult(saveResult, note.fileName, extractor.getConversationId(), result.warnings);
   } catch (error) {
     console.error('[G2O] Sync error:', error);
-    showErrorToast(extractErrorMessage(error));
+    reportSyncFailure(extractErrorMessage(error));
   } finally {
     setButtonLoading(false);
   }

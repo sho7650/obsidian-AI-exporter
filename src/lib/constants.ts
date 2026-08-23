@@ -150,6 +150,22 @@ export const EVENT_THROTTLE_DELAY = 1000;
 /** Debounce delay for MutationObserver callback (milliseconds) */
 export const MUTATION_DEBOUNCE_DELAY = 100;
 
+/**
+ * How often the sync-status badge checks whether the conversation changed
+ * (milliseconds).
+ *
+ * Polling rather than an event: all five platforms navigate between
+ * conversations without reloading the document (measured 2026-08-23 — the
+ * marker planted on the page survived every "new chat" and conversation
+ * switch), so the badge would otherwise keep showing another conversation's
+ * result. A content script cannot see the page's `history.pushState` because
+ * it runs in an isolated world, `popstate` covers only back/forward, and
+ * `chrome.webNavigation` would add an install-time permission warning for one
+ * badge. The tick only compares `location.href`, and only runs while a badge
+ * is on screen (ADR-034).
+ */
+export const CONVERSATION_POLL_INTERVAL = 1000;
+
 // ============================================================
 // Security Constants
 // ============================================================

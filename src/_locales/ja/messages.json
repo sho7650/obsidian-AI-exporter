@@ -302,5 +302,69 @@
   },
   "settings_scrollMaxTimeoutHelp": {
     "message": "1 回の自動スクロールに費やす上限時間です。数百メッセージある会話では既定値の 300 を超えることがあります。"
+  },
+  "badge_lastSyncSucceeded": {
+    "message": "前回の同期: 成功"
+  },
+  "badge_lastSyncPartial": {
+    "message": "前回の同期: 一部のみ成功"
+  },
+  "badge_lastSyncFailed": {
+    "message": "前回の同期: 失敗"
+  },
+  "badge_detailLastSync": {
+    "message": "$TIME$ に同期 ($AGE$)",
+    "placeholders": {
+      "time": {
+        "content": "$1",
+        "example": "14:32:05"
+      },
+      "age": {
+        "content": "$2",
+        "example": "5分前"
+      }
+    }
+  },
+  "badge_age_justNow": {
+    "message": "たった今"
+  },
+  "badge_age_minutes": {
+    "message": "$COUNT$分前",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "badge_age_hours": {
+    "message": "$COUNT$時間前",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "badge_age_days": {
+    "message": "$COUNT$日前",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "badge_detailAppended": {
+    "message": "$COUNT$件のメッセージを追記",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "badge_dismiss": {
+    "message": "閉じる"
   }
 }
