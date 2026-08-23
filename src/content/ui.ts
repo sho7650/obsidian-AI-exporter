@@ -13,11 +13,15 @@ import { getMessage } from '../lib/i18n';
 
 // CSS styles for UI components
 const STYLES = `
-  #g2o-sync-button {
+  #g2o-sync-anchor {
     position: fixed;
     bottom: 20px;
     right: 20px;
     z-index: 10000;
+  }
+
+  #g2o-sync-button {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -138,6 +142,99 @@ const STYLES = `
   .g2o-toast .close:hover {
     opacity: 1;
   }
+
+  /* ---- Sync status badge (issue #458, ADR-034) ----
+     Anchored to the sync button's corner rather than a screen edge: the
+     extension already owns this space, so the badge cannot collide with the
+     platform's own controls (all five put account/share menus top-right). */
+  #g2o-sync-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  #g2o-sync-badge[data-kind="success"] { background: #10b981; }
+  #g2o-sync-badge[data-kind="partial"] { background: #f59e0b; }
+  #g2o-sync-badge[data-kind="error"]   { background: #ef4444; }
+
+  #g2o-sync-badge:focus-visible {
+    outline: 2px solid #7c3aed;
+    outline-offset: 2px;
+  }
+
+  #g2o-sync-detail {
+    position: fixed;
+    bottom: 76px;
+    right: 20px;
+    z-index: 10002;
+    max-width: 320px;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding: 14px 16px;
+    background: white;
+    color: #1f2937;
+    border-radius: 12px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  #g2o-sync-detail .g2o-detail-title {
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+
+  #g2o-sync-detail .g2o-detail-time,
+  #g2o-sync-detail .g2o-detail-file,
+  #g2o-sync-detail .g2o-detail-appended {
+    margin: 0 0 6px;
+    color: #4b5563;
+    word-break: break-word;
+  }
+
+  #g2o-sync-detail ul {
+    list-style: none;
+    margin: 0 0 8px;
+    padding: 0;
+  }
+
+  #g2o-sync-detail .g2o-detail-error {
+    margin: 0 0 6px;
+    color: #b91c1c;
+    word-break: break-word;
+  }
+
+  #g2o-sync-detail .g2o-detail-item[data-success="false"] { color: #b91c1c; }
+  #g2o-sync-detail .g2o-detail-warning { color: #b45309; }
+
+  #g2o-sync-detail .g2o-detail-dismiss {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #f9fafb;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  #g2o-sync-detail .g2o-detail-dismiss:hover { background: #f3f4f6; }
 `;
 
 let styleInjected = false;
@@ -146,7 +243,7 @@ let currentToast: HTMLDivElement | null = null;
 /**
  * Inject CSS styles into the page
  */
-function injectStyles(): void {
+export function injectStyles(): void {
   if (styleInjected) return;
 
   const style = document.createElement('style');
@@ -157,10 +254,30 @@ function injectStyles(): void {
 }
 
 /**
+ * The positioned container holding the sync button and its status badge.
+ *
+ * The badge is a sibling of the button rather than a child: a second click
+ * target inside a `<button>` is invalid HTML and its clicks would trigger a
+ * sync. Anchoring both to this wrapper keeps the badge glued to the button's
+ * corner without measuring anything in JS.
+ */
+export function ensureSyncAnchor(): HTMLDivElement {
+  injectStyles();
+
+  const existing = document.getElementById('g2o-sync-anchor');
+  if (existing) return existing as HTMLDivElement;
+
+  const anchor = document.createElement('div');
+  anchor.id = 'g2o-sync-anchor';
+  document.body.appendChild(anchor);
+  return anchor;
+}
+
+/**
  * Create and inject the sync button
  */
 export function injectSyncButton(onClick: () => void): HTMLButtonElement {
-  injectStyles();
+  const anchor = ensureSyncAnchor();
 
   // Remove existing button if present
   const existing = document.getElementById('g2o-sync-button');
@@ -183,7 +300,8 @@ export function injectSyncButton(onClick: () => void): HTMLButtonElement {
   button.appendChild(text);
 
   button.addEventListener('click', onClick);
-  document.body.appendChild(button);
+  // Prepend so the badge, appended later, paints above the button.
+  anchor.prepend(button);
 
   return button;
 }

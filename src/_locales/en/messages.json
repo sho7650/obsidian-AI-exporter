@@ -418,5 +418,79 @@
   },
   "settings_scrollMaxTimeoutHelp": {
     "message": "Hard limit for one auto-scroll pass. A conversation of several hundred messages can need more than the default 300."
+  },
+  "badge_lastSyncSucceeded": {
+    "message": "Last sync succeeded",
+    "description": "Sync status badge label for a fully successful sync"
+  },
+  "badge_lastSyncPartial": {
+    "message": "Last sync partially succeeded",
+    "description": "Sync status badge label when only some destinations succeeded"
+  },
+  "badge_lastSyncFailed": {
+    "message": "Last sync failed",
+    "description": "Sync status badge label for a failed sync"
+  },
+  "badge_detailLastSync": {
+    "message": "Synced at $TIME$ ($AGE$)",
+    "description": "Sync status detail: when the last sync ran",
+    "placeholders": {
+      "time": {
+        "content": "$1",
+        "example": "14:32:05"
+      },
+      "age": {
+        "content": "$2",
+        "example": "5 minutes ago"
+      }
+    }
+  },
+  "badge_age_justNow": {
+    "message": "just now",
+    "description": "Relative age of a sync less than a minute old"
+  },
+  "badge_age_minutes": {
+    "message": "$COUNT$ min ago",
+    "description": "Relative age of a sync in minutes",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "badge_age_hours": {
+    "message": "$COUNT$ h ago",
+    "description": "Relative age of a sync in hours",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "badge_age_days": {
+    "message": "$COUNT$ d ago",
+    "description": "Relative age of a sync in days",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "badge_detailAppended": {
+    "message": "$COUNT$ message(s) appended",
+    "description": "Sync status detail: append-mode result",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "badge_dismiss": {
+    "message": "Dismiss",
+    "description": "Button that removes the sync status badge"
   }
 }

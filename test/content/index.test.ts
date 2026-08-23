@@ -29,6 +29,21 @@ vi.mock('../../src/lib/messaging', () => ({
   sendMessage: vi.fn(),
 }));
 
+const watcherState = vi.hoisted(() => ({ stops: [] as Array<() => void> }));
+
+vi.mock('../../src/content/ui-badge', () => ({
+  showSyncBadge: vi.fn(),
+  clearSyncBadge: vi.fn(),
+}));
+
+vi.mock('../../src/content/conversation-watcher', () => ({
+  startConversationWatcher: vi.fn(() => {
+    const stop = vi.fn();
+    watcherState.stops.push(stop);
+    return stop;
+  }),
+}));
+
 import {
   injectSyncButton,
   setButtonLoading,
@@ -38,6 +53,8 @@ import {
   showToast,
 } from '../../src/content/ui';
 import { sendMessage } from '../../src/lib/messaging';
+import { showSyncBadge, clearSyncBadge } from '../../src/content/ui-badge';
+import { startConversationWatcher } from '../../src/content/conversation-watcher';
 import {
   initialize,
   handleSync,
@@ -106,6 +123,7 @@ function loadGeminiConversation(): void {
 describe('content/bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    watcherState.stops.length = 0;
   });
 
   afterEach(() => {
@@ -459,5 +477,89 @@ describe('content/bootstrap', () => {
       expect(setButtonLoading).toHaveBeenLastCalledWith(false);
       errorSpy.mockRestore();
     });
+  });
+});
+
+describe('sync status badge wiring (issue #458)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    watcherState.stops.length = 0;
+  });
+
+  afterEach(() => {
+    clearFixture();
+    resetLocation();
+  });
+
+  it('shows a success badge for the synced conversation', async () => {
+    mockMessaging({});
+    loadGeminiConversation();
+
+    await handleSync();
+
+    expect(showSyncBadge).toHaveBeenCalledTimes(1);
+    const [status] = vi.mocked(showSyncBadge).mock.calls[0];
+    expect(status.kind).toBe('success');
+    expect(status.conversationKey).toBe('abc123def456');
+    expect(status.at).toBeInstanceOf(Date);
+  });
+
+  it('shows an error badge when the sync never reached a destination', async () => {
+    // Obsidian unreachable: the six-second toast is gone long before the user
+    // looks back at the tab.
+    mockMessaging({ connection: { success: false, error: 'Cannot connect to Obsidian' } });
+    loadGeminiConversation();
+
+    await handleSync();
+
+    const [status] = vi.mocked(showSyncBadge).mock.calls[0];
+    expect(status.kind).toBe('error');
+    expect(status.error).toBe('Cannot connect to Obsidian');
+  });
+
+  it('watches for a conversation change starting from the synced key', async () => {
+    mockMessaging({});
+    loadGeminiConversation();
+
+    await handleSync();
+
+    expect(startConversationWatcher).toHaveBeenCalledTimes(1);
+    const [params] = vi.mocked(startConversationWatcher).mock.calls[0];
+    expect(params.initialKey).toBe('abc123def456');
+    expect(params.getKey()).toBe('abc123def456');
+  });
+
+  it('clears the badge and stops watching once the conversation changes', async () => {
+    mockMessaging({});
+    loadGeminiConversation();
+    await handleSync();
+
+    const [params] = vi.mocked(startConversationWatcher).mock.calls[0];
+    params.onChanged(null);
+
+    expect(clearSyncBadge).toHaveBeenCalledTimes(1);
+    expect(watcherState.stops[0]).toHaveBeenCalled();
+  });
+
+  it('stops watching when the user dismisses the badge', async () => {
+    mockMessaging({});
+    loadGeminiConversation();
+    await handleSync();
+
+    const [, handlers] = vi.mocked(showSyncBadge).mock.calls[0];
+    handlers?.onDismiss?.();
+
+    expect(watcherState.stops[0]).toHaveBeenCalled();
+  });
+
+  it('does not leave the previous watcher running after a second sync', async () => {
+    mockMessaging({});
+    loadGeminiConversation();
+
+    await handleSync();
+    await handleSync();
+
+    expect(watcherState.stops[0]).toHaveBeenCalled();
+    expect(startConversationWatcher).toHaveBeenCalledTimes(2);
   });
 });

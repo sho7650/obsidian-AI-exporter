@@ -11,6 +11,7 @@ Google Gemini、Claude AI、ChatGPT、Perplexity、Gemini Notebook（旧 Noteboo
 
 - **マルチプラットフォーム対応**: Google Gemini、Claude AI、ChatGPT、Perplexity、Gemini Notebook（旧 NotebookLM）からエクスポート
 - **ワンクリック保存**: 対応 AI ページに表示される「Sync」ボタンで即座に保存
+- **同期ステータスの常設表示**: 同期完了後も同期ボタンに ✓ / ! / × のバッジが残ります。クリックすると保存先ごとの結果・ファイル名・警告・同期時刻が確認できます。会話を切り替えるか、閉じるまで表示されます
 - **複数の出力オプション**: Obsidian への保存、ファイルダウンロード、クリップボードへコピー
 - **Deep Research 対応**: Gemini Deep Research、Claude Extended Thinking、Perplexity Deep Research レポートを保存
 - **Artifact 対応**: Claude Artifacts をインライン引用とソース付きで抽出
