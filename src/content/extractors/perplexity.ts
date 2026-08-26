@@ -21,6 +21,46 @@ import type { CitationTransformResult } from './footnotes';
 
 import { SELECTORS } from './selectors/perplexity';
 
+// ========== Layout selectors kept out of the live contract ==========
+//
+// Both groups below are DETECTION-ONLY: neither can be guaranteed to match on
+// a freshly loaded conversation, so neither may live in SELECTORS — the live
+// baseline refuses to record a zero-match selector, and a name that cannot be
+// recorded blocks the whole platform (ADR-016, issues #402/#444).
+
+/**
+ * The pre-2026-08 answer placeholder.
+ *
+ * Perplexity removed `#markdown-content-N` id and all; the answer now renders
+ * as a bare `.prose.inline`. Users who have not received the rollout still see
+ * the placeholder, so it stays as a collection anchor and as the guard that
+ * keeps an answer inside it from being counted twice — but it is invisible to
+ * the live contract and belongs here rather than in SELECTORS.
+ */
+const LEGACY_MARKDOWN_CONTENT: readonly string[] = ['div[id^="markdown-content-"]'];
+
+/**
+ * The Deep Research report body.
+ *
+ * Under the old layout it was inline prose inside a raised card
+ * (`div.bg-raised.rounded-lg`). Since 2026-08 the report collapses to an
+ * attachment card that carries NO body at all, and the report mounts only
+ * after the user opens it, into a `?preview=1` side panel.
+ *
+ * `max-w-none` is what marks report prose under both layouts, and under both
+ * it wraps the report's own `inline` prose — so matching on it alone both
+ * finds the report and excludes it from the answer set, with no need to name
+ * the card itself (whose class list changed from `rounded-lg` to
+ * `rounded-xl` in the same rollout).
+ *
+ * A collapsed card matches nothing here, which is exactly right: there is no
+ * report body in the DOM to extract.
+ */
+const DEEP_RESEARCH_PROSE: readonly string[] = [
+  '.prose.max-w-none',
+  '.prose.dark\\:prose-invert.max-w-none',
+];
+
 // ========== Citation transformation (issue #291) ==========
 //
 // Perplexity renders inline source citations as "pill" spans:
@@ -289,7 +329,7 @@ export class PerplexityExtractor extends BaseExtractor {
       tagged.push({ type: 'user', element: el });
     }
 
-    for (const el of this.queryAllWithFallback<HTMLElement>(SELECTORS.markdownContent)) {
+    for (const el of this.queryAllWithFallback<HTMLElement>(LEGACY_MARKDOWN_CONTENT)) {
       tagged.push({ type: 'response', element: el });
     }
 
@@ -302,20 +342,17 @@ export class PerplexityExtractor extends BaseExtractor {
     //
     // Collecting these unconditionally is safe rather than clever: under the
     // old layout every answer prose IS inside a placeholder, so this set is
-    // empty and nothing is added twice. Deep Research cards are skipped
-    // because the report path below already owns them, and a card nests an
+    // empty and nothing is added twice. Deep Research report prose is skipped
+    // because the report path below already owns it — a report nests an
     // `inline` prose of its own that would otherwise be counted as an answer.
     for (const prose of this.queryAllWithFallback<HTMLElement>(SELECTORS.answerProse)) {
-      if (this.isInside(prose, SELECTORS.markdownContent)) continue;
-      if (this.isInside(prose, SELECTORS.deepResearchCard)) continue;
+      if (this.isInside(prose, LEGACY_MARKDOWN_CONTENT)) continue;
+      if (this.isInside(prose, DEEP_RESEARCH_PROSE)) continue;
       tagged.push({ type: 'response', element: prose });
     }
 
-    for (const card of this.queryAllWithFallback<HTMLElement>(SELECTORS.deepResearchCard)) {
-      const proseEl = this.queryWithFallback<HTMLElement>(SELECTORS.deepResearchProse, card);
-      if (proseEl) {
-        tagged.push({ type: 'report', element: card });
-      }
+    for (const prose of this.queryAllWithFallback<HTMLElement>(DEEP_RESEARCH_PROSE)) {
+      tagged.push({ type: 'report', element: prose });
     }
 
     return tagged;
@@ -368,23 +405,19 @@ export class PerplexityExtractor extends BaseExtractor {
   }
 
   /**
-   * Extract Deep Research report content from a report card element
+   * Extract Deep Research report content from the report prose element.
    *
-   * The report card contains prose with max-w-none, and potentially
-   * an inner prose element with the actual content. Citations are
-   * converted to footnotes the same way as normal answers.
+   * The `max-w-none` prose is the report's outer wrapper; the rendered body is
+   * an inner prose inside it under both the inline-card layout and the
+   * `?preview=1` panel, so the inner element is preferred and the wrapper is
+   * the fallback. Citations are converted to footnotes the same way as normal
+   * answers.
    */
-  private extractReportContent(card: HTMLElement, messageIndex: number): string {
-    const proseEl = this.queryWithFallback<HTMLElement>(SELECTORS.deepResearchProse, card);
-    if (proseEl) {
-      const innerProse = this.queryWithFallback<HTMLElement>(SELECTORS.proseContent, proseEl);
-      const targetEl = innerProse ?? proseEl;
-      const content = this.toSanitizedHtmlWithFootnotes(targetEl.innerHTML, messageIndex);
-      if (content.trim()) {
-        return content;
-      }
-    }
-    return '';
+  private extractReportContent(reportProse: HTMLElement, messageIndex: number): string {
+    const innerProse = this.queryWithFallback<HTMLElement>(SELECTORS.proseContent, reportProse);
+    const targetEl = innerProse ?? reportProse;
+    const content = this.toSanitizedHtmlWithFootnotes(targetEl.innerHTML, messageIndex);
+    return content.trim() ? content : '';
   }
 
   /**

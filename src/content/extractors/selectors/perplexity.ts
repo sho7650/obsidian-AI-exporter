@@ -10,16 +10,12 @@ import type { SelectorGroup } from './types';
 
 export const SELECTORS = {
   // User query text
-  // 2026-07: the bubble class bg-offset became bg-subtle; the group/query
-  // ancestor is the stabler anchor
+  // 2026-07: the bubble class bg-offset became bg-subtle.
+  // 2026-08: the `group/query` ancestor disappeared; the bubble itself
+  // (bg-subtle rounded-2xl) is what now scopes the query text.
   userQuery: [
     'span.select-text', // Semantic (HIGH)
-    'div[class~="group/query"] span.select-text', // Query container (MEDIUM)
-  ],
-
-  // Assistant response content container
-  markdownContent: [
-    'div[id^="markdown-content-"]', // ID pattern (HIGH)
+    'div.bg-subtle.rounded-2xl span.select-text', // Query bubble (MEDIUM)
   ],
 
   // Prose content within response
@@ -28,35 +24,26 @@ export const SELECTORS = {
     '.prose', // Fallback (LOW)
   ],
 
-  // The answer block itself, wherever it is mounted.
+  // The answer block itself, wherever it is mounted — the ONLY container the
+  // assistant message is read out of since 2026-08.
   //
-  // 2026-08 (issue #444): a rollout keeps `markdownContent` as an EMPTY
-  // placeholder and renders the answer beside it. The class list of the answer
-  // prose is identical under both layouts, so this selector finds it either
-  // way; what differs is only whether it sits inside the placeholder.
+  // Issue #444 saw the first half of the rollout: `#markdown-content-N` stayed
+  // as an EMPTY placeholder and the answer rendered beside it. The second half
+  // removed the placeholder id outright, so nothing anchors an answer any more
+  // except its own class list. The legacy placeholder still exists for users
+  // who have not received the rollout, but as a private selector in
+  // perplexity.ts — it can no longer be validated against a live page, and a
+  // selector the live contract cannot see does not belong in this group
+  // (ADR-016, issue #402).
   //
-  // `inline` is what separates it from a Deep Research card's own prose
-  // (`… max-w-none text-sm`). That is a narrowing, not the guard: a card also
-  // nests an `inline` prose, so perplexity.ts additionally excludes anything
-  // inside a deepResearchCard, which the report path already owns.
+  // `inline` is what separates it from a Deep Research report body
+  // (`… max-w-none …`). That is a narrowing, not the guard: a report nests an
+  // `inline` prose of its own, so perplexity.ts additionally excludes anything
+  // inside the report prose, which the report path already owns.
   answerProse: [
     '.prose.dark\\:prose-invert.inline', // Answer block (HIGH)
     '.prose.inline', // Without the theme class (MEDIUM)
-  ],
-
-  // Deep Research report card container. Matches generic raised panels too;
-  // the extractor only tags a card as a report when deepResearchProse is
-  // found inside it (perplexity.ts collectTaggedElements).
-  // 2026-07: the border-borderMain token disappeared site-wide (removed
-  // under the zero-match baseline contract).
-  deepResearchCard: [
-    'div.bg-raised.rounded-lg', // Style (HIGH)
-  ],
-
-  // Prose content within a Deep Research report card (max-w-none distinguishes it)
-  deepResearchProse: [
-    '.prose.max-w-none', // Specific to report (HIGH)
-    '.prose.dark\\:prose-invert.max-w-none', // Full match (MEDIUM)
+    '.prose[data-renderer="lm"]', // Renderer hook, added 2026-08 (LOW)
   ],
 
   // Inline citation pill carrying the source URL (issue #291).

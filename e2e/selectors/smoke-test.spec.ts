@@ -67,7 +67,7 @@ const READY_SELECTORS: Readonly<Record<string, string>> = {
   claude_conv: '.font-claude-response',
   claude_dr: '#markdown-artifact',
   chatgpt_conv: 'section[data-turn-id]',
-  perplexity_conv: 'div[id^="markdown-content-"]',
+  perplexity_conv: '.prose[data-renderer="lm"]',
   notebooklm_conv: '.chat-message-pair',
 };
 
