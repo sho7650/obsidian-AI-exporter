@@ -87,6 +87,11 @@ export const BLOCKING_CONTENT_STATUSES: readonly ContentStatus[] = ['content_los
 export const CONTENT_REQUIRED: readonly { group: string; name: string }[] = [
   { group: 'SELECTORS', name: 'markdownContent' },
   { group: 'SELECTORS', name: 'proseContent' },
+  // Perplexity's answer container since 2026-08. `markdownContent` used to
+  // cover it, but that placeholder was removed from the platform's selectors
+  // when Perplexity dropped the id; `answerProse` inherits the duty of
+  // proving the assistant message still has content behind it.
+  { group: 'SELECTORS', name: 'answerProse' },
   { group: 'SELECTORS', name: 'modelResponse' },
   { group: 'SELECTORS', name: 'assistantMessage' },
   { group: 'SELECTORS', name: 'responseContent' },
