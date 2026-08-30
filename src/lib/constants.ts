@@ -166,6 +166,17 @@ export const MUTATION_DEBOUNCE_DELAY = 100;
  */
 export const CONVERSATION_POLL_INTERVAL = 1000;
 
+/**
+ * How often the sync-status badge checks whether the conversation grew past the
+ * sync it reports (milliseconds).
+ *
+ * One `querySelectorAll` over the *mounted* window per tick — a few dozen nodes
+ * on Claude and ChatGPT, which virtualize — and only while a badge is on screen
+ * (ADR-036). A MutationObserver would fire on every streamed token instead, and
+ * would still have to re-read the ordinal afterwards.
+ */
+export const NEW_MESSAGE_POLL_INTERVAL = 1000;
+
 // ============================================================
 // Security Constants
 // ============================================================

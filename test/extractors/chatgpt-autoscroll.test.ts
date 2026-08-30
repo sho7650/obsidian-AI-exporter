@@ -215,3 +215,83 @@ describe('ChatGPTExtractor auto-scroll (virtualization)', () => {
     expect(container).not.toBeNull();
   });
 });
+
+describe('ChatGPTExtractor message watermark (issue #465)', () => {
+  let extractor: ChatGPTExtractor;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    extractor = new ChatGPTExtractor();
+    setChatGPTLocation('6789abcd-ef01-2345-6789-abcdef012345');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    clearFixture();
+    resetLocation();
+  });
+
+  it('reads the highest mounted conversation-turn ordinal', () => {
+    document.body.innerHTML = [
+      { role: 'user' as const, content: 'Q9', id: 'a', ordinal: 17 },
+      { role: 'assistant' as const, content: 'A9', id: 'b', ordinal: 18 },
+    ]
+      .map(renderTurn)
+      .join('');
+
+    expect(extractor.getMessageWatermark()).toBe(18);
+  });
+
+  it('ignores turns outside the thread scroller', () => {
+    // The sidebar <nav> matches loose overflow selectors and has its own list;
+    // only the thread scroller may raise the watermark.
+    document.body.innerHTML = `
+      <nav id="sidebar">${renderTurn({ role: 'user', content: 'old', id: 'z', ordinal: 99 })}</nav>
+      <div data-scroll-root="" id="scroller">
+        ${renderTurn({ role: 'user', content: 'Q', id: 'a', ordinal: 5 })}
+      </div>`;
+
+    expect(extractor.getMessageWatermark()).toBe(5);
+  });
+
+  it('is null when no turn carries a conversation-turn testid', () => {
+    document.body.innerHTML = renderTurn({ role: 'user', content: 'Q1', id: 'a' });
+
+    expect(extractor.getMessageWatermark()).toBeNull();
+  });
+
+  it('reports the ordinal of the newest turn the extraction covered', async () => {
+    const long: Turn[] = Array.from({ length: 12 }, (_, i) => ({
+      role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: `M${i + 1}`,
+      id: `turn-${i}`,
+      ordinal: i + 1,
+    }));
+    mountVirtualizedChatGPT(long, 4);
+    extractor.applySettings(settings());
+
+    const promise = extractor.extract();
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.data?.messageWatermark).toBe(12);
+  });
+
+  it('leaves the watermark unset when the platform exposes no ordinal', async () => {
+    // Turns without `conversation-turn-N`: the badge must stay as it is today
+    // rather than invalidate on a number it cannot trust.
+    const long: Turn[] = Array.from({ length: 8 }, (_, i) => ({
+      role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: `M${i + 1}`,
+      id: `turn-${i}`,
+    }));
+    mountVirtualizedChatGPT(long, 4);
+    extractor.applySettings(settings());
+
+    const promise = extractor.extract();
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.data?.messageWatermark).toBeUndefined();
+  });
+});

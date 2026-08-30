@@ -710,3 +710,51 @@ describe('scroll stop reason', () => {
     expect(result.iterations).toBeLessThan(45);
   });
 });
+
+describe('accumulateWhileScrolling — highest ordinal covered by the pass (issue #465)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('reports the highest order seen across every window', async () => {
+    // The badge needs the ordinal of the LAST turn of the conversation, and the
+    // pass ends pinned at the TOP — so the number cannot be re-read from the DOM
+    // afterwards. It has to be carried out of the accumulation that saw it.
+    const { container, harvest } = createPersistentTailList({
+      total: 20,
+      movingWindow: 6,
+      tail: 3,
+    });
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.itemCount).toBe(20);
+    expect(result.maxOrder).toBe(19);
+  });
+
+  it('reports the highest order for a conversation that fits without scrolling', async () => {
+    // seedAtBottom() ends the pass immediately, so the single seeded window is
+    // the only place the ordinal can come from.
+    const { container, harvest } = createRecordedWindowList([[1, 2, 3]], true);
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.maxOrder).toBe(3);
+  });
+
+  it('is undefined when no harvested turn carries an order', async () => {
+    // ChatGPT before `conversation-turn-N`, or any DOM where the ordinal is
+    // unreadable: an absent watermark must stay absent rather than default to 0,
+    // which would make every later window look like a new message.
+    const { container, harvest } = createRecordedWindowList(TURN_WINDOWS);
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.maxOrder).toBeUndefined();
+  });
+});

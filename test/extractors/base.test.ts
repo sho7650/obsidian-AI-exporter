@@ -623,3 +623,15 @@ describe('BaseExtractor.applySettings — shared settings reach every platform',
     expect(extractor.deadlines()).toEqual({ idleMs: 15_000, maxMs: 300_000 });
   });
 });
+
+describe('BaseExtractor.getMessageWatermark (issue #465)', () => {
+  it('is null by default, because most platforms expose no monotonic ordinal', () => {
+    // Gemini lazy-loads OLDER turns when the user scrolls up (its
+    // infinite-scroller fires onScrolledTopPastThreshold), so a turn count grows
+    // with no new message. Until a platform has a signal that only ever grows
+    // with the conversation, its badge must behave exactly as it does today.
+    const extractor = new TestExtractor();
+
+    expect(extractor.getMessageWatermark()).toBeNull();
+  });
+});

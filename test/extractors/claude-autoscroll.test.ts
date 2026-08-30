@@ -171,3 +171,92 @@ describe('ClaudeExtractor auto-scroll (virtualization)', () => {
     expect(warning).toContain('turns captured');
   });
 });
+
+describe('ClaudeExtractor message watermark (issue #465)', () => {
+  let extractor: ClaudeExtractor;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    extractor = new ClaudeExtractor();
+    setClaudeLocation('1fbb8252-2bec-4ef2-bf1f-88393dd9bb5f');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    clearFixture();
+    resetLocation();
+  });
+
+  const conversation: Turn[] = [
+    { role: 'user', content: 'Q1' },
+    { role: 'assistant', content: 'A1' },
+    { role: 'user', content: 'Q2' },
+    { role: 'assistant', content: 'A2' },
+    { role: 'user', content: 'Q3' },
+    { role: 'assistant', content: 'A3' },
+  ];
+
+  it('reads the highest mounted data-index', () => {
+    mountVirtualizedClaude(conversation, 6);
+
+    expect(extractor.getMessageWatermark()).toBe(5);
+  });
+
+  it('reads only what is mounted, so a window near the top reports a low ordinal', () => {
+    // This is why the badge baseline cannot be a post-sync DOM read: the pass
+    // leaves the scroller at the top, where the newest turn is unmounted.
+    document.body.innerHTML =
+      '<div data-index="0"></div><div data-index="1"></div><div data-index="2"></div>';
+
+    expect(extractor.getMessageWatermark()).toBe(2);
+  });
+
+  it('ignores data-index rows outside the conversation scroller', () => {
+    // `[data-index]` is a bare attribute selector, and Claude's own chrome uses
+    // virtualized lists too. A sidebar row must never raise the watermark, or
+    // scrolling the sidebar would clear the badge.
+    document.body.innerHTML = `
+      <nav id="sidebar"><div data-index="99"></div></nav>
+      <div class="overflow-y-auto overflow-x-hidden flex-1">
+        <div data-index="2"></div><div data-index="3"></div>
+      </div>`;
+
+    expect(extractor.getMessageWatermark()).toBe(3);
+  });
+
+  it('is null when no virtual row is mounted', () => {
+    document.body.innerHTML = '<div class="font-claude-response">no wrapper</div>';
+
+    expect(extractor.getMessageWatermark()).toBeNull();
+  });
+
+  it('ignores rows whose data-index is not a number', () => {
+    document.body.innerHTML = '<div data-index="4"></div><div data-index="header"></div>';
+
+    expect(extractor.getMessageWatermark()).toBe(4);
+  });
+
+  it('reports the ordinal of the newest turn the extraction covered', async () => {
+    mountVirtualizedClaude(conversation, 3); // ends pinned at the top
+    extractor.applySettings(settings());
+
+    const promise = extractor.extract();
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.data?.messageWatermark).toBe(5);
+    // ...and the DOM alone could not have told us: the pass ended at the top.
+    expect(extractor.getMessageWatermark()).toBeLessThan(5);
+  });
+
+  it('falls back to the mounted window when auto-scroll is off', async () => {
+    mountVirtualizedClaude(conversation, 3);
+    extractor.applySettings(settings({ enableAutoScroll: false }));
+
+    const promise = extractor.extract();
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.data?.messageWatermark).toBe(5);
+  });
+});

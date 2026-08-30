@@ -196,6 +196,27 @@ export class ClaudeExtractor extends BaseExtractor {
   }
 
   /**
+   * Highest `data-index` currently mounted (issue #465).
+   *
+   * `data-index` is the virtual-row ordinal Claude assigns in conversation
+   * order and never renumbers, so a value above the one a sync covered can only
+   * mean a turn was added — scrolling up mounts *smaller* indices, never larger.
+   */
+  getMessageWatermark(): number | null {
+    // Scoped to the thread scroller: `[data-index]` is a bare attribute
+    // selector and Claude's own chrome virtualizes lists too, so a sidebar row
+    // would otherwise raise the watermark and clear the badge for a scroll.
+    const root = this.queryWithFallback<HTMLElement>(SELECTORS.scrollContainer) ?? document;
+    let highest: number | null = null;
+    this.queryAllWithFallback<HTMLElement>(SELECTORS.conversationRow, root).forEach(row => {
+      const index = Number(row.getAttribute('data-index'));
+      if (!Number.isFinite(index)) return;
+      if (highest === null || index > highest) highest = index;
+    });
+    return highest;
+  }
+
+  /**
    * Harvest the currently-mounted window as keyed messages.
    *
    * The key is the virtual-row `data-index` (stable per turn across windows),

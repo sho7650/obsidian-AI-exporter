@@ -29,6 +29,11 @@ Add a small **status badge** anchored to the sync button, and **no setting**.
 
 ### The badge reports the last sync, not "up to date"
 
+> **Superseded in part by [ADR-036](036-badge-invalidation-on-new-messages.md)
+> (2026-08-29, issue #465):** Claude and ChatGPT now clear the badge when a turn
+> newer than the sync appears. The rest of this section still holds for Gemini,
+> Perplexity and Gemini Notebook, which expose no conversation-wide ordinal.
+
 Invalidating the badge when new messages arrive was **deliberately not
 implemented** (tracked in #424, which needs the same "what counts as a new
 message" machinery for auto-sync). So the badge can outlive the state it
@@ -110,7 +115,8 @@ the failures an absent user needs to still see.
 - The three-way success/partial/error split lives once, in
   `buildSyncStatus()`, and both the toast and the badge read it, so the two
   cannot disagree.
-- A stale `✓` after new messages is a known, documented limitation until #424.
+- A stale `✓` after new messages is a known, documented limitation until #424
+  — narrowed to the three platforms without a turn ordinal by ADR-036.
 
 ## Files
 

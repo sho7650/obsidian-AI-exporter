@@ -223,3 +223,41 @@ describe('buildFailedSyncStatus', () => {
     expect(status.at).toBe(AT);
   });
 });
+
+describe('sync watermark (issue #465)', () => {
+  it('records the ordinal the sync covered', () => {
+    const status = buildSyncStatus({
+      saveResult: response([{ destination: 'obsidian', success: true }]),
+      fileName: 'note.md',
+      conversationKey: 'conv-1',
+      messageWatermark: 42,
+      at: AT,
+    });
+
+    expect(status.messageWatermark).toBe(42);
+  });
+
+  it('records null when the platform exposes no ordinal', () => {
+    const status = buildSyncStatus({
+      saveResult: response([{ destination: 'obsidian', success: true }]),
+      fileName: 'note.md',
+      conversationKey: 'conv-1',
+      messageWatermark: undefined,
+      at: AT,
+    });
+
+    expect(status.messageWatermark).toBeNull();
+  });
+
+  it('records null for a sync that never reached a destination', () => {
+    // Nothing was extracted, so there is no ordinal to trust: the badge keeps
+    // its pre-#465 behaviour and waits for a conversation change.
+    const status = buildFailedSyncStatus({
+      error: 'Cannot connect to Obsidian',
+      conversationKey: 'conv-1',
+      at: AT,
+    });
+
+    expect(status.messageWatermark).toBeNull();
+  });
+});

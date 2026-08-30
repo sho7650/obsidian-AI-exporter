@@ -332,6 +332,16 @@ export interface AccumulateResult<T> {
   skipped: boolean;
   /** Which deadline ended the pass, or 'complete' (ADR-032). */
   stopReason: ScrollStopReason;
+  /**
+   * Highest {@link HarvestEntry.order} seen in any window, i.e. the ordinal of
+   * the newest turn this pass covered. Undefined when no turn carried one.
+   *
+   * Reported because the pass ends pinned at the *top* of the conversation, so
+   * the newest turn is unmounted by then and its ordinal cannot be re-read from
+   * the DOM afterwards. The sync-status badge needs it as the baseline for
+   * "a message newer than the one I synced has appeared" (issue #465).
+   */
+  maxOrder?: number;
 }
 
 /**
@@ -454,6 +464,7 @@ export async function accumulateWhileScrolling<T>(
       iterations: 0,
       skipped: true,
       stopReason: 'complete',
+      maxOrder: acc.maxOrder,
     };
   }
 
@@ -481,6 +492,7 @@ export async function accumulateWhileScrolling<T>(
     iterations,
     skipped: false,
     stopReason,
+    maxOrder: acc.maxOrder,
   };
 }
 
@@ -489,6 +501,7 @@ function createAccumulator<T>(harvest: () => HarvestEntry<T>[]): {
   ingest: () => void;
   toItems: () => T[];
   readonly size: number;
+  readonly maxOrder: number | undefined;
 } {
   const content = new Map<string, T>();
   const orderIndex = new Map<string, number>();
@@ -509,6 +522,13 @@ function createAccumulator<T>(harvest: () => HarvestEntry<T>[]): {
     toItems: () => resolveOrder(order, orderIndex).map(key => content.get(key) as T),
     get size() {
       return content.size;
+    },
+    get maxOrder() {
+      let max: number | undefined;
+      for (const value of orderIndex.values()) {
+        if (max === undefined || value > max) max = value;
+      }
+      return max;
     },
   };
 }

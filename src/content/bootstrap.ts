@@ -25,6 +25,7 @@ import {
 import { showSyncBadge, clearSyncBadge } from './ui-badge';
 import { buildSyncStatus, buildFailedSyncStatus, type SyncStatus } from './sync-status';
 import { startConversationWatcher, type StopWatching } from './conversation-watcher';
+import { startNewMessageWatcher } from './message-watcher';
 import { sendMessage } from '../lib/messaging';
 import {
   AUTO_SAVE_CHECK_INTERVAL,
@@ -35,6 +36,7 @@ import {
 import type {
   AIPlatform,
   ContentScriptSettings,
+  ExtractionResult,
   ObsidianNote,
   OutputDestination,
   OutputResult,
@@ -214,15 +216,16 @@ export async function initialize(): Promise<void> {
 }
 
 /**
- * Stops the watcher that clears the badge on a conversation change, or null
- * when no badge is on screen. Module-level because the badge outlives the
- * `handleSync()` call that created it.
+ * Stops every watcher that keeps the badge honest, or null when no badge is on
+ * screen. Module-level because the badge outlives the `handleSync()` call that
+ * created it, and composed because the two watchers share one lifetime: both
+ * start with the badge and both must stop with it.
  */
-let stopConversationWatch: StopWatching | null = null;
+let stopBadgeWatchers: StopWatching | null = null;
 
-function stopWatchingConversation(): void {
-  stopConversationWatch?.();
-  stopConversationWatch = null;
+function stopWatchingBadge(): void {
+  stopBadgeWatchers?.();
+  stopBadgeWatchers = null;
 }
 
 /** The conversation the page is currently showing, or null. */
@@ -230,28 +233,45 @@ function currentConversationKey(): string | null {
   return getExtractor()?.getConversationId() ?? null;
 }
 
+/** The highest turn ordinal currently mounted, or null on platforms without one. */
+function currentMessageWatermark(): number | null {
+  return getExtractor()?.getMessageWatermark() ?? null;
+}
+
 /**
- * Show the persistent status badge and keep it honest (issue #458).
+ * Show the persistent status badge and keep it honest (issues #458, #465).
  *
- * The badge reports the last sync, not that the conversation is current — new
- * messages do not clear it. What it must never do is describe a DIFFERENT
- * conversation, so it is dropped the moment the user navigates away. Every
- * platform navigates without reloading the document (measured 2026-08-23),
- * which is why this needs a watcher at all.
+ * The badge describes one sync of one conversation, and is dropped as soon as
+ * that stops being what the page shows — either because the user navigated to a
+ * different conversation (every platform does that without reloading the
+ * document, measured 2026-08-23) or because the conversation has grown past
+ * what the sync covered. Neither is observable as an event, so both are polled,
+ * and only while a badge is on screen.
  */
 function presentSyncStatus(status: SyncStatus): void {
-  stopWatchingConversation();
+  stopWatchingBadge();
 
-  showSyncBadge(status, { onDismiss: stopWatchingConversation });
+  showSyncBadge(status, { onDismiss: stopWatchingBadge });
 
-  stopConversationWatch = startConversationWatcher({
-    initialKey: status.conversationKey,
-    getKey: currentConversationKey,
-    onChanged: () => {
-      clearSyncBadge();
-      stopWatchingConversation();
-    },
-  });
+  const invalidate = (): void => {
+    clearSyncBadge();
+    stopWatchingBadge();
+  };
+
+  const stops = [
+    startConversationWatcher({
+      initialKey: status.conversationKey,
+      getKey: currentConversationKey,
+      onChanged: invalidate,
+    }),
+    startNewMessageWatcher({
+      syncedWatermark: status.messageWatermark,
+      getWatermark: currentMessageWatermark,
+      onNewMessage: invalidate,
+    }),
+  ];
+
+  stopBadgeWatchers = () => stops.forEach(stop => stop());
 }
 
 /** Report a sync that failed before any destination ran. */
@@ -368,15 +388,19 @@ function reportSyncResult(
   saveResult: MultiOutputResponse,
   fileName: string,
   conversationKey: string | null,
-  extractionWarnings?: string[]
+  extraction: ExtractionResult
 ): void {
-  displaySaveResults(saveResult, fileName, extractionWarnings);
+  displaySaveResults(saveResult, fileName, extraction.warnings);
   presentSyncStatus(
     buildSyncStatus({
       saveResult,
       fileName,
-      warnings: extractionWarnings,
+      warnings: extraction.warnings,
       conversationKey,
+      // Taken from the extraction, never re-read from the DOM: the auto-scroll
+      // pass ends pinned at the top of the conversation, where the newest turn
+      // is unmounted and its ordinal is gone (issue #465).
+      messageWatermark: extraction.data?.messageWatermark,
       at: new Date(),
     })
   );
@@ -449,7 +473,7 @@ export async function handleSync(): Promise<void> {
     showToast('Saving...', 'info', INFO_TOAST_DURATION);
     const saveResult = await saveToOutputs(note, enabledOutputs);
 
-    reportSyncResult(saveResult, note.fileName, extractor.getConversationId(), result.warnings);
+    reportSyncResult(saveResult, note.fileName, extractor.getConversationId(), result);
   } catch (error) {
     console.error('[G2O] Sync error:', error);
     reportSyncFailure(extractErrorMessage(error));
