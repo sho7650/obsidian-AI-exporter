@@ -14,9 +14,11 @@ export type SyncStatusKind = 'success' | 'partial' | 'error';
 /**
  * The result of the **last** sync attempt.
  *
- * Deliberately NOT "is this conversation up to date": new messages added after
- * a sync do not clear the badge (Phase 3 of the #458 plan was not implemented),
- * so the UI must present this as a point-in-time record and always show `at`.
+ * Still a point-in-time record, not a claim that the conversation is current:
+ * the badge is invalidated when a newer turn appears on a platform that exposes
+ * a conversation-wide ordinal (#465, ADR-036), but the three platforms without
+ * one keep a badge that can outlive the state it describes. Every rendering
+ * path therefore states `at`.
  */
 export interface SyncStatus {
   readonly kind: SyncStatusKind;
@@ -27,6 +29,11 @@ export interface SyncStatus {
    * derive one (e.g. a brand-new chat that has no id yet).
    */
   readonly conversationKey: string | null;
+  /**
+   * Ordinal of the newest turn the sync covered, or null when the platform
+   * exposes none. The baseline for "a newer message has appeared" (issue #465).
+   */
+  readonly messageWatermark: number | null;
   /** Name the note was actually saved under, when a destination reported one. */
   readonly fileName?: string;
   readonly results: readonly OutputResult[];
@@ -53,9 +60,11 @@ export function buildSyncStatus(params: {
   fileName: string;
   warnings?: readonly string[];
   conversationKey: string | null;
+  /** `ConversationData.messageWatermark` from the extraction that was saved. */
+  messageWatermark?: number;
   at: Date;
 }): SyncStatus {
-  const { saveResult, fileName, warnings = [], conversationKey, at } = params;
+  const { saveResult, fileName, warnings = [], conversationKey, messageWatermark, at } = params;
 
   // `allSuccessful` is vacuously true for an empty result set, so anySuccessful
   // is checked first: nothing ran means nothing succeeded.
@@ -74,6 +83,7 @@ export function buildSyncStatus(params: {
     kind,
     at,
     conversationKey,
+    messageWatermark: messageWatermark ?? null,
     fileName: savedAs ?? fileName,
     results: saveResult.results,
     warnings: [...destinationWarnings, ...warnings],
@@ -98,6 +108,8 @@ export function buildFailedSyncStatus(params: {
     kind: 'error',
     at: params.at,
     conversationKey: params.conversationKey,
+    // Nothing was extracted, so there is no ordinal to trust (issue #465).
+    messageWatermark: null,
     results: [],
     warnings: [],
     error: params.error,
@@ -122,9 +134,10 @@ export interface StatusAge {
 /**
  * Describe how long ago a sync happened.
  *
- * The badge deliberately does not claim the conversation is up to date — new
- * messages do not clear it — so the detail panel always states the age and the
- * user can judge for themselves.
+ * The badge reports a sync, not that the conversation is up to date — on
+ * Gemini, Perplexity and Notebook nothing invalidates it but a navigation
+ * (ADR-036) — so the detail panel always states the age and the user can judge
+ * for themselves.
  */
 export function describeAge(at: Date, now: Date): StatusAge {
   const minutes = Math.floor((now.getTime() - at.getTime()) / 60_000);

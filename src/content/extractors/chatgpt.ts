@@ -247,6 +247,26 @@ export class ChatGPTExtractor extends BaseExtractor {
   }
 
   /**
+   * Highest `conversation-turn-N` ordinal currently mounted (issue #465).
+   *
+   * N is numbered across the whole conversation and never renumbered per window
+   * (see {@link turnOrdinal}), so a value above the one a sync covered can only
+   * mean a turn was added — scrolling up mounts *smaller* ordinals.
+   */
+  getMessageWatermark(): number | null {
+    // Scoped to the thread scroller, for the same reason accumulation is: the
+    // sidebar <nav> matches loose selectors and carries its own list.
+    const root = this.queryWithFallback<HTMLElement>(SELECTORS.scrollContainer) ?? document;
+    let highest: number | null = null;
+    this.queryAllWithFallback<HTMLElement>(SELECTORS.conversationTurn, root).forEach(turn => {
+      const ordinal = this.turnOrdinal(turn);
+      if (ordinal === undefined || !Number.isFinite(ordinal)) return;
+      if (highest === null || ordinal > highest) highest = ordinal;
+    });
+    return highest;
+  }
+
+  /**
    * Harvest the currently-mounted window as keyed messages.
    *
    * Keyed by the turn's stable uuid (data-turn-id, then data-message-id),

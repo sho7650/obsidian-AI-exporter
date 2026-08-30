@@ -116,12 +116,18 @@ export abstract class BaseExtractor implements IConversationExtractor {
       }
 
       console.info(`[G2O] Extracting ${this.platformLabel} conversation`);
-      const { messages, warning, truncated } = await this.collectMessages();
+      const { messages, warning, truncated, watermark } = await this.collectMessages();
       const conversationId = this.getConversationId() || `${this.platform}-${Date.now()}`;
       const title = this.getTitle();
       const result = this.buildConversationResult(messages, conversationId, title, this.platform);
       if (!result.success) return result;
-      const data = truncated && result.data ? { ...result.data, truncated } : result.data;
+      const data = result.data
+        ? {
+            ...result.data,
+            ...(truncated ? { truncated } : {}),
+            ...(watermark === undefined ? {} : { messageWatermark: watermark }),
+          }
+        : result.data;
       return warning
         ? { ...result, data, warnings: [...(result.warnings ?? []), warning] }
         : { ...result, data };
@@ -175,16 +181,18 @@ export abstract class BaseExtractor implements IConversationExtractor {
     warning?: string;
     /** The pass ended on a deadline, so earlier messages may be missing (#449). */
     truncated?: boolean;
+    /** Ordinal of the newest turn covered, when the platform has one (#465). */
+    watermark?: number;
   }> {
     const config = this.getScrollConfig();
     if (!this.enableAutoScroll || !config) {
-      return { messages: this.extractMessages() };
+      return { messages: this.extractMessages(), watermark: this.currentWatermark() };
     }
 
     const container = this.queryWithFallback<HTMLElement>(config.container);
     if (!container) {
       console.info('[G2O] No scroll container found, skipping auto-scroll');
-      return { messages: this.extractMessages() };
+      return { messages: this.extractMessages(), watermark: this.currentWatermark() };
     }
 
     const result = await accumulateWhileScrolling(
@@ -195,8 +203,32 @@ export abstract class BaseExtractor implements IConversationExtractor {
     // Re-index into contiguous conversation order after de-duplication.
     const messages = result.items.map((message, index) => ({ ...message, index }));
 
+    // Deliberately the accumulated maximum, never a DOM re-read: the pass ends
+    // pinned at the TOP of the conversation, where the newest turn is unmounted
+    // and its ordinal is no longer readable (issue #465).
+    const watermark = result.maxOrder;
+
     const warning = describeScrollStop(result.stopReason, result.itemCount, this.scrollDeadlines);
-    return warning ? { messages, warning, truncated: true } : { messages };
+    return warning ? { messages, warning, truncated: true, watermark } : { messages, watermark };
+  }
+
+  /**
+   * Hook: highest conversation-wide turn ordinal currently in the DOM.
+   *
+   * Null by default. A platform may only override this with an ordinal that is
+   * **monotonic in conversation order and never renumbered** — Claude's
+   * `data-index` and ChatGPT's `conversation-turn-N` qualify (measured live,
+   * issues #352/#353). A turn *count* does not: Gemini lazy-loads older turns
+   * when the user scrolls up, so its count grows with no new message and the
+   * badge would clear itself for nothing (ADR-036).
+   */
+  getMessageWatermark(): number | null {
+    return null;
+  }
+
+  /** {@link getMessageWatermark} as the optional field callers store. */
+  private currentWatermark(): number | undefined {
+    return this.getMessageWatermark() ?? undefined;
   }
 
   // ========== Settings ==========

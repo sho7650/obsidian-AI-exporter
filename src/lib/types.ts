@@ -63,6 +63,15 @@ export interface ConversationData {
   metadata: ConversationMetadata;
   /** Auto-scroll stopped early, so earlier messages may be missing (#449). */
   truncated?: boolean;
+  /**
+   * Ordinal of the newest turn this extraction covered, on platforms that
+   * expose a conversation-wide monotonic ordinal (Claude's `data-index`,
+   * ChatGPT's `conversation-turn-N`). Undefined elsewhere.
+   *
+   * The sync-status badge compares it against the live DOM to tell "a message
+   * newer than the sync has appeared" from "the user scrolled" (issue #465).
+   */
+  messageWatermark?: number;
 }
 
 /**
@@ -395,4 +404,13 @@ export interface IConversationExtractor {
   extractMessages(): ConversationMessage[];
   validate(result: ExtractionResult): ValidationResult;
   applySettings(settings: SyncSettings): void;
+  /**
+   * Highest conversation-wide turn ordinal currently in the DOM, or null when
+   * the platform exposes no such ordinal.
+   *
+   * A *mounted*-window read: on virtualized platforms it drops as turns evict
+   * and rises again as they re-mount, so it is only ever meaningful compared
+   * against {@link ConversationData.messageWatermark} (issue #465).
+   */
+  getMessageWatermark(): number | null;
 }

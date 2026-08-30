@@ -17,6 +17,7 @@ function status(overrides: Partial<SyncStatus> = {}): SyncStatus {
     kind: 'success',
     at: AT,
     conversationKey: 'conv-1',
+    messageWatermark: null,
     fileName: 'my-note.md',
     results: [{ destination: 'obsidian', success: true }] as OutputResult[],
     warnings: [],

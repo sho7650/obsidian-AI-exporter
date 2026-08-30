@@ -3,11 +3,12 @@
  *
  * A toast that disappears after five seconds is invisible to anyone who
  * started a long sync and looked away — which is the whole complaint in #458.
- * The badge stays until the conversation changes or the user dismisses it.
+ * The badge stays until the conversation changes, a message newer than the sync
+ * appears (#465, ADR-036), or the user dismisses it.
  *
- * It reports the result of the LAST sync, not that the conversation is up to
- * date: adding messages afterwards does not clear it, so every rendering path
- * here states the age.
+ * It reports the result of the LAST sync, never that the conversation is up to
+ * date — the three platforms with no conversation-wide ordinal cannot detect a
+ * new message at all — so every rendering path here states the age.
  */
 
 import { getMessage } from '../lib/i18n';

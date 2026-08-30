@@ -12,6 +12,7 @@ import {
   clearFixture,
   createGeminiConversationDOM,
   setGeminiLocation,
+  setClaudeLocation,
   setNonGeminiLocation,
   resetLocation,
 } from '../fixtures/dom-helpers';
@@ -29,7 +30,10 @@ vi.mock('../../src/lib/messaging', () => ({
   sendMessage: vi.fn(),
 }));
 
-const watcherState = vi.hoisted(() => ({ stops: [] as Array<() => void> }));
+const watcherState = vi.hoisted(() => ({
+  stops: [] as Array<() => void>,
+  messageStops: [] as Array<() => void>,
+}));
 
 vi.mock('../../src/content/ui-badge', () => ({
   showSyncBadge: vi.fn(),
@@ -40,6 +44,14 @@ vi.mock('../../src/content/conversation-watcher', () => ({
   startConversationWatcher: vi.fn(() => {
     const stop = vi.fn();
     watcherState.stops.push(stop);
+    return stop;
+  }),
+}));
+
+vi.mock('../../src/content/message-watcher', () => ({
+  startNewMessageWatcher: vi.fn(() => {
+    const stop = vi.fn();
+    watcherState.messageStops.push(stop);
     return stop;
   }),
 }));
@@ -55,6 +67,7 @@ import {
 import { sendMessage } from '../../src/lib/messaging';
 import { showSyncBadge, clearSyncBadge } from '../../src/content/ui-badge';
 import { startConversationWatcher } from '../../src/content/conversation-watcher';
+import { startNewMessageWatcher } from '../../src/content/message-watcher';
 import {
   initialize,
   handleSync,
@@ -124,6 +137,7 @@ describe('content/bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     watcherState.stops.length = 0;
+    watcherState.messageStops.length = 0;
   });
 
   afterEach(() => {
@@ -484,6 +498,7 @@ describe('sync status badge wiring (issue #458)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     watcherState.stops.length = 0;
+    watcherState.messageStops.length = 0;
   });
 
   afterEach(() => {
@@ -561,5 +576,125 @@ describe('sync status badge wiring (issue #458)', () => {
 
     expect(watcherState.stops[0]).toHaveBeenCalled();
     expect(startConversationWatcher).toHaveBeenCalledTimes(2);
+  });
+});
+
+/**
+ * Claude is the platform with a conversation-wide ordinal (`data-index`), so
+ * the new-message half of the badge lifetime is exercised there.
+ */
+function loadClaudeConversation(turns = 4): void {
+  setClaudeLocation('1fbb8252-2bec-4ef2-bf1f-88393dd9bb5f');
+  const rows = Array.from({ length: turns }, (_, i) => {
+    const body =
+      i % 2 === 0
+        ? '<div class="bg-bg-300 rounded-xl"><div data-testid="user-message">Q</div></div>'
+        : '<div class="font-claude-response"><div class="standard-markdown"><p>A</p></div></div>';
+    return `<div data-index="${i}"><div data-test-render-count="2">${body}</div></div>`;
+  }).join('');
+  loadFixture(rows);
+}
+
+describe('badge invalidation on new messages (issue #465)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    watcherState.stops.length = 0;
+    watcherState.messageStops.length = 0;
+  });
+
+  afterEach(() => {
+    clearFixture();
+    resetLocation();
+  });
+
+  it('watches from the ordinal the sync covered, not from a post-sync DOM read', async () => {
+    mockMessaging({});
+    loadClaudeConversation(4);
+
+    await handleSync();
+
+    expect(startNewMessageWatcher).toHaveBeenCalledTimes(1);
+    const [params] = vi.mocked(startNewMessageWatcher).mock.calls[0];
+    expect(params.syncedWatermark).toBe(3);
+    expect(params.getWatermark()).toBe(3);
+  });
+
+  it('reads the live DOM on every tick', async () => {
+    mockMessaging({});
+    loadClaudeConversation(4);
+    await handleSync();
+
+    const [params] = vi.mocked(startNewMessageWatcher).mock.calls[0];
+    loadClaudeConversation(6); // the user asked a follow-up
+
+    expect(params.getWatermark()).toBe(5);
+  });
+
+  it('clears the badge and stops both watchers once a newer message appears', async () => {
+    mockMessaging({});
+    loadClaudeConversation(4);
+    await handleSync();
+
+    const [params] = vi.mocked(startNewMessageWatcher).mock.calls[0];
+    params.onNewMessage(4);
+
+    expect(clearSyncBadge).toHaveBeenCalledTimes(1);
+    expect(watcherState.stops[0]).toHaveBeenCalled();
+    expect(watcherState.messageStops[0]).toHaveBeenCalled();
+  });
+
+  it('stops the new-message watcher when the conversation changes', async () => {
+    mockMessaging({});
+    loadClaudeConversation(4);
+    await handleSync();
+
+    const [params] = vi.mocked(startConversationWatcher).mock.calls[0];
+    params.onChanged(null);
+
+    expect(watcherState.messageStops[0]).toHaveBeenCalled();
+  });
+
+  it('stops the new-message watcher when the user dismisses the badge', async () => {
+    mockMessaging({});
+    loadClaudeConversation(4);
+    await handleSync();
+
+    const [, handlers] = vi.mocked(showSyncBadge).mock.calls[0];
+    handlers?.onDismiss?.();
+
+    expect(watcherState.messageStops[0]).toHaveBeenCalled();
+  });
+
+  it('does not leave the previous new-message watcher running after a second sync', async () => {
+    mockMessaging({});
+    loadClaudeConversation(4);
+
+    await handleSync();
+    await handleSync();
+
+    expect(watcherState.messageStops[0]).toHaveBeenCalled();
+    expect(startNewMessageWatcher).toHaveBeenCalledTimes(2);
+  });
+
+  it('arms nothing on a platform without a conversation-wide ordinal', async () => {
+    // Gemini: a turn count grows when the user scrolls UP, so there is no
+    // trustworthy baseline and the badge keeps its pre-#465 behaviour.
+    mockMessaging({});
+    loadGeminiConversation();
+
+    await handleSync();
+
+    const [params] = vi.mocked(startNewMessageWatcher).mock.calls[0];
+    expect(params.syncedWatermark).toBeNull();
+  });
+
+  it('arms nothing when the sync failed before anything was extracted', async () => {
+    mockMessaging({ connection: { success: false, error: 'Cannot connect to Obsidian' } });
+    loadClaudeConversation(4);
+
+    await handleSync();
+
+    const [params] = vi.mocked(startNewMessageWatcher).mock.calls[0];
+    expect(params.syncedWatermark).toBeNull();
   });
 });
