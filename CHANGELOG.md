@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.4](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.3...v2.10.4) (2026-08-30)
+
+
+### Code Refactoring
+
+* **test:** consolidate per-platform HTML escape helpers ([#471](https://github.com/sho7650/obsidian-AI-exporter/issues/471)) ([0b7bf25](https://github.com/sho7650/obsidian-AI-exporter/commit/0b7bf255ef46fd1e2ab3c54213a0ba66c61b8529))
+
 ## [2.10.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.2...v2.10.3) (2026-08-30)
 
 
