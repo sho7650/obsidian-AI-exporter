@@ -12,7 +12,7 @@ import { mimeToExtension } from './image-utils';
 import type { ExtractedImage } from './types';
 
 /** A resolved image ready to be written (vault) or downloaded (file). */
-export interface ResolvedImageFile {
+interface ResolvedImageFile {
   readonly fileName: string;
   readonly mimeType: string;
   /** Base64-encoded image bytes (no `data:` prefix). */

@@ -243,7 +243,7 @@ let currentToast: HTMLDivElement | null = null;
 /**
  * Inject CSS styles into the page
  */
-export function injectStyles(): void {
+function injectStyles(): void {
   if (styleInjected) return;
 
   const style = document.createElement('style');

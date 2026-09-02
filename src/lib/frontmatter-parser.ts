@@ -17,7 +17,7 @@ export type LineEnding = '\r\n' | '\n' | '\r';
  * mixed-ending file ends up consistently on whichever style it opened with
  * rather than staying mixed.
  */
-export function detectLineEnding(content: string): LineEnding {
+function detectLineEnding(content: string): LineEnding {
   const match = /\r\n|\r|\n/.exec(content);
   return (match?.[0] as LineEnding | undefined) ?? '\n';
 }

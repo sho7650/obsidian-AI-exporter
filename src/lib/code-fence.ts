@@ -25,7 +25,7 @@
 export const MIN_FENCE_LENGTH = 3;
 
 /** The two fence characters CommonMark permits. They cannot be mixed. */
-export type FenceChar = '`' | '~';
+type FenceChar = '`' | '~';
 
 /** Both fence characters, in the order they are probed. */
 const ALL_FENCE_CHARS: readonly FenceChar[] = ['`', '~'];
