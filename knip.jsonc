@@ -1,0 +1,21 @@
+// knip — dead-code fitness function (ADR-037).
+//
+// Reports unused files, unused exports/types, and unlisted or unused
+// dependencies. Runs as part of `npm run lint` / `nix run .#lint`, so a
+// finding fails CI. Vitest and Playwright plugins are auto-detected: every
+// test file counts as an entry, which is why exports used only by tests are
+// NOT reported (they are deliberate, see ADR-015).
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+
+  // The extension's real entry points come from src/manifest.json (CRXJS
+  // resolves them at build time), which knip cannot read. Without this list
+  // the two import-time shims were reported as unused files — nothing in
+  // src/ imports them, only the manifest and popup/index.html do.
+  "entry": [
+    "src/background/service-worker.ts",
+    "src/content/index.ts",
+    "src/popup/index.ts",
+    "src/offscreen/offscreen.ts"
+  ]
+}

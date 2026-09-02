@@ -71,8 +71,12 @@
           lint = app "lint" ''
             eslint src/
             node scripts/lint-platforms.mjs
+            knip
           '';
           lint-platforms = app "lint-platforms" ''node scripts/lint-platforms.mjs "$@"'';
+          # Dead-code fitness function (ADR-037): unused files, exports, and
+          # dependencies. Also part of `lint`, so CI runs it on every PR.
+          lint-dead = app "lint-dead" ''knip "$@"'';
           # Compare a local build against the GitHub Actions release ZIP.
           # Needs gh (download release artifact), unzip (extract it), and
           # diffoscope (human-readable drill-down on mismatch). See ADR.

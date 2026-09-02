@@ -46,6 +46,7 @@ Adopt **Option A**. Formalize the design philosophy as fitness functions that ru
 - **Positive.** Layer violations, import cycles, and code-side platform drift now fail `npm run test`. Maintainability regressions surface as ESLint warnings. The design philosophy is executable, not just documented — ADRs *record* decisions, fitness functions *assure* them.
 - **Negative / cost.** One new devDependency (transitively `ts-morph`, `picomatch`, and an optional `graphql` peer used only by an unused subpath). Arch tests add a `ts-morph` project load (~hundreds of ms) to the suite. The `PLATFORM_IDS` map in the SSOT test is a second place to update when adding a platform — intentional, mirroring `HOST_DISPLAY_NAMES` in `lint-platforms.mjs`.
 - **Follow-up.** Once the codebase is clean against the ESLint limits, promote them from `warn` to `error`. Candidate future fitness functions (deferred, see assessment doc): Chrome-API purity test, sanitization-path invariant, dependency-drift/vuln gate, content-script bundle-size budget.
+  - 2026-09-03: dead-code / unlisted-dependency detection added as fitness function #11 via knip — [ADR-037](037-knip-dead-code-fitness-function.md).
 
 ## Related
 

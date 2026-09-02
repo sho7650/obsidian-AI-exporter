@@ -74,8 +74,9 @@ Nix is the canonical task surface (see [ADR-011](docs/adr/011-nix-task-surface.m
 nix run .#build           # TypeScript check + Vite production build
 nix run .#build-zip       # Build + zip dist/ for Chrome Web Store
 nix run .#dev             # Vite dev server with HMR
-nix run .#lint            # ESLint on src/ + platform consistency check
+nix run .#lint            # ESLint on src/ + platform consistency check + knip (dead code)
 nix run .#lint-platforms  # Platform consistency check only
+nix run .#lint-dead       # knip only: unused files/exports/dependencies (ADR-037)
 nix run .#format          # Prettier formatting (write)
 nix run .#format-check    # Prettier formatting (check only, for CI)
 nix run .#test            # Run test suite (vitest)
