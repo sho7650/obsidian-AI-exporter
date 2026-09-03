@@ -108,7 +108,7 @@ const AUTH_GUIDANCE: Readonly<Record<Exclude<AuthStatus, 'authenticated'>, strin
 };
 
 /** Short note for a transition back to a clean pass. */
-export function generateRecoveryMarkdown(report: ValidationReport): string {
+function generateRecoveryMarkdown(report: ValidationReport): string {
   const dateStr = report.timestamp.slice(0, 10);
   return [
     '---',
@@ -126,7 +126,7 @@ export function generateRecoveryMarkdown(report: ValidationReport): string {
   ].join('\n');
 }
 
-export function generateMarkdown(report: ValidationReport): string {
+function generateMarkdown(report: ValidationReport): string {
   const dateStr = report.timestamp.slice(0, 10);
   const lines: string[] = [
     '---',

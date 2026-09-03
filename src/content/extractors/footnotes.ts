@@ -9,7 +9,7 @@
  * footnote syntax by the Turndown rules in markdown-rules.ts.
  */
 
-export const FOOTNOTE_REF_ATTR = 'data-footnote-ref';
+const FOOTNOTE_REF_ATTR = 'data-footnote-ref';
 
 export interface CitationTransformResult {
   /** HTML with citation elements replaced by footnote-ref placeholder spans. */
@@ -66,7 +66,7 @@ const HTML_ESCAPE_MAP: Record<string, string> = {
   "'": '&#39;',
 };
 
-export function escapeHtml(value: string): string {
+function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, ch => HTML_ESCAPE_MAP[ch] ?? ch);
 }
 
