@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.9](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.8...v2.10.9) (2026-09-03)
+
+
+### Code Refactoring
+
+* close the ADR-012 ratchet and promote the ESLint limits to error ([#477](https://github.com/sho7650/obsidian-AI-exporter/issues/477)) ([87ae412](https://github.com/sho7650/obsidian-AI-exporter/commit/87ae4121087daeaa6e11ba6425e0fc438251c177))
+
 ## [2.10.8](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.7...v2.10.8) (2026-09-03)
 
 
