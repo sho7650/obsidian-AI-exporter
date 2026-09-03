@@ -13,7 +13,7 @@
 | 3 | Platform SSOT = `manifest.json` matches; code must agree (CLAUDE.md › Adding New Platforms) | `test/arch/platform-ssot.test.ts` (code side: `AIPlatform` union, `ALLOWED_ORIGINS`, `getExtractor()`, `host_permissions`) + `scripts/lint-platforms.mjs` (docs/locales side) | holistic · triggered · static | **New + existing** |
 | 4 | No untyped escape hatches; clean console usage | ESLint `@typescript-eslint/no-explicit-any`, `no-console` | atomic · triggered · static | Existing |
 | 5 | Type safety (strict mode, no type errors) | `tsc --noEmit` (in `build`) | atomic · triggered · static | Existing |
-| 6 | Maintainability: files ≤ 800 lines, functions < 50, nesting ≤ 4, bounded complexity (CLAUDE.md / coding-style) | ESLint `max-lines`, `max-lines-per-function`, `max-depth`, `complexity` (warn-first) | atomic · triggered · dynamic→static | **New (ADR-012)** |
+| 6 | Maintainability: files ≤ 800 lines, functions < 50, nesting ≤ 4, bounded complexity (CLAUDE.md / coding-style) | ESLint `max-lines`, `max-lines-per-function`, `max-depth`, `complexity` (`error` since 2026-09-03) | atomic · triggered · static | **New (ADR-012)** |
 | 7 | Test confidence | Vitest coverage thresholds 85/75/85/85 | atomic · triggered · static | Existing |
 | 8 | Consistent commit/release hygiene | commitlint (conventional commits) | atomic · triggered · static | Existing |
 | 9 | Consistent formatting | `prettier --check` | atomic · triggered · static | Existing |
@@ -26,7 +26,7 @@ All triggered functions run in `.github/workflows/ci.yml` on every PR (lint → 
 
 - **Green on `main`** = the codebase currently conforms to principles 1–9 and 11.
 - **Plant-violation proof** (done during ADR-012 implementation): adding a `src/lib → src/content` import makes case 1 fail; dropping a platform from `ALLOWED_ORIGINS` makes case 3 fail. The gate demonstrably catches regressions, not just passes vacuously.
-- **Warn-first limits** (principle 6) report current drift without blocking; promotion to `error` is the next ratchet.
+- **Limits are blocking** (principle 6): introduced warn-first, promoted to `error` on 2026-09-03 once the last three offenders were fixed. A file over 800 lines, a function over 50, nesting over 4, or complexity over 15 now fails CI.
 
 ## Deferred (candidate future fitness functions)
 

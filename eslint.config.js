@@ -19,12 +19,13 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-console': ['warn', { allow: ['warn', 'error', 'info', 'debug'] }],
       // Fitness functions for maintainability (CLAUDE.md / coding-style limits).
-      // Warn-first per ADR-012: surfaces drift without breaking CI on existing
-      // files; promote to 'error' in a later PR once the codebase is clean.
-      'max-lines': ['warn', { max: 800, skipBlankLines: true, skipComments: true }],
-      'max-lines-per-function': ['warn', { max: 50, skipBlankLines: true, skipComments: true }],
-      'max-depth': ['warn', 4],
-      complexity: ['warn', 15],
+      // Introduced warn-first (ADR-012, 2026-05-29) and promoted to 'error' on
+      // 2026-09-03 once the last three offenders were fixed; a regression now
+      // fails CI instead of accumulating as a "pre-existing" warning.
+      'max-lines': ['error', { max: 800, skipBlankLines: true, skipComments: true }],
+      'max-lines-per-function': ['error', { max: 50, skipBlankLines: true, skipComments: true }],
+      'max-depth': ['error', 4],
+      complexity: ['error', 15],
     },
   },
   {
