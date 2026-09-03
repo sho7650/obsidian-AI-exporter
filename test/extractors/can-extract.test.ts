@@ -18,7 +18,7 @@ import { PerplexityExtractor } from '../../src/content/extractors/perplexity';
 import { NotebookLMExtractor } from '../../src/content/extractors/notebooklm';
 import { PLATFORM_REGISTRY, ALL_PLATFORMS } from '../../src/lib/platform-registry';
 import type { AIPlatform, IConversationExtractor } from '../../src/lib/types';
-import { resetLocation } from '../fixtures/dom-helpers';
+import { defineLocation, resetLocation } from '../fixtures/dom-helpers';
 
 /**
  * Keyed by AIPlatform so the compiler demands an entry when the union grows —
@@ -31,14 +31,6 @@ const EXTRACTOR_FACTORIES: Record<AIPlatform, () => IConversationExtractor> = {
   perplexity: () => new PerplexityExtractor(),
   notebooklm: () => new NotebookLMExtractor(),
 };
-
-function setHostname(hostname: string): void {
-  Object.defineProperty(window, 'location', {
-    value: { hostname, pathname: '/', href: `https://${hostname}/`, search: '', hash: '' },
-    writable: true,
-    configurable: true,
-  });
-}
 
 /** Hostnames that embed a real host but must never be accepted. */
 function lookalikesFor(host: string): string[] {
@@ -55,7 +47,7 @@ describe('canExtract() is derived from the platform registry', () => {
     const { hosts } = PLATFORM_REGISTRY[platform];
 
     it.each(hosts)('accepts its registered host %s', host => {
-      setHostname(host);
+      defineLocation(host);
       expect(createExtractor().canExtract()).toBe(true);
     });
 
@@ -64,18 +56,18 @@ describe('canExtract() is derived from the platform registry', () => {
         p => PLATFORM_REGISTRY[p].hosts
       );
       for (const host of foreignHosts) {
-        setHostname(host);
+        defineLocation(host);
         expect(createExtractor().canExtract(), `${platform} accepted ${host}`).toBe(false);
       }
     });
 
     it.each(lookalikesFor(hosts[0]))('rejects lookalike hostname %s', hostname => {
-      setHostname(hostname);
+      defineLocation(hostname);
       expect(createExtractor().canExtract()).toBe(false);
     });
 
     it('rejects an unrelated host', () => {
-      setHostname('localhost');
+      defineLocation('localhost');
       expect(createExtractor().canExtract()).toBe(false);
     });
   });

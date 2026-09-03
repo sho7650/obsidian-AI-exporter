@@ -18,12 +18,13 @@
 | 8 | Consistent commit/release hygiene | commitlint (conventional commits) | atomic · triggered · static | Existing |
 | 9 | Consistent formatting | `prettier --check` | atomic · triggered · static | Existing |
 | 10 | DOM selectors keep working as target sites evolve | Playwright + CDP selector-validation harness (`e2e/selectors`) | holistic · continual/temporal · dynamic | Existing |
+| 11 | No unreachable code: every export, file, and dependency has a consumer (ADR-012 › deferred "dependency drift", narrowed) | `knip` under `npm run lint` — unused files/exports/types, unlisted and unused dependencies; manifest entry points declared in `knip.jsonc` | holistic · triggered · static | **New (ADR-037)** |
 
 All triggered functions run in `.github/workflows/ci.yml` on every PR (lint → format → coverage → build); the selector harness runs on demand against live sites.
 
 ## What "verification (検収)" looks like
 
-- **Green on `main`** = the codebase currently conforms to principles 1–9.
+- **Green on `main`** = the codebase currently conforms to principles 1–9 and 11.
 - **Plant-violation proof** (done during ADR-012 implementation): adding a `src/lib → src/content` import makes case 1 fail; dropping a platform from `ALLOWED_ORIGINS` makes case 3 fail. The gate demonstrably catches regressions, not just passes vacuously.
 - **Limits are blocking** (principle 6): introduced warn-first, promoted to `error` on 2026-09-03 once the last three offenders were fixed. A file over 800 lines, a function over 50, nesting over 4, or complexity over 15 now fails CI.
 

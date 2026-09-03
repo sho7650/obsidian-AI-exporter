@@ -31,7 +31,7 @@ import { formatDateWithTimezone } from './date-utils';
  * - `budget-exhausted` — the scan hit {@link SCAN_MAX_REQUESTS} first, so the
  *   note may well exist beyond the point the scan stopped.
  */
-export type LookupMissReason =
+type LookupMissReason =
   | 'no-candidate-suffix'
   | 'empty-directory'
   | 'no-candidate-file'

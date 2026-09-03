@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.8](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.7...v2.10.8) (2026-09-03)
+
+
+### Code Refactoring
+
+* **test:** build every location fixture on one defineLocation helper ([#476](https://github.com/sho7650/obsidian-AI-exporter/issues/476)) ([1715bbf](https://github.com/sho7650/obsidian-AI-exporter/commit/1715bbf6c0a2fde4fa9cea5e6da5915387ea42ee))
+
+## [2.10.7](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.6...v2.10.7) (2026-09-03)
+
+
+### Miscellaneous
+
+* adopt knip as a dead-code fitness function and declare playwright ([#475](https://github.com/sho7650/obsidian-AI-exporter/issues/475)) ([2d0818c](https://github.com/sho7650/obsidian-AI-exporter/commit/2d0818c841018178941d18fc636cc4b187572045))
+
+## [2.10.6](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.5...v2.10.6) (2026-09-03)
+
+
+### Code Refactoring
+
+* drop export from symbols only used inside their own module ([#474](https://github.com/sho7650/obsidian-AI-exporter/issues/474)) ([08a61d1](https://github.com/sho7650/obsidian-AI-exporter/commit/08a61d1438de337d42066eec0d4d6d1f80b05552))
+
+## [2.10.5](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.4...v2.10.5) (2026-09-03)
+
+
+### Miscellaneous
+
+* **nix:** bump nixpkgs flake input ([#473](https://github.com/sho7650/obsidian-AI-exporter/issues/473)) ([12dc64c](https://github.com/sho7650/obsidian-AI-exporter/commit/12dc64ce47a75bdfa90c6ba89d386cf1b42a6729))
+
 ## [2.10.4](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.3...v2.10.4) (2026-08-30)
 
 

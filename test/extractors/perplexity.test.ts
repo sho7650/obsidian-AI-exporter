@@ -8,7 +8,7 @@ import {
   resetLocation,
   createPerplexityConversationDOM,
   setPerplexityLocation,
-  setNonPerplexityLocation,
+  defineLocation,
   createPerplexityInlineCitation,
   createPerplexityPillCitation,
   createPerplexityLegacyPillCitation,
@@ -45,17 +45,17 @@ describe('PerplexityExtractor', () => {
       });
 
       it('returns false for perplexity.ai (no www)', () => {
-        setNonPerplexityLocation('perplexity.ai');
+        defineLocation('perplexity.ai');
         expect(extractor.canExtract()).toBe(false);
       });
 
       it('returns false for evil.www.perplexity.ai.attacker.com', () => {
-        setNonPerplexityLocation('evil.www.perplexity.ai.attacker.com');
+        defineLocation('evil.www.perplexity.ai.attacker.com');
         expect(extractor.canExtract()).toBe(false);
       });
 
       it('returns false for other domains', () => {
-        setNonPerplexityLocation('chatgpt.com');
+        defineLocation('chatgpt.com');
         expect(extractor.canExtract()).toBe(false);
       });
     });
@@ -76,12 +76,12 @@ describe('PerplexityExtractor', () => {
     });
 
     it('returns null for non-search paths', () => {
-      setNonPerplexityLocation('www.perplexity.ai', '/hub');
+      defineLocation('www.perplexity.ai', '/hub');
       expect(extractor.getConversationId()).toBeNull();
     });
 
     it('returns null for root path', () => {
-      setNonPerplexityLocation('www.perplexity.ai', '/');
+      defineLocation('www.perplexity.ai', '/');
       expect(extractor.getConversationId()).toBeNull();
     });
   });
@@ -511,15 +511,7 @@ describe('PerplexityExtractor', () => {
     });
 
     it('generates fallback ID when URL parsing fails', async () => {
-      Object.defineProperty(window, 'location', {
-        value: {
-          hostname: 'www.perplexity.ai',
-          pathname: '/pro',
-          href: 'https://www.perplexity.ai/pro',
-        },
-        writable: true,
-        configurable: true,
-      });
+      defineLocation('www.perplexity.ai', '/pro');
       loadFixture(
         createPerplexityConversationDOM([
           { role: 'user', content: 'Hello' },

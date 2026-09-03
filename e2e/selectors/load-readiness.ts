@@ -48,7 +48,7 @@ export async function waitForReadyWithRetry(
   return false;
 }
 
-export type LoadAction = 'validate' | 'skip';
+type LoadAction = 'validate' | 'skip';
 
 export interface LoadDecision {
   readonly action: LoadAction;

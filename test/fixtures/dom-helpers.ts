@@ -74,59 +74,23 @@ export function createGeminiConversationDOM(messages: ConversationMessage[]): st
 }
 
 /**
- * Set window.location for Gemini URL testing
+ * Point `window.location` at `{protocol}//{hostname}{pathname}`.
+ *
+ * jsdom's location is not assignable, so it is replaced wholesale. Every
+ * `set*Location` helper below and `resetLocation()` build on this one so that
+ * href, origin and host are always derived the same way — each helper used to
+ * hand-write all three, and a slip in one surfaced as an extractor failure.
+ * The fields are the ones the extractors read.
  */
-export function setGeminiLocation(conversationId: string): void {
-  Object.defineProperty(window, 'location', {
-    value: {
-      hostname: 'gemini.google.com',
-      pathname: `/app/${conversationId}`,
-      href: `https://gemini.google.com/app/${conversationId}`,
-      origin: 'https://gemini.google.com',
-      protocol: 'https:',
-      host: 'gemini.google.com',
-      search: '',
-      hash: '',
-    },
-    writable: true,
-    configurable: true,
-  });
-}
-
-/**
- * Set window.location for a Gemini Gem conversation.
- * Gem URLs have TWO path segments: /gem/{gemId}/{conversationId};
- * a freshly opened Gem chat sits at /gem/{gemId} (pass conversationId='').
- */
-export function setGeminiGemLocation(gemId: string, conversationId = ''): void {
-  const pathname = conversationId ? `/gem/${gemId}/${conversationId}` : `/gem/${gemId}`;
-  Object.defineProperty(window, 'location', {
-    value: {
-      hostname: 'gemini.google.com',
-      pathname,
-      href: `https://gemini.google.com${pathname}`,
-      origin: 'https://gemini.google.com',
-      protocol: 'https:',
-      host: 'gemini.google.com',
-      search: '',
-      hash: '',
-    },
-    writable: true,
-    configurable: true,
-  });
-}
-
-/**
- * Set window.location for non-Gemini URL
- */
-export function setNonGeminiLocation(hostname: string, pathname = '/'): void {
+export function defineLocation(hostname: string, pathname = '/', protocol = 'https:'): void {
+  const origin = `${protocol}//${hostname}`;
   Object.defineProperty(window, 'location', {
     value: {
       hostname,
       pathname,
-      href: `https://${hostname}${pathname}`,
-      origin: `https://${hostname}`,
-      protocol: 'https:',
+      href: `${origin}${pathname}`,
+      origin,
+      protocol,
       host: hostname,
       search: '',
       hash: '',
@@ -137,23 +101,27 @@ export function setNonGeminiLocation(hostname: string, pathname = '/'): void {
 }
 
 /**
- * Reset window.location to default
+ * Set window.location for Gemini URL testing
+ */
+export function setGeminiLocation(conversationId: string): void {
+  defineLocation('gemini.google.com', `/app/${conversationId}`);
+}
+
+/**
+ * Set window.location for a Gemini Gem conversation.
+ * Gem URLs have TWO path segments: /gem/{gemId}/{conversationId};
+ * a freshly opened Gem chat sits at /gem/{gemId} (pass conversationId='').
+ */
+export function setGeminiGemLocation(gemId: string, conversationId = ''): void {
+  const pathname = conversationId ? `/gem/${gemId}/${conversationId}` : `/gem/${gemId}`;
+  defineLocation('gemini.google.com', pathname);
+}
+
+/**
+ * Reset window.location to jsdom's default
  */
 export function resetLocation(): void {
-  Object.defineProperty(window, 'location', {
-    value: {
-      hostname: 'localhost',
-      pathname: '/',
-      href: 'http://localhost/',
-      origin: 'http://localhost',
-      protocol: 'http:',
-      host: 'localhost',
-      search: '',
-      hash: '',
-    },
-    writable: true,
-    configurable: true,
-  });
+  defineLocation('localhost', '/', 'http:');
 }
 
 /**
@@ -489,46 +457,9 @@ export function createClaudeDeepResearchDOM(
 
 /**
  * Set window.location for Claude URL testing
- *
- * @param conversationId UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
  */
 export function setClaudeLocation(conversationId: string): void {
-  Object.defineProperty(window, 'location', {
-    value: {
-      hostname: 'claude.ai',
-      pathname: `/chat/${conversationId}`,
-      href: `https://claude.ai/chat/${conversationId}`,
-      origin: 'https://claude.ai',
-      protocol: 'https:',
-      host: 'claude.ai',
-      search: '',
-      hash: '',
-    },
-    writable: true,
-    configurable: true,
-  });
-}
-
-/**
- * Set window.location for non-Claude URL (security testing)
- *
- * Used to test hostname validation against subdomain attacks
- */
-export function setNonClaudeLocation(hostname: string, pathname = '/'): void {
-  Object.defineProperty(window, 'location', {
-    value: {
-      hostname,
-      pathname,
-      href: `https://${hostname}${pathname}`,
-      origin: `https://${hostname}`,
-      protocol: 'https:',
-      host: hostname,
-      search: '',
-      hash: '',
-    },
-    writable: true,
-    configurable: true,
-  });
+  defineLocation('claude.ai', `/chat/${conversationId}`);
 }
 
 /**
@@ -1112,52 +1043,13 @@ export function createChatGPTConversationDOM(messages: ChatGPTConversationMessag
 /**
  * Set window.location for ChatGPT URL testing
  *
- * @param conversationId UUID format or custom ID
- * @param prefix URL prefix: 'c' for regular chat, 'g' for custom GPT mode
- *
  * URL formats:
  *   prefix='c': https://chatgpt.com/c/{conversationId}
  *   prefix='g': https://chatgpt.com/g/{gptSlug}/c/{conversationId}
  */
 export function setChatGPTLocation(conversationId: string, prefix: 'c' | 'g' = 'c'): void {
   const gptSlug = 'g-abc123-test-gpt';
-  const pathname = prefix === 'g' ? `/g/${gptSlug}/c/${conversationId}` : `/c/${conversationId}`;
-  Object.defineProperty(window, 'location', {
-    value: {
-      hostname: 'chatgpt.com',
-      pathname,
-      href: `https://chatgpt.com${pathname}`,
-      origin: 'https://chatgpt.com',
-      protocol: 'https:',
-      host: 'chatgpt.com',
-      search: '',
-      hash: '',
-    },
-    writable: true,
-    configurable: true,
-  });
-}
-
-/**
- * Set window.location for non-ChatGPT URL (security testing)
- *
- * Used to test hostname validation against subdomain attacks
- */
-export function setNonChatGPTLocation(hostname: string, pathname = '/'): void {
-  Object.defineProperty(window, 'location', {
-    value: {
-      hostname,
-      pathname,
-      href: `https://${hostname}${pathname}`,
-      origin: `https://${hostname}`,
-      protocol: 'https:',
-      host: hostname,
-      search: '',
-      hash: '',
-    },
-    writable: true,
-    configurable: true,
-  });
+  defineLocation('chatgpt.com', prefix === 'g' ? `/g/${gptSlug}/c/${conversationId}` : `/c/${conversationId}`);
 }
 
 /**
@@ -1254,42 +1146,7 @@ export function createPerplexityConversationDOM(messages: PerplexityConversation
  * @param slug Full URL slug from /search/{slug}
  */
 export function setPerplexityLocation(slug: string): void {
-  Object.defineProperty(window, 'location', {
-    value: {
-      hostname: 'www.perplexity.ai',
-      pathname: `/search/${slug}`,
-      href: `https://www.perplexity.ai/search/${slug}`,
-      origin: 'https://www.perplexity.ai',
-      protocol: 'https:',
-      host: 'www.perplexity.ai',
-      search: '',
-      hash: '',
-    },
-    writable: true,
-    configurable: true,
-  });
-}
-
-/**
- * Set window.location for non-Perplexity URL (security testing)
- *
- * Used to test hostname validation against subdomain attacks
- */
-export function setNonPerplexityLocation(hostname: string, pathname = '/'): void {
-  Object.defineProperty(window, 'location', {
-    value: {
-      hostname,
-      pathname,
-      href: `https://${hostname}${pathname}`,
-      origin: `https://${hostname}`,
-      protocol: 'https:',
-      host: hostname,
-      search: '',
-      hash: '',
-    },
-    writable: true,
-    configurable: true,
-  });
+  defineLocation('www.perplexity.ai', `/search/${slug}`);
 }
 
 /**
@@ -1684,20 +1541,7 @@ export function setNotebookLMLocation(
   options: { legacyHost?: boolean } = {}
 ): void {
   const hostname = options.legacyHost ? 'notebooklm.google.com' : 'notebook.google.com';
-  Object.defineProperty(window, 'location', {
-    value: {
-      hostname,
-      pathname: `/notebook/${notebookId}`,
-      href: `https://${hostname}/notebook/${notebookId}`,
-      origin: `https://${hostname}`,
-      protocol: 'https:',
-      host: hostname,
-      search: '',
-      hash: '',
-    },
-    writable: true,
-    configurable: true,
-  });
+  defineLocation(hostname, `/notebook/${notebookId}`);
 }
 
 /**
