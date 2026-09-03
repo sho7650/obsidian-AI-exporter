@@ -26,7 +26,7 @@ import { showSyncBadge, clearSyncBadge } from './ui-badge';
 import { buildSyncStatus, buildFailedSyncStatus, type SyncStatus } from './sync-status';
 import { startConversationWatcher, type StopWatching } from './conversation-watcher';
 import { startNewMessageWatcher } from './message-watcher';
-import { sendMessage } from '../lib/messaging';
+import { sendMessage, isMultiOutputResponse, describeUnexpectedResponse } from '../lib/messaging';
 import {
   AUTO_SAVE_CHECK_INTERVAL,
   EVENT_THROTTLE_DELAY,
@@ -501,10 +501,16 @@ function testConnection(): Promise<{ success: boolean; error?: string }> {
 /**
  * Save note to multiple outputs via background script
  * Uses type-safe messaging utility
+ *
+ * A rejection envelope from the worker becomes an ordinary failure, reported
+ * through the same toast and badge as any other (issue #467): it must never
+ * reach displaySaveResults(), which reads `results`.
  */
-function saveToOutputs(
+async function saveToOutputs(
   note: ObsidianNote,
   outputs: OutputDestination[]
 ): Promise<MultiOutputResponse> {
-  return sendMessage({ action: 'saveToOutputs', data: note, outputs });
+  const response = await sendMessage({ action: 'saveToOutputs', data: note, outputs });
+  if (isMultiOutputResponse(response)) return response;
+  throw new Error(describeUnexpectedResponse(response));
 }

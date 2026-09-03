@@ -3,7 +3,12 @@
  * Promise-based wrapper for chrome.runtime.sendMessage
  */
 
-import type { ExtensionMessage, ContentScriptSettings, MultiOutputResponse } from './types';
+import type {
+  ExtensionMessage,
+  ContentScriptSettings,
+  ErrorResponse,
+  MultiOutputResponse,
+} from './types';
 
 /** User-friendly message for extension context invalidation */
 const CONTEXT_INVALIDATED_MESSAGE = 'Extension context invalidated. Please reload the page.';
@@ -14,19 +19,52 @@ const CONTEXT_INVALIDATED_MESSAGE = 'Extension context invalidated. Please reloa
 interface MessageResponseMap {
   getSettings: ContentScriptSettings;
   testConnection: { success: boolean; error?: string };
-  saveToOutputs: MultiOutputResponse;
+  /**
+   * Either the save result or the worker's rejection envelope. The union is
+   * deliberate: a caller has to narrow with {@link isMultiOutputResponse}
+   * before touching `results`, which is what stops a rejected message from
+   * crashing the toast code (issue #467).
+   */
+  saveToOutputs: MultiOutputResponse | ErrorResponse;
+}
+
+/**
+ * Whether a `saveToOutputs` answer is the real save result.
+ *
+ * The background replies `{ success: false, error }` — no `results` — when the
+ * sender is unauthorized, the message fails validation, the action is unknown,
+ * or the handler throws. The content script used to cast that envelope to a
+ * save result and die on `results.map` (issue #467).
+ */
+export function isMultiOutputResponse(value: unknown): value is MultiOutputResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<MultiOutputResponse>;
+  return (
+    Array.isArray(candidate.results) &&
+    typeof candidate.allSuccessful === 'boolean' &&
+    typeof candidate.anySuccessful === 'boolean'
+  );
+}
+
+/**
+ * The user-facing text for a `saveToOutputs` answer that is not a save result:
+ * the worker's own error when it sent one, a generic line otherwise.
+ */
+export function describeUnexpectedResponse(value: unknown): string {
+  const error = (value as Partial<ErrorResponse> | null | undefined)?.error;
+  return typeof error === 'string' && error.length > 0
+    ? error
+    : 'Unexpected response from the extension background';
 }
 
 /**
  * Type-safe message sending
  *
- * Design Decision: Runtime validation is intentionally omitted here because:
- * 1. Messages originate from and are handled within the same extension
- * 2. The background service worker (src/background/service-worker.ts) performs
- *    comprehensive validation via validateMessageContent() before processing
- * 3. Adding redundant validation would impact performance without security benefit
- *
- * The type assertion below is safe under these controlled conditions.
+ * The response type is the map entry for the action. Messages and replies stay
+ * inside one extension, and the worker validates every incoming message
+ * (validateMessageContent()), so the cast covers the success path. It does NOT
+ * cover the worker's *rejection* envelope — that is why `saveToOutputs` is
+ * typed as a union the caller must narrow (issue #467).
  */
 /**
  * Check if the extension context is still valid.
@@ -67,8 +105,6 @@ export function sendMessage<K extends keyof MessageResponseMap>(
           reject(new Error(isContextError ? CONTEXT_INVALIDATED_MESSAGE : errorMsg));
           return;
         }
-        // Type assertion is safe: background validates all messages before responding
-        // See: src/background/service-worker.ts validateMessageContent()
         resolve(response as MessageResponseMap[K]);
       });
     } catch (error) {

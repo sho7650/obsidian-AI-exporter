@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { sendMessage } from '../../src/lib/messaging';
+import {
+  sendMessage,
+  isMultiOutputResponse,
+  describeUnexpectedResponse,
+} from '../../src/lib/messaging';
 
 describe('sendMessage', () => {
   beforeEach(() => {
@@ -167,4 +171,55 @@ describe('sendMessage - extension context invalidation', () => {
       'Extension context invalidated. Please reload the page.'
     );
   });
+});
+
+describe('isMultiOutputResponse (issue #467)', () => {
+  it('accepts a save result', () => {
+    expect(
+      isMultiOutputResponse({
+        results: [{ destination: 'obsidian', success: true }],
+        allSuccessful: true,
+        anySuccessful: true,
+      })
+    ).toBe(true);
+  });
+
+  it('accepts an all-failed save result', () => {
+    expect(
+      isMultiOutputResponse({
+        results: [{ destination: 'obsidian', success: false, error: 'offline' }],
+        allSuccessful: false,
+        anySuccessful: false,
+      })
+    ).toBe(true);
+  });
+
+  it('rejects the rejection envelope the background sends', () => {
+    // {success:false,error} is what validateMessageContent / an unauthorized
+    // sender / a thrown handler all produce. None of them carries `results`.
+    expect(isMultiOutputResponse({ success: false, error: 'Invalid message content' })).toBe(false);
+  });
+
+  it.each([undefined, null, 'ok', 42, [], {}])('rejects %p', value => {
+    expect(isMultiOutputResponse(value)).toBe(false);
+  });
+
+  it('rejects a result whose flags are missing', () => {
+    expect(isMultiOutputResponse({ results: [] })).toBe(false);
+  });
+});
+
+describe('describeUnexpectedResponse (issue #467)', () => {
+  it('surfaces the error text of a rejection envelope', () => {
+    expect(describeUnexpectedResponse({ success: false, error: 'Unauthorized' })).toBe(
+      'Unauthorized'
+    );
+  });
+
+  it.each([undefined, null, {}, { success: false }, { error: 7 }])(
+    'falls back to a generic message for %p',
+    value => {
+      expect(describeUnexpectedResponse(value)).toMatch(/unexpected response/i);
+    }
+  );
 });
