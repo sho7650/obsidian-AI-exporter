@@ -13,7 +13,7 @@ import {
   createGeminiConversationDOM,
   setGeminiLocation,
   setClaudeLocation,
-  setNonGeminiLocation,
+  defineLocation,
   resetLocation,
 } from '../fixtures/dom-helpers';
 
@@ -152,19 +152,19 @@ describe('content/bootstrap', () => {
     });
 
     it('returns null on unsupported hostnames', () => {
-      setNonGeminiLocation('example.com');
+      defineLocation('example.com');
       expect(getExtractor()).toBeNull();
     });
 
     it('rejects malicious subdomains embedding a platform hostname', () => {
-      setNonGeminiLocation('gemini.google.com.attacker.com');
+      defineLocation('gemini.google.com.attacker.com');
       expect(getExtractor()).toBeNull();
     });
   });
 
   describe('initialize', () => {
     it('skips initialization on unsupported pages', async () => {
-      setNonGeminiLocation('example.com');
+      defineLocation('example.com');
       await initialize();
       expect(injectSyncButton).not.toHaveBeenCalled();
     });
@@ -323,7 +323,7 @@ describe('content/bootstrap', () => {
     });
 
     it('shows an error on unsupported pages', async () => {
-      setNonGeminiLocation('example.com');
+      defineLocation('example.com');
       mockMessaging({});
 
       await handleSync();

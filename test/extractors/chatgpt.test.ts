@@ -4,10 +4,9 @@ import {
   loadFixture,
   clearFixture,
   resetLocation,
-  setNonGeminiLocation,
   createChatGPTConversationDOM,
   setChatGPTLocation,
-  setNonChatGPTLocation,
+  defineLocation,
   createChatGPTInlineCitation,
   createChatGPTPage,
 } from '../fixtures/dom-helpers';
@@ -40,12 +39,12 @@ describe('ChatGPTExtractor', () => {
       });
 
       it('returns false for other hosts', () => {
-        setNonGeminiLocation('chat.openai.com');
+        defineLocation('chat.openai.com');
         expect(extractor.canExtract()).toBe(false);
       });
 
       it('returns false for chat.openai.com (legacy domain)', () => {
-        setNonChatGPTLocation('chat.openai.com', '/c/test-123');
+        defineLocation('chat.openai.com', '/c/test-123');
         expect(extractor.canExtract()).toBe(false);
       });
     });
@@ -54,12 +53,12 @@ describe('ChatGPTExtractor', () => {
   // ========== 6.3.2 Security Tests (4 tests) ==========
   describe('Security', () => {
     it('rejects malicious subdomains containing chatgpt.com', () => {
-      setNonChatGPTLocation('evil-chatgpt.com.attacker.com');
+      defineLocation('evil-chatgpt.com.attacker.com');
       expect(extractor.canExtract()).toBe(false);
     });
 
     it('rejects chatgpt.com as subdomain', () => {
-      setNonChatGPTLocation('chatgpt.com.evil.com');
+      defineLocation('chatgpt.com.evil.com');
       expect(extractor.canExtract()).toBe(false);
     });
 
@@ -102,20 +101,12 @@ describe('ChatGPTExtractor', () => {
     });
 
     it('returns null for non-chat URLs', () => {
-      setNonChatGPTLocation('chatgpt.com', '/');
+      defineLocation('chatgpt.com', '/');
       expect(extractor.getConversationId()).toBeNull();
     });
 
     it('generates fallback ID when URL parsing fails', async () => {
-      Object.defineProperty(window, 'location', {
-        value: {
-          hostname: 'chatgpt.com',
-          pathname: '/settings',
-          href: 'https://chatgpt.com/settings',
-        },
-        writable: true,
-        configurable: true,
-      });
+      defineLocation('chatgpt.com', '/settings');
       loadFixture(
         createChatGPTConversationDOM([
           { role: 'user', content: 'Hello' },

@@ -4,11 +4,10 @@ import {
   loadFixture,
   clearFixture,
   resetLocation,
-  setNonGeminiLocation,
   createClaudeConversationDOM,
   createClaudeDeepResearchDOM,
   setClaudeLocation,
-  setNonClaudeLocation,
+  defineLocation,
   createClaudeInlineCitation,
   createClaudePage,
   createClaudeDeepResearchPage,
@@ -47,7 +46,7 @@ describe('ClaudeExtractor', () => {
       });
 
       it('returns false for other hosts', () => {
-        setNonGeminiLocation('chat.openai.com');
+        defineLocation('chat.openai.com');
         expect(extractor.canExtract()).toBe(false);
       });
 
@@ -145,12 +144,12 @@ describe('ClaudeExtractor', () => {
   // ========== 6.3.2 Security Tests (5 tests) ==========
   describe('Security', () => {
     it('rejects malicious subdomains containing claude.ai', () => {
-      setNonClaudeLocation('evil-claude.ai.attacker.com');
+      defineLocation('evil-claude.ai.attacker.com');
       expect(extractor.canExtract()).toBe(false);
     });
 
     it('rejects claude.ai as subdomain', () => {
-      setNonClaudeLocation('claude.ai.evil.com');
+      defineLocation('claude.ai.evil.com');
       expect(extractor.canExtract()).toBe(false);
     });
 
@@ -209,22 +208,12 @@ describe('ClaudeExtractor', () => {
     });
 
     it('returns null for non-chat URLs', () => {
-      setNonClaudeLocation('claude.ai', '/');
+      defineLocation('claude.ai', '/');
       expect(extractor.getConversationId()).toBeNull();
     });
 
     it('generates fallback ID when URL parsing fails', async () => {
-      setNonClaudeLocation('claude.ai', '/settings');
-      // Set hostname correctly for canExtract
-      Object.defineProperty(window, 'location', {
-        value: {
-          hostname: 'claude.ai',
-          pathname: '/settings',
-          href: 'https://claude.ai/settings',
-        },
-        writable: true,
-        configurable: true,
-      });
+      defineLocation('claude.ai', '/settings');
       loadFixture(
         createClaudeConversationDOM([
           { role: 'user', content: 'Hello' },

@@ -4,6 +4,7 @@ import { htmlToMarkdown } from '../../src/content/markdown';
 import {
   loadFixture,
   clearFixture,
+  defineLocation,
   resetLocation,
   setNotebookLMLocation,
   createNotebookLMPage,
@@ -40,11 +41,7 @@ describe('NotebookLMExtractor', () => {
 
     it('returns false for other hosts', () => {
       // Use gemini location as a non-notebooklm host
-      Object.defineProperty(window, 'location', {
-        value: { hostname: 'gemini.google.com', pathname: '/app/123' },
-        writable: true,
-        configurable: true,
-      });
+      defineLocation('gemini.google.com', '/app/123');
       expect(extractor.canExtract()).toBe(false);
     });
 
@@ -53,11 +50,7 @@ describe('NotebookLMExtractor', () => {
       'notebook.google.com.attacker.com',
       'sub.notebook.google.com',
     ])('returns false for lookalike host %s', hostname => {
-      Object.defineProperty(window, 'location', {
-        value: { hostname, pathname: '/notebook/abc' },
-        writable: true,
-        configurable: true,
-      });
+      defineLocation(hostname, '/notebook/abc');
       expect(extractor.canExtract()).toBe(false);
     });
   });
@@ -75,14 +68,7 @@ describe('NotebookLMExtractor', () => {
     });
 
     it('returns null for non-notebook URLs', () => {
-      Object.defineProperty(window, 'location', {
-        value: {
-          hostname: 'notebooklm.google.com',
-          pathname: '/',
-        },
-        writable: true,
-        configurable: true,
-      });
+      defineLocation('notebooklm.google.com', '/');
       expect(extractor.getConversationId()).toBeNull();
     });
   });
