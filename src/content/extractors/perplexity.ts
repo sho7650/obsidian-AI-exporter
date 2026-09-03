@@ -273,50 +273,37 @@ export class PerplexityExtractor extends BaseExtractor {
     const sorted = this.sortByDomPosition(tagged);
 
     const messages: ConversationMessage[] = [];
-    let userIdx = 0;
-    let responseIdx = 0;
-    let reportIdx = 0;
+    const ordinals = { user: 0, response: 0, report: 0 };
 
     for (const item of sorted) {
-      if (item.type === 'user') {
-        const content = this.extractPlainText(item.element);
-        if (content) {
-          messages.push({
-            id: `user-${userIdx}`,
-            role: 'user',
-            content,
-            index: messages.length,
-          });
-        }
-        userIdx++;
-      } else if (item.type === 'report') {
-        const content = this.extractReportContent(item.element, messages.length);
-        if (content) {
-          messages.push({
-            id: `report-${reportIdx}`,
-            role: 'assistant',
-            content,
-            htmlContent: content,
-            index: messages.length,
-          });
-        }
-        reportIdx++;
-      } else {
-        const content = this.extractAssistantContent(item.element, messages.length);
-        if (content) {
-          messages.push({
-            id: `assistant-${responseIdx}`,
-            role: 'assistant',
-            content,
-            htmlContent: content,
-            index: messages.length,
-          });
-        }
-        responseIdx++;
-      }
+      // The ordinal advances for every element of its kind, extracted or not,
+      // so ids stay aligned with DOM position even when one element is empty.
+      const message = this.messageFor(item, ordinals[item.type]++, messages.length);
+      if (message) messages.push(message);
     }
 
     return messages;
+  }
+
+  /** The message for one tagged element, or null when it yields no content. */
+  private messageFor(
+    item: TaggedElement,
+    ordinal: number,
+    index: number
+  ): ConversationMessage | null {
+    if (item.type === 'user') {
+      const content = this.extractPlainText(item.element);
+      return content ? { id: `user-${ordinal}`, role: 'user', content, index } : null;
+    }
+
+    const content =
+      item.type === 'report'
+        ? this.extractReportContent(item.element, index)
+        : this.extractAssistantContent(item.element, index);
+    if (!content) return null;
+
+    const kind = item.type === 'report' ? 'report' : 'assistant';
+    return { id: `${kind}-${ordinal}`, role: 'assistant', content, htmlContent: content, index };
   }
 
   /**

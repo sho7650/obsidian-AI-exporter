@@ -37,7 +37,7 @@ Adopt **Option A**. Formalize the design philosophy as fitness functions that ru
 | Cycle test | `test/arch/cycles.test.ts` | `slices('src/*/').beFreeOfCycles()` over top-level subsystems. |
 | Code-side SSOT | `test/arch/platform-ssot.test.ts` | Manifest matches ↔ `AIPlatform` union, `ALLOWED_ORIGINS`, `getExtractor()` routing, `host_permissions`. Complements `lint-platforms.mjs` (docs side). |
 | Maintainability limits | ESLint `max-lines` 800, `max-lines-per-function` 50, `max-depth` 4, `complexity` 15 | Codifies CLAUDE.md / coding-style limits. |
-| Limit severity | **`warn` first** | Per the note's staged-threshold advice: surface drift without breaking CI on existing files (e.g. `popup/index.ts` 542 lines). Promote to `error` in a later PR once clean. |
+| Limit severity | **`warn` first**, promoted to **`error`** on 2026-09-03 | Per the note's staged-threshold advice: surface drift without breaking CI on existing files (e.g. `popup/index.ts` 542 lines). The last three offenders (`perplexity.extractMessages` 51 lines, `scroll-manager.ensureAllElementsLoaded` 72 lines, `popup.populateForm` complexity 29) were carried as "pre-existing" for three months before being fixed; the ratchet is now closed. |
 | CI Node version | `20` → `24` | Required by `@nielspeter/ts-archunit`; also aligns CI with the existing `flake.nix` `nodejs_24` and local toolchain, fixing pre-existing drift. |
 | Wiring | None beyond the above | Vitest auto-collects `test/**/*.test.ts`; ESLint runs under `npm run lint`; `ci.yml` already runs both. |
 
@@ -45,7 +45,7 @@ Adopt **Option A**. Formalize the design philosophy as fitness functions that ru
 
 - **Positive.** Layer violations, import cycles, and code-side platform drift now fail `npm run test`. Maintainability regressions surface as ESLint warnings. The design philosophy is executable, not just documented — ADRs *record* decisions, fitness functions *assure* them.
 - **Negative / cost.** One new devDependency (transitively `ts-morph`, `picomatch`, and an optional `graphql` peer used only by an unused subpath). Arch tests add a `ts-morph` project load (~hundreds of ms) to the suite. The `PLATFORM_IDS` map in the SSOT test is a second place to update when adding a platform — intentional, mirroring `HOST_DISPLAY_NAMES` in `lint-platforms.mjs`.
-- **Follow-up.** Once the codebase is clean against the ESLint limits, promote them from `warn` to `error`. Candidate future fitness functions (deferred, see assessment doc): Chrome-API purity test, sanitization-path invariant, dependency-drift/vuln gate, content-script bundle-size budget.
+- **Follow-up.** ~~Once the codebase is clean against the ESLint limits, promote them from `warn` to `error`.~~ Done 2026-09-03. Candidate future fitness functions (deferred, see assessment doc): Chrome-API purity test, sanitization-path invariant, dependency-drift/vuln gate, content-script bundle-size budget.
 
 ## Related
 

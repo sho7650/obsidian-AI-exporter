@@ -224,20 +224,48 @@ export async function ensureAllElementsLoaded(
       `[G2O] scrollTop=0, scrollHeight=${container.scrollHeight}, ` +
         `clientHeight=${container.clientHeight}, elements=${initialCount}`
     );
-    return {
-      fullyLoaded: true,
-      elementCount: initialCount,
-      scrollIterations: 0,
-      skipped: true,
-      stopReason: 'complete',
-    };
+    return completeElementResult(initialCount, 0, true);
   }
 
   console.info(
     `[G2O] Partial load detected — scrollTop=${container.scrollTop}, ` +
       `elements=${initialCount}, auto-scrolling`
   );
+  return scrollToTopUntilStable(container, elementSelector, deadlines);
+}
 
+/**
+ * One load attempt: re-arm the edge trigger if already at the top, then
+ * scroll to 0 and give the platform time to mount what it loaded.
+ */
+async function rearmAndScrollToTop(container: HTMLElement): Promise<void> {
+  // Re-arm: if already at top, scroll to bottom first so the next
+  // scroll-to-0 crosses the onScrolledTopPastThreshold edge trigger.
+  if (container.scrollTop === 0) {
+    container.scrollTop = container.scrollHeight;
+    await delay(SCROLL_REARM_DELAY);
+  }
+
+  // Scroll to top — crosses the threshold, triggering content loading
+  container.scrollTop = 0;
+  await delay(SCROLL_POLL_INTERVAL);
+}
+
+/**
+ * Repeat load attempts until the element count holds still for
+ * {@link SCROLL_STABILITY_THRESHOLD} iterations or a deadline passes.
+ *
+ * Progress here is a change in the element count ONLY. This is deliberately
+ * NOT the widened "new turn OR upward movement" definition used by
+ * {@link scrollUpUntilStable} (ADR-024): this engine re-arms by jumping to
+ * scrollHeight and back to 0 every iteration, so "the position moved" would
+ * always be true and would disable the idle deadline entirely.
+ */
+async function scrollToTopUntilStable(
+  container: HTMLElement,
+  elementSelector: string,
+  deadlines: ScrollDeadlines
+): Promise<ScrollResult> {
   let previousCount = 0;
   let stableCount = 0;
   let iterations = 0;
@@ -250,17 +278,7 @@ export async function ensureAllElementsLoaded(
       return partialElementResult(stopReason, elementSelector, iterations, startTime, deadlines);
     }
 
-    // Re-arm: if already at top, scroll to bottom first so the next
-    // scroll-to-0 crosses the onScrolledTopPastThreshold edge trigger.
-    if (container.scrollTop === 0) {
-      container.scrollTop = container.scrollHeight;
-      await delay(SCROLL_REARM_DELAY);
-    }
-
-    // Scroll to top — crosses the threshold, triggering content loading
-    container.scrollTop = 0;
-    await delay(SCROLL_POLL_INTERVAL);
-
+    await rearmAndScrollToTop(container);
     const currentCount = countElements(elementSelector);
     iterations++;
 
@@ -269,32 +287,35 @@ export async function ensureAllElementsLoaded(
         `scrollTop=${container.scrollTop}, scrollHeight=${container.scrollHeight}`
     );
 
-    if (currentCount === previousCount) {
-      stableCount++;
-      if (stableCount >= SCROLL_STABILITY_THRESHOLD) {
-        logScrollStop(
-          'complete',
-          currentCount,
-          'elements',
-          iterations,
-          Date.now() - startTime,
-          deadlines
-        );
-        return {
-          fullyLoaded: true,
-          elementCount: currentCount,
-          scrollIterations: iterations,
-          skipped: false,
-          stopReason: 'complete',
-        };
-      }
-    } else {
+    if (currentCount !== previousCount) {
       console.debug(`[G2O] Element count changed: ${previousCount} -> ${currentCount}`);
       stableCount = 0;
       previousCount = currentCount;
       lastProgressTime = Date.now(); // progress → reset the idle deadline
+      continue;
+    }
+
+    if (++stableCount >= SCROLL_STABILITY_THRESHOLD) {
+      logScrollStop(
+        'complete',
+        currentCount,
+        'elements',
+        iterations,
+        Date.now() - startTime,
+        deadlines
+      );
+      return completeElementResult(currentCount, iterations, false);
     }
   }
+}
+
+/** A pass that ended because every element is loaded (or none needed loading). */
+function completeElementResult(
+  elementCount: number,
+  scrollIterations: number,
+  skipped: boolean
+): ScrollResult {
+  return { fullyLoaded: true, elementCount, scrollIterations, skipped, stopReason: 'complete' };
 }
 
 // ============================================================

@@ -143,16 +143,38 @@ export async function initPopup(): Promise<void> {
 }
 
 /**
- * Populate form with current settings
+ * Populate form with current settings.
+ *
+ * One section per helper: each holds a handful of defaults, which keeps every
+ * function under the complexity limit (the flat version scored 29 — every
+ * `??` / `||` counts as a branch).
  */
 function populateForm(settings: ExtensionSettings): void {
-  // Output destinations
+  populateOutputOptions(settings);
+  populateExtractionOptions(settings);
+
+  // Update Obsidian settings section visibility
+  updateObsidianSettingsVisibility();
+
+  populateObsidianSettings(settings);
+  populateTemplateOptions(settings.templateOptions);
+  populateFrontmatterOptions(settings.templateOptions);
+  populateTimezone(settings.templateOptions);
+
+  // Sync aria-checked for toggle switches after setting checked state
+  syncAllAriaChecked();
+}
+
+/** Output destinations */
+function populateOutputOptions(settings: ExtensionSettings): void {
   const { outputOptions } = settings;
   elements.outputObsidian.checked = outputOptions?.obsidian ?? true;
   elements.outputFile.checked = outputOptions?.file ?? false;
   elements.outputClipboard.checked = outputOptions?.clipboard ?? false;
+}
 
-  // Extraction options
+/** Extraction options */
+function populateExtractionOptions(settings: ExtensionSettings): void {
   elements.enableAutoScroll.checked = settings.enableAutoScroll ?? false;
   elements.enableAppendMode.checked = settings.enableAppendMode ?? false;
   elements.enableToolContent.checked = settings.enableToolContent ?? false;
@@ -161,37 +183,40 @@ function populateForm(settings: ExtensionSettings): void {
   elements.flattenLargeCallouts.checked = settings.flattenLargeCallouts ?? true;
   elements.maxCalloutLines.value = String(settings.maxCalloutLines ?? DEFAULT_MAX_CALLOUT_LINES);
   populateScrollTimeouts(settings);
+}
 
-  // Update Obsidian settings section visibility
-  updateObsidianSettingsVisibility();
-
-  // Obsidian API settings
+/** Obsidian API settings */
+function populateObsidianSettings(settings: ExtensionSettings): void {
   elements.apiKey.value = settings.obsidianApiKey || '';
   elements.obsidianUrl.value = settings.obsidianUrl || DEFAULT_OBSIDIAN_URL;
   elements.vaultPath.value = settings.vaultPath || '';
+}
 
-  const { templateOptions } = settings;
+/** Message format, filename scheme and callout types */
+function populateTemplateOptions(templateOptions: ExtensionSettings['templateOptions']): void {
   elements.messageFormat.value = templateOptions.messageFormat || 'callout';
   elements.filenameScheme.value = templateOptions.filenameScheme || 'title-id';
   elements.userCallout.value = templateOptions.userCalloutType || 'QUESTION';
   elements.assistantCallout.value = templateOptions.assistantCalloutType || 'NOTE';
   updateCalloutSettingsVisibility();
   elements.includeQuestionHeaders.checked = templateOptions.includeQuestionHeaders ?? false;
+}
 
+/** Frontmatter field toggles */
+function populateFrontmatterOptions(templateOptions: ExtensionSettings['templateOptions']): void {
   elements.includeId.checked = templateOptions.includeId ?? true;
   elements.includeTitle.checked = templateOptions.includeTitle ?? true;
   elements.includeTags.checked = templateOptions.includeTags ?? true;
   elements.includeSource.checked = templateOptions.includeSource ?? true;
   elements.includeDates.checked = templateOptions.includeDates ?? true;
   elements.includeMessageCount.checked = templateOptions.includeMessageCount ?? true;
+}
 
-  // Populate timezone dropdown and set value
+/** Populate timezone dropdown and set value */
+function populateTimezone(templateOptions: ExtensionSettings['templateOptions']): void {
   populateTimezoneOptions();
   elements.timezone.value = templateOptions.timezone ?? 'UTC';
   updateTimezoneVisibility();
-
-  // Sync aria-checked for toggle switches after setting checked state
-  syncAllAriaChecked();
 }
 
 /**
