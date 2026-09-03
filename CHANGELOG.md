@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.11](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.10...v2.10.11) (2026-09-03)
+
+
+### Bug Fixes
+
+* report a rejected save instead of crashing on the missing results ([#487](https://github.com/sho7650/obsidian-AI-exporter/issues/487)) ([a3ee753](https://github.com/sho7650/obsidian-AI-exporter/commit/a3ee7538697fd64b150eb416bc473cdfa8b9a37c)), closes [#467](https://github.com/sho7650/obsidian-AI-exporter/issues/467)
+
 ## [2.10.10](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.9...v2.10.10) (2026-09-03)
 
 
