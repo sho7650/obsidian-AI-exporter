@@ -338,6 +338,18 @@ export type ExtensionMessage =
   | { action: 'fetchImage'; url: string };
 
 /**
+ * What the background worker answers instead of a real result: an
+ * unauthorized sender, a message that failed validation, an unknown action,
+ * or a handler that threw (see the listener in service-worker.ts). It carries
+ * no `results`, so it must never be read as a {@link MultiOutputResponse}
+ * (issue #467).
+ */
+export interface ErrorResponse {
+  success: false;
+  error: string;
+}
+
+/**
  * Response to a `fetchImage` message. The background worker fetches remote
  * images the content script cannot reach (CORS) and returns them as base64.
  */
