@@ -10,6 +10,7 @@ This extension extracts conversations from Google Gemini (gemini.google.com), Cl
 
 ✨ KEY FEATURES
 • One-click export from Gemini, Claude, ChatGPT, Perplexity, and Gemini Notebook conversations
+• Sync-status badge - a ✓ / ! / × mark stays on the button after each sync; click it for the file name, per-destination results, and when it ran
 • Clean Markdown formatting with YAML frontmatter
 • Obsidian callout syntax for Q&A blocks (shows correct AI name)
 • Deep Research support (Gemini, Perplexity) and Extended Thinking/Artifacts (Claude)
