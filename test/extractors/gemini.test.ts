@@ -12,7 +12,7 @@ import {
   clearFixture,
   setGeminiLocation,
   setGeminiGemLocation,
-  setNonGeminiLocation,
+  defineLocation,
   createGeminiConversationDOM,
   createGeminiScrollableDOM,
   mockScrollContainer,
@@ -50,7 +50,7 @@ describe('GeminiExtractor', () => {
     });
 
     it('returns false for other hosts', () => {
-      setNonGeminiLocation('chat.openai.com');
+      defineLocation('chat.openai.com');
       expect(extractor.canExtract()).toBe(false);
     });
 
@@ -67,12 +67,12 @@ describe('GeminiExtractor', () => {
     });
 
     it('returns null for invalid URL', () => {
-      setNonGeminiLocation('gemini.google.com', '/');
+      defineLocation('gemini.google.com', '/');
       expect(extractor.getConversationId()).toBeNull();
     });
 
     it('returns null when no ID in path', () => {
-      setNonGeminiLocation('gemini.google.com', '/settings');
+      defineLocation('gemini.google.com', '/settings');
       expect(extractor.getConversationId()).toBeNull();
     });
 
@@ -407,7 +407,7 @@ describe('GeminiExtractor', () => {
     });
 
     it('generates fallback ID when no conversation ID in URL', async () => {
-      setNonGeminiLocation('gemini.google.com', '/');
+      defineLocation('gemini.google.com', '/');
       const html = createGeminiConversationDOM([
         { role: 'user', content: 'Hello' },
         { role: 'assistant', content: 'Hi' },
