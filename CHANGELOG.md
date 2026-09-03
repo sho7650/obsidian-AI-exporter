@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.8](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.7...v2.10.8) (2026-09-03)
+
+
+### Code Refactoring
+
+* **test:** build every location fixture on one defineLocation helper ([#476](https://github.com/sho7650/obsidian-AI-exporter/issues/476)) ([1715bbf](https://github.com/sho7650/obsidian-AI-exporter/commit/1715bbf6c0a2fde4fa9cea5e6da5915387ea42ee))
+
 ## [2.10.7](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.6...v2.10.7) (2026-09-03)
 
 
