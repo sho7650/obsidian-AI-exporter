@@ -146,3 +146,32 @@ describe('normalizeSyncSettings — auto-scroll deadlines', () => {
     expect(result.scrollMaxTimeoutSec).toBe(300);
   });
 });
+
+describe('normalizeSyncSettings — note size cap (issue #467)', () => {
+  it('defaults to 8 MiB', () => {
+    expect(DEFAULT_SYNC_SETTINGS.maxNoteSizeMiB).toBe(8);
+  });
+
+  it('preserves a value inside 1–16', () => {
+    expect(normalizeSyncSettings({ maxNoteSizeMiB: 12 }).maxNoteSizeMiB).toBe(12);
+  });
+
+  it('clamps out-of-range values instead of discarding them', () => {
+    // Same migration-boundary rule as the scroll deadlines (ADR-032): a value
+    // another device wrote is moved into range, not silently reset.
+    expect(normalizeSyncSettings({ maxNoteSizeMiB: 32 }).maxNoteSizeMiB).toBe(16);
+    expect(normalizeSyncSettings({ maxNoteSizeMiB: 1 }).maxNoteSizeMiB).toBe(1);
+  });
+
+  it('falls back to the default for junk', () => {
+    for (const bad of ['8', null, undefined, 2.5, -1, 0, {}, []]) {
+      expect(normalizeSyncSettings({ maxNoteSizeMiB: bad }).maxNoteSizeMiB).toBe(8);
+    }
+  });
+
+  it('fills the field in for settings written before it existed', () => {
+    const result = normalizeSyncSettings({ enableAppendMode: true, scrollIdleTimeoutSec: 60 });
+    expect(result.maxNoteSizeMiB).toBe(8);
+    expect(result.scrollIdleTimeoutSec).toBe(60);
+  });
+});

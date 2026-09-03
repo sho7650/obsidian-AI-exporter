@@ -524,7 +524,11 @@ describe('background/index', () => {
         });
       });
 
-      it('rejects body over 1MB', () => {
+      it('no longer rejects a body over the retired 1 MiB constant (issue #467)', async () => {
+        // The size limit is a user setting now and is enforced by
+        // handleMultiOutput, which can read it; message validation cannot.
+        // A 1,077-message note was being answered with "Invalid message
+        // content" here, which the content script then crashed on.
         const sendResponse = vi.fn();
         capturedListener(
           {
@@ -536,7 +540,8 @@ describe('background/index', () => {
           sendResponse
         );
 
-        expect(sendResponse).toHaveBeenCalledWith({
+        await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+        expect(sendResponse).not.toHaveBeenCalledWith({
           success: false,
           error: 'Invalid message content',
         });
@@ -2548,6 +2553,79 @@ describe('background/index', () => {
       );
     });
   });
+  describe('note size cap (issue #467)', () => {
+    const validSender = { url: `chrome-extension://${chrome.runtime.id}/popup.html` };
+    const validNote: ObsidianNote = {
+      fileName: 'test.md',
+      body: 'a'.repeat(2 * 1024 * 1024), // 2 MiB
+      contentHash: 'abc123',
+      frontmatter: {
+        id: 'test-id',
+        title: 'Test Title',
+        source: 'gemini',
+        url: 'https://gemini.google.com/app/123',
+        created: '2024-01-01',
+        modified: '2024-01-01',
+        tags: ['test'],
+        message_count: 2,
+      },
+    };
+
+    async function save(outputs: string[]): Promise<{
+      results: Array<{ destination: string; success: boolean; error?: string }>;
+      allSuccessful: boolean;
+      anySuccessful: boolean;
+    }> {
+      const sendResponse = vi.fn();
+      capturedListener(
+        { action: 'saveToOutputs', data: validNote, outputs },
+        validSender as chrome.runtime.MessageSender,
+        sendResponse
+      );
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+      return sendResponse.mock.calls[0][0];
+    }
+
+    beforeEach(() => {
+      mockClient.getFile.mockResolvedValue(null);
+      mockClient.putFile.mockResolvedValue(undefined);
+      vi.mocked(chrome.runtime.sendMessage).mockResolvedValue({ success: true });
+    });
+
+    it('fails every requested destination when the body exceeds the configured cap', async () => {
+      mockGetSettings.mockResolvedValue({ ...defaultSettings, maxNoteSizeMiB: 1 });
+
+      const response = await save(['obsidian', 'clipboard']);
+
+      // A real save result, not the rejection envelope: the content script's
+      // toast and badge paths render it without any special case.
+      expect(response.allSuccessful).toBe(false);
+      expect(response.anySuccessful).toBe(false);
+      expect(response.results.map(r => r.destination)).toEqual(['obsidian', 'clipboard']);
+      expect(response.results.every(r => r.success === false)).toBe(true);
+      expect(mockClient.putFile).not.toHaveBeenCalled();
+    });
+
+    it('names the setting to raise, with both sizes', async () => {
+      mockGetSettings.mockResolvedValue({ ...defaultSettings, maxNoteSizeMiB: 1 });
+
+      const response = await save(['obsidian']);
+
+      expect(response.results[0].error).toMatch(/2\.0 MiB/);
+      expect(response.results[0].error).toMatch(/above the 1 MiB limit/);
+      expect(response.results[0].error).toMatch(/Maximum note size/);
+    });
+
+    it('saves the same note when the cap allows it', async () => {
+      mockGetSettings.mockResolvedValue({ ...defaultSettings, maxNoteSizeMiB: 8 });
+
+      const response = await save(['obsidian']);
+
+      expect(response.allSuccessful).toBe(true);
+      expect(mockClient.putFile).toHaveBeenCalled();
+    });
+  });
+
 });
 
 describe('background/index migrateSettings failure', () => {

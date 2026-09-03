@@ -80,6 +80,7 @@ const PASS_THROUGH_KEYS = [
   'scrollIdleTimeoutSec',
   'scrollMaxTimeoutSec',
   'maxCalloutLines',
+  'maxNoteSizeMiB',
 ] as const;
 
 export async function saveSettings(settings: Partial<ExtensionSettings>): Promise<void> {

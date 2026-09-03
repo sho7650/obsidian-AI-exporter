@@ -5,6 +5,7 @@
  */
 
 import { extractErrorMessage } from '../lib/error-utils';
+import { BYTES_PER_MIB, DEFAULT_NOTE_SIZE_MIB } from '../lib/constants';
 import { generateNoteContent } from '../lib/note-generator';
 import { handleSave } from './obsidian-handlers';
 import { resolveImagesForFile, stripImagePlaceholders } from '../lib/image-output';
@@ -249,11 +250,40 @@ async function handleCopyToClipboard(
  * Handle multi-output operation
  * Executes all outputs in parallel, aggregates results
  */
+/**
+ * Every requested destination fails with the same message.
+ *
+ * A real save result rather than the worker's rejection envelope, so the
+ * content script's toast and badge render it like any other failure — and, as
+ * ADR-032 does for the scroll deadlines, the text names the setting to raise
+ * (issue #467).
+ */
+function rejectOversizedNote(
+  note: ObsidianNote,
+  outputs: OutputDestination[],
+  capMiB: number
+): MultiOutputResponse {
+  const sizeMiB = (note.body.length / BYTES_PER_MIB).toFixed(1);
+  const error =
+    `Note is ${sizeMiB} MiB, above the ${capMiB} MiB limit. ` +
+    'Raise "Maximum note size" in Settings and sync again.';
+  return {
+    results: outputs.map(destination => ({ destination, success: false, error })),
+    allSuccessful: false,
+    anySuccessful: false,
+  };
+}
+
 export async function handleMultiOutput(
   note: ObsidianNote,
   outputs: OutputDestination[],
   settings: ExtensionSettings
 ): Promise<MultiOutputResponse> {
+  const capMiB = settings.maxNoteSizeMiB ?? DEFAULT_NOTE_SIZE_MIB;
+  if (note.body.length > capMiB * BYTES_PER_MIB) {
+    return rejectOversizedNote(note, outputs, capMiB);
+  }
+
   const promises = outputs.map(dest => {
     switch (dest) {
       case 'obsidian':

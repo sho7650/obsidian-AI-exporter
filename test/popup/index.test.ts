@@ -88,6 +88,8 @@ function buildPopupDom(): void {
         <input type="number" id="scrollIdleTimeoutSec" />
         <input type="number" id="scrollMaxTimeoutSec" />
       </div>
+      <input type="range" id="maxNoteSizeMiB" min="1" max="16" step="1" />
+      <output id="maxNoteSizeMiBValue"></output>
     </section>
     ${switches}
     <select id="messageFormat">
@@ -535,5 +537,57 @@ describe('auto-scroll timeout settings', () => {
     await initWith({ enableAutoScroll: false });
 
     expect(el('scrollTimeoutGroup').style.display).toBe('none');
+  });
+});
+
+describe('note size setting (issue #467)', () => {
+  async function initWith(overrides: Record<string, unknown>): Promise<void> {
+    buildPopupDom();
+    vi.mocked(getSettings).mockResolvedValue({ ...storedSettings, ...overrides });
+    await initPopup();
+  }
+
+  async function saveAndRead(): Promise<Record<string, unknown>> {
+    vi.mocked(saveSettings).mockResolvedValue(undefined);
+    el('saveBtn').click();
+    await vi.waitFor(() => expect(saveSettings).toHaveBeenCalled());
+    return vi.mocked(saveSettings).mock.calls[0][0] as unknown as Record<string, unknown>;
+  }
+
+  it('populates the slider and its label from stored settings', async () => {
+    await initWith({ maxNoteSizeMiB: 12 });
+
+    expect(el<HTMLInputElement>('maxNoteSizeMiB').value).toBe('12');
+    expect(el<HTMLOutputElement>('maxNoteSizeMiBValue').textContent).toBe('12 MiB');
+  });
+
+  it('shows the 8 MiB default for settings written before the field existed', async () => {
+    await initWith({});
+
+    expect(el<HTMLInputElement>('maxNoteSizeMiB').value).toBe('8');
+    expect(el<HTMLOutputElement>('maxNoteSizeMiBValue').textContent).toBe('8 MiB');
+  });
+
+  it('updates the label as the slider moves', async () => {
+    await initWith({});
+    const slider = el<HTMLInputElement>('maxNoteSizeMiB');
+    slider.value = '3';
+    slider.dispatchEvent(new Event('input'));
+
+    expect(el<HTMLOutputElement>('maxNoteSizeMiBValue').textContent).toBe('3 MiB');
+  });
+
+  it('saves the chosen value', async () => {
+    await initWith({});
+    el<HTMLInputElement>('maxNoteSizeMiB').value = '3';
+
+    expect(await saveAndRead()).toMatchObject({ maxNoteSizeMiB: 3 });
+  });
+
+  it('clamps a value the slider cannot normally produce', async () => {
+    await initWith({});
+    el<HTMLInputElement>('maxNoteSizeMiB').value = '99';
+
+    expect(await saveAndRead()).toMatchObject({ maxNoteSizeMiB: 16 });
   });
 });

@@ -292,6 +292,20 @@
                   Messages longer than this many lines are saved as plain text (Obsidian only).
                 </p>
               </div>
+
+              <div class="form-group">
+                <label for="maxNoteSizeMiB" data-i18n="settings_maxNoteSize"
+                  >Maximum note size</label
+                >
+                <div class="range-row">
+                  <input type="range" id="maxNoteSizeMiB" min="1" max="16" step="1" value="8" />
+                  <output id="maxNoteSizeMiBValue" for="maxNoteSizeMiB">8 MiB</output>
+                </div>
+                <p class="help" data-i18n="settings_maxNoteSizeHelp">
+                  Notes larger than this are not sent. Raise it for very long conversations; the 16
+                  MiB ceiling keeps one save inside Chrome's 64 MiB message limit.
+                </p>
+              </div>
             </section>
 
             <!-- Message Format -->

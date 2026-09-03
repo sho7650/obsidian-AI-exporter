@@ -268,6 +268,11 @@ export interface SyncSettings {
   scrollIdleTimeoutSec: number;
   /** Absolute cap on one auto-scroll pass, in seconds. Default 300. */
   scrollMaxTimeoutSec: number;
+  /**
+   * Largest note body the background will send to any output, in MiB
+   * (issue #467, ADR-038). Clamped to 1–16 by the schema.
+   */
+  maxNoteSizeMiB: number;
 }
 
 /**

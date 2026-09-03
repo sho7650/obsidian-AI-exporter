@@ -97,9 +97,6 @@ export const MAX_PORT = 65535;
 /** Default timeout for API requests (milliseconds) */
 export const DEFAULT_API_TIMEOUT = 5000;
 
-/** Maximum content size for API requests (1MB) */
-export const MAX_CONTENT_SIZE = 1024 * 1024;
-
 /** Maximum number of images accepted per note (DoS guard). */
 export const MAX_IMAGES_PER_NOTE = 20;
 
@@ -282,6 +279,23 @@ export const MAX_SCROLL_IDLE_TIMEOUT_SEC = 600;
 export const MIN_SCROLL_MAX_TIMEOUT_SEC = 30;
 /** One hour: a bound a human can be held to, and far beyond any real need. */
 export const MAX_SCROLL_MAX_TIMEOUT_SEC = 3600;
+
+// The note body size cap is a user setting (issue #467, ADR-038). It replaced a
+// fixed 1 MiB constant that a 1,077-message Claude conversation exceeded; the
+// rejection was then mis-read by the content script and surfaced as a
+// TypeError. Enforced in handleMultiOutput(), the only place that can read
+// settings, and measured in UTF-16 code units of the body (`body.length`).
+
+export const BYTES_PER_MIB = 1024 * 1024;
+/** 8 MiB: an order of magnitude above the old limit, well inside the ceiling. */
+export const DEFAULT_NOTE_SIZE_MIB = 8;
+export const MIN_NOTE_SIZE_MIB = 1;
+/**
+ * 16 MiB. Chrome caps one runtime message at 64 MiB (developer.chrome.com,
+ * "Message size limits"); images in the same message are already capped at
+ * MAX_TOTAL_IMAGE_DATA_LENGTH (48 MiB), and 48 + 16 = 64.
+ */
+export const MAX_NOTE_SIZE_MIB = 16;
 
 /** Number of consecutive unchanged element counts to consider loading complete */
 export const SCROLL_STABILITY_THRESHOLD = 3;

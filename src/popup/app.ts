@@ -21,6 +21,9 @@ import {
   VALID_MESSAGE_FORMATS,
   DEFAULT_SCROLL_IDLE_TIMEOUT_SEC,
   DEFAULT_SCROLL_MAX_TIMEOUT_SEC,
+  DEFAULT_NOTE_SIZE_MIB,
+  MIN_NOTE_SIZE_MIB,
+  MAX_NOTE_SIZE_MIB,
   MIN_SCROLL_IDLE_TIMEOUT_SEC,
   MAX_SCROLL_IDLE_TIMEOUT_SEC,
   MIN_SCROLL_MAX_TIMEOUT_SEC,
@@ -111,6 +114,8 @@ function queryElements() {
     scrollIdleTimeoutSec: getElement<HTMLInputElement>('scrollIdleTimeoutSec'),
     scrollMaxTimeoutSec: getElement<HTMLInputElement>('scrollMaxTimeoutSec'),
     scrollTimeoutGroup: getElement<HTMLElement>('scrollTimeoutGroup'),
+    maxNoteSizeMiB: getElement<HTMLInputElement>('maxNoteSizeMiB'),
+    maxNoteSizeMiBValue: getElement<HTMLOutputElement>('maxNoteSizeMiBValue'),
     timezone: getElement<HTMLSelectElement>('timezone'),
     timezoneGroup: getElement<HTMLElement>('timezoneGroup'),
     testBtn: getElement<HTMLButtonElement>('testBtn'),
@@ -183,6 +188,8 @@ function populateExtractionOptions(settings: ExtensionSettings): void {
   elements.flattenLargeCallouts.checked = settings.flattenLargeCallouts ?? true;
   elements.maxCalloutLines.value = String(settings.maxCalloutLines ?? DEFAULT_MAX_CALLOUT_LINES);
   populateScrollTimeouts(settings);
+  elements.maxNoteSizeMiB.value = String(settings.maxNoteSizeMiB ?? DEFAULT_NOTE_SIZE_MIB);
+  updateNoteSizeLabel();
 }
 
 /** Obsidian API settings */
@@ -238,6 +245,7 @@ function updateObsidianSettingsVisibility(): void {
  */
 function setupEventListeners(): void {
   elements.saveBtn.addEventListener('click', handleSave);
+  elements.maxNoteSizeMiB.addEventListener('input', updateNoteSizeLabel);
   elements.testBtn.addEventListener('click', handleTest);
 
   // Output destination checkbox listeners
@@ -354,6 +362,11 @@ function updateTimezoneVisibility(): void {
 }
 
 /** Fill the auto-scroll deadline inputs and match their visibility to the toggle. */
+/** The slider has no readout of its own; mirror its value beside it. */
+function updateNoteSizeLabel(): void {
+  elements.maxNoteSizeMiBValue.textContent = `${elements.maxNoteSizeMiB.value} MiB`;
+}
+
 function populateScrollTimeouts(settings: ExtensionSettings): void {
   elements.scrollIdleTimeoutSec.value = String(
     settings.scrollIdleTimeoutSec ?? DEFAULT_SCROLL_IDLE_TIMEOUT_SEC
@@ -436,17 +449,33 @@ function collectSettings(): ExtensionSettings {
     imageVaultPath: elements.imageVaultPath.value.trim() || 'AI/{platform}/images',
     flattenLargeCallouts: elements.flattenLargeCallouts.checked,
     maxCalloutLines: parseCalloutLines(elements.maxCalloutLines.value),
-    scrollIdleTimeoutSec: parseSeconds(
+    ...collectLimits(),
+  };
+}
+
+/** The bounded numeric settings, each clamped to its own range. */
+function collectLimits(): Pick<
+  ExtensionSettings,
+  'scrollIdleTimeoutSec' | 'scrollMaxTimeoutSec' | 'maxNoteSizeMiB'
+> {
+  return {
+    scrollIdleTimeoutSec: parseIntInRange(
       elements.scrollIdleTimeoutSec.value,
       MIN_SCROLL_IDLE_TIMEOUT_SEC,
       MAX_SCROLL_IDLE_TIMEOUT_SEC,
       DEFAULT_SCROLL_IDLE_TIMEOUT_SEC
     ),
-    scrollMaxTimeoutSec: parseSeconds(
+    scrollMaxTimeoutSec: parseIntInRange(
       elements.scrollMaxTimeoutSec.value,
       MIN_SCROLL_MAX_TIMEOUT_SEC,
       MAX_SCROLL_MAX_TIMEOUT_SEC,
       DEFAULT_SCROLL_MAX_TIMEOUT_SEC
+    ),
+    maxNoteSizeMiB: parseIntInRange(
+      elements.maxNoteSizeMiB.value,
+      MIN_NOTE_SIZE_MIB,
+      MAX_NOTE_SIZE_MIB,
+      DEFAULT_NOTE_SIZE_MIB
     ),
   };
 }
@@ -457,7 +486,7 @@ function collectSettings(): ExtensionSettings {
  * out of range is clamped rather than rejected, so Save is never blocked by a
  * value the user can see and correct (ADR-032).
  */
-function parseSeconds(raw: string, min: number, max: number, fallback: number): number {
+function parseIntInRange(raw: string, min: number, max: number, fallback: number): number {
   const n = Number.parseInt(raw, 10);
   if (!Number.isFinite(n) || n <= 0) return fallback;
   return Math.min(Math.max(n, min), max);
