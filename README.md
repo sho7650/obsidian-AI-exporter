@@ -11,7 +11,7 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 
 - **Multi-platform support**: Export from Google Gemini, Claude AI, ChatGPT, Perplexity, and Gemini Notebook (formerly NotebookLM)
 - **One-click export**: Floating "Sync" button on supported AI pages
-- **Persistent sync status**: A ✓ / ! / × badge stays on the sync button after a sync finishes — click it for the file name, per-destination results, warnings, and when the sync ran. It clears when you switch conversations or dismiss it
+- **Persistent sync status**: A ✓ / ! / × badge stays on the sync button after a sync finishes — click it for the file name, per-destination results, warnings, and when the sync ran. It clears when you switch conversations, dismiss it, or — on Claude and ChatGPT — when a message newer than the sync appears
 - **Multiple output options**: Save to Obsidian, download as file, or copy to clipboard
 - **Deep Research support**: Export Gemini Deep Research, Claude Extended Thinking, and Perplexity Deep Research reports
 - **Artifact support**: Extract Claude Artifacts with inline citations and sources
@@ -144,7 +144,7 @@ Gemini-generated images are captured and exported automatically (see [Image Expo
 
 **Perplexity Deep Research:**
 
-1. Open a Perplexity conversation containing a Deep Research report
+1. Open a Perplexity conversation containing a Deep Research report, then open the report itself (click its card) — Perplexity loads the report body only when it is opened, so a collapsed report cannot be exported
 2. Click the "Sync" button
 3. The report content will be extracted alongside normal conversation messages
 

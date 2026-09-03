@@ -10,6 +10,7 @@ Google Gemini（gemini.google.com）、Claude AI（claude.ai）、ChatGPT（chat
 
 ✨ 主な機能
 • Gemini、Claude、ChatGPT、Perplexity、Gemini Notebook の会話をワンクリックでエクスポート
+• 同期ステータスのバッジ - 同期後もボタンに ✓ / ! / × が残り、クリックでファイル名・保存先ごとの結果・同期時刻を確認
 • YAML フロントマター付きの整形された Markdown
 • Q&A ブロックに Obsidian コールアウト構文（正しい AI 名を表示）
 • Deep Research（Gemini、Perplexity）と Extended Thinking / Artifacts（Claude）に対応
