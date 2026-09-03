@@ -143,6 +143,27 @@ label {
   margin-bottom: 6px;
 }
 
+/* Range slider with a live readout (Maximum note size, issue #467) */
+.range-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.range-row output {
+  min-width: 52px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  text-align: right;
+}
+
 input[type='text'],
 input[type='password'],
 input[type='url'],

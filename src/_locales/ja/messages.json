@@ -303,6 +303,12 @@
   "settings_scrollMaxTimeoutHelp": {
     "message": "1 回の自動スクロールに費やす上限時間です。数百メッセージある会話では既定値の 300 を超えることがあります。"
   },
+  "settings_maxNoteSize": {
+    "message": "ノートの最大サイズ"
+  },
+  "settings_maxNoteSizeHelp": {
+    "message": "これより大きいノートは送信しません。非常に長い会話では大きくしてください。上限の 16 MiB は、1 回の保存を Chrome のメッセージ上限 64 MiB に収めるための値です。"
+  },
   "badge_lastSyncSucceeded": {
     "message": "前回の同期: 成功"
   },

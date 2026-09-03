@@ -419,6 +419,12 @@
   "settings_scrollMaxTimeoutHelp": {
     "message": "Hard limit for one auto-scroll pass. A conversation of several hundred messages can need more than the default 300."
   },
+  "settings_maxNoteSize": {
+    "message": "Maximum note size"
+  },
+  "settings_maxNoteSizeHelp": {
+    "message": "Notes larger than this are not sent. Raise it for very long conversations; the 16 MiB ceiling keeps one save inside Chrome's 64 MiB message limit."
+  },
   "badge_lastSyncSucceeded": {
     "message": "Last sync succeeded",
     "description": "Sync status badge label for a fully successful sync"

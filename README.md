@@ -17,7 +17,7 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 - **Artifact support**: Extract Claude Artifacts with inline citations and sources
 - **Image export**: Gemini-generated images are saved alongside the conversation — embedded in your vault, downloaded as files, or stripped for clipboard
 - **Source citations**: Gemini Notebook chat citations are exported as footnotes
-- **Auto-scroll**: Automatically loads all messages in long conversations, including virtualized (windowed) Claude and ChatGPT threads — its two timeouts are configurable (idle, default 15s; total, default 300s) for very long threads
+- **Auto-scroll**: Automatically loads all messages in long conversations, including virtualized (windowed) Claude and ChatGPT threads — its two timeouts are configurable (idle, default 15s; total, default 300s) for very long threads, and the note size cap (default 8 MiB, up to 16 MiB) can be raised for the longest ones
 - **Append mode**: Only new messages are added to existing notes
 - **Filename schemes**: Choose `title-id` (default) or `title-date` naming for exported notes
 - **Vault path templates**: Organize with `{platform}` and date tokens (`{YYYY}`, `{MM}`, …) for auto-sorting
@@ -102,7 +102,7 @@ Gemini-generated images are captured and exported automatically (see [Image Expo
 
 > **Keep Auto-scroll enabled for long conversations.** Claude mounts only a window of turns at a time and discards the rest; with Auto-scroll off, only the turns currently on screen can be exported.
 
-> **Very long conversations may need more time.** Auto-scroll gives up after 15 seconds without progress, or 300 seconds in total. If the export warns that it stopped early, raise **Auto-scroll idle timeout** or **Auto-scroll time limit** in Advanced Settings — the warning names which one it hit — and sync again.
+> **Very long conversations may need more time.** Auto-scroll gives up after 15 seconds without progress, or 300 seconds in total. If the export warns that it stopped early, raise **Auto-scroll idle timeout** or **Auto-scroll time limit** in Advanced Settings — the warning names which one it hit — and sync again. The note itself is capped at 8 MiB by default; if the sync fails with "above the … limit", raise **Maximum note size** (up to 16 MiB) in Advanced Settings.
 
 ### ChatGPT
 
@@ -112,7 +112,7 @@ Gemini-generated images are captured and exported automatically (see [Image Expo
 
 > **Keep Auto-scroll enabled for long conversations.** ChatGPT mounts only a window of turns at a time and discards the rest; with Auto-scroll off, only the turns currently on screen can be exported.
 
-> **Very long conversations may need more time.** Auto-scroll gives up after 15 seconds without progress, or 300 seconds in total. If the export warns that it stopped early, raise **Auto-scroll idle timeout** or **Auto-scroll time limit** in Advanced Settings — the warning names which one it hit — and sync again.
+> **Very long conversations may need more time.** Auto-scroll gives up after 15 seconds without progress, or 300 seconds in total. If the export warns that it stopped early, raise **Auto-scroll idle timeout** or **Auto-scroll time limit** in Advanced Settings — the warning names which one it hit — and sync again. The note itself is capped at 8 MiB by default; if the sync fails with "above the … limit", raise **Maximum note size** (up to 16 MiB) in Advanced Settings.
 
 > **Deep Research reports cannot be exported from ChatGPT.** See [Deep Research / Extended Thinking Export](#deep-research--extended-thinking-export).
 

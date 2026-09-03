@@ -6,7 +6,6 @@
  */
 
 import {
-  MAX_CONTENT_SIZE,
   MAX_FILENAME_LENGTH,
   MAX_FRONTMATTER_TITLE_LENGTH,
   MAX_TAGS_COUNT,
@@ -127,10 +126,8 @@ function validateNoteData(note: ObsidianNote | undefined): boolean {
     return false;
   }
 
-  // Content size limit (DoS prevention)
-  if (note.body.length > MAX_CONTENT_SIZE) {
-    return false;
-  }
+  // The body size cap is a user setting and is applied in handleMultiOutput(),
+  // the only place that can read settings (issue #467, ADR-038).
 
   // Frontmatter validation (DES-014 M-8: fail hard when missing)
   if (!validateFrontmatter(note.frontmatter)) {

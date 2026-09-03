@@ -21,7 +21,7 @@ This extension extracts conversations from Google Gemini (gemini.google.com), Cl
 • Web search results saved as collapsible callouts (Claude)
 • Append mode - only new messages are added to existing notes
 • Optional `## ` question headers for TOC navigation in long conversations
-• Auto-scroll for long conversations, including virtualized (windowed) Claude and ChatGPT threads - with configurable timeouts
+• Auto-scroll for long conversations, including virtualized (windowed) Claude and ChatGPT threads - with configurable timeouts and note size cap
 • Filename schemes - choose title-id (default) or title-date naming, with collision-safe overwrite protection that also refuses to replace a complete note with a partial one
 • Large-callout flattening - very long messages are saved as plain text so Obsidian stays responsive
 • Platform organization with {platform} template variable

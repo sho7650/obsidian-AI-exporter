@@ -17,6 +17,9 @@ import {
   MAX_SCROLL_IDLE_TIMEOUT_SEC,
   MIN_SCROLL_MAX_TIMEOUT_SEC,
   MAX_SCROLL_MAX_TIMEOUT_SEC,
+  DEFAULT_NOTE_SIZE_MIB,
+  MIN_NOTE_SIZE_MIB,
+  MAX_NOTE_SIZE_MIB,
 } from './constants';
 
 const MESSAGE_FORMATS = ['callout', 'plain', 'blockquote'] as const;
@@ -56,6 +59,7 @@ export const DEFAULT_SYNC_SETTINGS: SyncSettings = {
   maxCalloutLines: DEFAULT_MAX_CALLOUT_LINES,
   scrollIdleTimeoutSec: DEFAULT_SCROLL_IDLE_TIMEOUT_SEC,
   scrollMaxTimeoutSec: DEFAULT_SCROLL_MAX_TIMEOUT_SEC,
+  maxNoteSizeMiB: DEFAULT_NOTE_SIZE_MIB,
 };
 
 // --- Field coercion helpers ---
@@ -186,6 +190,12 @@ export function normalizeSyncSettings(raw: unknown): SyncSettings {
       MIN_SCROLL_MAX_TIMEOUT_SEC,
       MAX_SCROLL_MAX_TIMEOUT_SEC,
       d.scrollMaxTimeoutSec
+    ),
+    maxNoteSizeMiB: asIntInRange(
+      raw.maxNoteSizeMiB,
+      MIN_NOTE_SIZE_MIB,
+      MAX_NOTE_SIZE_MIB,
+      d.maxNoteSizeMiB
     ),
   };
 }
