@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.11...v2.11.0) (2026-09-03)
+
+
+### Features
+
+* make the note size cap a user setting, enforced where settings are readable ([#488](https://github.com/sho7650/obsidian-AI-exporter/issues/488)) ([edb1942](https://github.com/sho7650/obsidian-AI-exporter/commit/edb19421a6d4a49fadd626591107f686dddd7aed))
+
 ## [2.10.11](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.10.10...v2.10.11) (2026-09-03)
 
 
