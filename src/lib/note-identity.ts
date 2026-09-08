@@ -30,12 +30,7 @@ import { parseFrontmatter } from './frontmatter-parser';
  * - `same-conversation` — this is our note.
  */
 export type ProbeState =
-  | 'absent'
-  | 'empty'
-  | 'unparseable'
-  | 'no-id'
-  | 'different-id'
-  | 'same-conversation';
+  'absent' | 'empty' | 'unparseable' | 'no-id' | 'different-id' | 'same-conversation';
 
 /** Outcome of {@link classifyNoteProbe}. */
 export interface NoteProbe {
