@@ -215,6 +215,8 @@ source: gemini
 > response text
 ```
 
+The `tags:` list comes from two user settings in `TemplateOptions` (`conversationTags`, `deepResearchTags`), resolved by `src/lib/tag-template.ts`: entries are literal tags or the `{platform}` token, an invalid or empty field falls back to the defaults (`ai-conversation, {platform}` / `ai-research, deep-research, {platform}`), and append mode never rewrites an existing `tags:` block ([ADR-039](docs/adr/039-configurable-frontmatter-tags.md)).
+
 ## Supported Platforms
 
 - **Gemini** (`gemini.google.com`): Conversations, Deep Research reports, Gem conversations (`/gem/{gemId}/{conversationId}` — the conversation id is the second path segment), and generated images (see Image Export below)

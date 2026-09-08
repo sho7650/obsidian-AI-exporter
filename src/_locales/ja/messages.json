@@ -89,6 +89,15 @@
   "settings_includeTags": {
     "message": "タグを含める"
   },
+  "settings_conversationTags": {
+    "message": "会話のタグ"
+  },
+  "settings_deepResearchTags": {
+    "message": "Deep Research のタグ"
+  },
+  "settings_tagsHelp": {
+    "message": "カンマ区切り。{platform} は gemini / claude / chatgpt / perplexity / notebooklm に置き換わります。ai/chat のような階層タグも使えます。空欄にすると既定値に戻ります。"
+  },
   "settings_includeSource": {
     "message": "ソースと URL を含める"
   },

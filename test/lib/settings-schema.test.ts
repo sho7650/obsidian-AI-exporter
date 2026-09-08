@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   normalizeSyncSettings,
   DEFAULT_SYNC_SETTINGS,
@@ -77,7 +77,8 @@ describe('normalizeSyncSettings', () => {
 
   it('preserves a valid optional timezone but drops a non-string one', () => {
     expect(
-      normalizeSyncSettings({ templateOptions: { timezone: 'Asia/Tokyo' } }).templateOptions.timezone
+      normalizeSyncSettings({ templateOptions: { timezone: 'Asia/Tokyo' } }).templateOptions
+        .timezone
     ).toBe('Asia/Tokyo');
     expect(
       normalizeSyncSettings({ templateOptions: { timezone: 123 } }).templateOptions.timezone
@@ -173,5 +174,58 @@ describe('normalizeSyncSettings — note size cap (issue #467)', () => {
     const result = normalizeSyncSettings({ enableAppendMode: true, scrollIdleTimeoutSec: 60 });
     expect(result.maxNoteSizeMiB).toBe(8);
     expect(result.scrollIdleTimeoutSec).toBe(60);
+  });
+});
+
+describe('normalizeSyncSettings — frontmatter tag lists (issue #493)', () => {
+  it('defaults to the historical tag lists', () => {
+    const t = normalizeSyncSettings({}).templateOptions;
+    expect(t.conversationTags).toEqual(['ai-conversation', '{platform}']);
+    expect(t.deepResearchTags).toEqual(['ai-research', 'deep-research', '{platform}']);
+    expect(DEFAULT_TEMPLATE_OPTIONS.conversationTags).toEqual(['ai-conversation', '{platform}']);
+  });
+
+  it('preserves valid custom lists', () => {
+    const t = normalizeSyncSettings({
+      templateOptions: { conversationTags: ['ai/chat', '{platform}'], deepResearchTags: ['研究'] },
+    }).templateOptions;
+    expect(t.conversationTags).toEqual(['ai/chat', '{platform}']);
+    expect(t.deepResearchTags).toEqual(['研究']);
+  });
+
+  it('applies the same normalisation as the popup to values written elsewhere', () => {
+    const t = normalizeSyncSettings({
+      templateOptions: { conversationTags: ['#Foo Bar', ' ai/chat '] },
+    }).templateOptions;
+    expect(t.conversationTags).toEqual(['Foo-Bar', 'ai/chat']);
+  });
+
+  it('falls back to the default list for junk or an invalid entry, keeping the sibling', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    for (const bad of ['ai-chat', 42, null, ['ok', 'bad!'], ['123'], [''], [], [1, 2]]) {
+      const t = normalizeSyncSettings({
+        templateOptions: { conversationTags: bad, deepResearchTags: ['kept'] },
+      }).templateOptions;
+      expect(t.conversationTags, JSON.stringify(bad)).toEqual(['ai-conversation', '{platform}']);
+      expect(t.deepResearchTags).toEqual(['kept']);
+    }
+    vi.restoreAllMocks();
+  });
+
+  it('fills the fields in for settings written before they existed', () => {
+    const t = normalizeSyncSettings({
+      templateOptions: { includeTags: false, userCalloutType: 'TIP' },
+    }).templateOptions;
+    expect(t.includeTags).toBe(false);
+    expect(t.userCalloutType).toBe('TIP');
+    expect(t.conversationTags).toEqual(['ai-conversation', '{platform}']);
+    expect(t.deepResearchTags).toEqual(['ai-research', 'deep-research', '{platform}']);
+  });
+
+  it('returns fresh arrays so a caller cannot mutate the defaults', () => {
+    const a = normalizeSyncSettings({}).templateOptions.conversationTags;
+    const b = normalizeSyncSettings({}).templateOptions.conversationTags;
+    expect(a).not.toBe(b);
+    expect(a).not.toBe(DEFAULT_TEMPLATE_OPTIONS.conversationTags);
   });
 });

@@ -119,6 +119,18 @@
     "message": "Include Tags",
     "description": "Checkbox label for include tags"
   },
+  "settings_conversationTags": {
+    "message": "Conversation Tags",
+    "description": "Label for the frontmatter tag list written to conversation notes"
+  },
+  "settings_deepResearchTags": {
+    "message": "Deep Research Tags",
+    "description": "Label for the frontmatter tag list written to Deep Research notes"
+  },
+  "settings_tagsHelp": {
+    "message": "Comma-separated. {platform} becomes gemini, claude, chatgpt, perplexity or notebooklm. Nested tags like ai/chat are fine. Leave empty to restore the defaults.",
+    "description": "Help text under the two tag list fields"
+  },
   "settings_includeSource": {
     "message": "Include Source & URL",
     "description": "Checkbox label for include source"

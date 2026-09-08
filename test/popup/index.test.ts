@@ -105,6 +105,8 @@ function buildPopupDom(): void {
       <input type="text" id="userCallout" />
       <input type="text" id="assistantCallout" />
     </div>
+    <input type="text" id="conversationTags" />
+    <input type="text" id="deepResearchTags" />
     <div id="timezoneGroup">
       <select id="timezone"><option value="UTC">UTC</option></select>
     </div>
@@ -589,5 +591,79 @@ describe('note size setting (issue #467)', () => {
     el<HTMLInputElement>('maxNoteSizeMiB').value = '99';
 
     expect(await saveAndRead()).toMatchObject({ maxNoteSizeMiB: 16 });
+  });
+});
+
+describe('frontmatter tag lists (issue #493)', () => {
+  const templateWith = (extra: Record<string, unknown>) => ({
+    templateOptions: { ...storedSettings.templateOptions, ...extra },
+  });
+
+  async function initWith(overrides: Record<string, unknown>): Promise<void> {
+    buildPopupDom();
+    vi.mocked(getSettings).mockResolvedValue({ ...storedSettings, ...overrides });
+    await initPopup();
+  }
+
+  async function saveAndRead(): Promise<Record<string, unknown>> {
+    vi.mocked(saveSettings).mockResolvedValue(undefined);
+    el('saveBtn').click();
+    await vi.waitFor(() => expect(saveSettings).toHaveBeenCalled());
+    return vi.mocked(saveSettings).mock.calls[0][0] as unknown as Record<string, unknown>;
+  }
+
+  function savedTemplate(saved: Record<string, unknown>): Record<string, unknown> {
+    return saved.templateOptions as Record<string, unknown>;
+  }
+
+  it('shows the historical defaults when stored settings predate the fields', async () => {
+    await initWith({});
+
+    expect(el<HTMLInputElement>('conversationTags').value).toBe('ai-conversation, {platform}');
+    expect(el<HTMLInputElement>('deepResearchTags').value).toBe(
+      'ai-research, deep-research, {platform}'
+    );
+  });
+
+  it('populates both fields from stored lists', async () => {
+    await initWith(
+      templateWith({ conversationTags: ['ai/chat', '{platform}'], deepResearchTags: ['研究'] })
+    );
+
+    expect(el<HTMLInputElement>('conversationTags').value).toBe('ai/chat, {platform}');
+    expect(el<HTMLInputElement>('deepResearchTags').value).toBe('研究');
+  });
+
+  it('saves the typed lists as normalised arrays', async () => {
+    await initWith({});
+    el<HTMLInputElement>('conversationTags').value = ' #Foo Bar , ai/chat,{platform} ';
+    el<HTMLInputElement>('deepResearchTags').value = 'notes';
+
+    const t = savedTemplate(await saveAndRead());
+    expect(t.conversationTags).toEqual(['Foo-Bar', 'ai/chat', '{platform}']);
+    expect(t.deepResearchTags).toEqual(['notes']);
+  });
+
+  it('saves the defaults for an empty field', async () => {
+    await initWith({});
+    el<HTMLInputElement>('conversationTags').value = '';
+    el<HTMLInputElement>('deepResearchTags').value = ' , ';
+
+    const t = savedTemplate(await saveAndRead());
+    expect(t.conversationTags).toEqual(['ai-conversation', '{platform}']);
+    expect(t.deepResearchTags).toEqual(['ai-research', 'deep-research', '{platform}']);
+  });
+
+  it('falls back to the defaults, with a warning, when an entry is invalid', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await initWith({});
+    el<HTMLInputElement>('conversationTags').value = 'x,y!';
+    el<HTMLInputElement>('deepResearchTags').value = 'fine';
+
+    const t = savedTemplate(await saveAndRead());
+    expect(t.conversationTags).toEqual(['ai-conversation', '{platform}']);
+    expect(t.deepResearchTags).toEqual(['fine']);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('[G2O]'));
+    warn.mockRestore();
   });
 });
