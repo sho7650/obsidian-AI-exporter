@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.11.1...v2.12.0) (2026-09-08)
+
+
+### Features
+
+* make frontmatter tags a user setting with a {platform} token ([#494](https://github.com/sho7650/obsidian-AI-exporter/issues/494)) ([5005fe8](https://github.com/sho7650/obsidian-AI-exporter/commit/5005fe8392c617d69353c4d14876d3e82b0e4179)), closes [#493](https://github.com/sho7650/obsidian-AI-exporter/issues/493)
+
 ## [2.11.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.11.0...v2.11.1) (2026-09-03)
 
 
