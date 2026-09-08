@@ -26,6 +26,7 @@ Google Gemini（gemini.google.com）、Claude AI（claude.ai）、ChatGPT（chat
 • ファイル名スキーム - title-id（デフォルト）または title-date を選択、衝突時の上書き防止付き。読み込み途中の内容で完全なノートを置き換えることもしません
 • 長大コールアウトの平坦化 - 非常に長いメッセージをプレーンテキストで保存し Obsidian の描画を軽快に保つ
 • {platform} テンプレート変数によるプラットフォーム別整理
+• フロントマターのタグ名を設定可能 - 既定のタグを Vault で使っているタグに合わせて変更・削除、{platform} トークン対応
 • Obsidian REST API への HTTPS 接続をサポート
 • API URL、保存先パス、メッセージ形式、フロントマターフィールドをカスタマイズ可能
 • 英語・日本語 UI 対応

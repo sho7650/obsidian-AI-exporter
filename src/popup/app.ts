@@ -16,6 +16,12 @@ import {
   validateObsidianUrl,
 } from '../lib/validation';
 import {
+  DEFAULT_CONVERSATION_TAGS,
+  DEFAULT_DEEP_RESEARCH_TAGS,
+  formatTagList,
+  parseTagList,
+} from '../lib/tag-template';
+import {
   DEFAULT_OBSIDIAN_URL,
   DEFAULT_MAX_CALLOUT_LINES,
   VALID_MESSAGE_FORMATS,
@@ -101,6 +107,8 @@ function queryElements() {
     includeId: getElement<HTMLInputElement>('includeId'),
     includeTitle: getElement<HTMLInputElement>('includeTitle'),
     includeTags: getElement<HTMLInputElement>('includeTags'),
+    conversationTags: getElement<HTMLInputElement>('conversationTags'),
+    deepResearchTags: getElement<HTMLInputElement>('deepResearchTags'),
     includeSource: getElement<HTMLInputElement>('includeSource'),
     includeDates: getElement<HTMLInputElement>('includeDates'),
     includeMessageCount: getElement<HTMLInputElement>('includeMessageCount'),
@@ -214,6 +222,12 @@ function populateFrontmatterOptions(templateOptions: ExtensionSettings['template
   elements.includeId.checked = templateOptions.includeId ?? true;
   elements.includeTitle.checked = templateOptions.includeTitle ?? true;
   elements.includeTags.checked = templateOptions.includeTags ?? true;
+  elements.conversationTags.value = formatTagList(
+    templateOptions.conversationTags ?? DEFAULT_CONVERSATION_TAGS
+  );
+  elements.deepResearchTags.value = formatTagList(
+    templateOptions.deepResearchTags ?? DEFAULT_DEEP_RESEARCH_TAGS
+  );
   elements.includeSource.checked = templateOptions.includeSource ?? true;
   elements.includeDates.checked = templateOptions.includeDates ?? true;
   elements.includeMessageCount.checked = templateOptions.includeMessageCount ?? true;
@@ -427,6 +441,8 @@ function collectSettings(): ExtensionSettings {
     includeId: elements.includeId.checked,
     includeTitle: elements.includeTitle.checked,
     includeTags: elements.includeTags.checked,
+    conversationTags: parseTagList(elements.conversationTags.value, DEFAULT_CONVERSATION_TAGS),
+    deepResearchTags: parseTagList(elements.deepResearchTags.value, DEFAULT_DEEP_RESEARCH_TAGS),
     includeSource: elements.includeSource.checked,
     includeDates: elements.includeDates.checked,
     includeMessageCount: elements.includeMessageCount.checked,

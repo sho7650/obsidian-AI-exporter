@@ -331,6 +331,17 @@ export interface TemplateOptions {
   timezone?: string;
   /** Note filename naming scheme (issue #328). Defaults to `title-id`. */
   filenameScheme?: FilenameScheme;
+  /**
+   * Frontmatter tags for conversation notes (issue #493). Entries are literal
+   * tags or the `{platform}` token; see `lib/tag-template.ts`. Defaults to
+   * `['ai-conversation', '{platform}']`.
+   */
+  conversationTags?: string[];
+  /**
+   * Frontmatter tags for Deep Research notes (issue #493). Defaults to
+   * `['ai-research', 'deep-research', '{platform}']`.
+   */
+  deepResearchTags?: string[];
 }
 
 /**

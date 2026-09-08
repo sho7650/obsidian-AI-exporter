@@ -1457,3 +1457,95 @@ describe('conversationToNote — truncated capture', () => {
     expect(JSON.stringify(note.frontmatter)).not.toContain('truncated');
   });
 });
+
+describe('conversationToNote — configurable frontmatter tags (issue #493)', () => {
+  const baseOptions: TemplateOptions = {
+    includeId: true,
+    includeTitle: true,
+    includeTags: true,
+    includeSource: true,
+    includeDates: true,
+    includeMessageCount: true,
+    messageFormat: 'callout',
+    userCalloutType: 'QUESTION',
+    assistantCalloutType: 'NOTE',
+  };
+
+  const conversation = (source: ConversationData['source']): ConversationData => ({
+    id: 'conv1',
+    title: 'T',
+    source,
+    url: `https://example.com/${source}`,
+    messages: [
+      { role: 'user', content: 'q' },
+      { role: 'assistant', content: 'a' },
+    ],
+    extractedAt: new Date('2024-01-01'),
+    metadata: {
+      messageCount: 2,
+      userMessageCount: 1,
+      assistantMessageCount: 1,
+      hasCodeBlocks: false,
+    },
+  });
+
+  const research = (source: ConversationData['source']): ConversationData => ({
+    ...conversation(source),
+    type: 'deep-research',
+    messages: [{ role: 'assistant', content: 'report' }],
+  });
+
+  it('writes the historical defaults when the options carry no tag lists (pre-#493 settings)', () => {
+    expect(conversationToNote(conversation('claude'), baseOptions).frontmatter.tags).toEqual([
+      'ai-conversation',
+      'claude',
+    ]);
+    expect(conversationToNote(research('gemini'), baseOptions).frontmatter.tags).toEqual([
+      'ai-research',
+      'deep-research',
+      'gemini',
+    ]);
+  });
+
+  it('expands {platform} inside a custom conversation list', () => {
+    const options = { ...baseOptions, conversationTags: ['ai/chat', '{platform}'] };
+    expect(conversationToNote(conversation('claude'), options).frontmatter.tags).toEqual([
+      'ai/chat',
+      'claude',
+    ]);
+  });
+
+  it('omits the platform tag when the token is not in the list', () => {
+    const options = { ...baseOptions, conversationTags: ['notes'] };
+    expect(conversationToNote(conversation('gemini'), options).frontmatter.tags).toEqual(['notes']);
+  });
+
+  it('uses the Deep Research list for research notes and the conversation list otherwise', () => {
+    const options = {
+      ...baseOptions,
+      conversationTags: ['chat'],
+      deepResearchTags: ['research', '{platform}'],
+    };
+    expect(conversationToNote(research('perplexity'), options).frontmatter.tags).toEqual([
+      'research',
+      'perplexity',
+    ]);
+    expect(conversationToNote(conversation('perplexity'), options).frontmatter.tags).toEqual([
+      'chat',
+    ]);
+  });
+
+  it('drops a duplicate produced by expansion', () => {
+    const options = { ...baseOptions, conversationTags: ['claude', '{platform}'] };
+    expect(conversationToNote(conversation('claude'), options).frontmatter.tags).toEqual([
+      'claude',
+    ]);
+  });
+
+  it('does not let the note share the array stored in the options', () => {
+    const conversationTags = ['a', '{platform}'];
+    const note = conversationToNote(conversation('chatgpt'), { ...baseOptions, conversationTags });
+    expect(note.frontmatter.tags).not.toBe(conversationTags);
+    expect(conversationTags).toEqual(['a', '{platform}']);
+  });
+});

@@ -20,6 +20,11 @@ import type {
 } from '../lib/types';
 import { formatDateWithTimezone } from '../lib/date-utils';
 import { getDateVariables } from '../lib/path-utils';
+import {
+  DEFAULT_CONVERSATION_TAGS,
+  DEFAULT_DEEP_RESEARCH_TAGS,
+  resolveTags,
+} from '../lib/tag-template';
 
 // Re-exports (preserve existing import paths)
 export { htmlToMarkdown, escapeAngleBrackets, escapeUserText } from './markdown-rules';
@@ -88,10 +93,12 @@ export function conversationToNote(data: ConversationData, options: TemplateOpti
     url: data.url,
     created: formatDateWithTimezone(data.extractedAt, timezone),
     modified: now,
-    tags:
+    tags: resolveTags(
       data.type === 'deep-research'
-        ? ['ai-research', 'deep-research', data.source]
-        : ['ai-conversation', data.source],
+        ? (options.deepResearchTags ?? DEFAULT_DEEP_RESEARCH_TAGS)
+        : (options.conversationTags ?? DEFAULT_CONVERSATION_TAGS),
+      data.source
+    ),
     message_count: data.messages.length,
   };
 

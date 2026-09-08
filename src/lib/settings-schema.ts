@@ -21,6 +21,12 @@ import {
   MIN_NOTE_SIZE_MIB,
   MAX_NOTE_SIZE_MIB,
 } from './constants';
+import {
+  DEFAULT_CONVERSATION_TAGS,
+  DEFAULT_DEEP_RESEARCH_TAGS,
+  formatTagList,
+  parseTagList,
+} from './tag-template';
 
 const MESSAGE_FORMATS = ['callout', 'plain', 'blockquote'] as const;
 const FILENAME_SCHEMES = ['title-id', 'title-date'] as const;
@@ -37,6 +43,8 @@ export const DEFAULT_TEMPLATE_OPTIONS: TemplateOptions = {
   assistantCalloutType: 'NOTE',
   includeQuestionHeaders: false,
   filenameScheme: 'title-id',
+  conversationTags: [...DEFAULT_CONVERSATION_TAGS],
+  deepResearchTags: [...DEFAULT_DEEP_RESEARCH_TAGS],
 };
 
 export const DEFAULT_OUTPUT_OPTIONS: OutputOptions = {
@@ -95,14 +103,39 @@ function asEnum<T extends string>(value: unknown, allowed: readonly T[], fallbac
     : fallback;
 }
 
+/**
+ * A stored tag list, re-validated with the popup's own rules (issue #493).
+ * Anything that is not an array of strings, or that contains an entry Obsidian
+ * would refuse, falls back to the default list; `parseTagList` warns.
+ */
+function asTagList(value: unknown, fallback: readonly string[]): string[] {
+  if (!Array.isArray(value) || !value.every(entry => typeof entry === 'string')) {
+    return [...fallback];
+  }
+  return parseTagList(formatTagList(value), fallback);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+/**
+ * A fresh copy of the template defaults. The tag lists are arrays, so a
+ * spread of {@link DEFAULT_TEMPLATE_OPTIONS} alone would hand every caller the
+ * same array objects; copying them keeps the defaults immutable in practice.
+ */
+function freshTemplateDefaults(): TemplateOptions {
+  return {
+    ...DEFAULT_TEMPLATE_OPTIONS,
+    conversationTags: [...DEFAULT_CONVERSATION_TAGS],
+    deepResearchTags: [...DEFAULT_DEEP_RESEARCH_TAGS],
+  };
 }
 
 function normalizeTemplateOptions(raw: unknown): TemplateOptions {
   const d = DEFAULT_TEMPLATE_OPTIONS;
   if (!isRecord(raw)) {
-    return { ...d };
+    return freshTemplateDefaults();
   }
   const result: TemplateOptions = {
     includeId: asBoolean(raw.includeId, d.includeId),
@@ -119,6 +152,8 @@ function normalizeTemplateOptions(raw: unknown): TemplateOptions {
       d.includeQuestionHeaders ?? false
     ),
     filenameScheme: asEnum(raw.filenameScheme, FILENAME_SCHEMES, d.filenameScheme ?? 'title-id'),
+    conversationTags: asTagList(raw.conversationTags, DEFAULT_CONVERSATION_TAGS),
+    deepResearchTags: asTagList(raw.deepResearchTags, DEFAULT_DEEP_RESEARCH_TAGS),
   };
   // Optional string field: include only when a valid value is present.
   if (typeof raw.timezone === 'string') {
@@ -163,7 +198,7 @@ export function normalizeSyncSettings(raw: unknown): SyncSettings {
   if (!isRecord(raw)) {
     return {
       ...d,
-      templateOptions: { ...DEFAULT_TEMPLATE_OPTIONS },
+      templateOptions: freshTemplateDefaults(),
       outputOptions: { ...DEFAULT_OUTPUT_OPTIONS },
     };
   }

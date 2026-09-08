@@ -878,3 +878,56 @@ function createTestSettings(): ExtensionSettings {
     enableAppendMode: true,
   };
 }
+
+describe('buildAppendContent — frontmatter tags stay as the user left them (issue #493)', () => {
+  it('appends new messages without touching an existing tags block that differs from the setting', () => {
+    const existing = [
+      '---',
+      'id: claude_test-id',
+      'tags:',
+      '  - my/own-tag',
+      '  - hand-edited',
+      'message_count: 2',
+      'modified: "2026-01-01"',
+      '---',
+      '> [!QUESTION] User',
+      '> Hello',
+      '',
+      '> [!NOTE] Claude',
+      '> Hi there!',
+    ].join('\n');
+
+    const note = createTestNote({
+      frontmatter: createTestFrontmatter({ tags: ['ai/chat', 'claude'], message_count: 4 }),
+      body: [
+        '> [!QUESTION] User',
+        '> Hello',
+        '',
+        '> [!NOTE] Claude',
+        '> Hi there!',
+        '',
+        '> [!QUESTION] User',
+        '> Second question',
+        '',
+        '> [!NOTE] Claude',
+        '> Second answer',
+      ].join('\n'),
+    });
+    const settings = {
+      ...createTestSettings(),
+      templateOptions: {
+        ...createTestSettings().templateOptions,
+        conversationTags: ['ai/chat', '{platform}'],
+      },
+    };
+
+    const result = buildAppendContent(existing, note, settings);
+
+    expect(result).not.toBeNull();
+    expect(result!.messagesAppended).toBe(2);
+    expect(result!.content).toContain('tags:\n  - my/own-tag\n  - hand-edited\n');
+    expect(result!.content).not.toContain('ai/chat');
+    expect(result!.content).toContain('message_count: 4');
+    expect(result!.content).toContain('Second answer');
+  });
+});

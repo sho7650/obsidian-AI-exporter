@@ -29,7 +29,7 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 - **Math formula preservation**: LaTeX math (`$...$` and `$$...$$`) is preserved across all platforms for Obsidian's math renderer
 - **Nested code blocks**: A code block that itself contains a code block is fenced to fit its content, so answers about Markdown export intact
 - **Message format**: Obsidian callouts (default), blockquotes, or plain text — and the `[!QUESTION]` / `[!NOTE]` callout types are configurable per role
-- **YAML frontmatter**: Metadata including title, source, URL, dates, and tags
+- **YAML frontmatter**: Metadata including title, source, URL, dates, and tags. Tag names are configurable, with a `{platform}` token, so they can match the tags your vault already uses
 - **Configurable**: Customizable vault path, template options, and frontmatter fields
 - **Localized**: English and Japanese UI support
 
@@ -185,6 +185,8 @@ message_count: 4
 ```
 
 **Message Format** in Advanced Settings switches this between callouts (above), plain blockquotes, and plain text. **User Callout Type** and **Assistant Callout Type** change the `QUESTION` / `NOTE` keywords.
+
+**Conversation Tags** and **Deep Research Tags** (Advanced Settings → Frontmatter Fields) set the `tags:` list so it matches the tags your vault already uses. Each field is comma-separated; `{platform}` expands to the source id (`gemini`, `claude`, `chatgpt`, `perplexity`, `notebooklm`), nested tags such as `ai/chat` are allowed, and an empty field restores the defaults (`ai-conversation, {platform}` and `ai-research, deep-research, {platform}`). Entries follow Obsidian's tag rules (letters, digits, `_`, `-`, `/`; no spaces); an invalid entry makes the whole field fall back to its default. Notes already in the vault are never rewritten: append mode leaves their `tags:` block as you left it.
 
 Code blocks are fenced to fit their content. When a block contains another fenced block — common when you ask an AI to write a `README.md` or a prompt — the outer fence grows to four or more backticks so the inner fences stay part of the content, which is the nesting rule Obsidian documents. The original fence character cannot be recovered (the page only exposes the rendered code), so the outer fence is always backticks.
 

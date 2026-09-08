@@ -26,6 +26,7 @@ This extension extracts conversations from Google Gemini (gemini.google.com), Cl
 • Filename schemes - choose title-id (default) or title-date naming, with collision-safe overwrite protection that also refuses to replace a complete note with a partial one
 • Large-callout flattening - very long messages are saved as plain text so Obsidian stays responsive
 • Platform organization with {platform} template variable
+• Configurable frontmatter tags - rename or drop the default tags to match the ones your vault already uses, with a {platform} token
 • HTTPS support for secure connections to Obsidian REST API
 • Customizable API URL, save location, message format, and frontmatter fields
 • English and Japanese UI support

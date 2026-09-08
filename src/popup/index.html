@@ -382,6 +382,29 @@
                 </label>
               </div>
 
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="conversationTags" data-i18n="settings_conversationTags"
+                    >Conversation Tags</label
+                  >
+                  <input type="text" id="conversationTags" value="ai-conversation, {platform}" />
+                </div>
+                <div class="form-group">
+                  <label for="deepResearchTags" data-i18n="settings_deepResearchTags"
+                    >Deep Research Tags</label
+                  >
+                  <input
+                    type="text"
+                    id="deepResearchTags"
+                    value="ai-research, deep-research, {platform}"
+                  />
+                </div>
+              </div>
+              <p class="help" data-i18n="settings_tagsHelp">
+                Comma-separated. {platform} becomes gemini, claude, chatgpt, perplexity or
+                notebooklm. Nested tags like ai/chat are fine. Leave empty to restore the defaults.
+              </p>
+
               <div class="form-group timezone-group" id="timezoneGroup">
                 <label for="timezone" data-i18n="settings_timezone">Timezone</label>
                 <select id="timezone">
