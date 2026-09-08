@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.12.0...v2.12.1) (2026-09-08)
+
+
+### Miscellaneous
+
+* refresh package-lock and apply prettier 3.9.6 formatting ([#496](https://github.com/sho7650/obsidian-AI-exporter/issues/496)) ([0b6197d](https://github.com/sho7650/obsidian-AI-exporter/commit/0b6197de76652b56f96d0e4b764ecca1c0112031))
+
 ## [2.12.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.11.1...v2.12.0) (2026-09-08)
 
 
