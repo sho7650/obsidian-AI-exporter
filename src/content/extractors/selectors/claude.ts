@@ -73,12 +73,25 @@ export const SELECTORS = {
 
   // Scroll container for virtualized-conversation auto-scroll (ADR-017).
   // Claude windows/evicts turns; this is the overflow-y-auto element that
-  // scrolls the message list (observed live 2026-07: the div also carries
-  // overflow-x-hidden, flex-1, and [scrollbar-gutter:stable]).
+  // scrolls the message list.
+  //
+  // 2026-09 (issue #499): the container was found by its overflow classes
+  // alone (`.overflow-y-auto.overflow-x-hidden.flex-1`). Claude's redesigned
+  // left sidebar (`dframe-nav-scroll`) now carries the same three classes,
+  // precedes the thread in document order, and is itself scrollable — so the
+  // first match was the sidebar, auto-scroll scrolled the wrong element, and
+  // only the initially mounted tail of the conversation was exported (a
+  // 22-message thread came out as 7). ChatGPT's nav caused the identical
+  // failure in 2026-07, which is why that platform anchors on
+  // `[data-scroll-root]`. The thread scroller is the only element carrying
+  // `data-autoscroll-container` (measured live 2026-09-12: 1 match, holding
+  // every `[data-index]` row), so anchor on that. The class-based fallback
+  // keeps a `:has([data-index])` guard: a fallback that resolves to the
+  // sidebar is worse than none, and the two looser class selectors that used
+  // to sit below it resolved there first, so they are gone.
   scrollContainer: [
-    '.overflow-y-auto.overflow-x-hidden.flex-1', // Composite (HIGH)
-    '.overflow-y-auto.overflow-x-hidden', // Style pair (MEDIUM)
-    'div[class*="overflow-y-auto"]', // Partial match (LOW)
+    '[data-autoscroll-container]', // Semantic scroll root (HIGH)
+    '.overflow-y-auto.overflow-x-hidden.flex-1:has([data-index])', // Classes, thread-only (MEDIUM)
   ],
 } as const satisfies SelectorGroup;
 
