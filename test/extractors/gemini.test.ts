@@ -30,6 +30,10 @@ describe('GeminiExtractor', () => {
   beforeEach(() => {
     extractor = new GeminiExtractor();
     clearFixture();
+    // clearFixture() only wipes <body>; a <title> set by an earlier test
+    // (setGeminiTitle / document.title) lives in <head> and would leak into
+    // getTitle(), which now prefers document.title (issue #504).
+    document.title = '';
   });
 
   afterEach(() => {
@@ -163,6 +167,52 @@ describe('GeminiExtractor', () => {
         <p class="query-text-line">Query text fallback</p>
       `);
       expect(extractor.getTitle()).toBe('Query text fallback');
+    });
+
+    // Gemini has rendered its auto-generated chat name in document.title as
+    // "<name> - Google Gemini" since at least 2026-09 (issue #504). The first
+    // query is only a fallback for pages that carry the bare product title.
+    it('prefers the chat name in document.title over the first query (issue #504)', () => {
+      setGeminiLocation('test123');
+      document.title = 'ベーマガのInternet Archive公開における著作権問題 - Google Gemini';
+      loadFixture(`
+        <p class="query-text-line">このサイトは著作権上、問題ないのですか？</p>
+      `);
+      expect(extractor.getTitle()).toBe('ベーマガのInternet Archive公開における著作権問題');
+    });
+
+    it('falls back to the first query on the bare landing title "Google Gemini"', () => {
+      setGeminiLocation('test123');
+      document.title = 'Google Gemini';
+      loadFixture(`
+        <p class="query-text-line">First query</p>
+      `);
+      expect(extractor.getTitle()).toBe('First query');
+    });
+
+    it('falls back to the first query when document.title is empty', () => {
+      setGeminiLocation('test123');
+      document.title = '';
+      loadFixture(`
+        <p class="query-text-line">First query</p>
+      `);
+      expect(extractor.getTitle()).toBe('First query');
+    });
+
+    it('returns the default title when document.title is bare and no query exists', () => {
+      setGeminiLocation('test123');
+      document.title = 'Google Gemini';
+      loadFixture('<div>Empty page</div>');
+      expect(extractor.getTitle()).toBe('Untitled Gemini Conversation');
+    });
+
+    it('truncates a document.title-derived title to 100 characters', () => {
+      setGeminiLocation('test123');
+      document.title = `${'b'.repeat(150)} - Google Gemini`;
+      loadFixture(`
+        <p class="query-text-line">short</p>
+      `);
+      expect(extractor.getTitle()).toBe('b'.repeat(100));
     });
   });
 
@@ -404,6 +454,8 @@ describe('GeminiExtractor', () => {
       expect(result.data?.id).toBe('abc123def456');
       expect(result.data?.source).toBe('gemini');
       expect(result.data?.messages.length).toBe(2);
+      // The <title> element wins over the first user query "Hello" (issue #504)
+      expect(result.data?.title).toBe('Test Conversation');
     });
 
     it('generates fallback ID when no conversation ID in URL', async () => {
