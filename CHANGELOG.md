@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.4](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.12.3...v2.12.4) (2026-09-14)
+
+
+### Bug Fixes
+
+* **gemini:** prefer document.title over the first query for the note title ([#505](https://github.com/sho7650/obsidian-AI-exporter/issues/505)) ([2c06dbe](https://github.com/sho7650/obsidian-AI-exporter/commit/2c06dbe774d230bcc51c18af9c01a8172297be03)), closes [#504](https://github.com/sho7650/obsidian-AI-exporter/issues/504)
+
 ## [2.12.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.12.2...v2.12.3) (2026-09-12)
 
 
