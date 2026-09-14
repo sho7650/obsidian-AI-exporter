@@ -195,14 +195,22 @@ export class GeminiExtractor extends BaseExtractor {
   }
 
   /**
-   * Get conversation title from the first user query.
+   * Get conversation title from document.title, falling back to the first
+   * user query.
    *
-   * Gemini stopped rendering a conversation-title element by 2026-03 (the
-   * old top-bar selector group never matched again), so the first query has
-   * been the de-facto title source ever since; the dead path was removed.
+   * Gemini renders its auto-generated chat name as
+   * `"<name> - Google Gemini"` in document.title while a conversation is open
+   * (verified live 2026-09-14, issue #504, ADR-040); the bare landing page and
+   * a not-yet-named chat carry only "Google Gemini", which getPageTitle()
+   * rejects. No in-page title element exists (the old top-bar selector group
+   * never matched after 2026-03 and was removed), so the first query is the
+   * only DOM fallback.
    */
   getTitle(): string {
-    return this.getFirstMessageTitle(SELECTORS.queryTextLine, 'Untitled Gemini Conversation');
+    return (
+      this.getPageTitle() ??
+      this.getFirstMessageTitle(SELECTORS.queryTextLine, 'Untitled Gemini Conversation')
+    );
   }
 
   /**

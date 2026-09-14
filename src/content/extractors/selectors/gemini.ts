@@ -31,7 +31,10 @@ export const SELECTORS = {
   // NOTE: the former conversationTitle group was removed 2026-07. No
   // conversation-title element has existed in Gemini's DOM since at least
   // 2026-03 (the v1 baseline recorded 0 matches from day one); titles come
-  // from the first user query (see GeminiExtractor.getTitle).
+  // from document.title ("<name> - Google Gemini", issue #504 / ADR-040) with
+  // the first user query as the fallback (see GeminiExtractor.getTitle).
+  // The sidebar's `span.title-text` holds the name too, but it renders
+  // lazily, so it is deliberately not a selector here (baseline coupling).
 
   // AI-generated images inside a model response. Gemini wraps each generated
   // image in a <generated-image>/<single-image> component; the <img> carries a
