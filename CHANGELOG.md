@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.5](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.12.4...v2.12.5) (2026-09-18)
+
+
+### Miscellaneous
+
+* bump nixpkgs in flake.lock ([#507](https://github.com/sho7650/obsidian-AI-exporter/issues/507)) ([de6fa67](https://github.com/sho7650/obsidian-AI-exporter/commit/de6fa677a1abd8908d9450274e115fc291cf766b))
+
 ## [2.12.4](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.12.3...v2.12.4) (2026-09-14)
 
 
