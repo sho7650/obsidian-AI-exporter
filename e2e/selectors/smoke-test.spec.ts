@@ -311,9 +311,12 @@ async function runPlatformValidation(
       for (const result of allResults) {
         (grouped[result.group] ??= []).push(result);
       }
-      // Throws (and fails this test) on zero-match entries: a broken page
-      // state must never be recorded as the contract.
-      updateBaselineGroups(platform, grouped);
+      // Throws (and fails this test) on zero-match entries, and on counts that
+      // fell below the existing baseline unless ACCEPT_DEGRADED=1: a broken or
+      // degraded page state must never be recorded as the contract.
+      updateBaselineGroups(platform, grouped, {
+        acceptDegraded: process.env.ACCEPT_DEGRADED === '1',
+      });
       console.log(`${platform}: baseline updated for groups: ${groupNames.join(', ')}`);
     } else {
       const loaded = loadBaselineGroups(platform, groupNames);

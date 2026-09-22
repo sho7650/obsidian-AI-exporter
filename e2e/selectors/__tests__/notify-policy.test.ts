@@ -74,14 +74,24 @@ describe('buildStateFingerprint', () => {
   });
 
   it('is order-insensitive for issue lists', () => {
-    const a = makeReport('fail', [
-      makePlatform({ failedTargets: ['gemini_conv', 'gemini_dr'] }),
-    ]);
-    const b = makeReport('fail', [
-      makePlatform({ failedTargets: ['gemini_dr', 'gemini_conv'] }),
-    ]);
+    const a = makeReport('fail', [makePlatform({ failedTargets: ['gemini_conv', 'gemini_dr'] })]);
+    const b = makeReport('fail', [makePlatform({ failedTargets: ['gemini_dr', 'gemini_conv'] })]);
 
     expect(buildStateFingerprint(a)).toEqual(buildStateFingerprint(b));
+  });
+
+  it('includes unsettled targets, so a mid-render sample is a state change', () => {
+    // report-builder records unsettledTargets, but until 2026-09 the
+    // fingerprint ignored them: a run whose counts never settled was silently
+    // treated as identical to a clean one (e2e-coverage-gaps-2026-09.md §C.8).
+    const settled = buildStateFingerprint(makeReport('pass', [makePlatform()]));
+    const unsettled = buildStateFingerprint(
+      makeReport('pass', [makePlatform({ unsettledTargets: ['gemini_conv'] })])
+    );
+
+    expect(JSON.stringify(unsettled)).toContain('gemini_conv');
+    expect(unsettled).not.toEqual(settled);
+    expect(shouldNotify(unsettled, settled).notify).toBe(true);
   });
 
   it('ignores the timestamp', () => {

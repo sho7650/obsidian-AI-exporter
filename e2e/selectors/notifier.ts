@@ -15,7 +15,6 @@ interface NotificationConfig {
   vaultPath: string;
 }
 
-
 /**
  * Content column for a baseline row: "3 -> 0" plus the verdict.
  *
@@ -126,7 +125,8 @@ function generateRecoveryMarkdown(report: ValidationReport): string {
   ].join('\n');
 }
 
-function generateMarkdown(report: ValidationReport): string {
+/** Full health note. Exported for its tests; sending is {@link notifyObsidian}. */
+export function generateMarkdown(report: ValidationReport): string {
   const dateStr = report.timestamp.slice(0, 10);
   const lines: string[] = [
     '---',
@@ -141,8 +141,8 @@ function generateMarkdown(report: ValidationReport): string {
     '',
     '## Summary',
     '',
-    '| Platform | Auth | Pass | Dead Primary | Fail | BL Blocking | BL Advisory | Stall Skips |',
-    '|----------|------|------|--------------|------|-------------|-------------|-------------|',
+    '| Platform | Auth | Pass | Dead Primary | Fail | BL Blocking | BL Advisory | Stall Skips | Unsettled |',
+    '|----------|------|------|--------------|------|-------------|-------------|-------------|-----------|',
   ];
 
   for (const p of report.platforms) {
@@ -151,7 +151,8 @@ function generateMarkdown(report: ValidationReport): string {
     lines.push(
       `| ${p.platform} | ${auth} | ${c?.pass.length ?? '-'} | ${c?.warn.length ?? '-'} | ` +
         `${c?.fail.length ?? '-'} | ${c?.baselineBlocking.length ?? '-'} | ` +
-        `${c?.baselineAdvisory.length ?? '-'} | ${p.stallSkips.length || '-'} |`
+        `${c?.baselineAdvisory.length ?? '-'} | ${p.stallSkips.length || '-'} | ` +
+        `${p.unsettledTargets.length || '-'} |`
     );
   }
 
@@ -169,6 +170,16 @@ function generateMarkdown(report: ValidationReport): string {
         '### ⏳ Content Stall (skipped)',
         '',
         `Targets: ${p.stallSkips.join(', ')} — escalates to FAIL after 3 consecutive stalls.`,
+        ''
+      );
+    }
+
+    if (p.unsettledTargets.length > 0) {
+      sections.push(
+        '### ⏱️ Unsettled Counts (sampled mid-render)',
+        '',
+        `Targets: ${p.unsettledTargets.join(', ')} — the counts never stopped moving within ` +
+          'the settle timeout, so a diff from this run is not evidence of DOM drift (ADR-016 §1a).',
         ''
       );
     }

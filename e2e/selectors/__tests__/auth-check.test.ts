@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { resolveAuthStatus, isLoginUrl } from '../auth-check';
+import { resolveAuthStatus, isLoginUrl, AUTH_URL_PATTERNS } from '../auth-check';
 
-const GEMINI_PATTERN = /^https:\/\/gemini\.google\.com\/(app|deepresearch)\//;
+const GEMINI_PATTERN = AUTH_URL_PATTERNS.gemini;
+const CHATGPT_PATTERN = AUTH_URL_PATTERNS.chatgpt;
 
 describe('isLoginUrl', () => {
   it('recognizes Google account login URLs', () => {
@@ -57,6 +58,59 @@ describe('resolveAuthStatus', () => {
       loggedOutMarkerPresent: false,
     });
     expect(status).toBe('test_data_missing');
+  });
+
+  // The extension exports Gem conversations (/gem/{gemId}/{conversationId},
+  // gemini.ts getConversationId) and custom-GPT conversations
+  // (/g/{slug}/c/{uuid}, chatgpt.ts). A pinned test URL of either shape must
+  // not be misread as dead test data — that is what the 2026-09 audit found
+  // (docs/investigation/e2e-coverage-gaps-2026-09.md §A).
+  describe('conversation URL shapes the extension supports', () => {
+    it('accepts a Gemini Gem conversation URL', () => {
+      const status = resolveAuthStatus({
+        finalUrl: 'https://gemini.google.com/gem/1a2b3c4d5e6f7a8b/8c6eb888f77e1571',
+        conversationPattern: GEMINI_PATTERN,
+        loggedOutMarkerPresent: false,
+      });
+      expect(status).toBe('authenticated');
+    });
+
+    it('treats a Gem root (no conversation segment) as test_data_missing', () => {
+      // A dead Gem conversation bounces to the Gem's fresh-chat page.
+      const status = resolveAuthStatus({
+        finalUrl: 'https://gemini.google.com/gem/1a2b3c4d5e6f7a8b',
+        conversationPattern: GEMINI_PATTERN,
+        loggedOutMarkerPresent: false,
+      });
+      expect(status).toBe('test_data_missing');
+    });
+
+    it('accepts a ChatGPT custom-GPT conversation URL', () => {
+      const status = resolveAuthStatus({
+        finalUrl: 'https://chatgpt.com/g/g-abc123-my-gpt/c/6ab21727-d084-83e8-bf8f-762e3c7f5cc6',
+        conversationPattern: CHATGPT_PATTERN,
+        loggedOutMarkerPresent: false,
+      });
+      expect(status).toBe('authenticated');
+    });
+
+    it('treats a custom-GPT landing page (no /c/ segment) as test_data_missing', () => {
+      const status = resolveAuthStatus({
+        finalUrl: 'https://chatgpt.com/g/g-abc123-my-gpt',
+        conversationPattern: CHATGPT_PATTERN,
+        loggedOutMarkerPresent: false,
+      });
+      expect(status).toBe('test_data_missing');
+    });
+
+    it('still accepts a plain ChatGPT conversation URL', () => {
+      const status = resolveAuthStatus({
+        finalUrl: 'https://chatgpt.com/c/6ab21727-d084-83e8-bf8f-762e3c7f5cc6',
+        conversationPattern: CHATGPT_PATTERN,
+        loggedOutMarkerPresent: false,
+      });
+      expect(status).toBe('authenticated');
+    });
   });
 
   it('returns authenticated when no pattern is configured (unknown platform)', () => {
