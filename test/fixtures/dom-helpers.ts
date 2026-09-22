@@ -1049,7 +1049,10 @@ export function createChatGPTConversationDOM(messages: ChatGPTConversationMessag
  */
 export function setChatGPTLocation(conversationId: string, prefix: 'c' | 'g' = 'c'): void {
   const gptSlug = 'g-abc123-test-gpt';
-  defineLocation('chatgpt.com', prefix === 'g' ? `/g/${gptSlug}/c/${conversationId}` : `/c/${conversationId}`);
+  defineLocation(
+    'chatgpt.com',
+    prefix === 'g' ? `/g/${gptSlug}/c/${conversationId}` : `/c/${conversationId}`
+  );
 }
 
 /**
@@ -1073,6 +1076,64 @@ export function createChatGPTInlineCitation(url: string, displayText: string): s
         </a>
       </span>
     </span>
+  `;
+}
+
+/**
+ * An assistant turn carrying a generated-image widget, as measured live on
+ * 2026-09-22 (docs/investigation/chatgpt-image-dom-structure.md): the turn has
+ * `data-turn="assistant"` but NO `.markdown.prose` and NO `[data-message-id]`;
+ * the widget is `div.group/imagegen-image#image-<uuid>` holding three `<img>`
+ * with one src — the visible one (alt "Generated image: …") plus two
+ * `aria-hidden` duplicates (crossfade, blurred backdrop). `prose` adds a
+ * markdown block before the widget for the mixed-turn case.
+ */
+export function createChatGPTImageTurnDOM(options: {
+  turnId: string;
+  ordinal: number;
+  imageUuid: string;
+  src: string;
+  alt?: string;
+  prose?: string;
+}): string {
+  const alt = options.alt ?? 'Generated image: A test picture';
+  const prose = options.prose
+    ? `<div data-message-author-role="assistant" data-message-id="msg-${options.ordinal}">
+         <div class="markdown prose dark:prose-invert w-full break-words">${options.prose}</div>
+       </div>`
+    : '';
+  return `
+    <section data-turn-id="${options.turnId}" data-testid="conversation-turn-${options.ordinal}" data-turn="assistant">
+      <div class="text-base my-auto mx-auto">
+        <div class="mx-auto flex-1 group/turn-messages">
+          <div class="flex max-w-full flex-col gap-4 grow">
+            ${prose}
+            <div class="pb-2"><div class="relative pb-2"><div class="relative">
+              <div class="group/imagegen-image relative w-full overflow-hidden max-w-[30rem] rounded-[36px]"
+                   id="image-${options.imageUuid}" style="aspect-ratio: 1.77683 / 1;">
+                <div role="button" tabindex="0" class="relative z-0 h-full w-full rounded-[inherit]">
+                  <div class="relative z-0 cursor-pointer overflow-hidden rounded-[inherit] max-w-[30rem]">
+                    <div class="absolute start-0 end-0 top-0 z-2 w-full overflow-hidden rounded-[inherit]">
+                      <img id="_r_lt_" loading="lazy" decoding="async" width="1672" height="941"
+                           alt="${escapeHtml(alt)}" class="absolute top-0 z-1 w-full" src="${options.src}">
+                    </div>
+                    <div class="relative z-1 w-full overflow-hidden rounded-[inherit]">
+                      <img width="1672" height="941" alt="" aria-hidden="true" loading="lazy" decoding="async" src="${options.src}">
+                    </div>
+                    <div class="absolute inset-0 z-0 scale-110 overflow-hidden rounded-[inherit] blur-2xl">
+                      <img loading="lazy" decoding="async" alt="" aria-hidden="true" class="absolute top-0 w-full" src="${options.src}">
+                    </div>
+                  </div>
+                </div>
+                <button aria-label="Edit image">Edit</button>
+                <button aria-label="Share this image"></button>
+              </div>
+            </div></div></div>
+          </div>
+          <div class="z-0 flex min-h-[46px] justify-start"></div>
+        </div>
+      </div>
+    </section>
   `;
 }
 

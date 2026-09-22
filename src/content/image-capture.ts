@@ -86,21 +86,37 @@ async function fetchRemoteImageDetailed(
 }
 
 /**
+ * True when the page itself can fetch `url`: a `blob:` URL (page-scoped by
+ * nature) or a URL on the page's own origin. ChatGPT serves generated images
+ * from `https://chatgpt.com/backend-api/…`, signed and cookie-gated; a
+ * same-origin fetch sends the cookies by default and is not subject to CORS,
+ * so it needs neither the worker nor a manifest host (ADR-041).
+ */
+function readableFromPage(url: string): boolean {
+  if (url.startsWith('blob:')) return true;
+  try {
+    return new URL(url, window.location.href).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Fetch an image from the page and return it as an {@link ExtractedImage} with
  * base64 data. Returns `null` on any failure (network error, non-OK response,
  * oversized image, unsupported type) so a single bad image never aborts the
  * whole extraction.
  *
- * `blob:` URLs are read here because only the page context can resolve them.
- * Everything else is delegated to the background worker, which is not bound by
- * the page's CORS rules (issue #376).
+ * `blob:` and same-origin URLs are read here because the page context can
+ * resolve them. Everything else is delegated to the background worker, which
+ * is not bound by the page's CORS rules (issue #376).
  */
 export async function fetchImageAsBase64(
   url: string,
   id: string,
   alt: string
 ): Promise<ExtractedImage | null> {
-  if (!url.startsWith('blob:')) {
+  if (!readableFromPage(url)) {
     return fetchRemoteImage(url, id, alt);
   }
 
@@ -196,13 +212,16 @@ function captureFromElement(
  * Capture one generated image, choosing the only mechanism that can work for
  * its source form.
  *
- * - `blob:` — read the URL if it is still alive (that keeps the original
- *   encoding), otherwise recover the bytes from the rendered element.
- * - anything else — delegate to the service worker, which is exempt from the
- *   CORS rules the page is bound by.
+ * - `blob:` or same-origin `https:` — read the URL if it still resolves (that
+ *   keeps the original encoding), otherwise recover the bytes from the
+ *   rendered element: a revoked blob (Gemini, ADR-027) or an expired signed URL
+ *   (ChatGPT, ADR-041) both leave the decoded bitmap in place, and a
+ *   same-origin image does not taint the canvas.
+ * - cross-origin `https:` — delegate to the service worker, which is exempt
+ *   from the CORS rules the page is bound by.
  *
  * The two forms are not interchangeable and no cross-fallback is attempted:
- * a canvas read of an https source always raises SecurityError, and the
+ * a canvas read of a cross-origin source always raises SecurityError, and the
  * worker's allow-list rejects `blob:` by design.
  */
 export async function captureImage(
@@ -213,7 +232,7 @@ export async function captureImage(
   const src = element.getAttribute('src') ?? '';
   if (!src) return captureFailed('image element has no src');
 
-  if (!src.startsWith('blob:')) {
+  if (!readableFromPage(src)) {
     const remote = await fetchRemoteImageDetailed(src, id, alt);
     return remote;
   }

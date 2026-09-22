@@ -11,13 +11,12 @@ import {
   describeScrollStop,
   type ScrollResult,
 } from '../../lib/scroll-manager';
-import { captureImage } from '../image-capture';
+import { ImageMarkerCollector } from '../image-markers';
 import type {
   SyncSettings,
   ExtractionResult,
   ConversationMessage,
   DeepResearchSource,
-  ExtractedImage,
 } from '../../lib/types';
 
 import { SELECTORS, DEEP_RESEARCH_SELECTORS, COMPUTED_SELECTORS } from './selectors/gemini';
@@ -29,14 +28,13 @@ export class GeminiExtractor extends BaseExtractor {
   enableImageExport = true;
 
   /**
-   * Generated-image capture state, populated (sync) while extractMessages()
-   * rewrites `<img>` into markers and drained (async) in extract(). Reset at
-   * the start of every extract() so re-runs never carry stale ids.
+   * Generated-image markers, registered (sync) while extractMessages()
+   * rewrites `<img>` and drained (async) in extract(). Ids count up within one
+   * extraction — safe here because Gemini extracts in a single pass — and the
+   * counter and collector are reset at the start of every extract().
    */
+  private readonly images = new ImageMarkerCollector();
   private imageIdCounter = 0;
-  private pendingImages: Array<{ id: string; alt: string; element: HTMLImageElement }> = [];
-  /** Reasons images could not be captured, surfaced as a warning (issue: revoked blob URLs). */
-  private imageFailures: string[] = [];
 
   /** Apply the settings only Gemini has; the shared ones live in BaseExtractor. */
   protected applyPlatformSettings(settings: SyncSettings): void {
@@ -67,8 +65,7 @@ export class GeminiExtractor extends BaseExtractor {
 
       // Reset per-extraction image state before extractMessages() populates it.
       this.imageIdCounter = 0;
-      this.pendingImages = [];
-      this.imageFailures = [];
+      this.images.reset();
 
       const scrollResult = await this.runAutoScroll();
 
@@ -84,7 +81,7 @@ export class GeminiExtractor extends BaseExtractor {
       );
 
       // Fetch captured generated images (blob → base64) and attach to the data.
-      const result = await this.attachImages(baseResult);
+      const result = await this.images.attach(baseResult);
 
       // One builder for both engines: this warning used to be a byte-identical
       // literal here and in BaseExtractor.collectMessages() (ADR-032).
@@ -335,81 +332,14 @@ export class GeminiExtractor extends BaseExtractor {
 
   /**
    * Return the element's innerHTML with every generated `<img>` replaced by a
-   * `<img data-g2o-image="img-N">` marker. Each replaced image's blob URL and
-   * alt text are recorded in {@link pendingImages} for later async capture.
-   * Operates on a clone so the live DOM is never mutated.
+   * `<img data-g2o-image="img-N">` marker; the live images are queued on the
+   * shared collector for async capture (see {@link ImageMarkerCollector}).
    */
   private replaceGeneratedImages(element: HTMLElement): string {
-    if (!element.querySelector(COMPUTED_SELECTORS.generatedImage)) {
-      return element.innerHTML;
-    }
-
-    const clone = element.cloneNode(true) as HTMLElement;
-    const imgs = clone.querySelectorAll<HTMLImageElement>(COMPUTED_SELECTORS.generatedImage);
-    // The clone's images are markers-to-be; the LIVE elements are what capture
-    // needs, because a revoked blob URL can only be read back off the rendered
-    // bitmap. querySelectorAll is document order, so index i pairs the two.
-    const live = element.querySelectorAll<HTMLImageElement>(COMPUTED_SELECTORS.generatedImage);
-    imgs.forEach((img, index) => {
-      // Image export disabled: drop the generated image so a src-less <img>
-      // does not leak an empty `![]()` link into the note.
-      if (!this.enableImageExport) {
-        img.remove();
-        return;
-      }
-
-      const src = img.getAttribute('src') ?? '';
-      const element = live[index];
-      if (!src || !element) return;
-      const id = `img-${++this.imageIdCounter}`;
-      const alt = img.getAttribute('alt') ?? '';
-      this.pendingImages.push({ id, alt, element });
-
-      const marker = clone.ownerDocument.createElement('img');
-      marker.setAttribute('data-g2o-image', id);
-      if (alt) marker.setAttribute('alt', alt);
-      img.replaceWith(marker);
+    return this.images.rewrite(element, {
+      selector: COMPUTED_SELECTORS.generatedImage,
+      enabled: this.enableImageExport,
+      idFor: () => `img-${++this.imageIdCounter}`,
     });
-
-    return clone.innerHTML;
-  }
-
-  /**
-   * Attach captured images to a successful extraction result (immutably).
-   * Failed fetches are skipped; their markers remain in the body and are
-   * resolved away per output destination.
-   */
-  private async attachImages(result: ExtractionResult): Promise<ExtractionResult> {
-    if (!result.success || !result.data) return result;
-    const images = await this.collectPendingImages();
-    const warnings =
-      this.imageFailures.length > 0
-        ? [
-            ...(result.warnings ?? []),
-            `${this.imageFailures.length} image(s) could not be captured: ${[...new Set(this.imageFailures)].join('; ')}`,
-          ]
-        : result.warnings;
-    return { ...result, data: { ...result.data, images }, ...(warnings && { warnings }) };
-  }
-
-  /**
-   * Drain {@link pendingImages}, fetching each blob URL as base64 in the page
-   * context. Sequential to avoid overwhelming the page; a handful of images.
-   */
-  private async collectPendingImages(): Promise<ExtractedImage[]> {
-    const images: ExtractedImage[] = [];
-    for (const pending of this.pendingImages) {
-      const result = await captureImage(pending.element, pending.id, pending.alt);
-      if (result.image) {
-        images.push(result.image);
-        continue;
-      }
-      // Never drop an image in silence: a lost one leaves an empty assistant
-      // message that looks identical to image export being switched off.
-      const reason = result.reason ?? 'unknown error';
-      console.warn(`[G2O] Image capture failed (${pending.id}): ${reason}`);
-      this.imageFailures.push(reason);
-    }
-    return images;
   }
 }

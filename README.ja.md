@@ -15,7 +15,7 @@ Google Gemini、Claude AI、ChatGPT、Perplexity、Gemini Notebook（旧 Noteboo
 - **複数の出力オプション**: Obsidian への保存、ファイルダウンロード、クリップボードへコピー
 - **Deep Research 対応**: Gemini Deep Research、Claude Extended Thinking、Perplexity Deep Research レポートを保存
 - **Artifact 対応**: Claude Artifacts をインライン引用とソース付きで抽出
-- **画像エクスポート**: Gemini が生成した画像を会話と一緒に保存 — vault への埋め込み、ファイルダウンロード、クリップボード時は除去
+- **画像エクスポート**: Gemini と ChatGPT が生成した画像を会話と一緒に保存 — vault への埋め込み、ファイルダウンロード、クリップボード時は除去
 - **ソース引用**: Gemini Notebook のチャット引用を footnote 形式でエクスポート
 - **自動スクロール**: 長い会話で全メッセージを自動的に読み込み。仮想化（windowing）された Claude・ChatGPT のスレッドにも対応。2 つのタイムアウト（アイドル: 既定 15 秒／全体: 既定 300 秒）は設定可能で、非常に長い会話では延長できます。ノートサイズの上限（既定 8 MiB、最大 16 MiB）も同様に引き上げられます
 - **追記モード**: 既存ノートには新しいメッセージのみを追加
@@ -92,7 +92,7 @@ Google Gemini、Claude AI、ChatGPT、Perplexity、Gemini Notebook（旧 Noteboo
    - **ファイル**: Markdown ファイルとしてダウンロード
    - **クリップボード**: クリップボードにコピー（どこにでも貼り付け可能）
 
-Gemini が生成した画像は自動的に捕捉・エクスポートされます（[画像エクスポート](#画像エクスポート)を参照）。
+Gemini と ChatGPT が生成した画像は自動的に捕捉・エクスポートされます（[画像エクスポート](#画像エクスポート)を参照）。
 
 ### Claude
 
@@ -268,13 +268,15 @@ message_count: 1
 
 ## 画像エクスポート
 
-Gemini が生成した画像は会話と一緒にエクスポートされます（デフォルトで有効。詳細設定の **画像をエクスポート** で切り替え）。各画像は base64 として捕捉され、出力先ごとに解決されます:
+Gemini と ChatGPT が生成した画像は会話と一緒にエクスポートされます（デフォルトで有効。詳細設定の **画像をエクスポート** で切り替え）。各画像は base64 として捕捉され、出力先ごとに解決されます:
 
 - **Obsidian**: 画像は **画像フォルダ**（デフォルト `AI/{platform}/images`、vault パスと同じテンプレートトークンに対応）配下の vault に書き込まれ、本文は `![[filename]]` ウィキリンクで埋め込みます。
 - **ファイルダウンロード**: Markdown ファイルと各画像を別々のファイルとしてダウンロードします。
 - **クリップボード**: 画像プレースホルダは除去されます（バイナリはコピーされません）。
 
 Gemini は生成画像を、ページ側でしか読めない `blob:` URL か、Google の画像 CDN（`googleusercontent.com`）のいずれかで配信します。本拡張機能は `blob:` URL をページ内で読み取り、CDN 上の画像はバックグラウンドワーカーでダウンロードします（ブラウザがページからの直接取得をブロックするため）。この CDN はダウンロードを `lh3.google.com` にリダイレクトするため、両方のホストへのアクセス権限を要求しています。いずれも、あなたがエクスポートを指示した画像のダウンロードにのみ使用します。
+
+ChatGPT は生成画像を `chatgpt.com` 自身から配信するため、ページが既存のセッションでそのまま取得します。追加のホスト権限は不要です。ChatGPT の画像ターンには本文がないため、画像だけを含むメッセージとしてエクスポートされます。
 
 ガード: 1ノートあたり最大20画像、1画像あたり最大10MB。追記モードでは画像プレースホルダを除去します（追記モードでの画像処理は今後対応）。画像を保存できなかった場合もノート自体は書き込まれ、スキップした画像名が警告として表示されます。
 
@@ -318,19 +320,19 @@ Obsidian Local REST API (デフォルト: http://127.0.0.1:27123)
 
 ### 主要コンポーネント
 
-| コンポーネント                         | 説明                                              |
-| -------------------------------------- | ------------------------------------------------- |
-| `src/content/`                         | DOM 抽出と UI 用のコンテンツスクリプト            |
-| `src/content/extractors/gemini.ts`     | Gemini 会話 & Deep Research 抽出                  |
-| `src/content/extractors/claude.ts`     | Claude 会話 & Artifact 抽出                       |
-| `src/content/extractors/chatgpt.ts`    | ChatGPT 会話抽出                                  |
-| `src/content/extractors/perplexity.ts` | Perplexity 会話抽出                               |
-| `src/content/extractors/notebooklm.ts` | Gemini Notebook チャット & ソース引用抽出         |
-| `src/content/image-capture.ts`         | Gemini 生成画像をページコンテキストで base64 捕捉 |
-| `src/background/`                      | API 通信用のサービスワーカー                      |
-| `src/lib/image-output.ts`              | 出力先ごとに画像プレースホルダを解決              |
-| `src/popup/`                           | 設定 UI                                           |
-| `src/lib/`                             | 共有ユーティリティと型定義                        |
+| コンポーネント                         | 説明                                       |
+| -------------------------------------- | ------------------------------------------ |
+| `src/content/`                         | DOM 抽出と UI 用のコンテンツスクリプト     |
+| `src/content/extractors/gemini.ts`     | Gemini 会話 & Deep Research 抽出           |
+| `src/content/extractors/claude.ts`     | Claude 会話 & Artifact 抽出                |
+| `src/content/extractors/chatgpt.ts`    | ChatGPT 会話抽出                           |
+| `src/content/extractors/perplexity.ts` | Perplexity 会話抽出                        |
+| `src/content/extractors/notebooklm.ts` | Gemini Notebook チャット & ソース引用抽出  |
+| `src/content/image-capture.ts`         | 生成画像をページコンテキストで base64 捕捉 |
+| `src/background/`                      | API 通信用のサービスワーカー               |
+| `src/lib/image-output.ts`              | 出力先ごとに画像プレースホルダを解決       |
+| `src/popup/`                           | 設定 UI                                    |
+| `src/lib/`                             | 共有ユーティリティと型定義                 |
 
 ## HTTPS 設定（オプション）
 
