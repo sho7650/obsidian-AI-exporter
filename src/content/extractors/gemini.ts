@@ -233,7 +233,7 @@ export class GeminiExtractor extends BaseExtractor {
     // Process each conversation turn
     turns.forEach((turn, index) => {
       // Extract user query from this turn
-      const userQuery = turn.querySelector('user-query');
+      const userQuery = this.queryWithFallback<HTMLElement>(SELECTORS.userQuery, turn);
       if (userQuery) {
         const content = this.extractUserQueryContent(userQuery);
         if (content) {
@@ -247,7 +247,7 @@ export class GeminiExtractor extends BaseExtractor {
       }
 
       // Extract model response from this turn
-      const modelResponse = turn.querySelector('model-response');
+      const modelResponse = this.queryWithFallback<HTMLElement>(SELECTORS.modelResponse, turn);
       if (modelResponse) {
         const content = this.extractModelResponseContent(modelResponse);
         if (content) {
@@ -295,7 +295,7 @@ export class GeminiExtractor extends BaseExtractor {
    */
   private extractUserQueryContent(element: Element): string {
     // Get all query text lines and join them
-    const lines = element.querySelectorAll('.query-text-line');
+    const lines = this.queryAllWithFallback<HTMLElement>(SELECTORS.queryTextLine, element);
 
     if (lines.length > 0) {
       const textParts: string[] = [];

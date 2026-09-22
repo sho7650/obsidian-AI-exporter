@@ -170,7 +170,7 @@ export class ClaudeExtractor extends BaseExtractor {
     const userMessages = this.queryAllWithFallback<HTMLElement>(SELECTORS.userMessage);
     userMessages.forEach(el => {
       if (this.isInDismissedPanel(el)) return;
-      const assistantParent = el.closest('.font-claude-response, [class*="font-claude-response"]');
+      const assistantParent = el.closest(JOINED_SELECTORS.assistantResponse);
       if (!assistantParent) {
         allElements.push({ element: el, type: 'user' });
       }
@@ -453,7 +453,9 @@ export class ClaudeExtractor extends BaseExtractor {
 
   /** .standard-markdown content (code interpreter, file analysis) */
   private extractToolMarkdown(toolSection: Element, parts: string[]): void {
-    const markdownEls = toolSection.querySelectorAll('.standard-markdown');
+    // Primary only: tool sections are opt-in content, and the group's loose
+    // `[class*="markdown"]` fallback would pull unrelated nodes into the note.
+    const markdownEls = toolSection.querySelectorAll(SELECTORS.markdownContent[0]);
     markdownEls.forEach(el => {
       const html = sanitizeHtml(el.innerHTML);
       if (html.trim()) {
