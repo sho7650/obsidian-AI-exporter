@@ -10,7 +10,7 @@
 - `src/manifest.json:20-34`: `host_permissions` and CSP `connect-src` list only Google image hosts (`*.googleusercontent.com`, `lh3.google.com`). No OpenAI content host.
 - `test/fixtures/html/chatgpt/` contains no generated image (two 32 px favicon `<img>` only).
 - The image pipeline has exactly one consumer, `GeminiExtractor`. Claude, Perplexity and NotebookLM extractors neither import `image-capture.ts` nor emit `data-g2o-image`.
-- Behaviour today for an `https:` image inside a ChatGPT answer (read from code, not executed): DOMPurify keeps `https:` `src` (`test/lib/sanitize.test.ts:97-100`), no `g2oImage` rule matches (`src/content/markdown-rules.ts:208-219`), so Turndown's built-in rule emits a raw `![alt](https://…)` link into the note. A `blob:` `src` is stripped by DOMPurify's default URI regexp.
+- Behaviour today (measured 2026-09-22, see `chatgpt-image-dom-structure.md`): the generated image sits in its own assistant turn with no `.markdown.prose`, so `extractAssistantContent` returns `''` and the turn is dropped. The image is silently omitted from the note. (Had the `<img>` been inside the prose, DOMPurify would keep an `https:` `src` — `test/lib/sanitize.test.ts:97-100` — and Turndown's built-in rule would emit a raw link; a `blob:` `src` is stripped by DOMPurify's default URI regexp.)
 
 ## Gemini pipeline: what is reusable vs Gemini-specific
 
@@ -58,12 +58,8 @@ DOMPurify: default URI regexp allows neither `blob:` nor `data:`; `data:` on `<i
 
 MDN: drawing a cross-origin image without CORS approval taints the canvas; `toDataURL` / `toBlob` / `getImageData` then throw `SecurityError`. A cross-origin CDN image is therefore worker-fetch-only.
 
-## Not documented anywhere — must be measured on a live conversation
+## Not documented anywhere — measured on a live conversation
 
-- DOM structure of a generated image inside an answer (wrapper element, attributes, alt text).
-- Whether `src` is `blob:` or `https:`, and on which host (`*.oaiusercontent.com` is only an allow-list entry).
-- Whether the host sends `Access-Control-Allow-Origin`, and whether the fetch needs cookies or a token.
-- URL expiry, redirect chains, byte size and format of the served image.
-- Whether generated images survive scroll virtualization (evicted rows) the same way text does.
+Measured 2026-09-22 in `chatgpt-image-dom-structure.md`: same-origin signed URL on `chatgpt.com/backend-api/estuary/content` (cookie + `sig` both required, 403 otherwise), `image/png` 2.67 MB, canvas untainted, container `div.group/imagegen-image#image-<uuid>` holding three `<img>` with one `src`, image turn carries no `.markdown.prose` / `[data-message-id]`.
 
-Template for the measurement: `docs/investigation/gemini-image-dom-structure.md`. It requires the CDP daemon and a pinned ChatGPT conversation that contains a generated image; the current `CHATGPT_CONV_URL` is dead as of 2026-09-22 (`test_data_missing`).
+Still open: signed-URL expiry, multi-image and edited-image turns, older conversations on `files.oaiusercontent.com`, eviction under scroll virtualization. The current `CHATGPT_CONV_URL` in `e2e/.env.local` is dead as of 2026-09-22 (`test_data_missing`).
