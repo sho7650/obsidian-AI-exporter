@@ -125,6 +125,11 @@ Consequently:
   containers in `CONTENT_REQUIRED` an empty match is refused at update time with
   `refusing to record matched-but-empty selectors` — recording zero there would make content
   loss undetectable for good. Fix the selector or the test conversation, never the contract.
+- An update also refuses to record a `matchCount` or `nonEmptyCount` **lower than the existing
+  baseline** for the same selector (`refusing to lower the <platform> baseline`), because a plain
+  re-record would turn a standing `degraded` advisory into the contract — that is how Claude's
+  `assistantResponse` went 62 → 6 in 2026-09 without a decision. Confirm the drop is the test
+  conversation, then rerun with `ACCEPT_DEGRADED=1 nix run .#e2e-baseline-update`.
 
 Load the extension in Chrome: `chrome://extensions` → Load unpacked → select `dist/` folder
 

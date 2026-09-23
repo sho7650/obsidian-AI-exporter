@@ -17,11 +17,18 @@ import type { Page } from 'playwright';
 /**
  * Platform-specific URL patterns that indicate a successful authenticated navigation.
  * If the current URL doesn't match, the session has expired or the test data is gone.
+ *
+ * Each pattern must accept every conversation-URL shape the extension exports,
+ * or a valid pinned test URL is misread as dead test data:
+ * - Gemini Gem chats live at /gem/{gemId}/{conversationId} (gemini.ts
+ *   getConversationId); a dead one bounces to /gem/{gemId}, which must stay
+ *   `test_data_missing`, so the conversation segment is required.
+ * - ChatGPT custom-GPT chats live at /g/{slug}/c/{uuid} (chatgpt.ts).
  */
-const AUTH_URL_PATTERNS: Readonly<Record<string, RegExp>> = {
-  gemini: /^https:\/\/gemini\.google\.com\/(app|deepresearch)\//,
+export const AUTH_URL_PATTERNS: Readonly<Record<string, RegExp>> = {
+  gemini: /^https:\/\/gemini\.google\.com\/(?:app\/|deepresearch\/|gem\/[a-f0-9]+\/[a-f0-9]+)/i,
   claude: /^https:\/\/claude\.ai\/chat\//,
-  chatgpt: /^https:\/\/chatgpt\.com\/c\//,
+  chatgpt: /^https:\/\/chatgpt\.com\/(?:c\/|g\/[^/]+\/c\/)/,
   perplexity: /^https:\/\/www\.perplexity\.ai\/search\//,
   notebooklm: /^https:\/\/(?:notebook|notebooklm)\.google\.com\/notebook\//,
 };
@@ -61,9 +68,7 @@ export interface AuthResolutionInput {
  * Pure decision: classify the post-navigation state.
  * Extracted from the page I/O so the tri-state logic is unit-testable.
  */
-export function resolveAuthStatus(
-  input: AuthResolutionInput
-): Exclude<AuthStatus, 'unreachable'> {
+export function resolveAuthStatus(input: AuthResolutionInput): Exclude<AuthStatus, 'unreachable'> {
   const { finalUrl, conversationPattern, loggedOutMarkerPresent } = input;
 
   if (!conversationPattern) {

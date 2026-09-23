@@ -178,18 +178,63 @@ export function loadBaselineGroups(
   return { entries, legacy: false, missingGroups };
 }
 
+export interface BaselineUpdateOptions {
+  /**
+   * Record entries whose matchCount or nonEmptyCount dropped below the
+   * existing baseline. Off by default: set via `ACCEPT_DEGRADED=1` on the
+   * update command, after confirming the drop is the test conversation and
+   * not the selector.
+   */
+  acceptDegraded?: boolean;
+}
+
+/**
+ * Entries whose counts fell below what the existing baseline records for the
+ * same group + name + selector. A plain re-record would otherwise turn a
+ * standing `degraded` advisory into the new contract — which is how claude's
+ * `assistantResponse` went from 62 to 6 in 2026-09 without anyone deciding so.
+ */
+function findDegradedAgainstExisting(
+  existing: BaselineFileV3 | null | 'legacy',
+  groups: Readonly<Record<string, readonly BaselineEntry[]>>
+): string[] {
+  if (existing === null || existing === 'legacy') return [];
+  const drops: string[] = [];
+  for (const [group, entries] of Object.entries(groups)) {
+    const previous = new Map(
+      (existing.groups[group] ?? []).map(e => [`${e.name}\u0000${e.selector}`, e])
+    );
+    for (const entry of entries) {
+      const prev = previous.get(`${entry.name}\u0000${entry.selector}`);
+      if (!prev) continue;
+      const countDrop = entry.matchCount < prev.matchCount;
+      const contentDrop = entry.nonEmptyCount < prev.nonEmptyCount;
+      if (!countDrop && !contentDrop) continue;
+      const axes = [
+        countDrop ? `count ${prev.matchCount} -> ${entry.matchCount}` : null,
+        contentDrop ? `content ${prev.nonEmptyCount} -> ${entry.nonEmptyCount}` : null,
+      ].filter((s): s is string => s !== null);
+      drops.push(`${group}:${entry.name} (${entry.selector}) ${axes.join(', ')}`);
+    }
+  }
+  return drops;
+}
+
 /**
  * Record the given groups into the platform baseline, replacing those groups
  * wholesale and leaving other groups untouched (two-test platforms update
  * independently). A legacy v1 file is replaced entirely.
  *
- * @throws BaselineUpdateError when any entry has matchCount 0, or when a
- *   CONTENT_REQUIRED entry matched but is empty — nothing is written; a
- *   baseline must never record an unfindable, or a silently hollow, selector.
+ * @throws BaselineUpdateError when any entry has matchCount 0, when a
+ *   CONTENT_REQUIRED entry matched but is empty, or when an entry's counts
+ *   dropped below the existing baseline and `acceptDegraded` is not set —
+ *   nothing is written; a baseline must never record an unfindable, a
+ *   silently hollow, or a quietly lowered selector.
  */
 export function updateBaselineGroups(
   platform: string,
-  groups: Readonly<Record<string, readonly BaselineEntry[]>>
+  groups: Readonly<Record<string, readonly BaselineEntry[]>>,
+  options: BaselineUpdateOptions = {}
 ): void {
   const zeroEntries = Object.values(groups)
     .flat()
@@ -222,6 +267,18 @@ export function updateBaselineGroups(
   }
 
   const existing = readBaselineFile(platform);
+
+  if (!options.acceptDegraded) {
+    const drops = findDegradedAgainstExisting(existing, groups);
+    if (drops.length > 0) {
+      throw new BaselineUpdateError(
+        `refusing to lower the ${platform} baseline: ${drops.join('; ')} — ` +
+          `a re-record must not turn a degradation into the contract. Fix the selector or ` +
+          `the test conversation; if the drop is intended, rerun with ACCEPT_DEGRADED=1`
+      );
+    }
+  }
+
   const file: BaselineFileV3 =
     existing !== null && existing !== 'legacy'
       ? existing

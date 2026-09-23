@@ -31,7 +31,10 @@ function cleanup(): void {
 
 describe('compareWithBaseline (v2: keyed by group+name+selector)', () => {
   it('returns match when both baseline and current have matches', () => {
-    const result = compareWithBaseline([makeEntry({ matchCount: 7 })], [makeEntry({ matchCount: 5 })]);
+    const result = compareWithBaseline(
+      [makeEntry({ matchCount: 7 })],
+      [makeEntry({ matchCount: 5 })]
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0].status).toBe('match');
@@ -40,13 +43,19 @@ describe('compareWithBaseline (v2: keyed by group+name+selector)', () => {
   });
 
   it('returns degraded when the count dropped but is still > 0', () => {
-    const result = compareWithBaseline([makeEntry({ matchCount: 2 })], [makeEntry({ matchCount: 5 })]);
+    const result = compareWithBaseline(
+      [makeEntry({ matchCount: 2 })],
+      [makeEntry({ matchCount: 5 })]
+    );
 
     expect(result[0].status).toBe('degraded');
   });
 
   it('returns lost when baseline had matches but current has 0', () => {
-    const result = compareWithBaseline([makeEntry({ matchCount: 0 })], [makeEntry({ matchCount: 8 })]);
+    const result = compareWithBaseline(
+      [makeEntry({ matchCount: 0 })],
+      [makeEntry({ matchCount: 8 })]
+    );
 
     expect(result[0].status).toBe('lost');
   });
@@ -128,7 +137,10 @@ describe('updateBaselineGroups', () => {
 
   it('replaces a group wholesale on re-update (no stale entries)', () => {
     updateBaselineGroups(platform, {
-      SELECTORS: [makeEntry({ selector: '.a', matchCount: 1 }), makeEntry({ selector: '.b', matchCount: 2 })],
+      SELECTORS: [
+        makeEntry({ selector: '.a', matchCount: 1 }),
+        makeEntry({ selector: '.b', matchCount: 2 }),
+      ],
     });
     updateBaselineGroups(platform, {
       SELECTORS: [makeEntry({ selector: '.b', matchCount: 2 })],
@@ -142,7 +154,10 @@ describe('updateBaselineGroups', () => {
   it('rejects zero-count entries with a BaselineUpdateError naming the selector', () => {
     expect(() =>
       updateBaselineGroups(platform, {
-        SELECTORS: [makeEntry({ matchCount: 3 }), makeEntry({ name: 'dead', selector: '.dead', matchCount: 0 })],
+        SELECTORS: [
+          makeEntry({ matchCount: 3 }),
+          makeEntry({ name: 'dead', selector: '.dead', matchCount: 0 }),
+        ],
       })
     ).toThrow(BaselineUpdateError);
 
@@ -155,6 +170,88 @@ describe('updateBaselineGroups', () => {
     }
     // Nothing written on rejection
     expect(fs.existsSync(filePath)).toBe(false);
+  });
+
+  // A re-record must not quietly lower the bar. In 2026-09 claude's
+  // assistantResponse ran a 62 -> 6 advisory for eleven days and the next
+  // update froze 6 into the contract, ending the signal without fixing anything
+  // (e2e-coverage-gaps-2026-09.md §C.9-10).
+  describe('degradation guard', () => {
+    const recorded = (): { matchCount: number; nonEmptyCount: number } => {
+      const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      const entry = raw.groups.SELECTORS[0];
+      return { matchCount: entry.matchCount, nonEmptyCount: entry.nonEmptyCount };
+    };
+
+    it('refuses to record a lower matchCount than the existing baseline, naming the drop', () => {
+      updateBaselineGroups(platform, { SELECTORS: [makeEntry({ matchCount: 5 })] });
+
+      expect(() =>
+        updateBaselineGroups(platform, { SELECTORS: [makeEntry({ matchCount: 3 })] })
+      ).toThrow(BaselineUpdateError);
+      try {
+        updateBaselineGroups(platform, { SELECTORS: [makeEntry({ matchCount: 3 })] });
+      } catch (e) {
+        const message = (e as Error).message;
+        expect(message).toContain('SELECTORS:testSelector');
+        expect(message).toContain('5 -> 3');
+        expect(message).toContain('ACCEPT_DEGRADED=1');
+      }
+      expect(recorded().matchCount).toBe(5);
+    });
+
+    it('refuses a lower nonEmptyCount even when matchCount is unchanged', () => {
+      updateBaselineGroups(platform, {
+        SELECTORS: [makeEntry({ matchCount: 5, nonEmptyCount: 5 })],
+      });
+
+      expect(() =>
+        updateBaselineGroups(platform, {
+          SELECTORS: [makeEntry({ matchCount: 5, nonEmptyCount: 2 })],
+        })
+      ).toThrow(BaselineUpdateError);
+      expect(recorded().nonEmptyCount).toBe(5);
+    });
+
+    it('records the drop when acceptDegraded is set', () => {
+      updateBaselineGroups(platform, { SELECTORS: [makeEntry({ matchCount: 5 })] });
+
+      updateBaselineGroups(
+        platform,
+        { SELECTORS: [makeEntry({ matchCount: 3, nonEmptyCount: 3 })] },
+        { acceptDegraded: true }
+      );
+
+      expect(recorded()).toEqual({ matchCount: 3, nonEmptyCount: 3 });
+    });
+
+    it('accepts equal or higher counts, and selectors absent from the baseline', () => {
+      updateBaselineGroups(platform, { SELECTORS: [makeEntry({ matchCount: 5 })] });
+
+      updateBaselineGroups(platform, {
+        SELECTORS: [
+          makeEntry({ matchCount: 7, nonEmptyCount: 7 }),
+          makeEntry({ name: 'fresh', selector: '.fresh', matchCount: 1, nonEmptyCount: 1 }),
+        ],
+      });
+
+      const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      expect(raw.groups.SELECTORS).toHaveLength(2);
+      expect(raw.groups.SELECTORS[0].matchCount).toBe(7);
+    });
+
+    it('compares against the same group only (other groups are untouched)', () => {
+      updateBaselineGroups(platform, {
+        DEEP_RESEARCH_SELECTORS: [
+          makeEntry({ group: 'DEEP_RESEARCH_SELECTORS', matchCount: 9, nonEmptyCount: 9 }),
+        ],
+      });
+
+      // Same name + selector in a different group: no baseline entry, so no drop.
+      expect(() =>
+        updateBaselineGroups(platform, { SELECTORS: [makeEntry({ matchCount: 1 })] })
+      ).not.toThrow();
+    });
   });
 });
 
