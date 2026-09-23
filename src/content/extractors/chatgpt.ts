@@ -15,9 +15,32 @@ import { BaseExtractor, type ScrollConfig } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { generateHash } from '../../lib/hash';
 import type { HarvestEntry } from '../../lib/scroll-manager';
-import type { AIPlatform, ConversationMessage, ExtractionResult } from '../../lib/types';
+import { ImageMarkerCollector } from '../image-markers';
+import type {
+  AIPlatform,
+  ConversationMessage,
+  ExtractionResult,
+  SyncSettings,
+} from '../../lib/types';
 
 import { SELECTORS } from './selectors/chatgpt';
+
+/**
+ * The visible `<img>` of a generated-image widget (ADR-041).
+ *
+ * Measured live 2026-09-22 (docs/investigation/chatgpt-image-dom-structure.md):
+ * the widget is `div.group/imagegen-image#image-<uuid>` holding three `<img>`
+ * with one src — the visible one plus two `aria-hidden` duplicates for the
+ * crossfade and blurred backdrop — so only the visible one is captured.
+ *
+ * Deliberately NOT part of `SELECTORS`, for the same #402 reason as
+ * {@link DEEP_RESEARCH_FRAME_SELECTORS}: the E2E baseline could then only be
+ * written from a test conversation that contains a generated image.
+ */
+const GENERATED_IMAGE_SELECTOR = '[class*="imagegen-image"] img:not([aria-hidden="true"])';
+
+/** Prefix of the widget container's id; the remainder is the image's uuid. */
+const IMAGE_WIDGET_ID_PREFIX = 'image-';
 
 /**
  * Selectors identifying a Deep Research report frame (issue #283).
@@ -51,6 +74,29 @@ const DEEP_RESEARCH_FRAME_SELECTORS = [
  */
 export class ChatGPTExtractor extends BaseExtractor {
   readonly platform = 'chatgpt';
+
+  /** Whether generated images are captured (set from settings before extract()) */
+  enableImageExport = true;
+
+  /**
+   * Generated-image markers registered while turns are read, drained once the
+   * messages are assembled. Ids come from the widget uuid, so the harvest that
+   * revisits a turn per scroll window registers the same image, not a new one.
+   */
+  private readonly images = new ImageMarkerCollector();
+
+  /** Apply the settings only this platform has; the shared ones live in BaseExtractor. */
+  protected applyPlatformSettings(settings: SyncSettings): void {
+    this.enableImageExport = settings.enableImageExport ?? true;
+  }
+
+  protected onExtractStart(): void {
+    this.images.reset();
+  }
+
+  protected finalizeExtraction(result: ExtractionResult): Promise<ExtractionResult> {
+    return this.images.attach(result);
+  }
 
   /**
    * Apply user settings: enable/disable auto-scroll for virtualized history.
@@ -361,10 +407,15 @@ export class ChatGPTExtractor extends BaseExtractor {
       SELECTORS.markdownContent,
       turnElement
     );
+    // The image widget sits beside the prose, not inside it, and an
+    // image-only turn has no prose at all — so the markers are appended to
+    // whatever text the turn has, and on their own they keep the turn alive.
+    const imageMarkers = this.generatedImageMarkers(turnElement);
 
     if (markdownEls.length > 0) {
       const answerEls = this.selectAnswerBlocks(turnElement, markdownEls);
-      return answerEls.map(el => this.sanitizeBlockHtml(el.innerHTML)).join('\n\n');
+      const blocks = answerEls.map(el => this.sanitizeBlockHtml(el.innerHTML));
+      return [...blocks, imageMarkers].filter(Boolean).join('\n\n');
     }
 
     // Fallback: try assistantResponse selectors
@@ -373,10 +424,36 @@ export class ChatGPTExtractor extends BaseExtractor {
       turnElement
     );
     if (assistantEl) {
-      return this.sanitizeBlockHtml(assistantEl.innerHTML);
+      return [this.sanitizeBlockHtml(assistantEl.innerHTML), imageMarkers]
+        .filter(Boolean)
+        .join('\n\n');
     }
 
-    return '';
+    return imageMarkers;
+  }
+
+  /**
+   * `<img data-g2o-image>` markers for the turn's generated images, sanitized
+   * like any other block; empty when the turn has none or export is off.
+   *
+   * The id is the widget's own uuid (`image-<uuid>` → `img-<uuid>`), stable
+   * across the per-window harvests of a virtualized scroll (ADR-041). A widget
+   * without an id falls back to the turn key plus the image's index.
+   */
+  private generatedImageMarkers(turnElement: Element): string {
+    const turnKey =
+      turnElement.getAttribute('data-turn-id') ?? String(this.turnOrdinal(turnElement) ?? 'turn');
+    const markers = this.images.markersFor(turnElement as HTMLElement, {
+      selector: GENERATED_IMAGE_SELECTOR,
+      enabled: this.enableImageExport,
+      idFor: (img, index) => {
+        const widgetId = img.closest(`[id^="${IMAGE_WIDGET_ID_PREFIX}"]`)?.id;
+        return widgetId
+          ? `img-${widgetId.slice(IMAGE_WIDGET_ID_PREFIX.length)}`
+          : `img-${turnKey}-${index}`;
+      },
+    });
+    return markers ? this.sanitizeBlockHtml(markers) : '';
   }
 
   /**

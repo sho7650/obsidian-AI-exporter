@@ -9,6 +9,7 @@ import {
   defineLocation,
   createChatGPTInlineCitation,
   createChatGPTPage,
+  createChatGPTImageTurnDOM,
 } from '../fixtures/dom-helpers';
 
 describe('ChatGPTExtractor', () => {
@@ -1046,6 +1047,136 @@ describe('ChatGPTExtractor', () => {
 
       expect(result.success).toBe(true);
       expect(result.warnings?.join(' ') ?? '').not.toMatch(/deep research/i);
+    });
+  });
+
+  // ========== Generated images (ADR-041) ==========
+  describe('extract — generated images', () => {
+    const UUID = 'f5bf8dc7-0591-45fa-a3de-9a4e13104fcf';
+    const SAME_ORIGIN_SRC = () =>
+      `${window.location.origin}/backend-api/estuary/content?id=file_1&ts=497244&p=fs&cid=1&sig=abc&v=0`;
+
+    function mockImageFetch(bytes: Uint8Array, type = 'image/png'): void {
+      const blob = {
+        size: bytes.byteLength,
+        type,
+        arrayBuffer: () => Promise.resolve(bytes.buffer),
+      } as unknown as Blob;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({ ok: true, blob: () => Promise.resolve(blob) })
+      );
+    }
+
+    function loadImageConversation(options: { prose?: string; alt?: string } = {}): void {
+      setChatGPTLocation('6789abcd-ef01-2345-6789-abcdef012345');
+      loadFixture(`
+        <div class="app-container"><div class="flex flex-col">
+          ${createChatGPTConversationDOM([{ role: 'user', content: 'Draw a sunrise', id: 'turn-user' }])}
+          ${createChatGPTImageTurnDOM({
+            turnId: 'turn-image',
+            ordinal: 2,
+            imageUuid: UUID,
+            src: SAME_ORIGIN_SRC(),
+            alt: options.alt,
+            prose: options.prose,
+          })}
+        </div></div>
+      `);
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    it('turns an image-only assistant turn into a message with a marker keyed by the widget id', async () => {
+      loadImageConversation();
+      mockImageFetch(new Uint8Array([0x50, 0x4e, 0x47]));
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(true);
+      const messages = result.data!.messages;
+      expect(messages).toHaveLength(2);
+      expect(messages[1].role).toBe('assistant');
+      expect(messages[1].content).toContain(`data-g2o-image="img-${UUID}"`);
+      expect(messages[1].content).toContain('alt="Generated image: A test picture"');
+      // Only the visible <img> is captured; the two aria-hidden duplicates are not.
+      expect(messages[1].content.match(/data-g2o-image/g)).toHaveLength(1);
+      expect(result.data!.images).toHaveLength(1);
+      expect(result.data!.images![0]).toMatchObject({
+        id: `img-${UUID}`,
+        mimeType: 'image/png',
+        data: 'UE5H',
+        alt: 'Generated image: A test picture',
+      });
+    });
+
+    it('fetches the image from the page, not the worker, because the source is same-origin', async () => {
+      loadImageConversation();
+      mockImageFetch(new Uint8Array([1, 2, 3]));
+      const sendMessage = vi.fn();
+      vi.stubGlobal('chrome', { runtime: { sendMessage } });
+
+      await extractor.extract();
+
+      expect(sendMessage).not.toHaveBeenCalled();
+      expect(vi.mocked(fetch).mock.calls[0][0]).toBe(SAME_ORIGIN_SRC());
+    });
+
+    it('keeps the marker id stable across repeated harvests and captures the image once', async () => {
+      loadImageConversation();
+      mockImageFetch(new Uint8Array([1, 2, 3]));
+
+      // harvestWindow re-runs once per scroll window; the id must not depend on the pass.
+      const first = extractor.extractMessages();
+      const second = extractor.extractMessages();
+      expect(first[1].content).toBe(second[1].content);
+
+      const result = await extractor.extract();
+      expect(result.data!.images).toHaveLength(1);
+      expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+    });
+
+    it('appends the marker after the prose in a mixed turn', async () => {
+      loadImageConversation({ prose: '<p>Here you go.</p>' });
+      mockImageFetch(new Uint8Array([1, 2, 3]));
+
+      const result = await extractor.extract();
+
+      const content = result.data!.messages[1].content;
+      expect(content.indexOf('Here you go.')).toBeLessThan(content.indexOf('data-g2o-image'));
+    });
+
+    it('drops the widget — and so the image-only turn — when image export is disabled', async () => {
+      loadImageConversation();
+      extractor.applySettings({
+        enableImageExport: false,
+      } as import('../../src/lib/types').SyncSettings);
+      const fetchSpy = vi.fn();
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const result = await extractor.extract();
+
+      expect(result.data!.messages).toHaveLength(1);
+      expect(result.data!.messages[0].role).toBe('user');
+      expect(result.data!.images ?? []).toHaveLength(0);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('warns instead of dropping the image when capture fails', async () => {
+      loadImageConversation();
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403 }));
+      // The rendered bitmap is not available either (jsdom never decodes).
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await extractor.extract();
+
+      expect(result.success).toBe(true);
+      expect(result.data!.messages[1].content).toContain('data-g2o-image');
+      expect(result.data!.images).toHaveLength(0);
+      expect(result.warnings?.join(' ')).toMatch(/1 image\(s\) could not be captured/);
     });
   });
 });

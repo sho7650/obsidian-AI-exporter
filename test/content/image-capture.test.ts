@@ -219,9 +219,18 @@ describe('captureImage', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
     mockCanvas('data:image/png;base64,UE5H');
 
-    const result = await captureImage(loadedImage('blob:https://gemini.google.com/x'), 'img-1', 'a');
+    const result = await captureImage(
+      loadedImage('blob:https://gemini.google.com/x'),
+      'img-1',
+      'a'
+    );
 
-    expect(result.image).toMatchObject({ id: 'img-1', mimeType: 'image/png', data: 'UE5H', alt: 'a' });
+    expect(result.image).toMatchObject({
+      id: 'img-1',
+      mimeType: 'image/png',
+      data: 'UE5H',
+      alt: 'a',
+    });
     expect(result.reason).toBeUndefined();
   });
 
@@ -322,9 +331,78 @@ describe('captureImage', () => {
     const oversized = 'A'.repeat(Math.ceil((MAX_IMAGE_SIZE_BYTES + 1024) / 3) * 4);
     mockCanvas(`data:image/png;base64,${oversized}`);
 
-    const result = await captureImage(loadedImage('blob:https://gemini.google.com/big'), 'img-7', '');
+    const result = await captureImage(
+      loadedImage('blob:https://gemini.google.com/big'),
+      'img-7',
+      ''
+    );
 
     expect(result.image).toBeNull();
     expect(result.reason).toMatch(/size|limit/i);
+  });
+});
+
+// ChatGPT serves generated images from the page's own origin
+// (https://chatgpt.com/backend-api/estuary/content?…&sig=…), cookie-gated and
+// signed (ADR-041, measured 2026-09-22). Same origin means the page can fetch
+// it itself — no worker round-trip, no CSP host — and, because it is untainted,
+// the canvas fallback of ADR-027 also applies when the signed URL has expired.
+describe('captureImage — same-origin https source', () => {
+  const sameOrigin = () => `${window.location.origin}/backend-api/estuary/content?id=f&sig=s`;
+
+  it('fetches from the page and never asks the worker', async () => {
+    mockFetchBlob(blobLike(new Uint8Array([0x50, 0x4e, 0x47]), 'image/png'));
+    const sendMessage = vi.fn();
+    vi.stubGlobal('chrome', { runtime: { sendMessage } });
+    const toDataURL = vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL');
+
+    const result = await captureImage(loadedImage(sameOrigin()), 'img-so-1', 'Generated image');
+
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(toDataURL).not.toHaveBeenCalled();
+    expect(vi.mocked(fetch).mock.calls[0][0]).toBe(sameOrigin());
+    expect(result.image).toMatchObject({
+      id: 'img-so-1',
+      mimeType: 'image/png',
+      data: 'UE5H',
+      alt: 'Generated image',
+      sourceUrl: sameOrigin(),
+    });
+  });
+
+  it('falls back to the rendered element when the signed URL no longer resolves', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403 }));
+    mockCanvas('data:image/png;base64,UE5H');
+
+    const result = await captureImage(loadedImage(sameOrigin()), 'img-so-2', '');
+
+    expect(result.image).toMatchObject({ id: 'img-so-2', mimeType: 'image/png', data: 'UE5H' });
+  });
+
+  it('reports the failure when neither the URL nor the bitmap is readable', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403 }));
+    const img = document.createElement('img');
+    img.setAttribute('src', sameOrigin());
+    Object.defineProperty(img, 'complete', { value: false, configurable: true });
+    Object.defineProperty(img, 'naturalWidth', { value: 0, configurable: true });
+
+    const result = await captureImage(img, 'img-so-3', '');
+
+    expect(result.image).toBeNull();
+    expect(result.reason).toBeTruthy();
+  });
+
+  it('still sends a cross-origin https source to the worker', async () => {
+    const sendMessage = vi
+      .fn()
+      .mockResolvedValue({ success: true, mimeType: 'image/jpeg', data: 'UE5H' });
+    vi.stubGlobal('chrome', { runtime: { sendMessage } });
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+
+    await captureImage(loadedImage('https://lh3.googleusercontent.com/gg/x'), 'img-so-4', '');
+
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

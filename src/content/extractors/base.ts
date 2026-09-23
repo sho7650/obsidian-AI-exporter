@@ -115,6 +115,7 @@ export abstract class BaseExtractor implements IConversationExtractor {
         return deepResearchResult;
       }
 
+      this.onExtractStart();
       console.info(`[G2O] Extracting ${this.platformLabel} conversation`);
       const { messages, warning, truncated, watermark } = await this.collectMessages();
       const conversationId = this.getConversationId() || `${this.platform}-${Date.now()}`;
@@ -128,9 +129,11 @@ export abstract class BaseExtractor implements IConversationExtractor {
             ...(watermark === undefined ? {} : { messageWatermark: watermark }),
           }
         : result.data;
-      return warning
-        ? { ...result, data, warnings: [...(result.warnings ?? []), warning] }
-        : { ...result, data };
+      return this.finalizeExtraction(
+        warning
+          ? { ...result, data, warnings: [...(result.warnings ?? []), warning] }
+          : { ...result, data }
+      );
     } catch (error) {
       console.error(`[G2O] ${this.platformLabel} extraction error:`, error);
       return {
@@ -160,6 +163,26 @@ export abstract class BaseExtractor implements IConversationExtractor {
    */
   protected isDeepResearchVisible(): boolean {
     return false;
+  }
+
+  /**
+   * Hook: per-extraction state reset, called once before messages are
+   * collected (after the Deep Research short-circuit). A virtualized platform
+   * harvests the same turn repeatedly, so anything it accumulates while
+   * reading turns — pending generated images (ADR-041) — must start empty here,
+   * not in extractMessages().
+   */
+  protected onExtractStart(): void {
+    // no-op by default
+  }
+
+  /**
+   * Hook: last word on a successful conversation result, e.g. attaching the
+   * generated images captured while the turns were read. Runs after the
+   * scroll warning is appended, so a platform may add its own warnings.
+   */
+  protected async finalizeExtraction(result: ExtractionResult): Promise<ExtractionResult> {
+    return result;
   }
 
   /**

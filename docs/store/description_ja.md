@@ -15,7 +15,7 @@ Google Gemini（gemini.google.com）、Claude AI（claude.ai）、ChatGPT（chat
 • Q&A ブロックに Obsidian コールアウト構文（正しい AI 名を表示）
 • Deep Research（Gemini、Perplexity）と Extended Thinking / Artifacts（Claude）に対応
 • ソース引用 - Gemini Notebook のチャット引用を footnote 形式でエクスポート
-• 画像エクスポート - Gemini 生成画像を vault に埋め込み・ファイルとしてダウンロード・クリップボードでは除去
+• 画像エクスポート - Gemini と ChatGPT の生成画像を vault に埋め込み・ファイルとしてダウンロード・クリップボードでは除去
 • フロントマター日時のタイムゾーン設定
 • LaTeX 数式の保存（$$...$$・$...$）- 全プラットフォーム対応
 • 入れ子のコードブロック - コードブロック内のコードブロックもそのまま保存
