@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.13.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.13.0...v2.13.1) (2026-09-23)
+
+
+### Code Refactoring
+
+* derive the readiness selector from the selector modules and drop inline contract copies ([#510](https://github.com/sho7650/obsidian-AI-exporter/issues/510)) ([6ca9fe7](https://github.com/sho7650/obsidian-AI-exporter/commit/6ca9fe733c8c3d99db85fee0bc8582cc0488f541))
+
 ## [2.13.0](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.12.5...v2.13.0) (2026-09-23)
 
 
