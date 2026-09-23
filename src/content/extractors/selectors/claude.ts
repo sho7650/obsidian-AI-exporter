@@ -137,4 +137,6 @@ export const DEEP_RESEARCH_SELECTORS = {
  */
 export const JOINED_SELECTORS = {
   inlineCitation: DEEP_RESEARCH_SELECTORS.inlineCitation.join(', '),
+  // For `closest()`: "is this element inside an assistant response?"
+  assistantResponse: SELECTORS.assistantResponse.join(', '),
 } as const satisfies ComputedSelectors;

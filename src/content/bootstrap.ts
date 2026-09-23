@@ -11,6 +11,7 @@ import { ClaudeExtractor } from './extractors/claude';
 import { ChatGPTExtractor } from './extractors/chatgpt';
 import { PerplexityExtractor } from './extractors/perplexity';
 import { NotebookLMExtractor } from './extractors/notebooklm';
+import { CONVERSATION_CONTAINER_SELECTOR } from './extractors/selectors/ready';
 import { extractErrorMessage } from '../lib/error-utils';
 import type { IConversationExtractor } from '../lib/types';
 import { conversationToNote } from './markdown';
@@ -75,10 +76,6 @@ const EXTRACTOR_CONSTRUCTORS: Record<AIPlatform, new () => IConversationExtracto
   perplexity: PerplexityExtractor,
   notebooklm: NotebookLMExtractor,
 };
-
-/** Conversation container selectors to detect when content is ready */
-const CONVERSATION_CONTAINER_SELECTOR =
-  '.conversation-container, [class*="conversation"], section[data-turn-id], article[data-turn-id], div[class*="threadContentWidth"]';
 
 /**
  * Get the optimal observation root for the current platform

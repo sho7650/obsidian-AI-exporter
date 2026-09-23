@@ -10,7 +10,14 @@
  * @see docs/adr/005-shared-selector-modules.md
  */
 
-import type { SelectorGroup } from './types';
+import type { SelectorGroup, ComputedSelectors } from './types';
+
+/**
+ * Every citation button, including the "more citations" one. The extractor
+ * walks this broader set itself and drops the mat-icon button in code, so it
+ * must not use the narrowed contract entry below.
+ */
+const CITATION_BUTTON = 'button.citation-marker';
 
 export const SELECTORS = {
   // Chat message pair container (each Q&A turn)
@@ -39,7 +46,7 @@ export const SELECTORS = {
   // Citation markers (inline source references)
   // Excludes "more citations" button via :not(:has(mat-icon))
   citationMarker: [
-    'button.citation-marker:not(:has(mat-icon))', // Numbered citation (HIGH)
+    `${CITATION_BUTTON}:not(:has(mat-icon))`, // Numbered citation (HIGH)
     '.xap-inline-dialog.citation-marker', // Alt class (MEDIUM)
   ],
 
@@ -49,3 +56,8 @@ export const SELECTORS = {
     '.cover-title.mat-headline-medium', // Full class (MEDIUM)
   ],
 } as const satisfies SelectorGroup;
+
+/** Derived strings the extractor reads; not part of the E2E contract. */
+export const COMPUTED_SELECTORS = {
+  citationButton: CITATION_BUTTON,
+} as const satisfies ComputedSelectors;

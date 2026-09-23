@@ -19,7 +19,7 @@ import type { ConversationMessage } from '../../lib/types';
 import { createFootnoteRef, footnoteDefsToHtml, transformCitations } from './footnotes';
 import type { CitationTransformResult } from './footnotes';
 
-import { SELECTORS } from './selectors/notebooklm';
+import { SELECTORS, COMPUTED_SELECTORS } from './selectors/notebooklm';
 
 // ========== Citation transformation (formerly notebooklm-citations.ts) ==========
 //
@@ -65,9 +65,9 @@ function transformCitationsToFootnotes(
   messageIndex: number
 ): CitationTransformResult {
   return transformCitations(html, {
-    hasCitations: doc => doc.querySelector('button.citation-marker') !== null,
+    hasCitations: doc => doc.querySelector(COMPUTED_SELECTORS.citationButton) !== null,
     collectFootnotes: doc => {
-      const buttons = Array.from(doc.querySelectorAll('button.citation-marker'));
+      const buttons = Array.from(doc.querySelectorAll(COMPUTED_SELECTORS.citationButton));
       const footnoteByNumber = new Map<string, string>();
       const order: string[] = [];
 
