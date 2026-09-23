@@ -113,11 +113,10 @@ export async function waitForSettledCounts(
 ): Promise<SettleResult> {
   const started = options.now();
   let progress: SettleProgress | null = null;
-  let counts: number[] = [];
   let observations = 0;
 
   for (;;) {
-    counts = await sample();
+    const counts = await sample();
     observations++;
     progress = observe(progress, counts);
 
