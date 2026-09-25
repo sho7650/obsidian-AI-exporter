@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.2...v2.14.3) (2026-09-25)
+
+
+### Bug Fixes
+
+* **perplexity:** follow the 2026-09 user bubble that dropped the select-text span ([#518](https://github.com/sho7650/obsidian-AI-exporter/issues/518)) ([2fe0609](https://github.com/sho7650/obsidian-AI-exporter/commit/2fe0609d22dbca5c3241ac245a52b14ea1f8fb6d))
+
 ## [2.14.2](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.1...v2.14.2) (2026-09-25)
 
 
