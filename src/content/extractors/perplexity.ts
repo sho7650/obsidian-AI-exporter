@@ -40,6 +40,21 @@ import { SELECTORS } from './selectors/perplexity';
 const LEGACY_MARKDOWN_CONTENT: readonly string[] = ['div[id^="markdown-content-"]'];
 
 /**
+ * The pre-2026-09 user query.
+ *
+ * Perplexity replaced the `select-text` span with a markdown-rendered
+ * `data-renderer="lm"` node inside the bubble (measured live 2026-09-25,
+ * docs/investigation/perplexity-user-bubble-2026-09.md). Users who have not
+ * received the rollout still get the span, so it stays as a collection
+ * anchor and as the title fallback — outside the live contract, where a
+ * selector that cannot match a live page would block every baseline update.
+ */
+const LEGACY_USER_QUERY: readonly string[] = ['span.select-text'];
+
+/** Every user-query form, contract first, for the title fallback. */
+const USER_QUERY_ANY_LAYOUT: readonly string[] = [...SELECTORS.userQuery, ...LEGACY_USER_QUERY];
+
+/**
  * The Deep Research report body.
  *
  * Under the old layout it was inline prose inside a raised card
@@ -246,7 +261,7 @@ export class PerplexityExtractor extends BaseExtractor {
   getTitle(): string {
     return (
       this.getPageTitle() ??
-      this.getFirstMessageTitle(SELECTORS.userQuery, 'Untitled Perplexity Conversation')
+      this.getFirstMessageTitle(USER_QUERY_ANY_LAYOUT, 'Untitled Perplexity Conversation')
     );
   }
 
@@ -313,6 +328,13 @@ export class PerplexityExtractor extends BaseExtractor {
     const tagged: TaggedElement[] = [];
 
     for (const el of this.queryAllWithFallback<HTMLElement>(SELECTORS.userQuery)) {
+      tagged.push({ type: 'user', element: el });
+    }
+
+    // Pre-2026-09 query span, for users still on the old rollout. A span that
+    // sits inside a renderer-backed bubble is already collected above.
+    for (const el of this.queryAllWithFallback<HTMLElement>(LEGACY_USER_QUERY)) {
+      if (this.isInside(el, SELECTORS.userQuery)) continue;
       tagged.push({ type: 'user', element: el });
     }
 
