@@ -36,7 +36,7 @@ Google Gemini（gemini.google.com）、Claude AI（claude.ai）、ChatGPT（chat
 • すべての処理はお使いの端末上で実行
 • 解析・テレメトリ・データ収集は一切なし - 会話は処理してあなたの端末に保存するだけ
 • 会話の送信先はあなた自身の Obsidian vault のみ
-• 画像エクスポートは Google の画像 CDN から画像を取得 - AI のページが既に使用しているホストと同じ
+• 画像エクスポートは AI のページが既に画像を読み込んでいるホストからのみ取得（Gemini は Google の画像 CDN、ChatGPT は chatgpt.com）
 • API キーはローカルストレージに安全に保存
 • オープンソース：https://github.com/sho7650/obsidian-AI-exporter
 
