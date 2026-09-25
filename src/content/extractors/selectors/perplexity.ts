@@ -11,11 +11,16 @@ import type { SelectorGroup } from './types';
 export const SELECTORS = {
   // User query text
   // 2026-07: the bubble class bg-offset became bg-subtle.
-  // 2026-08: the `group/query` ancestor disappeared; the bubble itself
-  // (bg-subtle rounded-2xl) is what now scopes the query text.
+  // 2026-09-25: the `select-text` span vanished from the page. The query is now
+  // markdown-rendered inside the bubble under a `data-renderer="lm"` node,
+  // and the bubble's ancestor carries the semantic `group/user-bubble` class
+  // (measured live, docs/investigation/perplexity-user-bubble-2026-09.md).
+  // The pre-2026-09 `span.select-text` form stays as a private selector in
+  // perplexity.ts for users who have not received the rollout — it can no
+  // longer match a live page, so it may not sit in this contract (#402).
   userQuery: [
-    'span.select-text', // Semantic (HIGH)
-    'div.bg-subtle.rounded-2xl span.select-text', // Query bubble (MEDIUM)
+    '[class*="group/user-bubble"] [data-renderer="lm"]', // Semantic bubble + renderer (HIGH)
+    'div.bg-subtle.rounded-2xl [data-renderer="lm"]', // Styled bubble + renderer (MEDIUM)
   ],
 
   // Prose content within response

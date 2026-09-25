@@ -1253,4 +1253,98 @@ describe('PerplexityExtractor', () => {
       expect(messages.map(m => m.id)).toEqual(['user-0', 'assistant-0', 'report-0']);
     });
   });
+
+  describe('2026-09 layout: user query rendered by the markdown renderer', () => {
+    const ANSWER_PROSE_CLASS =
+      'prose dark:prose-invert inline leading-relaxed break-words min-w-0 [word-break:break-word]';
+
+    /**
+     * User bubble as measured live on 2026-09-25: the `select-text` span is
+     * gone from the whole page; the query is markdown-rendered inside the
+     * bubble under a `data-renderer="lm"` node, and the bubble's ancestor now
+     * carries `group/user-bubble`. Long queries are visually clipped by
+     * `max-h-[144px] overflow-hidden` but the DOM holds the full text.
+     */
+    const userBubble = (html: string): string => `
+      <div class="flex flex-col flex-1 min-w-0 gap-1">
+        <div>
+          <div class="contents">
+            <div class="group/user-bubble flex min-w-0 items-center justify-end gap-2">
+              <div class="min-w-0 max-w-[600px] bg-subtle px-4 py-3 whitespace-pre-wrap break-words font-sans text-base text-primary rounded-2xl">
+                <div class="flex min-w-0 max-w-full flex-col items-start">
+                  <div class="min-w-0 max-w-full max-h-[144px] overflow-hidden">
+                    <div><div data-renderer="lm">${html}</div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const answer = (html: string): string => `
+      <div class="flex flex-col flex-1 min-w-0 gap-4">
+        <div class="contents">
+          <div class="break-words min-w-0 flex-1">
+            <div><div class="${ANSWER_PROSE_CLASS}" data-renderer="lm">${html}</div></div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    beforeEach(() => {
+      setPerplexityLocation('conv-2026-09');
+    });
+
+    it('extracts the user query from the renderer-backed bubble', () => {
+      loadFixture(
+        userBubble('<p class="my-2">first question</p>') +
+          answer('<p>first answer</p>') +
+          userBubble('<p class="my-2">second question</p>') +
+          answer('<p>second answer</p>')
+      );
+
+      const messages = extractor.extractMessages();
+
+      expect(messages.map(m => m.role)).toEqual(['user', 'assistant', 'user', 'assistant']);
+      expect(messages[0].content).toBe('first question');
+      expect(messages[2].content).toBe('second question');
+    });
+
+    it('titles the conversation from the renderer-backed bubble', () => {
+      loadFixture(
+        userBubble('<p class="my-2">what changed on 2026-09-25</p>') + answer('<p>a</p>')
+      );
+
+      expect(extractor.getTitle()).toBe('what changed on 2026-09-25');
+    });
+
+    it('extracts the full text of a long query that the bubble clips visually', () => {
+      const paragraphs = Array.from(
+        { length: 12 },
+        (_, i) => `<p class="my-2">line ${i + 1} of a long prompt</p>`
+      ).join('');
+      loadFixture(userBubble(paragraphs) + answer('<p>a</p>'));
+
+      const [user] = extractor.extractMessages();
+
+      expect(user.role).toBe('user');
+      expect(user.content).toContain('line 1 of a long prompt');
+      expect(user.content).toContain('line 12 of a long prompt');
+    });
+
+    it('does not count a legacy span twice when it sits inside a renderer-backed bubble', () => {
+      // Belt and braces for a transitional markup that carries both forms.
+      loadFixture(
+        userBubble('<p class="my-2"><span class="select-text">both forms</span></p>') +
+          answer('<p>a</p>')
+      );
+
+      const messages = extractor.extractMessages();
+
+      expect(messages.filter(m => m.role === 'user')).toHaveLength(1);
+      expect(messages[0].content).toBe('both forms');
+    });
+  });
 });
