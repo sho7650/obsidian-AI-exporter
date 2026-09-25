@@ -382,7 +382,7 @@ This extension:
 
 - Does **not** collect your data, and sends **no** analytics or telemetry anywhere
 - Sends your conversations only to your Obsidian instance (default: 127.0.0.1, configurable for LAN access)
-- Downloads generated images from Google's image CDN (`googleusercontent.com`, which redirects to `lh3.google.com`) when image export is enabled — the same CDN the AI page already loads them from, and only for images in the conversation you are exporting
+- Downloads generated images only when image export is enabled, and only for images in the conversation you are exporting: Gemini images from Google's image CDN (`googleusercontent.com`, which redirects to `lh3.google.com`), ChatGPT images from `chatgpt.com` itself — in both cases the same host the AI page already loads them from
 - Stores API key locally in your browser (not synced to cloud)
 
 See our [Privacy Policy](https://sho7650.github.io/obsidian-AI-exporter/privacy.html) for details.
