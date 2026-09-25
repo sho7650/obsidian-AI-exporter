@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.2](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.1...v2.14.2) (2026-09-25)
+
+
+### Bug Fixes
+
+* **e2e:** drop the useless initial assignment in the settle loop ([#517](https://github.com/sho7650/obsidian-AI-exporter/issues/517)) ([3c210f1](https://github.com/sho7650/obsidian-AI-exporter/commit/3c210f138c585a9f7f08cd736babe2944c764228))
+
 ## [2.14.1](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.0...v2.14.1) (2026-09-25)
 
 
