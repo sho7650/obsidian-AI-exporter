@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.4](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.3...v2.14.4) (2026-09-25)
+
+
+### Miscellaneous
+
+* flake.lock nixpkgs (nixpkgs-26.05-darwin) 8029b6c -&gt; bd495b8. ([c2bf579](https://github.com/sho7650/obsidian-AI-exporter/commit/c2bf579ccedc73809b5805d6290a19473ecd79b8))
+* sync image-source privacy wording for ChatGPT and bump nixpkgs ([#522](https://github.com/sho7650/obsidian-AI-exporter/issues/522)) ([c2bf579](https://github.com/sho7650/obsidian-AI-exporter/commit/c2bf579ccedc73809b5805d6290a19473ecd79b8))
+
 ## [2.14.3](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.2...v2.14.3) (2026-09-25)
 
 
