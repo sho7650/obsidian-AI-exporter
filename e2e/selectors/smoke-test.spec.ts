@@ -66,7 +66,7 @@ const READY_SELECTORS: Readonly<Record<string, string>> = {
   gemini_dr: 'deep-research-immersive-panel',
   claude_conv: '.font-claude-response',
   claude_dr: '#markdown-artifact',
-  chatgpt_conv: 'section[data-turn-id]',
+  chatgpt_conv: 'div[data-turn-key]', // 2026-09 layout (issue #515)
   perplexity_conv: '.prose[data-renderer="lm"]',
   notebooklm_conv: '.chat-message-pair',
 };

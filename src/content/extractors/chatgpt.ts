@@ -26,21 +26,37 @@ import type {
 import { SELECTORS } from './selectors/chatgpt';
 
 /**
- * The visible `<img>` of a generated-image widget (ADR-041).
+ * The `<img>` of a generated image, current layout first (ADR-041, issue #515).
  *
- * Measured live 2026-09-22 (docs/investigation/chatgpt-image-dom-structure.md):
- * the widget is `div.group/imagegen-image#image-<uuid>` holding three `<img>`
- * with one src — the visible one plus two `aria-hidden` duplicates for the
- * crossfade and blurred backdrop — so only the visible one is captured.
+ * - 2026-09: `[data-testid="generated-image-preview"] img` with a `blob:` src
+ *   (docs/investigation/chatgpt-dom-2026-09.md). The widget carries no id.
+ * - Legacy (measured 2026-09-22, docs/investigation/chatgpt-image-dom-structure.md):
+ *   `div.group/imagegen-image#image-<uuid>` holding three `<img>` with one src —
+ *   the visible one plus two `aria-hidden` duplicates for the crossfade and
+ *   blurred backdrop — so only the visible one is captured.
  *
  * Deliberately NOT part of `SELECTORS`, for the same #402 reason as
  * {@link DEEP_RESEARCH_FRAME_SELECTORS}: the E2E baseline could then only be
  * written from a test conversation that contains a generated image.
  */
-const GENERATED_IMAGE_SELECTOR = '[class*="imagegen-image"] img:not([aria-hidden="true"])';
+const GENERATED_IMAGE_SELECTOR = [
+  '[data-testid="generated-image-preview"] img',
+  '[class*="imagegen-image"] img:not([aria-hidden="true"])',
+].join(', ');
 
-/** Prefix of the widget container's id; the remainder is the image's uuid. */
+/** Prefix of the legacy widget container's id; the remainder is the image's uuid. */
 const IMAGE_WIDGET_ID_PREFIX = 'image-';
+
+/**
+ * How long the thread must rest at the top before auto-scroll may finish
+ * (ADR-042). Since 2026-09 ChatGPT loads older turns only once the view reaches
+ * the top: 69-138ms with the tab visible (measured live 2026-09-26), so 2s is a
+ * ~15x margin that still costs a single pause per sync.
+ */
+const TOP_SETTLE_MS = 2000;
+
+/** Carrier of the message ids an answer unit renders (2026-09 layout). */
+const MESSAGE_IDS_ATTRIBUTE = 'data-chatgpt-search-message-ids';
 
 /**
  * Selectors identifying a Deep Research report frame (issue #283).
@@ -65,6 +81,50 @@ const DEEP_RESEARCH_FRAME_SELECTORS = [
   'iframe[src*="deep-research"][src*="oaiusercontent.com"]',
   'iframe[src*="deep_research"][src*="oaiusercontent.com"]',
 ] as const;
+
+/**
+ * The pre-2026-09 layout (issue #515): one `section[data-turn-id]` per message,
+ * role on `data-turn` / `data-message-author-role`, body in `.markdown.prose`,
+ * and a `conversation-turn-N` ordinal. Kept for users still on the old rollout.
+ *
+ * Deliberately NOT part of `SELECTORS`: the E2E baseline rejects zero-match
+ * entries, and the live page no longer renders any of these (#402, the
+ * Perplexity #464 precedent).
+ */
+const LEGACY_SELECTORS = {
+  conversationTurn: ['section[data-turn-id]', 'section[data-testid^="conversation-turn"]'],
+  userMessage: [
+    '[data-message-author-role="user"] .whitespace-pre-wrap',
+    'section[data-turn="user"] .whitespace-pre-wrap',
+    '.user-message-bubble-color .whitespace-pre-wrap',
+  ],
+  assistantResponse: [
+    '[data-message-author-role="assistant"] .markdown.prose',
+    'section[data-turn="assistant"] .markdown.prose',
+    '.markdown.prose.dark\\:prose-invert',
+  ],
+  markdownContent: ['.markdown.prose', '.markdown-new-styling'],
+  scrollContainer: ['[data-scroll-root]', '[class*="not-print:overflow-y-auto"]'],
+} as const;
+
+/**
+ * Lookups that run outside a single turn, so they cannot know the layout in
+ * advance: try the current layout first, then the legacy one. Inside a turn the
+ * layouts never mix, so content lookups use these lists too.
+ */
+const USER_MESSAGE_ANY_LAYOUT = [...SELECTORS.userMessage, ...LEGACY_SELECTORS.userMessage];
+const MARKDOWN_ANY_LAYOUT = [...SELECTORS.markdownContent, ...LEGACY_SELECTORS.markdownContent];
+const SCROLL_CONTAINER_ANY_LAYOUT = [
+  ...SELECTORS.scrollContainer,
+  ...LEGACY_SELECTORS.scrollContainer,
+];
+
+/** The mounted turns and which layout they use. */
+interface MountedTurns {
+  /** `pair`: one turn = prompt + answer (2026-09). `legacy`: one turn = one message. */
+  layout: 'pair' | 'legacy';
+  turns: HTMLElement[];
+}
 
 /**
  * ChatGPT conversation extractor
@@ -129,59 +189,37 @@ export class ChatGPTExtractor extends BaseExtractor {
   getTitle(): string {
     return (
       this.getPageTitle() ??
-      this.getFirstMessageTitle(SELECTORS.userMessage, 'Untitled ChatGPT Conversation')
+      this.getFirstMessageTitle(USER_MESSAGE_ANY_LAYOUT, 'Untitled ChatGPT Conversation')
     );
   }
 
   // ========== Message Extraction ==========
 
   /**
-   * Extract all messages from conversation
+   * Extract all messages from conversation, in DOM order.
    *
-   * Uses section[data-turn-id] to find conversation turns (with article fallback),
-   * then extracts User/Assistant messages in DOM order
-   * @see FR-002 in design document
+   * The same turn → message reading as the auto-scroll harvest, applied once to
+   * whatever is mounted.
    */
   extractMessages(): ConversationMessage[] {
-    const messages: ConversationMessage[] = [];
-
-    // Find all conversation turns
-    const turns = this.queryAllWithFallback<HTMLElement>(SELECTORS.conversationTurn);
-
-    if (turns.length === 0) {
+    const entries = this.harvestWindow();
+    if (entries.length === 0) {
       console.warn('[G2O] No conversation turns found with primary selectors');
-      return messages;
     }
+    return entries.map((entry, index) => ({ ...entry.value, index }));
+  }
 
-    // Process each turn
-    turns.forEach((turn, index) => {
-      const role = this.turnRole(turn);
-
-      if (role === 'user') {
-        const content = this.extractUserContent(turn);
-        if (content) {
-          messages.push({
-            id: `user-${index}`,
-            role: 'user',
-            content,
-            index: messages.length,
-          });
-        }
-      } else if (role === 'assistant') {
-        const content = this.extractAssistantContent(turn);
-        if (content) {
-          messages.push({
-            id: `assistant-${index}`,
-            role: 'assistant',
-            content,
-            htmlContent: content,
-            index: messages.length,
-          });
-        }
-      }
-    });
-
-    return messages;
+  /**
+   * The mounted turns, in the current layout if any are present, otherwise in
+   * the legacy one. A page renders one layout, never both.
+   */
+  private findTurns(root: Element | Document = document): MountedTurns {
+    const pairs = this.queryAllWithFallback<HTMLElement>(SELECTORS.conversationTurn, root);
+    if (pairs.length > 0) return { layout: 'pair', turns: pairs };
+    return {
+      layout: 'legacy',
+      turns: this.queryAllWithFallback<HTMLElement>(LEGACY_SELECTORS.conversationTurn, root),
+    };
   }
 
   // ========== Deep Research (issue #283) ==========
@@ -270,7 +308,8 @@ export class ChatGPTExtractor extends BaseExtractor {
    */
   protected getScrollConfig(): ScrollConfig {
     return {
-      container: SELECTORS.scrollContainer,
+      container: SCROLL_CONTAINER_ANY_LAYOUT,
+      topSettleMs: TOP_SETTLE_MS,
       harvest: () => this.harvestWindow(),
     };
   }
@@ -302,9 +341,9 @@ export class ChatGPTExtractor extends BaseExtractor {
   getMessageWatermark(): number | null {
     // Scoped to the thread scroller, for the same reason accumulation is: the
     // sidebar <nav> matches loose selectors and carries its own list.
-    const root = this.queryWithFallback<HTMLElement>(SELECTORS.scrollContainer) ?? document;
+    const root = this.queryWithFallback<HTMLElement>(SCROLL_CONTAINER_ANY_LAYOUT) ?? document;
     let highest: number | null = null;
-    this.queryAllWithFallback<HTMLElement>(SELECTORS.conversationTurn, root).forEach(turn => {
+    this.findTurns(root).turns.forEach(turn => {
       const ordinal = this.turnOrdinal(turn);
       if (ordinal === undefined || !Number.isFinite(ordinal)) return;
       if (highest === null || ordinal > highest) highest = ordinal;
@@ -313,30 +352,65 @@ export class ChatGPTExtractor extends BaseExtractor {
   }
 
   /**
-   * Harvest the currently-mounted window as keyed messages.
+   * Harvest the currently-mounted window as keyed messages, in DOM order.
    *
-   * Keyed by the turn's stable uuid (data-turn-id, then data-message-id),
-   * hashing content only as a last resort, so turns de-duplicate correctly as
+   * Keys are stable across virtualized remounts, so turns de-duplicate as
    * scroll windows overlap.
    */
   private harvestWindow(): HarvestEntry<ConversationMessage>[] {
+    const { layout, turns } = this.findTurns();
+    return turns.flatMap(turn =>
+      layout === 'pair' ? this.pairTurnEntries(turn) : this.legacyTurnEntries(turn)
+    );
+  }
+
+  /**
+   * A 2026-09 turn: the user prompt, then its answer when one has rendered.
+   * Keyed by the turn's `data-turn-key` plus the role. No `order`: the only
+   * index on the page, `fallback-turn-N`, is renumbered per mounted window, so
+   * ordering comes from the window merge alone (issue #515).
+   */
+  private pairTurnEntries(turn: HTMLElement): HarvestEntry<ConversationMessage>[] {
+    const turnKey = turn.getAttribute('data-turn-key') ?? '';
     const entries: HarvestEntry<ConversationMessage>[] = [];
-    const turns = this.queryAllWithFallback<HTMLElement>(SELECTORS.conversationTurn);
 
-    turns.forEach(turn => {
-      const role = this.turnRole(turn);
-      if (role !== 'user' && role !== 'assistant') return;
+    const user = this.extractUserContent(turn);
+    if (user) {
+      const key = `${turnKey}:user`;
+      entries.push({ key, value: { id: key, role: 'user', content: user, index: 0 } });
+    }
 
-      const content =
-        role === 'user' ? this.extractUserContent(turn) : this.extractAssistantContent(turn);
-      if (!content) return;
-
-      const key =
-        turn.getAttribute('data-turn-id') ??
-        turn.querySelector('[data-message-id]')?.getAttribute('data-message-id') ??
-        `${role}-${generateHash(content)}`;
-
+    const answer = this.extractAssistantContent(turn);
+    if (answer) {
+      const key = `${turnKey}:assistant`;
       entries.push({
+        key,
+        value: { id: key, role: 'assistant', content: answer, htmlContent: answer, index: 0 },
+      });
+    }
+    return entries;
+  }
+
+  /**
+   * A pre-2026-09 turn holding one message. Keyed by its uuid (data-turn-id,
+   * then data-message-id), hashing content only as a last resort, and ordered
+   * by its `conversation-turn-N` ordinal.
+   */
+  private legacyTurnEntries(turn: HTMLElement): HarvestEntry<ConversationMessage>[] {
+    const role = this.turnRole(turn);
+    if (role !== 'user' && role !== 'assistant') return [];
+
+    const content =
+      role === 'user' ? this.extractUserContent(turn) : this.extractAssistantContent(turn);
+    if (!content) return [];
+
+    const key =
+      turn.getAttribute('data-turn-id') ??
+      turn.querySelector('[data-message-id]')?.getAttribute('data-message-id') ??
+      `${role}-${generateHash(content)}`;
+
+    return [
+      {
         key,
         value: {
           id: key,
@@ -346,10 +420,8 @@ export class ChatGPTExtractor extends BaseExtractor {
           index: 0, // re-indexed after accumulation
         },
         order: this.turnOrdinal(turn),
-      });
-    });
-
-    return entries;
+      },
+    ];
   }
 
   /**
@@ -357,7 +429,7 @@ export class ChatGPTExtractor extends BaseExtractor {
    */
   private extractUserContent(turnElement: Element): string {
     // Find user message content within the turn
-    const contentEl = this.queryWithFallback<HTMLElement>(SELECTORS.userMessage, turnElement);
+    const contentEl = this.queryWithFallback<HTMLElement>(USER_MESSAGE_ANY_LAYOUT, turnElement);
     if (contentEl?.textContent) {
       return this.sanitizeText(contentEl.textContent);
     }
@@ -403,10 +475,7 @@ export class ChatGPTExtractor extends BaseExtractor {
    * @see NFR-001-2 in design document
    */
   private extractAssistantContent(turnElement: Element): string {
-    const markdownEls = this.queryAllWithFallback<HTMLElement>(
-      SELECTORS.markdownContent,
-      turnElement
-    );
+    const markdownEls = this.queryAllWithFallback<HTMLElement>(MARKDOWN_ANY_LAYOUT, turnElement);
     // The image widget sits beside the prose, not inside it, and an
     // image-only turn has no prose at all — so the markers are appended to
     // whatever text the turn has, and on their own they keep the turn alive.
@@ -418,9 +487,9 @@ export class ChatGPTExtractor extends BaseExtractor {
       return [...blocks, imageMarkers].filter(Boolean).join('\n\n');
     }
 
-    // Fallback: try assistantResponse selectors
+    // Fallback (legacy layout only): the old assistantResponse selectors.
     const assistantEl = this.queryWithFallback<HTMLElement>(
-      SELECTORS.assistantResponse,
+      LEGACY_SELECTORS.assistantResponse,
       turnElement
     );
     if (assistantEl) {
@@ -436,17 +505,26 @@ export class ChatGPTExtractor extends BaseExtractor {
    * `<img data-g2o-image>` markers for the turn's generated images, sanitized
    * like any other block; empty when the turn has none or export is off.
    *
-   * The id is the widget's own uuid (`image-<uuid>` → `img-<uuid>`), stable
-   * across the per-window harvests of a virtualized scroll (ADR-041). A widget
-   * without an id falls back to the turn key plus the image's index.
+   * Ids must be stable across the per-window harvests of a virtualized scroll
+   * (ADR-041), so they come from the page, never a counter, in this order:
+   * the answer's message id plus the image's index (2026-09 layout), the legacy
+   * widget uuid, then the turn key plus the index.
    */
   private generatedImageMarkers(turnElement: Element): string {
     const turnKey =
-      turnElement.getAttribute('data-turn-id') ?? String(this.turnOrdinal(turnElement) ?? 'turn');
+      turnElement.getAttribute('data-turn-key') ??
+      turnElement.getAttribute('data-turn-id') ??
+      String(this.turnOrdinal(turnElement) ?? 'turn');
     const markers = this.images.markersFor(turnElement as HTMLElement, {
       selector: GENERATED_IMAGE_SELECTOR,
       enabled: this.enableImageExport,
       idFor: (img, index) => {
+        const messageId = img
+          .closest(`[${MESSAGE_IDS_ATTRIBUTE}]`)
+          ?.getAttribute(MESSAGE_IDS_ATTRIBUTE)
+          ?.trim()
+          .split(/\s+/)[0];
+        if (messageId) return `img-${messageId}-${index}`;
         const widgetId = img.closest(`[id^="${IMAGE_WIDGET_ID_PREFIX}"]`)?.id;
         return widgetId
           ? `img-${widgetId.slice(IMAGE_WIDGET_ID_PREFIX.length)}`

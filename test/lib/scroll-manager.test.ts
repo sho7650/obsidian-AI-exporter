@@ -8,7 +8,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mergeWindow, accumulateWhileScrolling } from '../../src/lib/scroll-manager';
+import {
+  mergeWindow,
+  accumulateWhileScrolling,
+  DEFAULT_SCROLL_DEADLINES,
+} from '../../src/lib/scroll-manager';
 
 describe('mergeWindow', () => {
   it('returns the window verbatim when nothing is accumulated yet', () => {
@@ -113,6 +117,126 @@ function createVirtualList(opts: {
     const frac = maxScroll === 0 ? 0 : scrollTop / maxScroll; // 1 at bottom, 0 at top
     const start = Math.round(frac * maxStart);
     return items.slice(start, start + windowSize);
+  };
+
+  return { container, harvest };
+}
+
+/**
+ * A virtualized list on a `flex-direction: column-reverse` scroller, as ChatGPT
+ * renders its thread since 2026-09 (issue #515): the scroll origin is the
+ * bottom, so scrollTop is 0 at the newest turn and negative toward the oldest,
+ * clamped to [-maxScroll, 0]. It opens at the bottom.
+ */
+function createReversedVirtualList(opts: { total: number; windowSize: number }): {
+  container: HTMLElement;
+  harvest: () => Array<{ key: string; value: string }>;
+} {
+  const { total, windowSize } = opts;
+  const clientHeight = 900;
+  const maxScroll = 10_000;
+  const items = Array.from({ length: total }, (_, i) => ({ key: `k${i}`, value: `v${i}` }));
+  let scrollTop = 0; // bottom
+
+  const container = document.createElement('div');
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column-reverse';
+  Object.defineProperty(container, 'scrollTop', {
+    get: () => scrollTop,
+    set: (v: number) => {
+      scrollTop = Math.max(-maxScroll, Math.min(0, v));
+    },
+    configurable: true,
+  });
+  Object.defineProperty(container, 'clientHeight', { get: () => clientHeight, configurable: true });
+  Object.defineProperty(container, 'scrollHeight', {
+    get: () => maxScroll + clientHeight,
+    configurable: true,
+  });
+
+  const maxStart = Math.max(0, total - windowSize);
+  const harvest = () => {
+    const frac = (scrollTop + maxScroll) / maxScroll; // 1 at bottom, 0 at top
+    const start = Math.round(frac * maxStart);
+    return items.slice(start, start + windowSize);
+  };
+
+  return { container, harvest };
+}
+
+/**
+ * A column-reverse list that lazily loads older turns, as ChatGPT does since
+ * 2026-09 (issue #515): once the view has sat at the top for `loadDelayMs`, the
+ * next older page is prepended. The view stays anchored to the bottom, so the
+ * scroll range grows and the view is suddenly no longer at the top.
+ *
+ * Turns are `turnHeight` px tall; the mounted window is whatever intersects the
+ * viewport.
+ *
+ * @param pages Page sizes, newest page first; the first page is loaded on open.
+ */
+function createLazyReversedList(opts: { pages: readonly number[]; loadDelayMs: number }): {
+  container: HTMLElement;
+  harvest: () => Array<{ key: string; value: string }>;
+} {
+  const clientHeight = 900;
+  const turnHeight = 500;
+  const total = opts.pages.reduce((a, b) => a + b, 0);
+  let loadedPages = 1;
+  let loaded = opts.pages[0];
+  let scrollTop = 0; // bottom
+  let atTopSince: number | null = null;
+
+  const maxScroll = () => Math.max(0, loaded * turnHeight - clientHeight);
+  /**
+   * Load the next page once the view has rested at the top long enough. A
+   * hidden tab runs no rendering updates, so nothing loads while hidden.
+   */
+  const maybeLoad = () => {
+    const atTop = maxScroll() > 0 && scrollTop <= -maxScroll() && !document.hidden;
+    if (!atTop) {
+      atTopSince = null;
+      return;
+    }
+    atTopSince ??= Date.now();
+    if (loadedPages < opts.pages.length && Date.now() - atTopSince >= opts.loadDelayMs) {
+      loaded += opts.pages[loadedPages++];
+      atTopSince = null; // scrollTop is unchanged, so the view now sits below the top
+    }
+  };
+
+  const container = document.createElement('div');
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column-reverse';
+  Object.defineProperty(container, 'scrollTop', {
+    get: () => {
+      maybeLoad();
+      return scrollTop;
+    },
+    set: (v: number) => {
+      scrollTop = Math.max(-maxScroll(), Math.min(0, v));
+      maybeLoad();
+    },
+    configurable: true,
+  });
+  Object.defineProperty(container, 'clientHeight', { get: () => clientHeight, configurable: true });
+  Object.defineProperty(container, 'scrollHeight', {
+    get: () => maxScroll() + clientHeight,
+    configurable: true,
+  });
+
+  const harvest = () => {
+    maybeLoad();
+    const first = total - loaded; // index of the oldest loaded turn
+    const distance = scrollTop + maxScroll();
+    const out: Array<{ key: string; value: string }> = [];
+    for (let i = 0; i < loaded; i++) {
+      const top = i * turnHeight;
+      if (top + turnHeight > distance && top < distance + clientHeight) {
+        out.push({ key: `k${first + i}`, value: `v${first + i}` });
+      }
+    }
+    return out;
   };
 
   return { container, harvest };
@@ -349,6 +473,103 @@ describe('accumulateWhileScrolling', () => {
     expect(result.itemCount).toBe(12);
     // Ordered from first turn to last.
     expect(result.items).toEqual(Array.from({ length: 12 }, (_, i) => `v${i}`));
+  });
+
+  it('accumulates every turn on a column-reverse scroller instead of reading its bottom as the top (issue #515)', async () => {
+    // Pinned to the bottom, a reversed scroller reports scrollTop 0 — which the
+    // engine used to read as "already at the top, nothing to scroll".
+    const { container, harvest } = createReversedVirtualList({ total: 12, windowSize: 4 });
+
+    const promise = accumulateWhileScrolling(container, harvest);
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.skipped).toBe(false);
+    expect(result.fullyLoaded).toBe(true);
+    expect(result.items).toEqual(Array.from({ length: 12 }, (_, i) => `v${i}`));
+  });
+
+  it('waits at the top for older turns that load after a delay when topSettleMs is set (issue #515)', async () => {
+    // Older pages arrive 1.5s after reaching the top — longer than the 3 x 400ms
+    // stability window, which would otherwise declare an incomplete pass complete.
+    const { container, harvest } = createLazyReversedList({ pages: [6, 6, 6], loadDelayMs: 1500 });
+
+    const promise = accumulateWhileScrolling(container, harvest, DEFAULT_SCROLL_DEADLINES, {
+      topSettleMs: 2000,
+    });
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.fullyLoaded).toBe(true);
+    expect(result.items).toEqual(Array.from({ length: 18 }, (_, i) => `v${i}`));
+  });
+
+  it('keeps waiting through several slow older-page loads, each shorter than the idle deadline (issue #515)', async () => {
+    // Every page takes 4s of a 5s idle window to arrive. Each arrival pushes the
+    // view off the top, and the next step up is progress, so no single wait may
+    // accumulate into an idle timeout.
+    const { container, harvest } = createLazyReversedList({
+      pages: [6, 6, 6, 6],
+      loadDelayMs: 4000,
+    });
+
+    const promise = accumulateWhileScrolling(
+      container,
+      harvest,
+      { idleMs: 5000, maxMs: 300_000 },
+      { topSettleMs: 4500 }
+    );
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.stopReason).toBe('complete');
+    expect(result.items).toEqual(Array.from({ length: 24 }, (_, i) => `v${i}`));
+  });
+
+  it('ends as a partial idle-timeout when the idle deadline is shorter than topSettleMs (issue #515)', async () => {
+    // A user who lowers the idle deadline below the settle time can never reach
+    // a settled top. The pass must then report itself as partial, never as complete.
+    const { container, harvest } = createReversedVirtualList({ total: 12, windowSize: 4 });
+
+    const promise = accumulateWhileScrolling(
+      container,
+      harvest,
+      { idleMs: 5000, maxMs: 300_000 },
+      { topSettleMs: 8000 }
+    );
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.fullyLoaded).toBe(false);
+    expect(result.stopReason).toBe('idle-timeout');
+  });
+
+  describe('while the tab is hidden (issue #515)', () => {
+    beforeEach(() => {
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+    });
+    afterEach(() => {
+      // Remove the own-property overrides so the prototype getters show through again.
+      Reflect.deleteProperty(document, 'visibilityState');
+      Reflect.deleteProperty(document, 'hidden');
+    });
+
+    it('does not complete at the top, because older turns cannot load in a hidden tab', async () => {
+      // Measured live: a hidden ChatGPT tab loaded nothing within 15s of reaching
+      // the top. Declaring completion there would save the newest page as if it
+      // were the whole conversation; timing out flags the note as partial instead.
+      const { container, harvest } = createLazyReversedList({ pages: [6, 6], loadDelayMs: 100 });
+
+      const promise = accumulateWhileScrolling(container, harvest, DEFAULT_SCROLL_DEADLINES, {
+        topSettleMs: 2000,
+      });
+      await vi.runAllTimersAsync();
+      const result = await promise;
+
+      expect(result.fullyLoaded).toBe(false);
+      expect(result.stopReason).toBe('idle-timeout');
+    });
   });
 
   it('keeps accumulating past the old fixed 30s wall while progress continues (issue #360)', async () => {
