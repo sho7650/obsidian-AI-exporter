@@ -103,6 +103,26 @@ an arbitrary pass.
   listing, privacy, locales) must say Gemini and ChatGPT
   (`test/arch/store-listing-fields.test.ts` guards the store copy).
 
+## Update 2026-09-26: the 2026-09 layout (#515)
+
+ChatGPT's 2026-09 layout changed the image widget (docs/investigation/chatgpt-dom-2026-09.md):
+
+- The `<img>` now sits in `[data-testid="generated-image-preview"]` and its `src` is a
+  **`blob:`** URL, not the signed `backend-api` URL. `captureImage` already reads `blob:` from
+  the page with the canvas fallback (ADR-027), so capture is unchanged.
+- The `image-<uuid>` container id is gone. Decision 2 now derives the id, in order, from the
+  answer's message id (`data-chatgpt-search-message-ids`, first token) plus the image's index
+  in the turn, then the legacy widget uuid, then the turn key plus index. Every source is
+  read from the page, so harvests of the same turn still produce the same id.
+- Both detection selectors stay extractor-private; the legacy one is kept for users on the old
+  rollout.
+- Live check: after an SPA navigation detached the `<img>` elements, `fetch(src)` and a canvas
+  read both still succeeded, so capturing once at the end of the pass (Decision 3) still
+  holds. The HTML spec lets a browser drop a detached image's data at any time; if that
+  happens the image is reported as not captured (never silently lost).
+- The privacy text ("downloads … from the same host the page already uses") stays: it remains
+  true for the legacy layout, and the new one only reads bytes already in the page.
+
 ## Alternatives considered
 
 - **Worker fetch with `chatgpt.com` in the allow-list.** Works (cookies via
