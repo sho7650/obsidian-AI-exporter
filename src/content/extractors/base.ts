@@ -43,6 +43,11 @@ export interface ScrollConfig {
   readonly container: readonly string[];
   /** Harvest the currently-mounted window as keyed messages, in DOM order. */
   harvest(): HarvestEntry<ConversationMessage>[];
+  /**
+   * How long the view must rest at the top before the pass may complete, for
+   * platforms that load older turns only once the top is reached (ADR-042).
+   */
+  readonly topSettleMs?: number;
 }
 
 /**
@@ -221,7 +226,8 @@ export abstract class BaseExtractor implements IConversationExtractor {
     const result = await accumulateWhileScrolling(
       container,
       () => config.harvest(),
-      this.scrollDeadlines
+      this.scrollDeadlines,
+      { topSettleMs: config.topSettleMs }
     );
     // Re-index into contiguous conversation order after de-duplication.
     const messages = result.items.map((message, index) => ({ ...message, index }));

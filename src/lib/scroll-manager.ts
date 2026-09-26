@@ -17,6 +17,7 @@ import {
   DEFAULT_SCROLL_IDLE_TIMEOUT_SEC,
   DEFAULT_SCROLL_MAX_TIMEOUT_SEC,
 } from './constants';
+import { createScrollAxis, type ScrollAxis } from './scroll-axis';
 
 /** Why an auto-scroll pass ended. */
 export type ScrollStopReason = 'complete' | 'idle-timeout' | 'max-timeout';
@@ -339,6 +340,18 @@ export interface HarvestEntry<T> {
   order?: number;
 }
 
+/** Platform-specific tuning for one accumulation pass. */
+export interface AccumulateOptions {
+  /**
+   * How long the view must rest at the top before the pass may complete, in ms.
+   * For platforms that load older turns only after the top is reached (ChatGPT
+   * since 2026-09, issue #515); without it the stability window can end the
+   * pass before the older page arrives, and the result claims to be complete.
+   * Default 0: completion is decided by stability alone.
+   */
+  readonly topSettleMs?: number;
+}
+
 /** Result of accumulating a virtualized conversation via scrolling. */
 export interface AccumulateResult<T> {
   /** De-duplicated values in conversation order (first turn → last turn). */
@@ -467,17 +480,20 @@ function dedupeKeys(keys: readonly string[]): string[] {
  *
  * @param container The scrollable, virtualized conversation container.
  * @param harvest Returns the currently-mounted window in DOM (top→bottom) order.
+ * @param options Platform tuning; see {@link AccumulateOptions}.
  */
 export async function accumulateWhileScrolling<T>(
   container: HTMLElement,
   harvest: () => HarvestEntry<T>[],
-  deadlines: ScrollDeadlines = DEFAULT_SCROLL_DEADLINES
+  deadlines: ScrollDeadlines = DEFAULT_SCROLL_DEADLINES,
+  options: AccumulateOptions = {}
 ): Promise<AccumulateResult<T>> {
   const passStart = Date.now();
   const acc = createAccumulator(harvest);
+  const axis = createScrollAxis(container);
 
-  if (await seedAtBottom(container, acc.ingest)) {
-    console.info('[G2O] scrollTop=0 on open, conversation fits without scrolling');
+  if (await seedAtBottom(axis, acc.ingest)) {
+    console.info('[G2O] No scroll range on open, conversation fits without scrolling');
     return {
       items: acc.toItems(),
       fullyLoaded: true,
@@ -494,16 +510,17 @@ export async function accumulateWhileScrolling<T>(
       `${acc.size} turns mounted, accumulating by scrolling up`
   );
 
-  const step = Math.max(
-    SCROLL_ACCUMULATE_MIN_STEP,
-    Math.floor(container.clientHeight * SCROLL_ACCUMULATE_STEP_FACTOR)
+  const { iterations, stopReason } = await scrollUpUntilStable(
+    axis,
+    accumulateStep(container),
+    deadlines,
+    options.topSettleMs ?? 0,
+    () => {
+      const before = acc.size;
+      acc.ingest();
+      return acc.size > before;
+    }
   );
-
-  const { iterations, stopReason } = await scrollUpUntilStable(container, step, deadlines, () => {
-    const before = acc.size;
-    acc.ingest();
-    return acc.size > before;
-  });
 
   logScrollStop(stopReason, acc.size, 'turns', iterations, Date.now() - passStart, deadlines);
   return {
@@ -515,6 +532,17 @@ export async function accumulateWhileScrolling<T>(
     stopReason,
     maxOrder: acc.maxOrder,
   };
+}
+
+/**
+ * How far each upward step travels: a fraction of the viewport, so consecutive
+ * windows overlap and the merge always has an anchor.
+ */
+function accumulateStep(container: HTMLElement): number {
+  return Math.max(
+    SCROLL_ACCUMULATE_MIN_STEP,
+    Math.floor(container.clientHeight * SCROLL_ACCUMULATE_STEP_FACTOR)
+  );
 }
 
 /** Turns accumulated across windows: de-duplicated by key, ordered once at the end. */
@@ -562,13 +590,14 @@ function createAccumulator<T>(harvest: () => HarvestEntry<T>[]): {
  * below the fold and unmounted, and because we only ever scroll *up* from the
  * seed, an unmounted tail would be lost forever. Jumping to scrollHeight first
  * pins the newest window; a conversation that fits has no scroll range and
- * stays at the top.
+ * stays at the top. Measured through the axis, because on a column-reverse
+ * scroller the pinned bottom reports scrollTop 0 (issue #515).
  */
-async function seedAtBottom(container: HTMLElement, ingest: () => void): Promise<boolean> {
-  container.scrollTop = container.scrollHeight;
+async function seedAtBottom(axis: ScrollAxis, ingest: () => void): Promise<boolean> {
+  axis.pinBottom();
   await delay(SCROLL_ACCUMULATE_POLL_INTERVAL);
   ingest();
-  return container.scrollTop <= 0;
+  return axis.distanceFromTop() <= 0;
 }
 
 /**
@@ -600,31 +629,34 @@ async function seedAtBottom(container: HTMLElement, ingest: () => void): Promise
  *   accumulated set. Invoked once per iteration after each scroll settles.
  */
 async function scrollUpUntilStable(
-  container: HTMLElement,
+  axis: ScrollAxis,
   step: number,
   deadlines: ScrollDeadlines,
+  topSettleMs: number,
   onWindow: () => boolean
 ): Promise<{ iterations: number; stopReason: ScrollStopReason }> {
   let stable = 0;
   let iterations = 0;
   const startTime = Date.now();
   let lastProgressTime = startTime;
+  let atTopSince: number | null = null;
 
   for (;;) {
     const stopReason = crossedDeadline(startTime, lastProgressTime, deadlines);
     if (stopReason !== null) return { iterations, stopReason };
 
-    const before = container.scrollTop;
+    const before = axis.distanceFromTop();
     const wasAtTop = before <= 0;
-    container.scrollTop = Math.max(0, before - step);
+    axis.scrollToDistance(Math.max(0, before - step));
     await delay(SCROLL_ACCUMULATE_POLL_INTERVAL);
 
     const grew = onWindow();
-    const moved = before - container.scrollTop;
+    const after = axis.distanceFromTop();
+    const moved = before - after;
     iterations++;
 
     console.debug(
-      `[G2O] Accumulate iteration ${iterations}: scrollTop=${container.scrollTop}, ` +
+      `[G2O] Accumulate iteration ${iterations}: distanceFromTop=${after}, ` +
         `moved=${moved}, newTurns=${grew}`
     );
 
@@ -632,9 +664,18 @@ async function scrollUpUntilStable(
       lastProgressTime = Date.now(); // progress → reset the idle deadline
     }
 
+    // The top counts only from the moment the view arrived there; older turns
+    // loading above push it back down and restart the wait (issue #515). A
+    // hidden tab runs no rendering updates, so a platform that loads on scroll
+    // loads nothing there (measured live on ChatGPT): the top never counts while
+    // hidden, and the idle deadline ends the pass as partial instead.
+    const visible = document.visibilityState !== 'hidden';
+    atTopSince = after <= 0 && visible ? (atTopSince ?? Date.now()) : null;
+    const settled = atTopSince !== null && Date.now() - atTopSince >= topSettleMs;
+
     if (grew) {
       stable = 0;
-    } else if (wasAtTop && ++stable >= SCROLL_STABILITY_THRESHOLD) {
+    } else if (wasAtTop && visible && ++stable >= SCROLL_STABILITY_THRESHOLD && settled) {
       return { iterations, stopReason: 'complete' };
     }
   }

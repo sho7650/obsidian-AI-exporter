@@ -9,48 +9,41 @@
 import type { SelectorGroup } from './types';
 
 export const SELECTORS = {
-  // Conversation turn (each Q&A pair)
-  // ChatGPT changed from <article> to <section> in 2026-03; the article
-  // variants matched nothing on the live site by 2026-07 and were removed
-  // (the baseline contract rejects zero-match entries).
-  // The `data-testid` ordinal is numbered across the whole conversation and is
-  // NOT renumbered per mounted window (measured live 2026-07-29: a mid-scroll
-  // window reported turns 17-21, the top window 1-21). ChatGPTExtractor reads it
-  // as the accumulation order index — see `turnOrdinal()` and issue #353.
+  // Conversation turn. Since 2026-09 (issue #515) ONE turn holds a user prompt
+  // AND its answer: `div[data-turn-key=<user message uuid>]`. The key is stable
+  // across virtualized remounts; there is no conversation-wide ordinal any more
+  // — the `fallback-turn-N` beside it is renumbered per mounted window (measured
+  // live 2026-09-26, docs/investigation/chatgpt-dom-2026-09.md). The pre-2026-09
+  // `section[data-turn-id]` layout lives on as LEGACY_SELECTORS in chatgpt.ts,
+  // outside this group, because the E2E baseline rejects zero-match entries.
   conversationTurn: [
-    'section[data-turn-id]', // Current structure (HIGH)
-    'section[data-testid^="conversation-turn"]', // Current test attr (MEDIUM)
+    'div[data-turn-key]', // Current structure (HIGH)
   ],
 
-  // User message
+  // User message text inside a turn.
   userMessage: [
-    '[data-message-author-role="user"] .whitespace-pre-wrap', // Structure (HIGH)
-    'section[data-turn="user"] .whitespace-pre-wrap', // Current structure (HIGH)
-    '.user-message-bubble-color .whitespace-pre-wrap', // Style (MEDIUM)
+    '[data-user-message-bubble] .whitespace-pre-wrap', // Structure (HIGH)
   ],
 
-  // Assistant message
-  assistantResponse: [
-    '[data-message-author-role="assistant"] .markdown.prose', // Structure (HIGH)
-    'section[data-turn="assistant"] .markdown.prose', // Current structure (HIGH)
-    '.markdown.prose.dark\\:prose-invert', // Style (MEDIUM)
+  // Assistant role marker: a visually hidden `<h4>` reading "ChatGPT said:",
+  // present on image-only answers too. A marker, NOT the answer body — its text
+  // must never be exported (the pre-2026-09 `assistantResponse` group was a body
+  // fallback, hence the new name).
+  assistantRole: [
+    '[data-conversation-role="assistant"]', // Semantic (HIGH)
   ],
 
-  // Markdown content
+  // Assistant answer body (one per markdown block).
   markdownContent: [
-    '.markdown.prose', // Semantic (HIGH)
-    '.markdown-new-styling', // Style (MEDIUM)
+    '[data-markdown-text-style="assistant-message"]', // Semantic (HIGH)
   ],
 
-  // Scroll container for virtualized-conversation auto-scroll (ADR-017).
-  // ChatGPT windows/evicts turns; the thread scroller carries data-scroll-root
-  // and uses the `not-print:overflow-y-auto` token. IMPORTANT: the sidebar <nav>
-  // also has `flex-1 flex-col overflow-y-auto` (plain, scrollTop 0), so a
-  // class-only `overflow-y-auto` selector picks the nav and skips auto-scroll
-  // (verified live 2026-07). Anchor on data-scroll-root; the `not-print:` prefix
-  // uniquely distinguishes the thread scroller from the nav.
+  // Thread scroller for virtualized-conversation auto-scroll (ADR-017). Since
+  // 2026-09 it is `flex-direction: column-reverse`, so scrollTop is 0 at the
+  // bottom and negative upward (ADR-042). The sidebar has its own scroller,
+  // `[data-app-action-sidebar-scroll]`; this semantic attribute tells them apart
+  // (the sidebar-decoy lesson, #499).
   scrollContainer: [
-    '[data-scroll-root]', // Semantic scroll root (HIGH)
-    '[class*="not-print:overflow-y-auto"]', // Thread-only overflow token (MEDIUM)
+    '[data-app-action-timeline-scroll]', // Semantic scroll root (HIGH)
   ],
 } as const satisfies SelectorGroup;
