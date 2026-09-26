@@ -510,17 +510,11 @@ export async function accumulateWhileScrolling<T>(
       `${acc.size} turns mounted, accumulating by scrolling up`
   );
 
-  const step = Math.max(
-    SCROLL_ACCUMULATE_MIN_STEP,
-    Math.floor(container.clientHeight * SCROLL_ACCUMULATE_STEP_FACTOR)
-  );
-
-  const topSettleMs = options.topSettleMs ?? 0;
   const { iterations, stopReason } = await scrollUpUntilStable(
     axis,
-    step,
+    accumulateStep(container),
     deadlines,
-    topSettleMs,
+    options.topSettleMs ?? 0,
     () => {
       const before = acc.size;
       acc.ingest();
@@ -538,6 +532,17 @@ export async function accumulateWhileScrolling<T>(
     stopReason,
     maxOrder: acc.maxOrder,
   };
+}
+
+/**
+ * How far each upward step travels: a fraction of the viewport, so consecutive
+ * windows overlap and the merge always has an anchor.
+ */
+function accumulateStep(container: HTMLElement): number {
+  return Math.max(
+    SCROLL_ACCUMULATE_MIN_STEP,
+    Math.floor(container.clientHeight * SCROLL_ACCUMULATE_STEP_FACTOR)
+  );
 }
 
 /** Turns accumulated across windows: de-duplicated by key, ordered once at the end. */
