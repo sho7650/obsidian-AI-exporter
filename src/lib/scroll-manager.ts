@@ -516,11 +516,17 @@ export async function accumulateWhileScrolling<T>(
   );
 
   const topSettleMs = options.topSettleMs ?? 0;
-  const { iterations, stopReason } = await scrollUpUntilStable(axis, step, deadlines, topSettleMs, () => {
-    const before = acc.size;
-    acc.ingest();
-    return acc.size > before;
-  });
+  const { iterations, stopReason } = await scrollUpUntilStable(
+    axis,
+    step,
+    deadlines,
+    topSettleMs,
+    () => {
+      const before = acc.size;
+      acc.ingest();
+      return acc.size > before;
+    }
+  );
 
   logScrollStop(stopReason, acc.size, 'turns', iterations, Date.now() - passStart, deadlines);
   return {
