@@ -78,6 +78,10 @@ export function renderPairTurn(turn: PairTurn, index: number): string {
 /**
  * The page shell: the sidebar decoy scroller plus the column-reverse thread
  * scroller holding the given turns, inside `main`.
+ *
+ * Only the scroll origin is reversed: the scroller's single child is a normal
+ * `flex-col` and the turns sit in it oldest first, so document order is
+ * conversation order (measured, docs/investigation/chatgpt-dom-2026-09.md).
  */
 export function createChatGPT2026Page(turns: readonly PairTurn[]): string {
   return `<nav><div data-app-action-sidebar-scroll="" class="overflow-y-auto"></div></nav>

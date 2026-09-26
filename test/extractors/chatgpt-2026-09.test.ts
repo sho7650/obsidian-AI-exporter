@@ -125,6 +125,27 @@ describe('ChatGPTExtractor — 2026-09 layout (issue #515)', () => {
       expect(messages.map(m => m.index)).toEqual([0, 1, 2, 3]);
     });
 
+    it('keeps two turns apart when their data-turn-key is empty', () => {
+      // An empty key would give both turns the keys ":user"/":assistant", and
+      // de-duplication would silently drop one of them.
+      loadFixture(
+        createChatGPT2026Page([
+          { key: '', user: 'First question', answers: ['<p>First answer</p>'] },
+          { key: '', user: 'Second question', answers: ['<p>Second answer</p>'] },
+        ])
+      );
+
+      const messages = extractor.extractMessages();
+
+      expect(new Set(messages.map(m => m.id)).size).toBe(4);
+      expect(messages.map(m => plainText(m.content))).toEqual([
+        'First question',
+        'First answer',
+        'Second question',
+        'Second answer',
+      ]);
+    });
+
     it('leaves the date separator that opens a turn out of both messages', () => {
       loadFixture(
         createChatGPT2026Page([

@@ -371,7 +371,11 @@ export class ChatGPTExtractor extends BaseExtractor {
    * ordering comes from the window merge alone (issue #515).
    */
   private pairTurnEntries(turn: HTMLElement): HarvestEntry<ConversationMessage>[] {
-    const turnKey = turn.getAttribute('data-turn-key') ?? '';
+    // An empty key would give every such turn the same message keys, and the
+    // window merge would silently drop all but one; hash the turn instead, as
+    // the legacy path does for a turn without an id.
+    const turnKey =
+      turn.getAttribute('data-turn-key') || `turn-${generateHash(turn.textContent ?? '')}`;
     const entries: HarvestEntry<ConversationMessage>[] = [];
 
     const user = this.extractUserContent(turn);

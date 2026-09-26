@@ -24,6 +24,12 @@ turn was observed as `4` and later as `9`. It is not an order index.
 
 ## Scrolling
 
+- **Document order is chronological.** The column-reverse scroller has a single child,
+  `div.flex.flex-col` (computed `flex-direction: column`), which holds the turns. The first
+  `[data-turn-key]` in document order was the visually highest one (`top -22294` while pinned
+  at the bottom, `top 124` once scrolled to the top, where it held the conversation's first
+  prompt). Only the scroll origin is reversed, not the order of the turns.
+
 - `scrollTop` is `0` at the **bottom** and negative upward, down to `-(scrollHeight - clientHeight)`.
 - 3–6 turns are mounted at once; the rest are evicted.
 - Reaching the top loads older turns above (`scrollHeight` grows, the view keeps its bottom
