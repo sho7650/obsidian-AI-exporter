@@ -3,9 +3,8 @@
  * Based on DOM analysis from elements-sample.html
  */
 
-import { BaseExtractor } from './base';
+import { BaseExtractor, type CollectedMessages } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
-import { extractErrorMessage } from '../../lib/error-utils';
 import {
   ensureAllElementsLoaded,
   describeScrollStop,
@@ -29,9 +28,9 @@ export class GeminiExtractor extends BaseExtractor {
 
   /**
    * Generated-image markers, registered (sync) while extractMessages()
-   * rewrites `<img>` and drained (async) in extract(). Ids count up within one
-   * extraction — safe here because Gemini extracts in a single pass — and the
-   * counter and collector are reset at the start of every extract().
+   * rewrites `<img>` and drained (async) in finalizeExtraction(). Ids count up
+   * within one extraction — safe here because Gemini extracts in a single
+   * pass — and the counter and collector are reset in onExtractStart().
    */
   private readonly images = new ImageMarkerCollector();
   private imageIdCounter = 0;
@@ -49,60 +48,36 @@ export class GeminiExtractor extends BaseExtractor {
     return panel !== null;
   }
 
-  // ========== Extraction ==========
+  // ========== Extraction hooks (ADR-043) ==========
+
+  /** Reset per-extraction image state before extractMessages() populates it. */
+  protected onExtractStart(): void {
+    this.imageIdCounter = 0;
+    this.images.reset();
+  }
 
   /**
-   * Override extract() so Gemini-specific auto-scroll runs before message
-   * extraction and a scroll-timeout warning is appended after.
+   * Gemini lazy-loads older turns into one mounted list, so it scrolls to the
+   * top first and then reads the DOM once — not the per-window accumulation
+   * that getScrollConfig() drives for virtualized platforms.
    */
-  async extract(): Promise<ExtractionResult> {
-    try {
-      if (!this.canExtract()) {
-        return { success: false, error: `Not on a ${this.platformLabel} page` };
-      }
-      const deepResearchResult = this.tryExtractDeepResearch();
-      if (deepResearchResult) return deepResearchResult;
+  protected async collectMessages(): Promise<CollectedMessages> {
+    const scrollResult = await this.runAutoScroll();
+    const messages = this.extractMessages();
+    // One builder for both engines, so the warning text cannot drift (ADR-032);
+    // truncated comes from the same stopReason (ADR-033). No watermark: a
+    // lazy-loading turn count is not a stable ordinal (ADR-036).
+    const warning = describeScrollStop(
+      scrollResult.stopReason,
+      scrollResult.elementCount,
+      this.scrollDeadlines
+    );
+    return warning ? { messages, warning, truncated: true } : { messages };
+  }
 
-      // Reset per-extraction image state before extractMessages() populates it.
-      this.imageIdCounter = 0;
-      this.images.reset();
-
-      const scrollResult = await this.runAutoScroll();
-
-      console.info(`[G2O] Extracting ${this.platformLabel} conversation`);
-      const messages = this.extractMessages();
-      const conversationId = this.getConversationId() || `${this.platform}-${Date.now()}`;
-      const title = this.getTitle();
-      const baseResult = this.buildConversationResult(
-        messages,
-        conversationId,
-        title,
-        this.platform
-      );
-
-      // Fetch captured generated images (blob → base64) and attach to the data.
-      const result = await this.images.attach(baseResult);
-
-      // One builder for both engines: this warning used to be a byte-identical
-      // literal here and in BaseExtractor.collectMessages() (ADR-032).
-      const warning = scrollResult
-        ? describeScrollStop(
-            scrollResult.stopReason,
-            scrollResult.elementCount,
-            this.scrollDeadlines
-          )
-        : undefined;
-      if (warning) {
-        // Set from the same stopReason as the warning (ADR-033): the prose alone
-        // cannot stop this capture from overwriting a longer note.
-        const data = result.data ? { ...result.data, truncated: true } : result.data;
-        return { ...result, data, warnings: [...(result.warnings ?? []), warning] };
-      }
-      return result;
-    } catch (error) {
-      console.error(`[G2O] ${this.platformLabel} extraction error:`, error);
-      return { success: false, error: extractErrorMessage(error) };
-    }
+  /** Fetch the captured generated images (blob → base64) and attach them. */
+  protected finalizeExtraction(result: ExtractionResult): Promise<ExtractionResult> {
+    return this.images.attach(result);
   }
 
   private async runAutoScroll(): Promise<ScrollResult> {

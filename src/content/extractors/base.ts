@@ -50,6 +50,16 @@ export interface ScrollConfig {
   readonly topSettleMs?: number;
 }
 
+/** What {@link BaseExtractor.collectMessages} hands back to the template method. */
+export interface CollectedMessages {
+  messages: ConversationMessage[];
+  warning?: string;
+  /** The pass ended on a deadline, so earlier messages may be missing (#449). */
+  truncated?: boolean;
+  /** Ordinal of the newest turn covered, when the platform has one (#465). */
+  watermark?: number;
+}
+
 /**
  * Abstract base class for conversation extractors
  * Provides common functionality for all AI platform extractors
@@ -101,10 +111,10 @@ export abstract class BaseExtractor implements IConversationExtractor {
   /**
    * Main extraction method (template method pattern)
    *
-   * Subclasses customize behavior via tryExtractDeepResearch() to intercept
-   * for Deep Research mode. Platforms that need pre/post processing around
-   * the normal flow (e.g. Gemini's auto-scroll + warning) override extract()
-   * directly.
+   * Subclasses customize behavior through the hooks below — never by
+   * overriding extract() itself, which test/arch/extractor-extract-hook.test.ts
+   * enforces (ADR-043): a copy of this method silently misses every later fix
+   * to it, as Gemini's did with the truncated flag (DES-018 H-1).
    */
   async extract(): Promise<ExtractionResult> {
     try {
@@ -193,7 +203,7 @@ export abstract class BaseExtractor implements IConversationExtractor {
   /**
    * Hook: auto-scroll configuration for virtualized platforms (ADR-017).
    * Return null (default) for platforms that render all turns eagerly or that
-   * handle scrolling in their own extract() override (Gemini).
+   * run their own scroll engine in a collectMessages() override (Gemini).
    */
   protected getScrollConfig(): ScrollConfig | null {
     return null;
@@ -204,14 +214,7 @@ export abstract class BaseExtractor implements IConversationExtractor {
    * virtualized and the user enabled auto-scroll. Falls back to a single-pass
    * extractMessages() when disabled, unconfigured, or the container is missing.
    */
-  protected async collectMessages(): Promise<{
-    messages: ConversationMessage[];
-    warning?: string;
-    /** The pass ended on a deadline, so earlier messages may be missing (#449). */
-    truncated?: boolean;
-    /** Ordinal of the newest turn covered, when the platform has one (#465). */
-    watermark?: number;
-  }> {
+  protected async collectMessages(): Promise<CollectedMessages> {
     const config = this.getScrollConfig();
     if (!this.enableAutoScroll || !config) {
       return { messages: this.extractMessages(), watermark: this.currentWatermark() };
