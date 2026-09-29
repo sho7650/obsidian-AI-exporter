@@ -1146,6 +1146,7 @@ describe('GeminiExtractor', () => {
       expect(result.data?.messages.length).toBe(2);
       // No timeout warning — scroll was not attempted
       expect(result.warnings).toBeUndefined();
+      expect(result.data?.truncated).toBeUndefined();
     });
 
     it('skips scroll when scrollTop === 0 (short conversation)', async () => {
@@ -1182,6 +1183,7 @@ describe('GeminiExtractor', () => {
       expect(result.success).toBe(true);
       expect(result.data?.messages.length).toBe(2);
       expect(result.warnings).toBeUndefined();
+      expect(result.data?.truncated).toBeUndefined();
     });
 
     it('stabilizes after loading all messages', async () => {
@@ -1227,6 +1229,8 @@ describe('GeminiExtractor', () => {
       // No timeout warning
       const timeoutWarning = result.warnings?.find(w => w.startsWith('Auto-scroll'));
       expect(timeoutWarning).toBeUndefined();
+      // A complete pass must not block a legitimate save (ADR-033).
+      expect(result.data?.truncated).toBeUndefined();
     });
 
     it('times out and adds warning when elements keep growing', async () => {
@@ -1266,6 +1270,9 @@ describe('GeminiExtractor', () => {
       expect(timeoutWarning).toMatch(/time limit/);
       expect(timeoutWarning).not.toMatch(/no progress/);
       expect(timeoutWarning).toContain('turns captured');
+      // The warning alone is prose the background cannot act on; the structured
+      // flag is what stops this capture from overwriting a longer note (ADR-033).
+      expect(result.data?.truncated).toBe(true);
     });
 
     it('keeps loading a long conversation past the old 30s wall while turns keep arriving (issue #360)', async () => {

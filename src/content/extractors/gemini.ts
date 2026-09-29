@@ -93,7 +93,10 @@ export class GeminiExtractor extends BaseExtractor {
           )
         : undefined;
       if (warning) {
-        return { ...result, warnings: [...(result.warnings ?? []), warning] };
+        // Set from the same stopReason as the warning (ADR-033): the prose alone
+        // cannot stop this capture from overwriting a longer note.
+        const data = result.data ? { ...result.data, truncated: true } : result.data;
+        return { ...result, data, warnings: [...(result.warnings ?? []), warning] };
       }
       return result;
     } catch (error) {
