@@ -35,6 +35,7 @@ import {
   MIN_SCROLL_MAX_TIMEOUT_SEC,
   MAX_SCROLL_MAX_TIMEOUT_SEC,
 } from '../lib/constants';
+import { DEFAULT_SYNC_SETTINGS } from '../lib/settings-schema';
 import { getMessage } from '../lib/i18n';
 import { sendMessage } from '../lib/messaging';
 
@@ -466,7 +467,7 @@ function collectSettings(): ExtensionSettings {
     enableAppendMode: elements.enableAppendMode.checked,
     enableToolContent: elements.enableToolContent.checked,
     enableImageExport: elements.enableImageExport.checked,
-    imageVaultPath: elements.imageVaultPath.value.trim() || 'AI/{platform}/images',
+    imageVaultPath: elements.imageVaultPath.value.trim() || DEFAULT_SYNC_SETTINGS.imageVaultPath,
     flattenLargeCallouts: elements.flattenLargeCallouts.checked,
     maxCalloutLines: parseCalloutLines(elements.maxCalloutLines.value),
     ...collectLimits(),

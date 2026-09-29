@@ -11,6 +11,12 @@ import {
 } from '../lib/constants';
 import { getMessage } from '../lib/i18n';
 
+/**
+ * Slide-in/out animation length. The exit removes the toast after exactly this
+ * long, so the CSS duration and the removal delay must come from one value.
+ */
+const TOAST_ANIMATION_MS = 300;
+
 // CSS styles for UI components
 const STYLES = `
   #g2o-sync-anchor {
@@ -83,7 +89,7 @@ const STYLES = `
     font-size: 14px;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    animation: g2o-slideIn 0.3s ease;
+    animation: g2o-slideIn ${TOAST_ANIMATION_MS}ms ease;
     max-width: 400px;
   }
 
@@ -395,13 +401,13 @@ export function showToast(
   if (duration > 0) {
     setTimeout(() => {
       if (currentToast !== toast) return;
-      toast.style.animation = 'g2o-slideIn 0.3s ease reverse';
+      toast.style.animation = `g2o-slideIn ${TOAST_ANIMATION_MS}ms ease reverse`;
       setTimeout(() => {
         toast.remove();
         if (currentToast === toast) {
           currentToast = null;
         }
-      }, 300);
+      }, TOAST_ANIMATION_MS);
     }, duration);
   }
 }

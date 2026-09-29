@@ -1595,6 +1595,25 @@ describe('background/index', () => {
       expect(fileResult?.success).toBe(true);
     });
 
+    it('round-trips multibyte text longer than one base64 chunk in the downloaded file', async () => {
+      // 3-byte (日本語) and 4-byte (emoji) UTF-8 sequences, well past the 8192-byte
+      // chunk boundary, so a split code point or a dropped chunk would show.
+      const body = '日本語のテスト 🧪 '.repeat(1000);
+      const sendResponse = vi.fn();
+      capturedListener(
+        { action: 'saveToOutputs', data: { ...validNote, body }, outputs: ['file'] },
+        validSender as chrome.runtime.MessageSender,
+        sendResponse
+      );
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+
+      const url = (
+        vi.mocked(chrome.downloads.download).mock.calls[0][0] as chrome.downloads.DownloadOptions
+      ).url;
+      const bytes = Uint8Array.from(atob(url.split('base64,')[1]), c => c.charCodeAt(0));
+      expect(new TextDecoder().decode(bytes)).toContain(body);
+    });
+
     it('handles download failure with lastError', async () => {
       vi.mocked(chrome.downloads.download).mockImplementation((_options, callback) => {
         // Simulate chrome.runtime.lastError

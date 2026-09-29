@@ -358,6 +358,19 @@ describe('popup/app', () => {
       expect(el<HTMLButtonElement>('saveBtn').disabled).toBe(false);
     });
 
+    it('saves the default image vault path when the field is left empty', async () => {
+      await initWithDefaults();
+      vi.mocked(saveSettings).mockResolvedValue(undefined);
+
+      el<HTMLInputElement>('imageVaultPath').value = '   ';
+      el<HTMLButtonElement>('saveBtn').click();
+
+      await vi.waitFor(() => expect(saveSettings).toHaveBeenCalled());
+      expect(saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ imageVaultPath: 'AI/{platform}/images' })
+      );
+    });
+
     it('collects the selected filename scheme into templateOptions (#328)', async () => {
       await initWithDefaults();
       vi.mocked(saveSettings).mockResolvedValue(undefined);

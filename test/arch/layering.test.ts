@@ -69,7 +69,10 @@ describe('architecture: layering', () => {
       .resideInFolder('**/content/extractors/**')
       .should()
       .notImportFrom('**/background/**', '**/popup/**', '**/offscreen/**')
-      .because('extractors depend only on base, selectors, and lib')
+      .because(
+        'extractors depend on base, selectors, lib, and content helpers ' +
+          '(image-markers, markdown-rules) — never on another extension context'
+      )
       .check();
   });
 });
