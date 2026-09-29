@@ -397,71 +397,55 @@ export class ClaudeExtractor extends BaseExtractor {
    * 4. .standard-markdown content (code interpreter, file analysis)
    */
   private extractToolContent(toolSection: Element): string {
-    const parts: string[] = [];
-    this.extractToolSummary(toolSection, parts);
-    this.extractToolQueries(toolSection, parts);
-    this.extractToolResults(toolSection, parts);
-    this.extractToolMarkdown(toolSection, parts);
-    return parts.join('\n\n');
+    return [
+      ...this.extractToolSummary(toolSection),
+      ...this.extractToolQueries(toolSection),
+      ...this.extractToolResults(toolSection),
+      ...this.extractToolMarkdown(toolSection),
+    ].join('\n\n');
   }
 
   /** Summary button text (e.g., "Searched the web") as bold */
-  private extractToolSummary(toolSection: Element, parts: string[]): void {
+  private extractToolSummary(toolSection: Element): string[] {
     const summaryButton = toolSection.querySelector('button span.truncate');
-    if (summaryButton?.textContent) {
-      parts.push('**' + this.sanitizeText(summaryButton.textContent) + '**');
-    }
+    return summaryButton?.textContent
+      ? ['**' + this.sanitizeText(summaryButton.textContent) + '**']
+      : [];
   }
 
   /** Search queries (group/row buttons with query text and result count) */
-  private extractToolQueries(toolSection: Element, parts: string[]): void {
-    const queryButtons = toolSection.querySelectorAll('[class*="group/row"]');
-    queryButtons.forEach(btn => {
+  private extractToolQueries(toolSection: Element): string[] {
+    return Array.from(toolSection.querySelectorAll('[class*="group/row"]')).flatMap(btn => {
       const queryEl = btn.querySelector('.truncate');
-      const countEl = btn.querySelector('p');
-      if (queryEl?.textContent?.trim()) {
-        let text = this.sanitizeText(queryEl.textContent);
-        if (countEl?.textContent?.trim()) {
-          text += ' (' + this.sanitizeText(countEl.textContent) + ')';
-        }
-        parts.push(text);
-      }
+      if (!queryEl?.textContent?.trim()) return [];
+      const query = this.sanitizeText(queryEl.textContent);
+      const count = btn.querySelector('p')?.textContent?.trim();
+      return [count ? query + ' (' + this.sanitizeText(count) + ')' : query];
     });
   }
 
   /** Search result items (identified by favicon images) */
-  private extractToolResults(toolSection: Element, parts: string[]): void {
-    const favicons = toolSection.querySelectorAll('img[alt="favicon"]');
-    if (favicons.length === 0) return;
-
-    const items: string[] = [];
-    favicons.forEach(img => {
+  private extractToolResults(toolSection: Element): string[] {
+    const items = Array.from(toolSection.querySelectorAll('img[alt="favicon"]')).flatMap(img => {
       // Navigate: img → container div → result row div
       const row = img.parentElement?.parentElement;
-      if (!row || row.children.length < 2) return;
+      if (!row || row.children.length < 2) return [];
       // Children: [0]=favicon container, [1]=title, [2]=domain (optional)
       const title = row.children[1]?.textContent?.trim();
       const domain = row.children.length > 2 ? row.children[2]?.textContent?.trim() : undefined;
-      if (title) {
-        items.push(domain ? '- ' + title + ' (' + domain + ')' : '- ' + title);
-      }
+      if (!title) return [];
+      return [domain ? '- ' + title + ' (' + domain + ')' : '- ' + title];
     });
-    if (items.length > 0) {
-      parts.push(items.join('\n'));
-    }
+    return items.length > 0 ? [items.join('\n')] : [];
   }
 
   /** .standard-markdown content (code interpreter, file analysis) */
-  private extractToolMarkdown(toolSection: Element, parts: string[]): void {
+  private extractToolMarkdown(toolSection: Element): string[] {
     // Primary only: tool sections are opt-in content, and the group's loose
     // `[class*="markdown"]` fallback would pull unrelated nodes into the note.
-    const markdownEls = toolSection.querySelectorAll(SELECTORS.markdownContent[0]);
-    markdownEls.forEach(el => {
-      const html = sanitizeHtml(el.innerHTML);
-      if (html.trim()) {
-        parts.push(html);
-      }
-    });
+    return Array.from(toolSection.querySelectorAll(SELECTORS.markdownContent[0]))
+      .map(el => sanitizeHtml(el.innerHTML))
+      .filter(html => html.trim());
   }
 
   // ========== Deep Research Extraction ==========
