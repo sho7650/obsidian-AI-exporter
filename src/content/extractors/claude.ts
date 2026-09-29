@@ -12,7 +12,7 @@ import { hostnameOf } from './deep-research-result';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { htmlToMarkdownRaw } from '../markdown-rules';
 import { generateHash } from '../../lib/hash';
-import type { HarvestEntry } from '../../lib/scroll-manager';
+import type { HarvestEntry } from '../../lib/scroll-accumulate';
 import type { ConversationMessage, DeepResearchSource, SyncSettings } from '../../lib/types';
 import { SELECTORS, DEEP_RESEARCH_SELECTORS, JOINED_SELECTORS } from './selectors/claude';
 

@@ -6,11 +6,8 @@
 import { BaseExtractor, type CollectedMessages } from './base';
 import { hostnameOf } from './deep-research-result';
 import { sanitizeHtml } from '../../lib/sanitize';
-import {
-  ensureAllElementsLoaded,
-  describeScrollStop,
-  type ScrollResult,
-} from '../../lib/scroll-manager';
+import { ensureAllElementsLoaded, type ScrollResult } from '../../lib/scroll-load';
+import { describeScrollStop } from '../../lib/scroll-deadlines';
 import { ImageMarkerCollector } from '../image-markers';
 import type {
   SyncSettings,

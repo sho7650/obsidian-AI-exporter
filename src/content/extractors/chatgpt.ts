@@ -14,7 +14,7 @@
 import { BaseExtractor, type ScrollConfig } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { generateHash } from '../../lib/hash';
-import type { HarvestEntry } from '../../lib/scroll-manager';
+import type { HarvestEntry } from '../../lib/scroll-accumulate';
 import { ImageMarkerCollector } from '../image-markers';
 import type {
   AIPlatform,

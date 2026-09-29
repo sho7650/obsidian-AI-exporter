@@ -85,7 +85,12 @@ describe('architecture: layering', () => {
       .that()
       .resideInFolder('**/background/**')
       .should()
-      .notImportFrom('**/lib/scroll-manager.ts', '**/lib/scroll-axis.ts', '**/lib/sanitize.ts')
+      .notImportFrom(
+        '**/lib/scroll-load.ts',
+        '**/lib/scroll-accumulate.ts',
+        '**/lib/scroll-axis.ts',
+        '**/lib/sanitize.ts'
+      )
       .because('the service worker has no DOM')
       .check();
   });

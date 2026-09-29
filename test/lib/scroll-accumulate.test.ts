@@ -8,11 +8,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  mergeWindow,
-  accumulateWhileScrolling,
-  DEFAULT_SCROLL_DEADLINES,
-} from '../../src/lib/scroll-manager';
+import { mergeWindow } from '../../src/lib/scroll-merge';
+import { accumulateWhileScrolling } from '../../src/lib/scroll-accumulate';
+import { DEFAULT_SCROLL_DEADLINES } from '../../src/lib/scroll-deadlines';
 
 describe('mergeWindow', () => {
   it('returns the window verbatim when nothing is accumulated yet', () => {

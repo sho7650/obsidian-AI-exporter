@@ -20,14 +20,13 @@ import {
   MAX_DEEP_RESEARCH_TITLE_LENGTH,
   PLATFORM_LABELS,
 } from '../../lib/constants';
+import { accumulateWhileScrolling, type HarvestEntry } from '../../lib/scroll-accumulate';
 import {
-  accumulateWhileScrolling,
   describeScrollStop,
   resolveScrollDeadlines,
   DEFAULT_SCROLL_DEADLINES,
-  type HarvestEntry,
   type ScrollDeadlines,
-} from '../../lib/scroll-manager';
+} from '../../lib/scroll-deadlines';
 import { platformForHost } from '../../lib/platform-registry';
 import { buildMetadata, validateExtraction } from './extraction-result';
 import { buildDeepResearchExtraction } from './deep-research-result';
