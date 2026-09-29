@@ -123,7 +123,7 @@ turndown.addRule('codeBlocks', {
     return node.nodeName === 'PRE' && node.querySelector('code') !== null;
   },
   replacement: (content, node) => {
-    const codeElement = (node as HTMLElement).querySelector('code');
+    const codeElement = node.querySelector('code');
     if (!codeElement) return content;
 
     // Try to detect language from class
@@ -147,8 +147,7 @@ turndown.addRule('codemirrorCodeBlocks', {
       node.querySelector('.cm-content') !== null
     );
   },
-  replacement: (_content, node) => {
-    const el = node as HTMLElement;
+  replacement: (_content, el) => {
     const cmContent = el.querySelector('.cm-content');
     if (!cmContent) return _content;
 
@@ -207,10 +206,9 @@ turndown.addRule('inlineCode', {
 // own paragraph so the image renders as a block, not inline with prose.
 turndown.addRule('g2oImage', {
   filter: node => {
-    return node.nodeName === 'IMG' && (node as HTMLElement).hasAttribute('data-g2o-image');
+    return node.nodeName === 'IMG' && node.hasAttribute('data-g2o-image');
   },
-  replacement: (_content, node) => {
-    const el = node as HTMLElement;
+  replacement: (_content, el) => {
     const id = el.getAttribute('data-g2o-image');
     if (!id) return '';
     const alt = el.getAttribute('alt') ?? '';
@@ -222,10 +220,10 @@ turndown.addRule('g2oImage', {
 // Converts <span data-footnote-ref="N">REF</span> to [^N]
 turndown.addRule('footnoteRef', {
   filter: node => {
-    return node.nodeName === 'SPAN' && (node as HTMLElement).hasAttribute('data-footnote-ref');
+    return node.nodeName === 'SPAN' && node.hasAttribute('data-footnote-ref');
   },
   replacement: (_content, node) => {
-    const index = (node as HTMLElement).getAttribute('data-footnote-ref');
+    const index = node.getAttribute('data-footnote-ref');
     return `[^${index}]`;
   },
 });
@@ -236,7 +234,7 @@ turndown.addRule('footnoteRef', {
 // `[^label]:` syntax survives intact.
 turndown.addRule('footnoteDef', {
   filter: node => {
-    return node.nodeName === 'P' && (node as HTMLElement).hasAttribute('data-footnote-def');
+    return node.nodeName === 'P' && node.hasAttribute('data-footnote-def');
   },
   replacement: (_content, node) => {
     const text = (node.textContent ?? '').trim();
@@ -268,10 +266,10 @@ function formatMath(latex: string, display: boolean): string {
 // Custom rule for display math blocks (Gemini KaTeX: <div data-math="...">)
 turndown.addRule('mathBlock', {
   filter: node => {
-    return node.nodeName === 'DIV' && (node as HTMLElement).hasAttribute('data-math');
+    return node.nodeName === 'DIV' && node.hasAttribute('data-math');
   },
   replacement: (_content, node) => {
-    const latex = (node as HTMLElement).getAttribute('data-math');
+    const latex = node.getAttribute('data-math');
     if (!latex) return _content;
     return formatMath(latex, true);
   },
@@ -282,12 +280,12 @@ turndown.addRule('mathInline', {
   filter: node => {
     return (
       node.nodeName === 'SPAN' &&
-      (node as HTMLElement).hasAttribute('data-math') &&
-      !(node as HTMLElement).hasAttribute('data-footnote-ref')
+      node.hasAttribute('data-math') &&
+      !node.hasAttribute('data-footnote-ref')
     );
   },
   replacement: (_content, node) => {
-    const latex = (node as HTMLElement).getAttribute('data-math');
+    const latex = node.getAttribute('data-math');
     if (!latex) return _content;
     return formatMath(latex, false);
   },
@@ -312,8 +310,7 @@ function tableCellText(cell: Element): string {
 // Custom rule for tables
 turndown.addRule('tables', {
   filter: 'table',
-  replacement: (content, node) => {
-    const table = node as HTMLTableElement;
+  replacement: (content, table) => {
     const rows: string[][] = [];
 
     // Extract headers
