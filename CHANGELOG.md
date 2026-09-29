@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.6](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.5...v2.14.6) (2026-09-29)
+
+
+### Bug Fixes
+
+* stop truncated Gemini captures and unreadable settings from overwriting user data (DES-018) ([#526](https://github.com/sho7650/obsidian-AI-exporter/issues/526)) ([c2edc47](https://github.com/sho7650/obsidian-AI-exporter/commit/c2edc476a27092cddfc676d133c44a79ef20b4f0))
+
 ## [2.14.5](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.4...v2.14.5) (2026-09-26)
 
 
