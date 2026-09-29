@@ -371,6 +371,24 @@ async function recursiveIdScan(
 }
 
 /**
+ * A body that ends inside a fenced code block hides every message after the
+ * opening fence, so the count can be wrong while every other signal stays
+ * clean: an overcount makes buildAppendContent() return null and the caller
+ * reports a successful no-op. Name the condition rather than letting it vanish
+ * (ADR-029, and the same reasoning as the append-lookup miss log in ADR-025).
+ */
+function logUnterminatedFence(body: string, note: ObsidianNote, countedMessages: number): void {
+  const openFence = unterminatedFence(body);
+  if (!openFence) return;
+  console.info('[G2O] Existing note body ends inside a fenced code block', {
+    id: note.frontmatter.id,
+    fence: openFence,
+    countedMessages,
+    expectedMessages: note.frontmatter.message_count,
+  });
+}
+
+/**
  * Build appended file content.
  * Returns null if no new messages to append or cannot parse existing content.
  */
@@ -386,20 +404,7 @@ export function buildAppendContent(
   // 2. Count existing messages
   const existingCount = countExistingMessages(parsed.body);
 
-  // A body that ends inside a fenced code block hides every message after the
-  // opening fence, so the count can be wrong while every other signal stays
-  // clean: an overcount returns null below and the caller reports a successful
-  // no-op. Name the condition rather than letting it vanish (ADR-029, and the
-  // same reasoning as the append-lookup miss log in ADR-025).
-  const openFence = unterminatedFence(parsed.body);
-  if (openFence) {
-    console.info('[G2O] Existing note body ends inside a fenced code block', {
-      id: note.frontmatter.id,
-      fence: openFence,
-      countedMessages: existingCount,
-      expectedMessages: note.frontmatter.message_count,
-    });
-  }
+  logUnterminatedFence(parsed.body, note, existingCount);
 
   if (existingCount === 0) return null; // Cannot detect message boundaries
 

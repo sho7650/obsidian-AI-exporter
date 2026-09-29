@@ -77,22 +77,17 @@ export function generateContentHash(content: string): string {
   return generateHash(content);
 }
 
-/**
- * Convert conversation data to Obsidian note
- */
-export function conversationToNote(data: ConversationData, options: TemplateOptions): ObsidianNote {
+/** Frontmatter for a note, with dates in the configured time zone. */
+function buildFrontmatter(data: ConversationData, options: TemplateOptions): NoteFrontmatter {
   const timezone = options.timezone ?? 'UTC';
-  const now = formatDateWithTimezone(new Date(), timezone);
-
-  // Generate frontmatter
-  const frontmatter: NoteFrontmatter = {
+  return {
     id: `${data.source}_${data.id}`,
     title: data.title,
     source: data.source,
     ...(data.type && { type: data.type }),
     url: data.url,
     created: formatDateWithTimezone(data.extractedAt, timezone),
-    modified: now,
+    modified: formatDateWithTimezone(new Date(), timezone),
     tags: resolveTags(
       data.type === 'deep-research'
         ? (options.deepResearchTags ?? DEFAULT_DEEP_RESEARCH_TAGS)
@@ -101,32 +96,33 @@ export function conversationToNote(data: ConversationData, options: TemplateOpti
     ),
     message_count: data.messages.length,
   };
+}
 
-  // Generate body - different format for Deep Research vs normal conversation
-  let body: string;
-
+/** Note body: the report for Deep Research, callouts for a conversation. */
+function buildBody(data: ConversationData, options: TemplateOptions): string {
   if (data.type === 'deep-research') {
     // Deep Research: convert with links support (footnotes + References)
-    if (data.messages.length === 0) {
-      body = '';
-    } else {
-      body = convertDeepResearchContent(data.messages[0].content, data.links);
-    }
-  } else {
-    // Normal conversation format (callout style)
-    const bodyParts: string[] = [];
-
-    for (const message of data.messages) {
-      // Render tool content as separate collapsible callout before assistant message
-      if (message.toolContent) {
-        bodyParts.push(formatToolContent(message.toolContent, options));
-      }
-      const formatted = formatMessage(message.content, message.role, options, data.source);
-      bodyParts.push(formatted);
-    }
-
-    body = bodyParts.join('\n\n');
+    return data.messages.length === 0
+      ? ''
+      : convertDeepResearchContent(data.messages[0].content, data.links);
   }
+
+  // Normal conversation format (callout style). Tool content renders as its
+  // own collapsible callout before the assistant message it belongs to.
+  return data.messages
+    .flatMap(message => [
+      ...(message.toolContent ? [formatToolContent(message.toolContent, options)] : []),
+      formatMessage(message.content, message.role, options, data.source),
+    ])
+    .join('\n\n');
+}
+
+/**
+ * Convert conversation data to Obsidian note
+ */
+export function conversationToNote(data: ConversationData, options: TemplateOptions): ObsidianNote {
+  const frontmatter = buildFrontmatter(data, options);
+  const body = buildBody(data, options);
 
   // Generate filename and content hash
   const fileName = generateFileName(data.title, data.id, options.filenameScheme);

@@ -108,15 +108,7 @@ export async function accumulateWhileScrolling<T>(
 
   if (await seedAtBottom(axis, acc.ingest)) {
     console.info('[G2O] No scroll range on open, conversation fits without scrolling');
-    return {
-      items: acc.toItems(),
-      fullyLoaded: true,
-      itemCount: acc.size,
-      iterations: 0,
-      skipped: true,
-      stopReason: 'complete',
-      maxOrder: acc.maxOrder,
-    };
+    return toResult(acc, 0, 'complete', true);
   }
 
   console.info(
@@ -137,12 +129,22 @@ export async function accumulateWhileScrolling<T>(
   );
 
   logScrollStop(stopReason, acc.size, 'turns', iterations, Date.now() - passStart, deadlines);
+  return toResult(acc, iterations, stopReason, false);
+}
+
+/** Package the accumulated turns as the pass result. */
+function toResult<T>(
+  acc: Accumulator<T>,
+  iterations: number,
+  stopReason: ScrollStopReason,
+  skipped: boolean
+): AccumulateResult<T> {
   return {
     items: acc.toItems(),
     fullyLoaded: stopReason === 'complete',
     itemCount: acc.size,
     iterations,
-    skipped: false,
+    skipped,
     stopReason,
     maxOrder: acc.maxOrder,
   };
@@ -160,12 +162,14 @@ function accumulateStep(container: HTMLElement): number {
 }
 
 /** Turns accumulated across windows: de-duplicated by key, ordered once at the end. */
-function createAccumulator<T>(harvest: () => HarvestEntry<T>[]): {
+interface Accumulator<T> {
   ingest: () => void;
   toItems: () => T[];
   readonly size: number;
   readonly maxOrder: number | undefined;
-} {
+}
+
+function createAccumulator<T>(harvest: () => HarvestEntry<T>[]): Accumulator<T> {
   const content = new Map<string, T>();
   const orderIndex = new Map<string, number>();
   let order: string[] = [];
@@ -215,6 +219,24 @@ async function seedAtBottom(axis: ScrollAxis, ingest: () => void): Promise<boole
 }
 
 /**
+ * One upward step: scroll, let the window mount, ingest it, and measure how far
+ * the view actually travelled.
+ */
+async function stepUp(
+  axis: ScrollAxis,
+  step: number,
+  onWindow: () => boolean
+): Promise<{ wasAtTop: boolean; after: number; moved: number; grew: boolean }> {
+  const before = axis.distanceFromTop();
+  axis.scrollToDistance(Math.max(0, before - step));
+  await delay(SCROLL_ACCUMULATE_POLL_INTERVAL);
+
+  const grew = onWindow();
+  const after = axis.distanceFromTop();
+  return { wasAtTop: before <= 0, after, moved: before - after, grew };
+}
+
+/**
  * Scroll a container upward one step per iteration until harvesting stops
  * yielding new turns while pinned at the top, or the progress-aware deadline
  * ({@link SCROLL_IDLE_TIMEOUT} / {@link SCROLL_MAX_TIMEOUT}) elapses.
@@ -259,14 +281,7 @@ async function scrollUpUntilStable(
     const stopReason = crossedDeadline(startTime, lastProgressTime, deadlines);
     if (stopReason !== null) return { iterations, stopReason };
 
-    const before = axis.distanceFromTop();
-    const wasAtTop = before <= 0;
-    axis.scrollToDistance(Math.max(0, before - step));
-    await delay(SCROLL_ACCUMULATE_POLL_INTERVAL);
-
-    const grew = onWindow();
-    const after = axis.distanceFromTop();
-    const moved = before - after;
+    const { wasAtTop, after, moved, grew } = await stepUp(axis, step, onWindow);
     iterations++;
 
     console.debug(

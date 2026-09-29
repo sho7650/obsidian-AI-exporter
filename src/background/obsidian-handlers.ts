@@ -79,6 +79,37 @@ function rememberAppendPath(conversationId: string, path: string): void {
 }
 
 /**
+ * Append the new messages to the note found at `path`, unless the capture is
+ * truncated and would shrink it (ADR-033).
+ */
+async function appendToExistingNote(
+  client: ObsidianApiClient,
+  settings: ExtensionSettings,
+  note: ObsidianNote,
+  path: string,
+  existingContent: string
+): Promise<SaveResponse> {
+  const refusal = refuseTruncatedOverwrite(
+    note,
+    classifyNoteProbe(existingContent, note.frontmatter.id).messageCount
+  );
+  if (refusal) return refusal;
+
+  const appendResult = buildAppendContent(existingContent, note, settings);
+  if (appendResult === null) {
+    return { success: true, isNewFile: false, messagesAppended: 0 };
+  }
+  // Flatten first, restore the file's own line ending last (ADR-026).
+  // Reversing these two hands `flattenLargeCallouts()` lines ending in
+  // '\r', which its header pattern cannot match past — the callout label
+  // was dropped and a raw `[!TYPE] Label` left in the body, which in turn
+  // made the message invisible to countExistingMessages() (#406, #407).
+  const flattened = maybeFlatten(appendResult.content, settings);
+  await client.putFile(path, applyLineEnding(flattened, appendResult.eol));
+  return { success: true, isNewFile: false, messagesAppended: appendResult.messagesAppended };
+}
+
+/**
  * Try to append new messages to an existing file.
  * Returns a SaveResponse on success, or null to fall through to overwrite.
  */
@@ -112,25 +143,7 @@ async function tryAppendMode(
       return null;
     }
     rememberAppendPath(note.frontmatter.id, lookup.path);
-
-    const refusal = refuseTruncatedOverwrite(
-      note,
-      classifyNoteProbe(lookup.content, note.frontmatter.id).messageCount
-    );
-    if (refusal) return refusal;
-
-    const appendResult = buildAppendContent(lookup.content, note, settings);
-    if (appendResult !== null) {
-      // Flatten first, restore the file's own line ending last (ADR-026).
-      // Reversing these two hands `flattenLargeCallouts()` lines ending in
-      // '\r', which its header pattern cannot match past — the callout label
-      // was dropped and a raw `[!TYPE] Label` left in the body, which in turn
-      // made the message invisible to countExistingMessages() (#406, #407).
-      const flattened = maybeFlatten(appendResult.content, settings);
-      await client.putFile(lookup.path, applyLineEnding(flattened, appendResult.eol));
-      return { success: true, isNewFile: false, messagesAppended: appendResult.messagesAppended };
-    }
-    return { success: true, isNewFile: false, messagesAppended: 0 };
+    return await appendToExistingNote(client, settings, note, lookup.path, lookup.content);
   } catch (error) {
     console.warn('[G2O Background] Append mode failed, falling back to overwrite:', error);
     return null;

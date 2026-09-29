@@ -37,6 +37,7 @@ import {
 import type {
   AIPlatform,
   ContentScriptSettings,
+  ConversationData,
   ExtractionResult,
   ObsidianNote,
   OutputDestination,
@@ -330,6 +331,12 @@ function displaySaveResults(
   fileName: string,
   extractionWarnings?: string[]
 ): void {
+  showSaveOutcomeToast(saveResult, fileName);
+  showDeferredWarnings(saveResult, extractionWarnings);
+}
+
+/** The one toast that says whether, and where, the note was saved. */
+function showSaveOutcomeToast(saveResult: MultiOutputResponse, fileName: string): void {
   // Show append-specific messages when applicable
   if (saveResult.allSuccessful && saveResult.messagesAppended !== undefined) {
     if (saveResult.messagesAppended > 0) {
@@ -361,7 +368,15 @@ function displaySaveResults(
       .join('; ');
     showErrorToast(errorMsg || 'Failed to save');
   }
+}
 
+/**
+ * Warnings shown after the outcome toast, once a destination succeeded.
+ */
+function showDeferredWarnings(
+  saveResult: MultiOutputResponse,
+  extractionWarnings: string[] | undefined
+): void {
   // Non-fatal problems reported by a destination that still succeeded — e.g.
   // images that could not be written (issue #376). Shown alongside extraction
   // warnings so a successful save never hides a partial failure.
@@ -409,6 +424,46 @@ function reportSyncFailure(message: string): void {
   presentSyncFailure(message);
 }
 
+/** A validated extraction, or why there is none. */
+type ConversationExtraction =
+  | {
+      ok: true;
+      extractor: IConversationExtractor;
+      result: ExtractionResult;
+      data: ConversationData;
+    }
+  | { ok: false; error: string };
+
+/**
+ * Extract the current conversation and validate it, logging any warnings.
+ */
+async function extractConversation(
+  settings: ContentScriptSettings
+): Promise<ConversationExtraction> {
+  const extractor = getExtractor();
+  if (!extractor || !extractor.canExtract()) {
+    return { ok: false, error: 'Not on a valid conversation page' };
+  }
+
+  showToast('Extracting conversation...', 'info', INFO_TOAST_DURATION);
+  extractor.applySettings(settings);
+  const result = await extractor.extract();
+
+  const validation = extractor.validate(result);
+  if (!validation.isValid) {
+    return { ok: false, error: validation.errors.join(', ') || 'Extraction failed' };
+  }
+
+  validation.warnings.forEach(warning => {
+    console.warn('[G2O] Warning:', warning);
+  });
+
+  if (!result.data) {
+    return { ok: false, error: 'No conversation data extracted' };
+  }
+  return { ok: true, extractor, result, data: result.data };
+}
+
 /**
  * Handle sync button click
  */
@@ -428,41 +483,19 @@ export async function handleSync(): Promise<void> {
       return;
     }
 
-    // Extract conversation using appropriate extractor
-    const extractor = getExtractor();
-    if (!extractor || !extractor.canExtract()) {
-      reportSyncFailure('Not on a valid conversation page');
+    const extraction = await extractConversation(settings);
+    if (!extraction.ok) {
+      reportSyncFailure(extraction.error);
       return;
     }
-
-    showToast('Extracting conversation...', 'info', INFO_TOAST_DURATION);
-    extractor.applySettings(settings);
-    const result = await extractor.extract();
-
-    // Validate extraction
-    const validation = extractor.validate(result);
-    if (!validation.isValid) {
-      reportSyncFailure(validation.errors.join(', ') || 'Extraction failed');
-      return;
-    }
-
-    if (validation.warnings.length > 0) {
-      validation.warnings.forEach(warning => {
-        console.warn('[G2O] Warning:', warning);
-      });
-    }
-
-    if (!result.data) {
-      reportSyncFailure('No conversation data extracted');
-      return;
-    }
+    const { extractor, result, data } = extraction;
 
     // Convert to Obsidian note
-    const note = conversationToNote(result.data, settings.templateOptions);
+    const note = conversationToNote(data, settings.templateOptions);
 
     console.info('[G2O] Generated note:', {
       fileName: note.fileName,
-      messageCount: result.data.messages.length,
+      messageCount: data.messages.length,
       outputs: enabledOutputs,
     });
 

@@ -57,6 +57,39 @@ export function buildQuestionHeader(content: string): string {
   return `## ${truncated}…`;
 }
 
+/** Wrap converted message text in the configured message format. */
+function applyMessageFormat(
+  markdown: string,
+  role: 'user' | 'assistant',
+  options: TemplateOptions,
+  assistantLabel: string
+): string {
+  switch (options.messageFormat) {
+    case 'callout': {
+      const calloutType = role === 'user' ? options.userCalloutType : options.assistantCalloutType;
+      const label = role === 'user' ? 'User' : assistantLabel;
+      // Format as Obsidian callout with proper line handling
+      const lines = markdown.split('\n');
+      const formattedLines = lines.map((line, i) =>
+        i === 0 ? `> [!${calloutType}] ${label}\n> ${line}` : `> ${line}`
+      );
+      return formattedLines.join('\n');
+    }
+
+    case 'blockquote': {
+      const label = role === 'user' ? '**User:**' : `**${assistantLabel}:**`;
+      const lines = markdown.split('\n').map(line => `> ${line}`);
+      return `${label}\n${lines.join('\n')}`;
+    }
+
+    case 'plain':
+    default: {
+      const label = role === 'user' ? '**User:**' : `**${assistantLabel}:**`;
+      return `${label}\n\n${markdown}`;
+    }
+  }
+}
+
 /**
  * Format a single message according to template options
  */
@@ -69,43 +102,14 @@ export function formatMessage(
   // Convert HTML to Markdown for assistant messages; escape angle brackets and
   // `$` (Obsidian math) for user messages, which are plain pasted text.
   const markdown = role === 'assistant' ? htmlToMarkdown(content) : escapeUserText(content);
-  const assistantLabel = PLATFORM_LABELS[source];
-
-  let formatted: string;
-  switch (options.messageFormat) {
-    case 'callout': {
-      const calloutType = role === 'user' ? options.userCalloutType : options.assistantCalloutType;
-      const label = role === 'user' ? 'User' : assistantLabel;
-      // Format as Obsidian callout with proper line handling
-      const lines = markdown.split('\n');
-      const formattedLines = lines.map((line, i) =>
-        i === 0 ? `> [!${calloutType}] ${label}\n> ${line}` : `> ${line}`
-      );
-      formatted = formattedLines.join('\n');
-      break;
-    }
-
-    case 'blockquote': {
-      const label = role === 'user' ? '**User:**' : `**${assistantLabel}:**`;
-      const lines = markdown.split('\n').map(line => `> ${line}`);
-      formatted = `${label}\n${lines.join('\n')}`;
-      break;
-    }
-
-    case 'plain':
-    default: {
-      const label = role === 'user' ? '**User:**' : `**${assistantLabel}:**`;
-      formatted = `${label}\n\n${markdown}`;
-      break;
-    }
-  }
+  const formatted = applyMessageFormat(markdown, role, options, PLATFORM_LABELS[source]);
 
   // Optional: prepend `##` question header for user messages (issue #187).
   // Uses the raw (pre-escape) content for a more readable TOC entry.
   if (role === 'user' && options.includeQuestionHeaders) {
     const header = buildQuestionHeader(content);
     if (header) {
-      formatted = `${header}\n\n${formatted}`;
+      return `${header}\n\n${formatted}`;
     }
   }
 

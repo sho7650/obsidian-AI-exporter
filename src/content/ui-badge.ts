@@ -159,30 +159,39 @@ function buildPanel(status: SyncStatus): HTMLDivElement {
   }
 
   if (status.results.length > 0) {
-    const list = document.createElement('ul');
-    status.results.forEach(result => {
-      const item = element(
-        'li',
-        'g2o-detail-item',
-        result.success ? result.destination : `${result.destination}: ${result.error ?? ''}`
-      );
-      item.setAttribute('data-destination', result.destination);
-      item.setAttribute('data-success', String(result.success));
-      list.appendChild(item);
-    });
-    panel.appendChild(list);
+    panel.appendChild(resultList(status));
   }
 
   if (status.warnings.length > 0) {
-    const list = document.createElement('ul');
-    status.warnings.forEach(warning => {
-      list.appendChild(element('li', 'g2o-detail-warning', warning));
-    });
-    panel.appendChild(list);
+    panel.appendChild(warningList(status));
   }
 
   panel.appendChild(dismissButton());
   return panel;
+}
+
+/** One item per destination, marked with its outcome. */
+function resultList(status: SyncStatus): HTMLUListElement {
+  const list = document.createElement('ul');
+  status.results.forEach(result => {
+    const item = element(
+      'li',
+      'g2o-detail-item',
+      result.success ? result.destination : `${result.destination}: ${result.error ?? ''}`
+    );
+    item.setAttribute('data-destination', result.destination);
+    item.setAttribute('data-success', String(result.success));
+    list.appendChild(item);
+  });
+  return list;
+}
+
+function warningList(status: SyncStatus): HTMLUListElement {
+  const list = document.createElement('ul');
+  status.warnings.forEach(warning => {
+    list.appendChild(element('li', 'g2o-detail-warning', warning));
+  });
+  return list;
 }
 
 /**

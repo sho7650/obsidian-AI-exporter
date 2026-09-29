@@ -78,7 +78,16 @@ export function parseFrontmatter(content: string): ParsedFrontmatter | null {
   }
 
   // Parse fields from the inner YAML block
-  const yamlBlock = content.substring(4, closingIndex); // skip opening '---\n'
+  const fields = parseYamlFields(content.substring(4, closingIndex)); // skip opening '---\n'
+
+  return { raw, fields, body, eol };
+}
+
+/**
+ * Parse the flat YAML subset the extension writes: `key: value` pairs and
+ * `  - item` lists under a bare `key:`.
+ */
+function parseYamlFields(yamlBlock: string): Record<string, string | string[]> {
   const fields: Record<string, string | string[]> = {};
   let currentKey = '';
 
@@ -109,8 +118,7 @@ export function parseFrontmatter(content: string): ParsedFrontmatter | null {
       }
     }
   }
-
-  return { raw, fields, body, eol };
+  return fields;
 }
 
 /**

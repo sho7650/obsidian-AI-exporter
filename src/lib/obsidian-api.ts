@@ -89,6 +89,16 @@ export class ObsidianApiError extends Error {
   }
 }
 
+/** Outcome of {@link ObsidianApiClient.testConnection}. */
+interface ConnectionTestResult {
+  /** Server is reachable */
+  reachable: boolean;
+  /** API Key is valid (authentication succeeded) */
+  authenticated: boolean;
+  /** Error message (when failed) */
+  error?: string;
+}
+
 export class ObsidianApiClient {
   private baseUrl: string;
   private apiKey: string;
@@ -141,14 +151,7 @@ export class ObsidianApiClient {
    * Uses /vault/ endpoint which requires authentication.
    * This ensures the API key is validated, not just server reachability.
    */
-  async testConnection(): Promise<{
-    /** Server is reachable */
-    reachable: boolean;
-    /** API Key is valid (authentication succeeded) */
-    authenticated: boolean;
-    /** Error message (when failed) */
-    error?: string;
-  }> {
+  async testConnection(): Promise<ConnectionTestResult> {
     try {
       const response = await fetch(`${this.baseUrl}/vault/`, {
         method: 'GET',

@@ -18,6 +18,54 @@ migrateSettings().catch(error => {
 });
 
 /**
+ * Messages targeted at the offscreen document are handled by its own
+ * listener, not here.
+ */
+function isOffscreenMessage(message: unknown): boolean {
+  return (
+    message !== null &&
+    typeof message === 'object' &&
+    'target' in message &&
+    message.target === 'offscreen'
+  );
+}
+
+/**
+ * Why a message must be refused, or null when it may be handled (M-02).
+ */
+function rejectionFor(
+  message: ExtensionMessage,
+  sender: chrome.runtime.MessageSender
+): string | null {
+  if (!validateSender(sender)) {
+    console.warn('[G2O Background] Rejected message from unauthorized sender');
+    return 'Unauthorized';
+  }
+
+  // A throw here would otherwise escape the listener and leave the sender
+  // hanging without a response, so treat it as invalid content
+  try {
+    if (!validateMessageContent(message)) {
+      console.warn('[G2O Background] Invalid message content');
+      return 'Invalid message content';
+    }
+  } catch (error) {
+    console.warn('[G2O Background] Message validation threw:', getErrorMessage(error));
+    return 'Invalid message content';
+  }
+  return null;
+}
+
+/** Reply to the sender, which may have gone away while we worked. */
+function respondSafely(sendResponse: (response: unknown) => void, response: unknown): void {
+  try {
+    sendResponse(response);
+  } catch {
+    /* sender disconnected */
+  }
+}
+
+/**
  * Handle incoming messages from content script and popup
  */
 chrome.runtime.onMessage.addListener(
@@ -26,54 +74,21 @@ chrome.runtime.onMessage.addListener(
     sender: chrome.runtime.MessageSender,
     sendResponse: (response: unknown) => void
   ) => {
-    // Ignore messages targeted at offscreen document
-    // These are handled by the offscreen document's own listener
-    if (
-      message &&
-      typeof message === 'object' &&
-      'target' in message &&
-      message.target === 'offscreen'
-    ) {
+    if (isOffscreenMessage(message)) {
       return false;
     }
 
-    // Sender validation (M-02)
-    if (!validateSender(sender)) {
-      console.warn('[G2O Background] Rejected message from unauthorized sender');
-      sendResponse({ success: false, error: 'Unauthorized' });
-      return false;
-    }
-
-    // Message content validation (M-02)
-    // A throw here would otherwise escape the listener and leave the sender
-    // hanging without a response, so treat it as invalid content
-    try {
-      if (!validateMessageContent(message)) {
-        console.warn('[G2O Background] Invalid message content');
-        sendResponse({ success: false, error: 'Invalid message content' });
-        return false;
-      }
-    } catch (error) {
-      console.warn('[G2O Background] Message validation threw:', getErrorMessage(error));
-      sendResponse({ success: false, error: 'Invalid message content' });
+    const rejection = rejectionFor(message, sender);
+    if (rejection) {
+      sendResponse({ success: false, error: rejection });
       return false;
     }
 
     handleMessage(message, sender)
-      .then(response => {
-        try {
-          sendResponse(response);
-        } catch {
-          /* sender disconnected */
-        }
-      })
+      .then(response => respondSafely(sendResponse, response))
       .catch(error => {
         console.error('[G2O Background] Error handling message:', error);
-        try {
-          sendResponse({ success: false, error: getErrorMessage(error) });
-        } catch {
-          /* sender disconnected */
-        }
+        respondSafely(sendResponse, { success: false, error: getErrorMessage(error) });
       });
     return true; // Indicates async response
   }
