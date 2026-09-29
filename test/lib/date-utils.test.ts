@@ -3,7 +3,7 @@
  *
  * Tests formatDateWithTimezone() for timezone-aware ISO 8601 date formatting.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { formatDateWithTimezone } from '../../src/lib/date-utils';
 
 describe('formatDateWithTimezone', () => {
@@ -92,6 +92,32 @@ describe('formatDateWithTimezone', () => {
       const newYearEve = new Date('2024-12-31T20:00:00.000Z');
       const result = formatDateWithTimezone(newYearEve, 'Asia/Tokyo');
       expect(result).toBe('2025-01-01T05:00:00+09:00');
+    });
+  });
+
+  describe('legacy V8 midnight', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('reads an hour of 24 as 00 of the same day, with no offset drift', () => {
+      // Older V8 formatted midnight as "24" of the same date under hour12:false.
+      // Read literally it would print T24 and push the offset a day ahead.
+      vi.spyOn(Intl.DateTimeFormat.prototype, 'formatToParts').mockReturnValue([
+        { type: 'month', value: '01' },
+        { type: 'literal', value: '/' },
+        { type: 'day', value: '15' },
+        { type: 'literal', value: '/' },
+        { type: 'year', value: '2025' },
+        { type: 'literal', value: ', ' },
+        { type: 'hour', value: '24' },
+        { type: 'literal', value: ':' },
+        { type: 'minute', value: '00' },
+        { type: 'literal', value: ':' },
+        { type: 'second', value: '00' },
+      ]);
+
+      expect(formatDateWithTimezone(utcDate, 'UTC')).toBe('2025-01-15T00:00:00+00:00');
     });
   });
 });
