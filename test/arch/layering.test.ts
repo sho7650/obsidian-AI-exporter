@@ -5,7 +5,9 @@
  *
  *     Content Script -> Background -> Obsidian REST API
  *
- * `lib/` is the shared base layer; `popup/` and `offscreen/` are leaves.
+ * `lib/` is the shared base layer; `popup/` and `offscreen/` are leaves. A few
+ * lib modules touch the DOM, so the background (a service worker) may not
+ * import them.
  * Cross-layer talk between content and background happens via the Chrome
  * messaging API at runtime, NOT via static imports, so importing across
  * those folders is forbidden.
@@ -60,6 +62,31 @@ describe('architecture: layering', () => {
       .should()
       .notImportFrom('**/content/**', '**/background/**', '**/offscreen/**')
       .because('popup is a leaf UI layer that depends only on lib')
+      .check();
+  });
+
+  it('offscreen must not import content / background / popup', () => {
+    modules(p)
+      .that()
+      .resideInFolder('**/offscreen/**')
+      .should()
+      .notImportFrom('**/content/**', '**/background/**', '**/popup/**')
+      .because('offscreen is a leaf document that depends only on lib')
+      .check();
+  });
+
+  it('background must not import the DOM-dependent lib modules', () => {
+    // Service workers have no DOM (developer.chrome.com, Offscreen API), and
+    // DOMPurify needs one. These modules live in lib/ for the content scripts;
+    // jsdom would let a background import pass every unit test and then fail
+    // only in the real worker (DES-018 L-2). Direct imports only: a lib module
+    // that starts importing one of these would need its own entry here.
+    modules(p)
+      .that()
+      .resideInFolder('**/background/**')
+      .should()
+      .notImportFrom('**/lib/scroll-manager.ts', '**/lib/scroll-axis.ts', '**/lib/sanitize.ts')
+      .because('the service worker has no DOM')
       .check();
   });
 
