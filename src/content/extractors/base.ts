@@ -13,7 +13,6 @@ import type {
   DeepResearchSource,
 } from '../../lib/types';
 import { extractErrorMessage } from '../../lib/error-utils';
-import { generateHash } from '../../lib/hash';
 import { sanitizeHtml } from '../../lib/sanitize';
 import {
   ALL_PLATFORM_LABELS,
@@ -31,6 +30,7 @@ import {
 } from '../../lib/scroll-manager';
 import { platformForHost } from '../../lib/platform-registry';
 import { buildMetadata, validateExtraction } from './extraction-result';
+import { buildDeepResearchExtraction } from './deep-research-result';
 
 /**
  * Per-platform configuration for accumulating a virtualized conversation
@@ -291,50 +291,19 @@ export abstract class BaseExtractor implements IConversationExtractor {
 
   /**
    * Build a Deep Research extraction result.
-   * Shared logic for Claude and Gemini Deep Research modes.
+   * Shared logic for Claude and Gemini Deep Research modes: the hooks below
+   * read the platform's panel, buildDeepResearchExtraction() assembles it.
    * Subclasses override getDeepResearchSelectors() and extractSourceList()
    * for platform-specific DOM access.
    */
   protected buildDeepResearchResult(): ExtractionResult {
-    const title = this.getDeepResearchTitle();
-    const content = this.extractDeepResearchContent();
-
-    if (!content) {
-      return {
-        success: false,
-        error: 'Deep Research content not found',
-        warnings: ['Panel is visible but content element is empty or missing'],
-      };
-    }
-
-    const titleHash = generateHash(title);
-    const conversationId = `deep-research-${titleHash}`;
-    const links = this.extractDeepResearchLinks();
-
-    const messages = [
-      {
-        id: 'report-0',
-        role: 'assistant' as const,
-        content,
-        htmlContent: content,
-        index: 0,
-      },
-    ];
-
-    return {
-      success: true,
-      data: {
-        id: conversationId,
-        title,
-        url: window.location.href,
-        source: this.platform,
-        type: 'deep-research',
-        links,
-        messages,
-        extractedAt: new Date(),
-        metadata: buildMetadata(messages),
-      },
-    };
+    return buildDeepResearchExtraction({
+      title: this.getDeepResearchTitle(),
+      content: this.extractDeepResearchContent(),
+      links: this.extractDeepResearchLinks(),
+      source: this.platform,
+      url: window.location.href,
+    });
   }
 
   /**
@@ -388,18 +357,6 @@ export abstract class BaseExtractor implements IConversationExtractor {
    */
   protected extractSourceList(): DeepResearchSource[] {
     return [];
-  }
-
-  /**
-   * Hostname of a URL, or 'unknown' when the URL cannot be parsed.
-   * Shared fallback for Deep Research source domain extraction.
-   */
-  protected extractDomain(url: string): string {
-    try {
-      return new URL(url).hostname;
-    } catch {
-      return 'unknown';
-    }
   }
 
   // ========== DOM Sort & Message Build Utilities ==========

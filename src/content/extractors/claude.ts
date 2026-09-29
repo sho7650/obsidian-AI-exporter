@@ -8,6 +8,7 @@
  */
 
 import { BaseExtractor, type ScrollConfig } from './base';
+import { hostnameOf } from './deep-research-result';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { htmlToMarkdownRaw } from '../markdown-rules';
 import { generateHash } from '../../lib/hash';
@@ -482,7 +483,7 @@ export class ClaudeExtractor extends BaseExtractor {
         title = 'Unknown Title';
       }
 
-      const domain = this.extractDomain(url);
+      const domain = hostnameOf(url);
 
       const index = sources.length;
       seenUrls.set(url, index);

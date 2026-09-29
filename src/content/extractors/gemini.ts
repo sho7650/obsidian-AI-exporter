@@ -4,6 +4,7 @@
  */
 
 import { BaseExtractor, type CollectedMessages } from './base';
+import { hostnameOf } from './deep-research-result';
 import { sanitizeHtml } from '../../lib/sanitize';
 import {
   ensureAllElementsLoaded,
@@ -134,7 +135,7 @@ export class GeminiExtractor extends BaseExtractor {
 
       // Extract domain (fallback to URL parsing) using pre-computed selector
       const domainEl = anchor.querySelector(COMPUTED_SELECTORS.sourceDomain);
-      const domain = domainEl?.textContent?.trim() || this.extractDomain(url);
+      const domain = domainEl?.textContent?.trim() || hostnameOf(url);
 
       sources.push({
         index, // 0-based array index
