@@ -417,3 +417,67 @@ M-3 の分割は Phase 2 の完了後に行う（Gemini のフック化で `base
 - 計測コマンド: `npx tsc --noEmit -p .`、`npm run lint`、`npx vitest run --coverage`、TypeScript
   Compiler API による関数行数の計測、`git log --since=2026-06-01 --name-only -- src`。
 - 外部仕様: §4 の表を参照。
+
+---
+
+## 10. 実施結果（2026-09-29）
+
+### 10.1 フェーズとブランチ
+
+各ブランチは直前のブランチの上に積んである（スタック）。PR はまだ作成していない。
+
+| Phase | 対象 | ブランチ | 結果 |
+| ----- | ---- | -------- | ---- |
+| — | 本計画書 | `docs/quality-architecture-remediation-plan` | 完了 |
+| 1 | H-1 | `fix/gemini-truncated-flag` | 完了 |
+| 2 | M-1 | `refactor/gemini-extract-hooks` | 完了（ADR-043） |
+| 3 | M-2 | `fix/popup-settings-read-failure` | 完了 |
+| 4 | M-5, L-3, L-4 | `refactor/single-source-defaults` | 完了 |
+| 5 | L-1, L-2 | `test/arch-offscreen-and-dom-boundary` | 完了 |
+| 6 | L-6 | `refactor/claude-tool-content-parts` | 完了 |
+| 6 | L-5 | `refactor/markdown-rules-type-guard` | 完了 |
+| 6 | M-3b | `refactor/base-extraction-result` | 完了 |
+| 6 | M-3a | `refactor/base-deep-research-builder` | 完了 |
+| 6 | M-3c | `refactor/split-scroll-manager` | 完了 |
+| 6 | M-4 | `refactor/split-long-functions` | 完了 |
+| 7 | L-7 | `test/branch-coverage-footnotes-dates` | 完了 |
+
+### 10.2 計測値の変化
+
+| 項目 | 実施前（`af49133`） | 実施後 |
+| ---- | ------------------- | ------ |
+| テスト数 | 2,413 | 2,462 |
+| カバレッジ（文 / 分岐 / 関数 / 行） | 96.86% / 88.44% / 99.18% / 97.86% | 96.96% / 88.95% / 99.37% / 97.98% |
+| 50 行超の関数 | 13 件 | 0 件 |
+| `base.ts` の行数 | 678 | 579 |
+| `scroll-manager.ts` の行数 | 682 | 分割（最大は `scroll-accumulate.ts` の 311） |
+| `markdown-rules.ts` の型アサーション | 15 件 | 1 件（`cloneNode()` の戻り値） |
+
+全フェーズで `lint` → `format:check` → `test:coverage` → `build` を通過した。
+
+### 10.3 計画からの変更点
+
+| 箇所 | 計画 | 実施 | 理由 |
+| ---- | ---- | ---- | ---- |
+| Phase 1 テスト 2 | idle-timeout でも `truncated` が立つテスト | 追加しない | `truncated` は停止理由ではなく警告の有無で決まり、idle と max は同じ分岐を通る（`describeScrollStop()` は `complete` 以外で必ず警告を返す）。また単体テストで idle を起こすのは難しい。進捗がなければ 1 反復 1.2 秒（`SCROLL_REARM_DELAY` 200ms + `SCROLL_POLL_INTERVAL` 1000ms）× 安定判定 3 回 = 3.6 秒で完了し、idle の最小値 5 秒に届かない。ただし実機では、背景タブでタイマーが間引かれると到達しうる |
+| Phase 1 テスト 5 | `conversationToNote()` を通す継ぎ目のテスト | 追加しない | `data.truncated` → `note.truncated` は `test/content/markdown.test.ts:1445` が PF 非依存で検証済み。Phase 1 のテストは `result.data.truncated` を直接検証している |
+| Phase 1 否定側 | — | 完了・無効・コンテナなしで `truncated` が立たないことを追加 | 常に立てる変異体で 3 件とも失敗することを確認した |
+| Phase 2 アーキテクチャテスト | 戻り値型付きの宣言を検出 | 戻り値型なし・プロパティ代入も検出 | レビューで `async extract() {` が素通りすると指摘された。3 形式の違反と、呼び出し（`this.extract()`）を誤検出しないことを確認した |
+| Phase 3 | 既存の `catch` でエラー表示 | 計画どおり。文言は既存の `toast_error_connectionFailed` | 文言の見直しは範囲外（§10.4） |
+| Phase 4 L-4 | `BASE64_CHUNK_SIZE` を `constants.ts` に移す | `output-handlers.ts` が `bytesToBase64()` を再利用し、重複したループごと削除 | 定数だけでなく処理そのものが重複していた。多バイト文字がチャンク境界をまたぐ往復テストを先に追加した |
+| Phase 5 L-1 | `onlyImportFrom` | `notImportFrom` | 既存の 5 規則と書き方を揃えた。効果は同じ（違反の植え込みで失敗を確認） |
+| Phase 6 L-5 | `HTMLElement` の型ガードを追加 | キャストを削除 | `@types/turndown` の `FilterFunction` / `ReplacementFunction` が既に `node: HTMLElement` と型付けしている。キャストは何も主張していなかった |
+| Phase 6 M-3c | 4 分割 | 4 分割、再エクスポート用のファサードは置かない。テストファイルを `scroll-accumulate.test.ts` に改名 | 利用側が必要なモジュールを直接 import する |
+| Phase 6 の順序 | M-3a → M-3b | M-3b → M-3a | Deep Research の組み立てが `buildMetadata()` に依存するため |
+| U-02 | 未確認 | 解消 | UI は警告を `join` するか順に並べるだけで、位置に依存しない（`bootstrap.ts`、`ui-badge.ts`） |
+| Q-01 | 「10 ファイル以上」 | 正しくは `src/` 6 ファイル（import 文 10 行）+ テスト 5 ファイル | D-4 は「規則の追加のみ」に決定済みのため、判断への影響はない |
+
+### 10.4 残課題
+
+- **Gemini の実機スモーク**（§8）: 未実施。Phase 1・2 のマージ前に、自動スクロールを有効にした長い会話の保存を利用者の Chrome で確認する必要がある。
+- **push と PR 作成**: 未実施。
+- **レビューで出た範囲外の指摘**（未着手）:
+  - 設定読み込み失敗時の文言が「接続失敗」になっている（`toast_error_connectionFailed`）。
+  - `ensureAllElementsLoaded` / `resolveScrollDeadlines` / `describeScrollStop` に直接の単体テストがない（`main` から存在する状態）。
+  - 過去の ADR（012, 017, 018, 022, 036, 042）が削除済みの `scroll-manager.ts` / `scroll-manager.test.ts` を参照している。ADR は記録なので書き換えていない。
+- **§6 の対象外項目**: 未着手。
