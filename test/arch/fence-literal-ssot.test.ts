@@ -26,7 +26,7 @@ const srcDir = path.join(root, 'src');
 const FENCE_SSOT = 'src/lib/code-fence.ts';
 
 /**
- * A documented, deliberately narrow exemption: `BaseExtractor.buildMetadata()`
+ * A documented, deliberately narrow exemption: `buildMetadata()` (extraction-result.ts)
  * probes raw HTML for a fence substring to set the `hasCodeBlocks` metadata
  * flag. That is a heuristic over page HTML, not fence emission or fence
  * parsing, so it is exempt — but only this exact expression is. Any other
