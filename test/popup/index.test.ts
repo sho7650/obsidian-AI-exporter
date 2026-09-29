@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { ExtensionSettings } from '../../src/lib/types';
 
 vi.mock('../../src/lib/storage', () => ({
-  getSettings: vi.fn(),
+  getSettingsOrThrow: vi.fn(),
   saveSettings: vi.fn(),
 }));
 
@@ -17,7 +17,7 @@ vi.mock('../../src/lib/messaging', () => ({
   sendMessage: vi.fn(),
 }));
 
-import { getSettings, saveSettings } from '../../src/lib/storage';
+import { getSettingsOrThrow, saveSettings } from '../../src/lib/storage';
 import { sendMessage } from '../../src/lib/messaging';
 import { initPopup } from '../../src/popup/app';
 
@@ -126,7 +126,7 @@ function statusEl(): HTMLDivElement {
 
 async function initWithDefaults(): Promise<void> {
   buildPopupDom();
-  vi.mocked(getSettings).mockResolvedValue(storedSettings);
+  vi.mocked(getSettingsOrThrow).mockResolvedValue(storedSettings);
   await initPopup();
 }
 
@@ -187,7 +187,7 @@ describe('popup/app', () => {
         enableToolContent: undefined,
         templateOptions: { messageFormat: '', userCalloutType: '', assistantCalloutType: '' },
       } as unknown as ExtensionSettings;
-      vi.mocked(getSettings).mockResolvedValue(partial);
+      vi.mocked(getSettingsOrThrow).mockResolvedValue(partial);
 
       await initPopup();
 
@@ -213,7 +213,7 @@ describe('popup/app', () => {
       document.querySelectorAll('title').forEach(t => t.remove());
       document.head.insertAdjacentHTML('beforeend', '<title data-i18n="extName"></title>');
       vi.mocked(chrome.i18n.getMessage).mockImplementation((key: string) => `T_${key}`);
-      vi.mocked(getSettings).mockResolvedValue(storedSettings);
+      vi.mocked(getSettingsOrThrow).mockResolvedValue(storedSettings);
 
       try {
         await initPopup();
@@ -232,7 +232,7 @@ describe('popup/app', () => {
     it('rejects when a required element is missing from the DOM', async () => {
       buildPopupDom();
       document.getElementById('saveBtn')!.remove();
-      vi.mocked(getSettings).mockResolvedValue(storedSettings);
+      vi.mocked(getSettingsOrThrow).mockResolvedValue(storedSettings);
 
       await expect(initPopup()).rejects.toThrow('Missing element: #saveBtn');
     });
@@ -248,7 +248,7 @@ describe('popup/app', () => {
 
     it('shows an error status when settings cannot be loaded', async () => {
       buildPopupDom();
-      vi.mocked(getSettings).mockRejectedValue(new Error('storage down'));
+      vi.mocked(getSettingsOrThrow).mockRejectedValue(new Error('storage down'));
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       await initPopup();
@@ -257,12 +257,24 @@ describe('popup/app', () => {
       expect(statusEl().className).toBe('status error');
       errorSpy.mockRestore();
     });
+
+    it('disables save and test when settings cannot be loaded, so defaults are never saved over them', async () => {
+      buildPopupDom();
+      vi.mocked(getSettingsOrThrow).mockRejectedValue(new Error('storage down'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await initPopup();
+
+      expect(el<HTMLButtonElement>('saveBtn').disabled).toBe(true);
+      expect(el<HTMLButtonElement>('testBtn').disabled).toBe(true);
+      errorSpy.mockRestore();
+    });
   });
 
   describe('section visibility', () => {
     it('disables the Obsidian section when Obsidian output is off', async () => {
       buildPopupDom();
-      vi.mocked(getSettings).mockResolvedValue({
+      vi.mocked(getSettingsOrThrow).mockResolvedValue({
         ...storedSettings,
         outputOptions: { obsidian: false, file: true, clipboard: false },
       });
@@ -273,7 +285,7 @@ describe('popup/app', () => {
 
     it('re-enables the Obsidian section when the toggle is switched on', async () => {
       buildPopupDom();
-      vi.mocked(getSettings).mockResolvedValue({
+      vi.mocked(getSettingsOrThrow).mockResolvedValue({
         ...storedSettings,
         outputOptions: { obsidian: false, file: true, clipboard: false },
       });
@@ -386,7 +398,7 @@ describe('popup/app', () => {
 
     it('skips Obsidian validation when Obsidian output is disabled', async () => {
       buildPopupDom();
-      vi.mocked(getSettings).mockResolvedValue({
+      vi.mocked(getSettingsOrThrow).mockResolvedValue({
         ...storedSettings,
         obsidianApiKey: '',
         outputOptions: { obsidian: false, file: true, clipboard: false },
@@ -484,7 +496,7 @@ describe('popup/app', () => {
 describe('auto-scroll timeout settings', () => {
   async function initWith(overrides: Record<string, unknown>): Promise<void> {
     buildPopupDom();
-    vi.mocked(getSettings).mockResolvedValue({ ...storedSettings, ...overrides });
+    vi.mocked(getSettingsOrThrow).mockResolvedValue({ ...storedSettings, ...overrides });
     await initPopup();
   }
 
@@ -545,7 +557,7 @@ describe('auto-scroll timeout settings', () => {
 describe('note size setting (issue #467)', () => {
   async function initWith(overrides: Record<string, unknown>): Promise<void> {
     buildPopupDom();
-    vi.mocked(getSettings).mockResolvedValue({ ...storedSettings, ...overrides });
+    vi.mocked(getSettingsOrThrow).mockResolvedValue({ ...storedSettings, ...overrides });
     await initPopup();
   }
 
@@ -601,7 +613,7 @@ describe('frontmatter tag lists (issue #493)', () => {
 
   async function initWith(overrides: Record<string, unknown>): Promise<void> {
     buildPopupDom();
-    vi.mocked(getSettings).mockResolvedValue({ ...storedSettings, ...overrides });
+    vi.mocked(getSettingsOrThrow).mockResolvedValue({ ...storedSettings, ...overrides });
     await initPopup();
   }
 

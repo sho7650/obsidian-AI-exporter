@@ -24,37 +24,51 @@ const DEFAULT_SETTINGS: ExtensionSettings = {
 };
 
 /**
- * Get extension settings from chrome.storage (local + sync)
+ * Get extension settings from chrome.storage (local + sync), rejecting when
+ * storage cannot be read.
  *
  * Retrieves secure settings from local storage and non-sensitive
  * settings from sync storage, combining them into a unified object.
+ * The popup edits and re-saves every field, so it must use this rather than
+ * {@link getSettings}: a failed read filled in as defaults would be saved back
+ * over the user's real settings (DES-018 M-2).
+ */
+export async function getSettingsOrThrow(): Promise<ExtensionSettings> {
+  const [localResult, syncResult] = await Promise.all([
+    chrome.storage.local.get('secureSettings'),
+    chrome.storage.sync.get('settings'),
+  ]);
+
+  const stored = syncResult.settings ?? {};
+
+  // Schema-validate/normalize untrusted sync values (L-1): corrupted fields
+  // fall back to defaults; valid fields are preserved. Also resolves the
+  // legacy obsidianPort → obsidianUrl migration.
+  const sync = normalizeSyncSettings(stored);
+
+  // API key lives in local storage after migration. Before migration
+  // completes (fire-and-forget on worker startup), fall back to the legacy
+  // sync location so an early request is not misread as "key not set" (L-2).
+  const obsidianApiKey =
+    localResult.secureSettings?.obsidianApiKey ||
+    (typeof stored.obsidianApiKey === 'string' ? stored.obsidianApiKey : '') ||
+    DEFAULT_SECURE_SETTINGS.obsidianApiKey;
+
+  return {
+    obsidianApiKey,
+    ...sync,
+  };
+}
+
+/**
+ * Get extension settings, falling back to defaults when storage cannot be read.
+ *
+ * For the service worker, which reads settings before every message and must
+ * keep answering. Code that saves what it read uses {@link getSettingsOrThrow}.
  */
 export async function getSettings(): Promise<ExtensionSettings> {
   try {
-    const [localResult, syncResult] = await Promise.all([
-      chrome.storage.local.get('secureSettings'),
-      chrome.storage.sync.get('settings'),
-    ]);
-
-    const stored = syncResult.settings ?? {};
-
-    // Schema-validate/normalize untrusted sync values (L-1): corrupted fields
-    // fall back to defaults; valid fields are preserved. Also resolves the
-    // legacy obsidianPort → obsidianUrl migration.
-    const sync = normalizeSyncSettings(stored);
-
-    // API key lives in local storage after migration. Before migration
-    // completes (fire-and-forget on worker startup), fall back to the legacy
-    // sync location so an early request is not misread as "key not set" (L-2).
-    const obsidianApiKey =
-      localResult.secureSettings?.obsidianApiKey ||
-      (typeof stored.obsidianApiKey === 'string' ? stored.obsidianApiKey : '') ||
-      DEFAULT_SECURE_SETTINGS.obsidianApiKey;
-
-    return {
-      obsidianApiKey,
-      ...sync,
-    };
+    return await getSettingsOrThrow();
   } catch (error) {
     console.error('[G2O] Failed to get settings:', error);
     return DEFAULT_SETTINGS;

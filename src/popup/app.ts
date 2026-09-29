@@ -7,7 +7,7 @@
  * inside initPopup() rather than at module scope.
  */
 
-import { getSettings, saveSettings } from '../lib/storage';
+import { getSettingsOrThrow, saveSettings } from '../lib/storage';
 import type { ExtensionSettings, TemplateOptions, OutputOptions } from '../lib/types';
 import {
   validateCalloutType,
@@ -145,11 +145,15 @@ export async function initPopup(): Promise<void> {
   elements = queryElements();
   try {
     initializeI18n();
-    const settings = await getSettings();
+    // Strict read: a form filled with defaults after a failed read would be
+    // saved back over the user's real settings (DES-018 M-2).
+    const settings = await getSettingsOrThrow();
     populateForm(settings);
     setupEventListeners();
     setupToggleSwitchAccessibility();
   } catch (error) {
+    elements.saveBtn.disabled = true;
+    elements.testBtn.disabled = true;
     showStatus(getMessage('toast_error_connectionFailed'), 'error');
     console.error('[G2O Popup] Init error:', error);
   }

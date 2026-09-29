@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getSettings, saveSettings, migrateSettings } from '../../src/lib/storage';
+import {
+  getSettings,
+  getSettingsOrThrow,
+  saveSettings,
+  migrateSettings,
+} from '../../src/lib/storage';
 
 describe('storage', () => {
   beforeEach(() => {
@@ -181,6 +186,28 @@ describe('storage', () => {
       const settings = await getSettings();
       expect(settings.obsidianApiKey).toBe('');
       expect(settings.obsidianUrl).toBe('http://127.0.0.1:27123');
+    });
+  });
+
+  // The popup must not mistake a failed read for a fresh install: a form filled
+  // with defaults and then saved overwrites the user's real settings (DES-018 M-2).
+  describe('getSettingsOrThrow', () => {
+    it('rejects when storage cannot be read, instead of returning defaults', async () => {
+      vi.mocked(chrome.storage.sync.get).mockRejectedValue(new Error('storage down'));
+
+      await expect(getSettingsOrThrow()).rejects.toThrow('storage down');
+    });
+
+    it('leaves getSettings falling back to defaults, which the service worker relies on', async () => {
+      vi.mocked(chrome.storage.sync.get).mockRejectedValue(new Error('storage down'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const settings = await getSettings();
+
+      expect(settings.obsidianApiKey).toBe('');
+      expect(settings.vaultPath).toBe('AI/{platform}');
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
     });
   });
 
