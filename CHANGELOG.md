@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.7](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.6...v2.14.7) (2026-10-06)
+
+
+### Miscellaneous
+
+* apply npm audit fix and bump nixpkgs lock ([#530](https://github.com/sho7650/obsidian-AI-exporter/issues/530)) ([77d3a0b](https://github.com/sho7650/obsidian-AI-exporter/commit/77d3a0b9e6aea9605b3525dce9bc613eb569446e))
+
 ## [2.14.6](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.5...v2.14.6) (2026-09-29)
 
 
