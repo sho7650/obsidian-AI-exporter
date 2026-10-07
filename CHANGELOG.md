@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.8](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.7...v2.14.8) (2026-10-07)
+
+
+### Bug Fixes
+
+* re-anchor Claude answers on data-testid after the 2026-10 transcript redesign ([#534](https://github.com/sho7650/obsidian-AI-exporter/issues/534)) ([54b8f7c](https://github.com/sho7650/obsidian-AI-exporter/commit/54b8f7c53764b46c97783099f98e2af7306edeb6)), closes [#533](https://github.com/sho7650/obsidian-AI-exporter/issues/533)
+* restore Claude tool activity and keep expanded thinking out of answers ([#536](https://github.com/sho7650/obsidian-AI-exporter/issues/536)) ([f5d240f](https://github.com/sho7650/obsidian-AI-exporter/commit/f5d240fa0c5ce96655810f22dce633b9b3d1604a))
+
 ## [2.14.7](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.6...v2.14.7) (2026-10-06)
 
 
