@@ -17,6 +17,17 @@ import type { ConversationMessage, DeepResearchSource, SyncSettings } from '../.
 import { SELECTORS, DEEP_RESEARCH_SELECTORS, JOINED_SELECTORS } from './selectors/claude';
 
 /**
+ * Page chrome that sits inside the 2026-10 answer element: the screen-reader
+ * heading ("Claude responded: …", a copy of the answer's opening) and the
+ * message actions bar (Copy / Retry / the date). Not answer content.
+ *
+ * Kept out of SELECTORS: they are only stripped, never extracted, so a live
+ * zero-match would cost nothing — while a baseline entry would block the
+ * platform when they go (#402).
+ */
+const ANSWER_CHROME_SELECTOR = 'h2.sr-only, [data-testid="message-actions"]';
+
+/**
  * Claude conversation and Deep Research extractor
  *
  * Implements IConversationExtractor interface
@@ -62,7 +73,7 @@ export class ClaudeExtractor extends BaseExtractor {
    * the off-screen subtree into `inert` + `aria-hidden="true"` (verified live
    * 2026-07-16). Such content is neither the active view nor a real conversation
    * turn, so both DR detection and message collection ignore it — otherwise the
-   * lingering report (which also carries `.font-claude-response`) would leak into
+   * lingering report (which carried `.font-claude-response` in that DOM) would leak into
    * the conversation as a stale extra assistant turn.
    */
   private isInDismissedPanel(element: Element): boolean {
@@ -161,7 +172,7 @@ export class ClaudeExtractor extends BaseExtractor {
    *
    * User messages nested inside an assistant response (e.g. quoted content) are
    * skipped, as is anything inside a dismissed artifact panel (a closed report
-   * lingers with `.font-claude-response`; see {@link isInDismissedPanel}).
+   * lingers mounted; see {@link isInDismissedPanel}).
    * Shared by extractMessages() (single pass) and harvestWindow() (per-scroll-
    * window pass for virtualized conversations).
    */
@@ -301,8 +312,11 @@ export class ClaudeExtractor extends BaseExtractor {
       return parts.join('\n');
     }
 
-    // No markdown section anywhere: fall back to the whole response element.
-    return sanitizeHtml(element.innerHTML);
+    // No markdown section anywhere: fall back to the whole response element,
+    // minus the page chrome that the 2026-10 answer element also wraps.
+    const answer = element.cloneNode(true) as Element;
+    answer.querySelectorAll(ANSWER_CHROME_SELECTOR).forEach(chrome => chrome.remove());
+    return sanitizeHtml(answer.innerHTML);
   }
 
   /**

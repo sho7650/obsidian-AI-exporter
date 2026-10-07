@@ -753,11 +753,11 @@ describe('ClaudeExtractor', () => {
     });
 
     describe('assistantResponse selectors', () => {
-      it('works with primary selector (.font-claude-response)', async () => {
+      it('works with primary selector ([data-testid="assistant-message"])', async () => {
         setClaudeLocation('test-123');
         loadFixture(`
           <p class="whitespace-pre-wrap break-words">Question</p>
-          <div class="font-claude-response">
+          <div data-testid="assistant-message">
             <div class="standard-markdown"><p>Answer</p></div>
           </div>
         `);
@@ -765,17 +765,16 @@ describe('ClaudeExtractor', () => {
         expect(result.data?.messages.some(m => m.role === 'assistant')).toBe(true);
       });
 
-      it('works with secondary selector ([class*=font-claude-response])', async () => {
+      it('works with secondary selector ([data-cds="AssistantMessage"])', async () => {
         setClaudeLocation('test-123');
         loadFixture(`
           <p class="whitespace-pre-wrap break-words">Question</p>
-          <div class="prefix-font-claude-response-suffix">
+          <div data-cds="AssistantMessage">
             <div class="standard-markdown"><p>Answer</p></div>
           </div>
         `);
-        // Partial match selector
-        const messages = extractor.extractMessages();
-        expect(messages.length).toBeGreaterThanOrEqual(0);
+        const result = await extractor.extract();
+        expect(result.data?.messages.some(m => m.role === 'assistant')).toBe(true);
       });
 
       it('works with tertiary selector ([data-is-streaming])', async () => {
@@ -1922,7 +1921,7 @@ describe('collapsed long user messages (issue: first comment missing)', () => {
       </div>
     </div>
     <div data-index="1">
-      <div class="font-claude-response">
+      <div data-testid="assistant-message" data-is-streaming="false">
         <div class="standard-markdown"><p>The reply</p></div>
       </div>
     </div>
@@ -1962,8 +1961,8 @@ describe('collapsed long user messages (issue: first comment missing)', () => {
   });
 
   it('still ignores a dismissed panel outside the conversation rows (issue #352)', () => {
-    // The regression this must not undo: a closed artifact keeps its
-    // .font-claude-response and would otherwise leak in as a stale extra turn.
+    // The regression this must not undo: an answer element inside a closed
+    // panel would otherwise leak in as a stale extra turn.
     loadFixture(`
       <div data-index="0">
         <div data-testid="user-message">
@@ -1971,12 +1970,12 @@ describe('collapsed long user messages (issue: first comment missing)', () => {
         </div>
       </div>
       <div data-index="1">
-        <div class="font-claude-response">
+        <div data-testid="assistant-message" data-is-streaming="false">
           <div class="standard-markdown"><p>Answer</p></div>
         </div>
       </div>
       <div inert aria-hidden="true">
-        <div class="font-claude-response">
+        <div data-testid="assistant-message" data-is-streaming="false">
           <div class="standard-markdown"><p>Lingering closed report</p></div>
         </div>
       </div>
@@ -2000,7 +1999,7 @@ describe('collapsed long user messages (issue: first comment missing)', () => {
       <div data-index="1">
         <div class="overflow-hidden">
           <div inert>
-            <div class="font-claude-response">
+            <div data-testid="assistant-message" data-is-streaming="false">
               <div class="standard-markdown"><p>A very long reply</p></div>
             </div>
           </div>

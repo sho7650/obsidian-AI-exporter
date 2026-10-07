@@ -24,7 +24,7 @@ function renderTurn(turn: Turn, index: number): string {
   const inner =
     turn.role === 'user'
       ? `<div class="bg-bg-300 rounded-xl"><div data-testid="user-message">${turn.content}</div></div>`
-      : `<div class="font-claude-response"><div class="standard-markdown"><p>${turn.content}</p></div></div>`;
+      : `<div data-testid="assistant-message" data-is-streaming="false"><div class="standard-markdown"><p>${turn.content}</p></div></div>`;
   return `<div data-index="${index}"><div data-test-render-count="2">${inner}</div></div>`;
 }
 

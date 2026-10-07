@@ -64,7 +64,7 @@ dotenv.config({ path: path.join(import.meta.dirname, '..', '.env.local') });
 const READY_SELECTORS: Readonly<Record<string, string>> = {
   gemini_conv: '.conversation-container',
   gemini_dr: 'deep-research-immersive-panel',
-  claude_conv: '.font-claude-response',
+  claude_conv: '[data-testid="assistant-message"]',
   claude_dr: '#markdown-artifact',
   chatgpt_conv: 'div[data-turn-key]', // 2026-09 layout (issue #515)
   perplexity_conv: '.prose[data-renderer="lm"]',
