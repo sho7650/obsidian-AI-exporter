@@ -10,16 +10,22 @@
 import { loadFixture, setClaudeLocation } from './dom-helpers';
 
 /** One block inside an assistant answer, in render order */
-type ClaudeHubPart = { kind: 'text'; html: string } | { kind: 'thinking'; label: string };
+type ClaudeHubPart =
+  | { kind: 'text'; html: string }
+  | { kind: 'thinking'; label: string; expanded?: string }
+  | { kind: 'tool'; label: string; expanded?: string };
 
 export type ClaudeHubMessage =
   { role: 'user'; text: string } | { role: 'assistant'; parts: ClaudeHubPart[]; heading?: string };
 
 const TURN_KEY = '019edd2f-75f4-7a6d-9e39-f76fa5afb3db';
 
-function renderStatus(itemKey: string, label: string): string {
+// `expanded` is the HTML of the row's open panel; collapsed rows render none.
+function renderStatus(itemKey: string, label: string, expanded?: string): string {
+  const panel =
+    expanded === undefined ? '' : `<div data-open="" data-cds-row-panel="">${expanded}</div>`;
   return `
-    <div data-closed="" data-cds="TurnStatus" data-item-key="${TURN_KEY}-hub-reply:grp:${itemKey}" data-find-omitted="" data-state="done" class="group/status flex w-full min-w-0 flex-col">
+    <div ${expanded === undefined ? 'data-closed=""' : ''} data-cds="TurnStatus" data-item-key="${TURN_KEY}-hub-reply:grp:${itemKey}" data-find-omitted="" data-state="done" class="group/status flex w-full min-w-0 flex-col">
       <div data-cds-row="" class="flex min-w-0 gap-xs" title="${label}">
         <span class="flex min-w-0 gap-xs items-center"><span class="group/morph inline-grid">
           <span data-morph-key="done|${label}" class="col-start-1 row-start-1 flex min-w-0"><span class="text-muted"><bdi>${label}</bdi></span></span>
@@ -27,6 +33,7 @@ function renderStatus(itemKey: string, label: string): string {
         <button type="button" data-cds-row-toggle="" aria-expanded="false"></button>
       </div>
       <span class="sr-only" role="status" aria-live="polite">${label}</span>
+      ${panel}
     </div>`;
 }
 
@@ -39,8 +46,17 @@ function renderText(html: string): string {
     </div>`;
 }
 
+// Thinking and Tool activity rows differ only in the `data-item-key` suffix:
+// `:grp:th<n>` for a Thinking summary, `:grp:cblk_<content-block id>` for a tool.
 function renderPart(part: ClaudeHubPart, index: number): string {
-  return part.kind === 'text' ? renderText(part.html) : renderStatus(`th${index}`, part.label);
+  switch (part.kind) {
+    case 'text':
+      return renderText(part.html);
+    case 'thinking':
+      return renderStatus(`th${index}`, part.label, part.expanded);
+    case 'tool':
+      return renderStatus(`cblk_01LvedGeTWX7AznJgSm9SJ8${index}`, part.label, part.expanded);
+  }
 }
 
 function renderUser(text: string): string {

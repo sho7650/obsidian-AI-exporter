@@ -28,6 +28,14 @@ import { SELECTORS, DEEP_RESEARCH_SELECTORS, JOINED_SELECTORS } from './selector
 const ANSWER_CHROME_SELECTOR = 'h2.sr-only, [data-testid="message-actions"]';
 
 /**
+ * Any step row of an answer — Thinking summary or Tool activity. An expanded
+ * row renders its detail (the full reasoning, for a Thinking row) as
+ * `.standard-markdown` inside the row, so the answer body must skip it.
+ * Private for the same reason as ANSWER_CHROME_SELECTOR: it is only excluded.
+ */
+const STEP_ROW_SELECTOR = '[data-cds="TurnStatus"]';
+
+/**
  * Claude conversation and Deep Research extractor
  *
  * Implements IConversationExtractor interface
@@ -322,23 +330,20 @@ export class ClaudeExtractor extends BaseExtractor {
   /**
    * Collect the response body's markdown sections, in DOM order.
    *
-   * A single response interleaves two content shapes. Thinking / tool-use steps
-   * put their text inside a grid block's `.row-start-2`, while the final answer
-   * is emitted as top-level `.standard-markdown` blocks that sit inside NO grid
-   * section. Earlier revisions read only `.row-start-2` and fell back to a
-   * whole-element search solely when every section came back empty, so a
-   * response that had both shapes returned just the step preambles and dropped
-   * the entire answer.
+   * An answer interleaves its text blocks with step rows (Thinking summary,
+   * Tool activity), and an expanded step row renders its own `.standard-markdown`
+   * — for a Thinking row, the full reasoning. Those sections are skipped so only
+   * the answer's text reaches the note (issue #48 on the 2026-10 DOM).
    *
-   * `querySelectorAll` walks in document order, so one sweep yields both shapes
-   * already in conversation order.
+   * `querySelectorAll` walks in document order, so one sweep yields the text
+   * blocks already in conversation order.
    */
   private collectResponseMarkdown(element: Element): string[] {
     const sections = this.queryAllWithFallback<HTMLElement>(SELECTORS.markdownContent, element);
     const parts: string[] = [];
 
     for (const section of sections) {
-      if (this.isInStatusHeader(section)) continue;
+      if (section.closest(STEP_ROW_SELECTOR)) continue;
       // A lower-priority selector such as [class*="markdown"] can match both a
       // wrapper and the node inside it; emitting both would repeat the shared
       // text, so keep only the outermost match.
@@ -351,116 +356,20 @@ export class ClaudeExtractor extends BaseExtractor {
   }
 
   /**
-   * Whether a markdown section belongs to a step's status header rather than to
-   * the response body.
+   * Tool activity of one answer, as bold labels in render order.
    *
-   * Claude reuses `.row-start-1` / `.row-start-2` at two nesting levels: the
-   * OUTER `.row-start-1` is the status header, whose tool output is surfaced
-   * separately by {@link extractToolContentFromElement}, while a step's own text
-   * sits under `.row-start-2` — wrapped in a SECOND, nested `.row-start-1`.
-   * Skipping everything beneath any `.row-start-1` would therefore discard the
-   * step text as well; only a header outside `.row-start-2` is a status header.
-   */
-  private isInStatusHeader(element: Element): boolean {
-    const header = element.closest('.row-start-1');
-    return header !== null && header.closest('.row-start-2') === null;
-  }
-
-  /**
-   * Extract tool content from a full .font-claude-response element
-   *
-   * Returns tool content string if .row-start-1 contains tool-use content,
-   * null otherwise (no grid, no tool section, or Extended Thinking).
+   * Only the row's own label is read: a row the user has expanded also holds
+   * the step's queries and interim notes in `[data-cds-row-panel]`, which we
+   * leave out rather than export them for expanded rows alone.
    */
   private extractToolContentFromElement(element: Element): string | null {
-    if (!element.querySelector('.row-start-2')) return null; // Non-grid → no tool content
-
-    const parts: string[] = [];
-    for (const header of this.collectStatusHeaders(element)) {
-      // Extended Thinking is presented separately from tool activity. Skip just
-      // that block: a thinking step early in the response must not suppress the
-      // tool content of every step after it.
-      if (header.querySelector('[class*="group/thinking"]')) continue;
-
-      const toolContent = this.extractToolContent(header);
-      if (toolContent) parts.push(toolContent);
-    }
-
-    return parts.length > 0 ? parts.join('\n\n') : null;
-  }
-
-  /**
-   * Status headers of a response's grid step blocks, in DOM order.
-   *
-   * A response can carry several sequential steps, each with its own header.
-   * Only the OUTER `.row-start-1` is a header — see {@link isInStatusHeader}
-   * for why the nested one under `.row-start-2` must not be treated as such.
-   */
-  private collectStatusHeaders(element: Element): HTMLElement[] {
-    return Array.from(element.querySelectorAll<HTMLElement>('.row-start-1')).filter(
-      header => header.closest('.row-start-2') === null
-    );
-  }
-
-  /**
-   * Extract tool content from .row-start-1 section
-   *
-   * Extracts:
-   * 1. Summary button text (e.g., "Searched the web") as bold
-   * 2. Search queries (group/row buttons with query text and result count)
-   * 3. Search result items (identified by favicon images)
-   * 4. .standard-markdown content (code interpreter, file analysis)
-   */
-  private extractToolContent(toolSection: Element): string {
-    return [
-      ...this.extractToolSummary(toolSection),
-      ...this.extractToolQueries(toolSection),
-      ...this.extractToolResults(toolSection),
-      ...this.extractToolMarkdown(toolSection),
-    ].join('\n\n');
-  }
-
-  /** Summary button text (e.g., "Searched the web") as bold */
-  private extractToolSummary(toolSection: Element): string[] {
-    const summaryButton = toolSection.querySelector('button span.truncate');
-    return summaryButton?.textContent
-      ? ['**' + this.sanitizeText(summaryButton.textContent) + '**']
-      : [];
-  }
-
-  /** Search queries (group/row buttons with query text and result count) */
-  private extractToolQueries(toolSection: Element): string[] {
-    return Array.from(toolSection.querySelectorAll('[class*="group/row"]')).flatMap(btn => {
-      const queryEl = btn.querySelector('.truncate');
-      if (!queryEl?.textContent?.trim()) return [];
-      const query = this.sanitizeText(queryEl.textContent);
-      const count = btn.querySelector('p')?.textContent?.trim();
-      return [count ? query + ' (' + this.sanitizeText(count) + ')' : query];
-    });
-  }
-
-  /** Search result items (identified by favicon images) */
-  private extractToolResults(toolSection: Element): string[] {
-    const items = Array.from(toolSection.querySelectorAll('img[alt="favicon"]')).flatMap(img => {
-      // Navigate: img → container div → result row div
-      const row = img.parentElement?.parentElement;
-      if (!row || row.children.length < 2) return [];
-      // Children: [0]=favicon container, [1]=title, [2]=domain (optional)
-      const title = row.children[1]?.textContent?.trim();
-      const domain = row.children.length > 2 ? row.children[2]?.textContent?.trim() : undefined;
-      if (!title) return [];
-      return [domain ? '- ' + title + ' (' + domain + ')' : '- ' + title];
-    });
-    return items.length > 0 ? [items.join('\n')] : [];
-  }
-
-  /** .standard-markdown content (code interpreter, file analysis) */
-  private extractToolMarkdown(toolSection: Element): string[] {
-    // Primary only: tool sections are opt-in content, and the group's loose
-    // `[class*="markdown"]` fallback would pull unrelated nodes into the note.
-    return Array.from(toolSection.querySelectorAll(SELECTORS.markdownContent[0]))
-      .map(el => sanitizeHtml(el.innerHTML))
-      .filter(html => html.trim());
+    const labels = this.queryAllWithFallback<HTMLElement>(SELECTORS.toolStatus, element)
+      .map(status =>
+        this.sanitizeText(status.querySelector(':scope > [data-cds-row] bdi')?.textContent ?? '')
+      )
+      .filter(label => label !== '')
+      .map(label => `**${label}**`);
+    return labels.length > 0 ? labels.join('\n\n') : null;
   }
 
   // ========== Deep Research Extraction ==========
