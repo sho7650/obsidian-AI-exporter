@@ -50,9 +50,15 @@ export const SELECTORS = {
   ],
 
   // Assistant response selectors
+  //
+  // 2026-10: Claude rebuilt the transcript and `.font-claude-response` left the
+  // DOM entirely (both the class and its partial match measured at zero, live
+  // and in a regular browser). The answer is now one element carrying
+  // data-testid="assistant-message", data-cds="AssistantMessage" and
+  // data-is-streaming together — the testid pairs with userMessage's.
   assistantResponse: [
-    '.font-claude-response', // Semantic (HIGH)
-    '[class*="font-claude-response"]', // Partial match (HIGH)
+    '[data-testid="assistant-message"]', // Test id (HIGH)
+    '[data-cds="AssistantMessage"]', // Design-system component (MEDIUM)
     '[data-is-streaming]', // Functional attribute (MEDIUM)
   ],
 
