@@ -62,6 +62,17 @@ export const SELECTORS = {
     '[data-is-streaming]', // Functional attribute (MEDIUM)
   ],
 
+  // Tool activity rows inside an answer (2026-10 transcript).
+  //
+  // Each step of an answer renders as a [data-cds="TurnStatus"] row; the
+  // data-item-key suffix tells the kind apart: `:grp:cblk_<id>` is a tool
+  // (web search, skill, file), `:grp:th<n>` is the Thinking summary, which is
+  // never exported. Rows are collapsed by default, so only their label is in
+  // the DOM — we read the label and never click to expand.
+  toolStatus: [
+    '[data-cds="TurnStatus"][data-item-key*=":grp:cblk_"]', // Design-system row + content-block key (HIGH)
+  ],
+
   // Markdown content selectors
   // 2026-07: .progressive-markdown disappeared from the live site (removed
   // under the zero-match baseline contract)

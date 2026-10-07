@@ -12,6 +12,14 @@ _Avoid_: turn (when you mean one speaker's contribution)
 The platform's own conversation-unit container, named as that platform names it. Its granularity is platform-specific: on Gemini and (since 2026-09) ChatGPT one Turn holds a user prompt and its answer; elsewhere a Turn may hold a single Message.
 _Avoid_: using Turn as a synonym for Message in cross-platform code
 
+**Tool activity**:
+An action the assistant took while composing an answer — a web search, loading a skill, creating a file — as the platform summarises it in the answer (e.g. "Searched the web"). Exported only when the user opts into tool output.
+_Avoid_: tool result (the platform may show only the summary, not the results)
+
+**Thinking summary**:
+The one-line digest of the assistant's reasoning shown above an answer (e.g. "Planned how to explain…"). Not part of the answer and not Tool activity; never exported.
+_Avoid_: thinking (when you mean the full reasoning text)
+
 ## Relationships
 
 - A **Turn** contains one or more **Messages**; how many, and of which roles, depends on the platform
