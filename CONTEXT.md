@@ -13,7 +13,7 @@ The platform's own conversation-unit container, named as that platform names it.
 _Avoid_: using Turn as a synonym for Message in cross-platform code
 
 **Tool activity**:
-An action the assistant took while composing an answer — a web search, loading a skill, creating a file — as the platform summarises it in the answer (e.g. "Searched the web"). Exported only when the user opts into tool output.
+An action the assistant took while composing an answer — a web search, creating a file — as the platform summarises it in the answer (e.g. "Searched the web"). What counts as Tool activity is the platform's own classification: a step the platform files with the reasoning (Claude's "Loaded skill") is not Tool activity. Exported only when the user opts into tool output.
 _Avoid_: tool result (the platform may show only the summary, not the results)
 
 **Thinking summary**:
