@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.9](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.8...v2.14.9) (2026-10-18)
+
+
+### Documentation
+
+* design the note-body HTML boundary (DES-019, ADR-044) ([#542](https://github.com/sho7650/obsidian-AI-exporter/issues/542)) ([c12419b](https://github.com/sho7650/obsidian-AI-exporter/commit/c12419b182fb73f86fdfceabf88c8b91cca47737))
+
 ## [2.14.8](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.7...v2.14.8) (2026-10-07)
 
 
