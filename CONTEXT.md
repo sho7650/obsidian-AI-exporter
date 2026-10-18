@@ -20,7 +20,18 @@ _Avoid_: tool result (the platform may show only the summary, not the results)
 The one-line digest of the assistant's reasoning shown above an answer (e.g. "Planned how to explain…"). Not part of the answer and not Tool activity; never exported.
 _Avoid_: thinking (when you mean the full reasoning text)
 
+**Source**:
+A web page the assistant cited, identified by the title and URL the platform shows for it. Listed once in the note's References section.
+_Avoid_: reference (References is the section, not one entry), footnote (that is only the Markdown syntax that renders it)
+
+**Citation**:
+A marker inside an answer that points to a **Source** (e.g. a Perplexity citation pill).
+_Avoid_: source (when you mean the marker, not the page)
+
 ## Relationships
+
+- A **Citation** points to exactly one **Source**; one **Source** may be pointed to by many **Citations**
+- A **Source** is listed in References once, however many **Citations** point to it
 
 - A **Turn** contains one or more **Messages**; how many, and of which roles, depends on the platform
 - A note is an ordered list of **Messages**, never of **Turns**
