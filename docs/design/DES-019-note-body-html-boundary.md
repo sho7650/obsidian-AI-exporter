@@ -1,0 +1,347 @@
+# DES-019: Note Body HTML Boundary
+
+> Source: Claude Security scan `CLAUDE-SECURITY-20261017-041618` (F1, F2) and the 2026-10-17 design session
+> Decision record: [ADR-044](../adr/044-note-body-html-boundary.md)
+> Supersedes the framing of: [DES-011](DES-011-angle-bracket-escape.md) (angle-bracket escaping as a rendering fix)
+> Status: Accepted, implementation pending in the fix PR (restructured 2026-10-17: a final HTML gate is the boundary; per-path escaping is the fidelity layer). Plan-reviewed by Codex: 3 runs, last run closed with no blocking findings, 2026-10-18
+> Date: 2026-10-17
+
+## 1. Problem Statement
+
+DES-011 introduced angle-bracket escaping so that `<module>` or `<div>` in a conversation would not vanish in Obsidian's Reading mode. It was designed as a **rendering fix**: one post-processing pass over the final Markdown.
+
+A security scan of `src/` (revision `94474e03`) found two ways page-derived text reaches a saved note as **live HTML** that Obsidian renders (iframes, remote images that disclose the reader's IP and open time, spoofed content):
+
+| ID | Path | Root cause |
+|----|------|-----------|
+| F1 | Deep Research References (Gemini, Claude) | `generateReferencesSection()` appends Source titles and URLs **after** `htmlToMarkdown()` has run the escaper; titles get only `escapeMarkdownLink()` (`\ [ ] ( )`), URLs only an http(s) check |
+| F2 | Every message body | `escapeSpecialCharsInLine()` finds inline code with `` /(`[^`]+`)/ ``. Turndown writes literal backticks in prose as `` \` ``; the splitter mistakes `` \`<iframe>\` `` for a code span and skips it, while Obsidian reads `` \` `` as a literal backtick and renders the HTML |
+
+Tracing every path into the note body under the new contract (§2), and plan review round 1, found more:
+
+| ID | Path | Current state |
+|----|------|--------------|
+| P7 | Tool activity (Claude) | `extractToolContentFromElement()` wraps `textContent` in `**…**`; `formatToolContent()` writes it verbatim. Never escaped |
+| P8 | Question headers (`includeQuestionHeaders`) | `buildQuestionHeader()` builds `## …` from **raw** user content; `stripMarkdownChars()` removes `` `*_~[]$ `` but not `<` `>` |
+| P5 | NotebookLM footnote defs | `notebooklm.ts` writes the citation title raw into `[^label]: title`; the `footnoteDef` rule emits it without `escape()`. Protected today only by the post-pass |
+| P6/P9 | Turndown custom rules that emit page text without Turndown's `escape()`: `tables` (`tableCellText`), `g2oImage` (alt), math plain-text fallback in `formatMath()` | Protected today **only** by the post-pass this design removes for assistant HTML (§4.2) |
+| P10 | `inlineCode` rule | Always wraps in a single backtick. Code containing a backtick (`` a`<iframe> ``) ends the span early and the rest is prose. The post-pass escapes it today by accident |
+| P12 | Turndown's built-in `image` and `inlineLink` rules | They write `alt` through Turndown's module-internal `escapeMarkdown()` and `title` through `escapeLinkTitle()` (quotes only), never through the instance `escape()`. DOMPurify's default profile keeps `alt` and `title`, so a normal `<img alt="<x>">` or `<a title="<x>">` from a page reaches the note. Protected today only by the post-pass |
+| P13 | Forged placeholder attributes | `sanitizeHtml()` force-keeps `data-footnote-def`, `data-footnote-ref` and `data-g2o-image` whatever their origin (`sanitize.ts:124-135`), because the extension's own placeholders must survive it. A page can therefore supply them itself: `<p data-footnote-def>` text is emitted raw by `footnoteDef`, `footnoteRef` interpolates its value into `[^…]` unchecked, and `g2oImage` puts its value into a link destination. NotebookLM's own `parseCitation()` fallback also puts arbitrary visible text into a footnote label (`notebooklm.ts:40-55`) |
+| P11 | Backslash runs before `<` | `ANGLE_BRACKET_PATTERN` turns `\<` into `\\\<` but handles only one preceding backslash: user text `\\<x>` becomes `\\\\<x>` (four backslashes, `<` unescaped). Any composition of two backslash-escapers has the same effect (e.g. `escapeMarkdownLink` then an angle escaper) |
+
+Plan review (three runs, nine rounds) kept finding paths of the same two kinds: a per-path escaper that composes badly with a Turndown internal, and an extractor branch that skips the escaper. The latest round found three more (P14–P16):
+
+| ID | Path | Current state |
+|----|------|--------------|
+| P14 | Turndown's `escapeMarkdown()` already turns a `>` at the start of a text node into `\>`; adding one more backslash for `>` makes the run even (`turndown.cjs.js:53`) | Would be introduced by the §4.2 override as first drafted |
+| P15 | Link and image destinations | Turndown's `escapeLinkDestination()` adds `\` before `<>()` but leaves existing backslashes alone (`turndown.cjs.js:243-246`), so `a b\<iframe…\>` becomes `<a b\\<iframe…\\>>`, which breaks the link and leaves the inner tag live |
+| P16 | Claude user-content fallback | `extractUserContent()` returns unescaped `sanitizeText(textContent)` when Turndown yields nothing (`claude.ts:302-307`); a role-based `contentFormat: 'markdown'` would skip escaping for it |
+
+Enumerating every path is evidently not converging. The design therefore adds **one final gate** that every written note body passes through and that does not depend on any path being right (§2, §4.0). Per-path escaping stays, as the fidelity layer.
+
+All severities are LOW: exploitation needs the victim to save content an attacker influenced, and script execution depends on Obsidian's own sanitizer.
+
+## 2. Contract
+
+> **Text derived from a platform page never becomes live HTML in a note body.** The only places a literal `<` may survive are (a) code, as Obsidian renders it, and (b) Markdown syntax the extension itself emits (link destinations, footnote syntax, callout markers, math delimiters).
+
+**Enforcement: the final HTML gate (§4.0) is the boundary.** Immediately before any note body the extension produced is written to the vault, downloaded or copied, it is parsed by a CommonMark parser, and every block that parses to raw HTML is neutralised by escaping its `<` characters. On every path, including append, the gate is the last body transform. The gate makes no assumption about how the body was built, so a per-path bug can no longer produce live HTML. It can only make the gate act, and the gate logs when it acts.
+
+**Fidelity layer: per-path escaping (§4.1–§4.8).** It is kept so that the gate normally has nothing to do. The gate's neutralisation is coarse (it escapes every `<` on the affected lines, including inside code on those lines), whereas per-path escaping is precise. A per-path bug is now a fidelity bug and a test failure (§5.2 asserts the gate is a no-op on every seam payload), not a vulnerability.
+
+Mechanical form for the fidelity layer, used by the tests: **outside code, every `<` and `>` derived from page text is preceded by an odd number of consecutive backslashes.**
+
+Three engineering rules apply to every path in the fidelity layer:
+
+- **R1 — Escape once, in one pass.** Each fragment of page text is escaped by exactly one function, which escapes `\` together with every target character in the same pass. A function never runs over the output of another backslash-escaper (P11).
+- **R3 — Rules are safe whatever their input's origin.** A Turndown rule must produce boundary-safe output for any attribute value and any content, because `sanitizeHtml()` cannot tell the extension's placeholders from forged ones. Escaping therefore happens **in the rule**, from raw DOM values, never in a producer that hands the rule pre-escaped text (P13).
+- **R2 — Code is recognised conservatively.** A `<` is left unescaped only inside code the extension can prove Obsidian renders as code. Anything uncertain is escaped. The asymmetry is deliberate: over-escaping costs a visible backslash inside code, under-escaping is live HTML. Reproducing CommonMark/Obsidian block and inline precedence exactly in a scanner is not attempted, because a mismatch in either direction can leave HTML outside a span the scanner believed was code (plan review round 2). Code the extension emits itself is delimited so its content cannot end it (P10).
+
+Decisions from the design session (2026-10-17):
+
+| # | Decision |
+|---|----------|
+| Q1 | Keeping page text from becoming live HTML is a **security boundary**, not a rendering nicety. Since Q14 the boundary is enforced by the final gate; a fidelity-layer path that bypasses escaping is a bug the gate catches |
+| Q4 | Scope is the **note body**. Frontmatter values go through `escapeYamlValue()` and render as text in Properties; filenames have their own sanitization. Both are out of scope |
+| Q5 | "Code" means what Obsidian renders as code: fenced blocks, and inline code spans. **Narrowed after plan review round 2:** in user text, only single-line spans that pass the §4.4 safety checks are preserved; multi-line inline code in a user prompt degrades to literal backticks (R2). Confirmed by the user 2026-10-17 |
+| Q6 | Assistant HTML is escaped **at generation time** (Turndown `escape` override), not by a post-pass. Plain-text user content uses a CommonMark-aware code-span scanner |
+| Q7 | One shared URL normaliser for Source links, used by every platform |
+| Q9 | No vault migration. Existing notes keep whatever they contain. Re-saving the conversation fixes a note only when the save overwrites that same file. A save creates a new note instead, leaving the old one as it was, in any of these cases: append mode (the existing body is never rewritten, §4.0); a date in `vaultPath` or `filenameScheme: 'title-date'` (a new path or name); a changed conversation title (the filename contains a title slug, `markdown.ts:53-63`); a note saved without an `id` (treated as not ours, `note-identity.ts:72`). Release notes give one rule: re-save, and if a new note appears instead of the old one being updated, delete or move the old note by hand (§7.5) |
+| Q10 | Tool activity (P7) is in scope. Q1 implies every known path, so P5–P16 are in scope on the same reasoning (as fidelity-layer fixes since Q14) |
+| Q12 | One seam test guards every body path through `conversationToNote()` |
+| Q14 | **A final HTML gate is the boundary** (2026-10-17, after plan review). `markdown-it` becomes a **runtime** dependency, bundled into the background service worker only. Per-path escaping (Q6) is kept as the fidelity layer and as defence in depth |
+
+## 3. Glossary
+
+Terms per `CONTEXT.md`: **Source** (a cited web page, listed once in References), **Citation** (the in-answer marker pointing to a Source), **Message**, **Tool activity**.
+
+## 4. Design
+
+### 4.0 Final HTML gate (the boundary)
+
+New module `src/lib/html-gate.ts`, exporting `neutralizeLiveHtml(body: string, options?: { repairFromLine?: number }): string | null`. `repairFromLine` defaults to 0 (the whole body). It exists for the append path, where lines before it belong to the user's existing note and are parsed for context but never changed.
+
+**Where it runs.** It runs in the background service worker, on the extension-produced body only. It runs at the two places all outputs pass through:
+
+- `generateNoteContent()` (`note-generator.ts`), used by Obsidian save, file download and clipboard. It applies to the body before it is joined to the frontmatter (frontmatter is out of scope, Q4). On the full-save path the gate is the last body transform: `saveToObsidian` flattens first and then calls `generateNoteContent()` (`obsidian-handlers.ts:239-240`), and image placeholders are resolved before that.
+- `appendToExistingNote()` (`obsidian-handlers.ts`), on the append path. Only lines of the appended tail are ever changed: the **existing** note body may contain HTML the user wrote in their own vault, so it is never rewritten.
+
+**Append path: gate the joined body, repair only the tail.** Gating the tail on its own is not enough, because its meaning depends on what precedes it: `buildAppendContent()` joins existing body and tail by plain concatenation (`append-utils.ts:434`) and only logs an existing body that ends inside an open fence (`logUnterminatedFence`, `append-utils.ts:380-389`). If the tail is gated alone, a fenced block in the tail is code, so its `<iframe>` is left alone. Once joined, the tail's first fence closes the existing open fence, the `<iframe>` becomes raw HTML, and the tail's last fence opens a new one. Gating before flattening has the same problem, since flattening a long callout removes its `>` markers and so changes which fence a line belongs to (`callout-flatten.ts:15-31`). So, on the append path:
+
+1. `buildAppendContent()` returns its parts instead of one joined string: `{ frontmatter, existingBody, tail, messagesAppended, eol }`. The count, tail extraction and frontmatter update logic is unchanged.
+2. `appendToExistingNote()` flattens `existingBody` and `tail` separately, then joins them with the same `'\n\n'` separator. This gives the same output as flattening the joined text, as today: `flattenLargeCallouts()` ends a run at any line that does not start with `>` (`callout-flatten.ts:45-49`), and the separator line is empty, so no run crosses it. A test pins this equivalence (§5.1).
+3. It calls `neutralizeLiveHtml(joinedBody, { repairFromLine })`, where `repairFromLine` is the first line of the flattened tail. The whole joined body is parsed, so the tail is seen in its real context. Only HTML tokens whose line range reaches `repairFromLine` or later count (step 1 of the algorithm), only lines from `repairFromLine` on are repaired, and the fail-closed path also repairs only those lines. A token that starts in the existing body and runs into the tail gets its tail lines repaired. User HTML that lies wholly in the existing body is ignored, and it does not keep the loop iterating.
+   - **Exception: refuse when an existing HTML block runs into the tail.** If an `html_block` token starts before `repairFromLine` and its range reaches `repairFromLine` or later, the gate returns `null` without repairing anything. Only HTML block types 1–5 can cross the empty separator line (CommonMark §4.6): those that start with `<pre`, `<script`, `<style` or `<textarea`, plus comments, processing instructions, declarations and CDATA. They end only at their closing marker, so an existing body ending inside an unclosed one makes the whole tail part of that raw HTML. Nothing done to tail lines alone can neutralise that: backslash escapes have no effect inside raw HTML, and entity-encoding does not help inside `<script>` or `<style>`. Fixing it would mean changing the user's existing lines, which the design rules out, and falling back to a full save would discard what the user wrote in the note.
+   - On `null`, `appendToExistingNote()` writes nothing and returns `{ success: false, error }` with a message saying the existing note ends inside an unclosed HTML block and must be closed (or append mode turned off) before appending. It logs `console.warn('[G2O Background] append refused: open html block', { id })`, with no body text. This only happens when the user wrote an unclosed block in their own note.
+4. Then it prepends the frontmatter and applies the file's line ending last (ADR-026 order kept).
+
+So the gate is the last body transform on the append path too. `generateNoteContent()` calls `neutralizeLiveHtml(body)` with no option, which repairs from line 0. With no lines before line 0 the `null` case cannot occur, so TypeScript overloads give that call the type `string` and no `null` handling is added to it.
+
+**Parser.** `markdown-it` with `html: true` (CommonMark plus GFM tables and strikethrough) and `markdown-it-footnote`. The footnote plugin is required, not optional: without it `[^1]: …` parses as a link reference definition, whose content is never inline-parsed, so HTML in a footnote definition would be invisible to the gate while Obsidian renders it.
+
+**Algorithm.**
+
+1. Parse the body. Collect every `html_block` token and every `inline` token with an `html_inline` child, and take the line range (`map`) of each. For `html_inline` the range comes from the inline token, or its nearest ancestor block when the inline token has none. **Collection runs as a core rule placed immediately before the footnote plugin's `footnote_tail` rule**, not on the final token stream, because `footnote_tail` rewrites the stream. Verified against `markdown-it` 14.1.0 and `markdown-it-footnote` 4.0.0 (2026-10-17):
+   - An unreferenced definition (`[^1]: <img src=x>`) is removed from the final stream entirely, but before `footnote_tail` its `html_block` / `inline` tokens are present with their maps (`[0,1]`).
+   - The content of an inline footnote (`^[… <img src=x>]`) is parsed into `env.footnotes.list[n].tokens`, whose tokens have `map: null`. Its line range is taken from the `inline` token that contains the matching `footnote_ref` child (`meta.id === n`), which is the paragraph the footnote was written in (e.g. `[2,4]`).
+   - Any raw-HTML token whose range still cannot be determined is **unlocatable**. It sends a full save straight to the fail-closed path (step 5), and makes an append return `null`, because its origin (existing body or tail) cannot be decided.
+
+   Keep only ranges that reach `repairFromLine` or later, and clip them to start no earlier than `repairFromLine`.
+2. If none remain, return the body unchanged. This is the expected case.
+3. Otherwise, in those lines only, make every `<` escaped by **parity repair**: if the run of backslashes before it has even length (zero included), insert one backslash; if it is odd, leave it. Escapes already made by the fidelity layer are kept as they are, and the rule cannot compose badly with them (R1). Only `<` is repaired, never `>`: every raw HTML construct and every autolink starts with `<` (CommonMark §6.6, §6.5), so an escaped `<` is enough to neutralise it. `>` must not be touched because it is also the blockquote marker. A token's line range can span the extension's callout header and the first body line (`> [!NOTE] Gemini` followed by `> text <iframe>` is one paragraph inside one blockquote), and escaping `>` there would turn the header into `\> [!NOTE] Gemini`, which breaks the callout and makes `countExistingMessages()` (`message-counter.ts:33-35`) undercount on the next append.
+4. Re-parse and repeat, at most 3 iterations.
+5. **Fail closed.**
+   - **Full save** (`repairFromLine` absent or 0): if raw HTML remains after 3 iterations, a raw-HTML token is unlocatable, or the parser throws, apply `<` parity repair to every line that lies outside `fence`/`code_block` token ranges (or to every line if parsing failed), and log. Callout headers survive this too, because they contain no `<`. On a full save no earlier context exists, so line-level escaping is sufficient. The one case where it would not be, an HTML block opened before the repaired lines, cannot occur.
+   - **Append** (`repairFromLine` > 0): the same three conditions return `null`, and the append is refused as in the open-HTML-block case. Repairing tail lines is not enough there: without a successful parse the gate cannot rule out a type 1–5 HTML block from the existing body running into the tail, and backslashes are inert inside one (e.g. an existing body ending in an open `<script>`, followed by a tail starting `</script><img …>`).
+
+**Size bound and the size cap.** Parity repair adds a backslash only before a `<` whose backslash run is even. That makes the run odd, and an odd run is never extended again. So each `<` gains at most one backslash over all iterations and the fail-closed pass, and the gated body is at most twice the input length. This keeps gate work linear, but it does not satisfy `maxNoteSizeMiB` on its own: the setting is defined as the "largest note body the background will send to any output" (`types.ts:271-275`), while `handleMultiOutput()` checks it only on the pre-gate `note.body` (`output-handlers.ts:276-278`). So the cap is also enforced **after** the gate, on what is actually sent:
+- `note-generator.ts` gains `renderNote(note, settings): { content: string; gatedBodyLength: number }`, which gates the body and joins the frontmatter. `generateNoteContent()` keeps its signature and returns `renderNote(...).content`. Its non-production callers are unchanged: `test/lib/note-generator.test.ts` (string matchers) and `test/extractors/e2e/helpers.ts:242` (`finalMarkdown` snapshot). Those still see gated output. Every reference was found by grepping `src/`, `test/`, `e2e/` and `scripts/` (2026-10-17); `append-utils.ts:416` is only a comment.
+- The three production callers (`obsidian-handlers.ts:240`, `output-handlers.ts:169`, `:213`) switch to `renderNote()`. If `gatedBodyLength` exceeds `maxNoteSizeMiB`, they fail that output with the message from one shared helper, `noteSizeError(length, capMiB)`. `rejectOversizedNote()` uses the same helper, which lives in a small shared module so the two background files share it without an import cycle. They write, download or copy nothing.
+- `appendToExistingNote()` checks the **whole gated joined body** (existing body plus tail, frontmatter excluded) before `putFile`, because that is what the append sends. It is measured **after the file's own line ending is restored**, i.e. `applyLineEnding(joinedGatedBody, eol).length`. That restoration (`obsidian-handlers.ts:108`) adds one character per line for a CRLF file, so measuring the LF form would let a CRLF note exceed the cap. `applyLineEnding` works line by line, so applying it to the body alone gives exactly the body part of the file that is written. If it is over the cap, it returns `{ success: false, error }` and writes nothing. An existing note already above the cap (e.g. grown by the user's own edits) therefore can no longer be appended to. The error says so, and turning append mode off or raising the setting resolves it.
+- The pre-gate check in `handleMultiOutput()` stays, as a cheap early rejection before any parsing.
+
+- **Nothing is written before the check passes.** Today `saveFreshNote()` writes image files inside `prepareNoteImages()` (`putBinaryFile`, `obsidian-handlers.ts:297-309`) before it builds the body (`:233-240`). If the post-gate check then rejected the note, the images would be left orphaned in the vault. `prepareNoteImages()` is split in two:
+  - a pure step: `resolveImagesForObsidian()` (`:293`) is already pure and returns `{ body, files }`, plus the image-directory and path-traversal checks;
+  - a write step that runs `putBinaryFile` for those files.
+  `saveFreshNote()` becomes: resolve images (pure) → flatten → `renderNote()` → size check → write images → `putFile`. The resolved body already names each image file before any write, so failed image writes keep today's behaviour (the embed stays in the note and the warning lists the file). File download and clipboard write nothing before their own check: download resolves images purely (`resolveImagesForFile`, `output-handlers.ts:166`) and makes its first `downloadDataUrl` call after the body is built (`:169-170`), so the check goes between the two; clipboard has no images. This is verified for each in the §5.1 test, not assumed.
+
+So no output receives a body above the cap, nothing is written for a rejected output, and the worst case before rejection is parsing one body of at most the cap per output.
+
+**Cost of acting.** Neutralised lines lose precision: a `<` inside inline code on such a line shows a backslash, and a `[x](<a b>)` destination on it breaks. That only happens on lines that already contained live HTML, which is malicious or broken input.
+
+**Observability.** When the gate changes anything it logs `console.warn('[G2O Background] html gate neutralised', { lines, iterations, failClosed })`. This is a fidelity-layer bug signal. The log has no page content, only counts.
+
+**Residual risk.** The gate is exactly as good as the agreement between `markdown-it` and Obsidian's renderer. Where `markdown-it` sees raw HTML and Obsidian does not, the gate over-escapes (safe). Where Obsidian sees raw HTML and `markdown-it` sees code, a link or text, a hole remains. The known Obsidian-only constructs (wikilinks, embeds, `$` math, `%%` comments, highlights) are listed in O4 and checked in §5.3. The fidelity layer still covers most of them.
+
+### 4.1 Escaping primitives
+
+Two functions in `src/content/markdown-rules.ts`, each a single pass (R1):
+
+| Function | Input | Behaviour | Used for |
+|----------|-------|-----------|----------|
+| `escapeInlineText(text)` | A plain-text fragment that is never code and has had no escaping | `/[\\<>]/g → '\\$&'` | Table cells, image alt (also `]`), Tool activity labels, question headers |
+| `escapeMarkdownLink(text)` (existing, widened) | A plain-text link label | `/[\\[\]()<>]/g → '\\$&'` — adds `<` `>` to the existing set | Source titles in References (§4.5) and inside the `footnoteDef` rule (§4.8) |
+| `escapeDestination(url)` | A raw `href`/`src` attribute value | `/[\\<>()]/g → '\\$&'`, then `<…>` wrapping when it contains a space | `links` and `images` rules (§4.3, P15) |
+| `escapeMarkdownText(text)` | A raw text node | Turndown's escape list without `^>`, then `[<>] → \$&` | Assistant and user Turndown `escape` overrides (§4.2, P14) |
+
+Because `\` is escaped in the same pass as the brackets, the result always leaves an odd number of backslashes before every `<`/`>`, whatever the input contained.
+
+### 4.2 Assistant HTML: Turndown `escape` override (F2, P1)
+
+- Build Turndown through a factory `createTurndown({ escapeExtra })` that registers every custom rule, so rules stay defined once.
+- The assistant instance's `escape(string)` is the extension's own `escapeMarkdownText(string)`, which replaces Turndown's `escapeMarkdown` instead of wrapping it. Wrapping does not work: Turndown's list already turns a `>` at the start of a text node into `\>`, and one more backslash makes the run even (P14). `escapeMarkdownText` applies Turndown 7.2.4's escape list with the `^>` entry removed, then `[<>] → \$&`. Turndown's first entry doubles every original backslash, so every run before a bracket is even and the single added backslash makes it odd (R1). The copied list is pinned by a test that compares it with Turndown's for every entry except `^>`, so a Turndown upgrade that changes the list fails loudly.
+- Turndown calls `escape()` only for non-code text nodes (`node.isCode ? node.nodeValue : self.escape(node.nodeValue)`), so code is excluded by construction.
+- `htmlToMarkdown()` **stops calling `escapeAngleBrackets()`** (it would double-escape). With no callers left, `escapeAngleBrackets()` is deleted (knip, ADR-037); its tests move to the new scanner (§4.4).
+- Side effect: Turndown's own link destinations containing spaces (`[x](<a b>)`) stop being mangled into `\<a b\>` by the post-pass. Called out in the release notes.
+
+### 4.3 Custom rules
+
+| Rule | Page text emitted | Change |
+|------|------------------|--------|
+| `inlineCode` (P10) | code content | Delimiter sized by a new `wrapInlineCode(content)` in `src/lib/code-fence.ts` (beside `fenceCodeBlock`, ADR-029): backtick run one longer than the longest run in the content; one space of padding when the content starts or ends with a backtick. Newlines in the content are replaced by spaces (so the span never crosses a line). When the content contains `<` or `>` **and** `|`, each `|` is written as `\|`: inside a GFM table row that keeps the span in one cell, elsewhere it shows a visible backslash (R2). Turndown already escapes `[` `]` in prose, so assistant text cannot open a wikilink around the span |
+| `codeBlocks`, `codemirrorCodeBlocks` | code | unchanged — already sized by `fenceCodeBlock` |
+| `tables` (P6) | `tableCellText(cell)` | `escapeInlineText` per cell |
+| `g2oImage` (P9, P13) | `alt`, id | `alt` escaped in one pass over `[\\[\]<>]`. The filter matches only when the id passes validation (§4.8); an `<img>` with an invalid id falls to `images`, which renders it as an ordinary escaped image. The background reader's `PLACEHOLDER_PATTERN` (`image-output.ts:29`, alt `[^\]]*`) must accept backslash-escaped alt (`(?:\\.|[^\]\\])*`), or an escaped `\]` would cut the alt short and the placeholder would stop resolving. This is a writer/reader seam like #406 |
+| Built-in `image` (P12) | `alt`, `title` | Overridden by a custom `images` rule (same output shape as Turndown's, `![alt](src "title")`). Its filter is the exact complement of `g2oImage`'s (any `<img>` that is not a valid marker), so it never competes with `g2oImage`: Turndown's `addRule()` does not replace by name, it `unshift`s, so the most recently added matching rule wins. Disjoint filters make the result independent of registration order. `alt` is escaped by one pass over `[\\[\]<>]`; `title` by one pass over `[\\"<>]`. `src` goes through a new `escapeDestination()`: one pass over `[\\<>()]`, then wrapping in `<…>` when it contains a space, the same shape as Turndown's. Turndown's `escapeLinkDestination` is not reused, because it leaves existing backslashes alone (P15, R1) |
+| Built-in `inlineLink` (P12, P15) | `title`, `href` | Overridden by a custom `links` rule with the same output shape. Link text is already escaped by the instance `escape()` (it is ordinary text nodes); `title` gets the same one pass over `[\\"<>]`; `href` goes through `escapeDestination()` |
+| `footnoteDef`, `footnoteRef` (P5, P13) | label, title, URL | Rebuilt so the rule does all escaping (R3), see §4.8 |
+| `formatMath` plain-text fallback (P9) | LaTeX shown as text when too long or containing `$` | **Required.** Widen the existing single pass from `\` then `$` to one pass over `[\\$<>]` |
+| `formatMath` math branch | LaTeX inside `$…$` | Replace every `<` with `\lt ` and every `>` with `\gt ` (trailing space so `a<b` becomes `a\lt b`, not the unknown command `\ltb`). The math then contains no angle bracket at all, which satisfies §2 without depending on how Obsidian treats HTML inside math, and `\lt`/`\gt` are standard in both MathJax (Obsidian) and KaTeX. This **changes today's output** (`$a\<b$`, where `\<` is not a valid TeX command). Known limitation: inside `\text{…}` the commands are math-only; see O1 |
+
+The other Turndown built-ins (paragraph, heading, blockquote, list, listItem, emphasis, strong, horizontalRule, lineBreak, indentedCodeBlock) emit only text that passed through the instance `escape()`, or code; none writes an attribute value. `fencedCodeBlock` and `code` are shadowed by `codeBlocks` and `inlineCode`. A fence info string (`codeBlocks` takes `\w+` from the class; `codemirrorCodeBlocks` takes the header label) is rendered as a class name, never as HTML. `referenceLink` is unused (`linkStyle` stays `inlined`).
+
+### 4.4 User content: CommonMark code-span scanner (F2, P2, P3, P11)
+
+`escapeUserText()` is rewritten:
+
+- **Fenced blocks.** Fence state comes from `nextFenceState` (ADR-029), but the escaper strips blockquote markers the **CommonMark** way: up to three spaces of indentation, `>`, then at most one space, repeated. Today's shared `BLOCKQUOTE_PREFIX_PATTERN` (`/^(\s*>\s*)*/`, `code-fence.ts:42`) strips unlimited whitespace after `>`, so `>     ```` (five spaces) is taken as a fence delimiter, whereas CommonMark gives one space to the marker and makes the line indented code. The prose line between two such lines would pass unescaped (plan review round 3). `nextFenceState` gains a `stripBlockquote: 'strict'` mode used only by the escaper. In strict mode the open-fence state also records the **blockquote depth** at which the fence opened. While the fence is open, a line with a smaller depth ends the fence implicitly, as CommonMark does (the blockquote, and the fence inside it, close). That line is then processed as an ordinary line at its own depth: escaped as prose, or opening a new fence. A line with greater depth stays code (its extra `>` are code content). A tab after `>` counts as "uncertain" and makes the line not a fence delimiter (R2). The open-fence state also records the opening fence's **indentation** N (0–3 spaces, measured after the blockquote prefix). While the fence is open, a non-blank line indented less than N ends the fence implicitly. It is then processed as an ordinary line, like a depth drop. Reason: a fence indented N > 0 may sit inside a list item whose content offset W the scanner does not track (`- item` / blank / `  ```` is a fence in the item, W = 2). CommonMark ends that item, and the fence in it, at the first non-blank line indented less than W (fences take no lazy continuation), so the next line can be an HTML block (`<iframe src=x>` at column 0). If W ≤ N the fence is in the item, and any line that ends the item is indented less than W ≤ N, so the rule catches it. If W > N the fence was never in the item, and the rule only ends the fence early, escaping a line that is really code. That costs fidelity (a visible backslash in that code line), never safety (R2). Top-level fences opened at column 0 (the common case) are unaffected. The lenient mode stays for the append-mode reader (`message-counter`, ADR-028), where over-detecting a fence cannot create HTML. Lines inside a fenced block are left unchanged.
+- **Line-local spans.** Every other line is scanned **on its own**. A backtick run is a candidate opener only if preceded by an even number of backslashes (zero included); it pairs with the next run of the same length on the **same line**.
+- **No span crosses a line.** A backtick run left without a partner on its line is backslash-escaped (its preceding backslash run is made odd, as below). Because no unescaped, unpaired backtick remains on any line, neither CommonMark nor Obsidian can pair runs across lines, whatever block structure (list items, headings, lazy continuation) surrounds them. Within a single line, pairing matches CommonMark.
+- **Safety checks on each candidate span.** A paired span is preserved as code only if its content contains none of `|` (a GFM table row splits cells before code spans are parsed, so the span may not exist in Obsidian) or `[[` / `]]` (Obsidian wikilink precedence is unverified). A span that fails a check is treated as prose: its backticks are escaped and its contents escaped like any other prose. `$` needs no check: every `$` outside spans is escaped, so math can never open before a span.
+- **Escaping outside spans.** For each `<`, `>`, `$` and unpaired backtick, the preceding backslash run of length *n* is replaced by 2*n* backslashes plus one: `/(\\*)([<>$`])/g → '$1$1\\$2'` (backticks only where unpaired). The result is always odd (R1) and displays the user's original backslashes literally. This fixes P11.
+- **Accepted degradation.** Inline code that spans lines, or contains `|`, `[[` or `]]`, renders as literal backticks with escaped text instead of as code. It stays readable and never becomes HTML. Fidelity loss is limited to user prompts; assistant answers are converted from HTML (§4.2) and keep their code.
+
+**Claude user content (P3).** Today it is `htmlToMarkdownRaw()` output (Turndown already doubled its backslashes) passed through `escapeUserText()`, which is a composition of two escapers and violates R1. Instead:
+
+- The Claude extractor converts user HTML with a user Turndown instance whose `escape` adds `[<>$]` the same way as §4.2.
+- `ConversationMessage` gains an optional `contentFormat?: 'text' | 'markdown'` (default `'text'`). `formatMessage()` skips `escapeUserText()` for `'markdown'`.
+- The format comes from **how the content was actually extracted**, not from the role (P16). `extractUserContent()` returns `{ content, format }`: `'markdown'` when the user Turndown instance produced output, `'text'` for its existing `textContent` fallback (`claude.ts:302-307`). The fallback then goes through `escapeUserText()` like any plain-text prompt.
+- The Claude extractor builds user messages in **two places**: the normal path (`extractMessages()` → `buildMessagesFromElements()`) and the auto-scroll path (`harvestWindow()`, which constructs `ConversationMessage` literals itself and is what `BaseExtractor.collectMessages()` returns when auto-scroll runs). Both construct user messages through one private builder that copies `format` from `extractUserContent()`, so the format is set in exactly one place.
+- `htmlToMarkdownRaw()` loses its only caller and is deleted.
+
+### 4.5 Deep Research References (F1, P4)
+
+In `generateReferencesSection()`:
+
+- Title: `escapeMarkdownLink(source.title)` (widened in §4.1). No second escaper.
+- URL: `sanitizeUrl()` returns the shared normaliser's output instead of the trimmed raw string.
+
+Shared URL normaliser (Q7): move `toMarkdownSafeUrl()` from `extractors/perplexity.ts` to `extractors/footnotes.ts` and widen it. `new URL(url).href` already percent-encodes spaces and `<` `>` (path, query and fragment encode sets). The helper additionally encodes:
+
+- `(` and `)` **everywhere** in `href`. They can end a Markdown link destination, and the WHATWG parser leaves them unencoded in userinfo as well as in the path: `new URL('https://u)ser@example.com/x').href` is unchanged. A host never contains parentheses, so encoding the whole string cannot damage one.
+- `[` and `]` **only in the path, query and fragment**. The helper splits `href` into the authority prefix (`href` minus `pathname + search + hash`, which for http(s) is exactly the scheme, userinfo, host and port) and the rest, and applies the bracket encoding only to the rest. An IPv6 host such as `https://[::1]:8080/` keeps its brackets; encoding them would produce an invalid URL. In userinfo the parser already percent-encodes `[` `]`. The Deep Research References builder and the `footnoteDef` rule (for Perplexity Sources, §4.8) call it; NotebookLM citations carry no URL. Only http(s) URLs reach it (existing `isHttpUrl` gate).
+
+### 4.6 Tool activity (P7)
+
+`extractToolContentFromElement()` escapes each label with `escapeInlineText` before wrapping it in `**…**`. The producer is the right place: `toolContent` is a Markdown string by contract, and the extractor is the only code that knows which parts are page text and which are the `**` it added. Claude is the only producer today, and both of its message paths (normal and `harvestWindow()`) obtain Tool activity from this one function, so a single change covers both. The seam test (§5.2) catches a future producer that forgets.
+
+### 4.7 Question headers (P8)
+
+`buildQuestionHeader()` applies `escapeInlineText` after `stripMarkdownChars()` and truncation (truncating after escaping could cut a `\<` in half). For Claude user content (`contentFormat: 'markdown'`) the header is built from Markdown, so existing escapes show as visible backslashes in the header. That is cosmetic and safe (R1 still holds) and is accepted.
+
+### 4.8 Placeholder attributes (P13)
+
+Stripping forged attributes is not the boundary: assistant HTML that never passes a placeholder-producing step (e.g. a Claude answer with no citations) still goes through `sanitizeHtml()`, which keeps the attributes, so there is no single point at which "page" and "extension" attributes can be told apart. The rules are made origin-independent instead (R3):
+
+| Placeholder | Rule input | Rule behaviour |
+|------------|-----------|----------------|
+| `footnoteRef` (`<span data-footnote-ref="L">`) | label `L` | Emit `[^L]` only if `L` matches `^[A-Za-z0-9-]{1,64}$`; otherwise emit nothing (the span's `REF` text is a placeholder, never content) |
+| `footnoteDef` | label, title, optional URL | Producers stop handing the rule a pre-built Markdown line. `footnoteDefsToHtml()` takes structured entries `{ label, title, url? }` and emits `<p data-footnote-def="L" data-footnote-url="U">title</p>` (attribute values HTML-escaped as today). The rule validates `L` as above (invalid → the paragraph is converted as ordinary text). It takes the title from `textContent` and escapes it in one pass with `escapeMarkdownLink` (R1). When `data-footnote-url` passes `isHttpUrl`, it builds `[^L]: [title](toMarkdownSafeUrl(U))`, otherwise `[^L]: title`. `data-footnote-url` joins the force-kept attributes in `sanitizeHtml()`. Forging it can only produce a validated, escaped footnote, never HTML |
+| `g2oImage` | id, alt | Filter requires the id to match `^[A-Za-z0-9_-]{1,128}$`. Gemini ids are `img-N`; ChatGPT ids embed a page-supplied message id, widget id or turn key (`chatgpt.ts:525-535`), so `ImageMarkerCollector` normalises every id the caller returns (characters outside the set → `-`, truncated to 128) before writing the marker and keying the pending capture, so the marker and its captured image share one valid id. Alt is escaped in the rule (§4.3) |
+| `data-turn-source-index` | index | Unchanged: consumed only by a `(\d+)` capture in `markdown-deep-research.ts`, so a forged value is a number or nothing |
+| `data-math` | LaTeX | Page-native by design; `formatMath` escapes every branch (§4.3) |
+
+Producers:
+
+- **Perplexity**: passes `{ label, title, url }` instead of a pre-built line; no longer calls `escapeMarkdownLink` or `toMarkdownSafeUrl` itself (the rule does, R1/R3).
+- **NotebookLM**: passes `{ label, title }`. `parseCitation()`'s fallback number (arbitrary visible text) is reduced to its digits, and a running index is used when none remain, so the label is always valid. The rule's validation is the backstop.
+- A forged placeholder can at most add a footnote or an image placeholder whose content is validated and escaped. That is spoofed content of the same kind as any page text, and never HTML.
+
+## 5. Test Plan
+
+### 5.1 Unit tests
+
+| Target | Cases |
+|--------|-------|
+| `neutralizeLiveHtml` (gate) | body with no raw HTML → returned unchanged (identity, same string); `<iframe src=x>` as an HTML block, as inline HTML in a paragraph, inside a blockquote/callout line, in a table cell, in a list item, in a referenced footnote definition (`a[^1]` … `[^1]: <img src=x>`), in an **unreferenced** footnote definition (`[^1]: <img src=x>`, which the plugin drops from the final stream), and in an **inline footnote** (`before ^[a <img src=x>] after`, `map: null` tokens) → neutralised, re-parse (with the pre-`footnote_tail` collector) finds no raw HTML, and for the inline footnote only the lines of its paragraph change; a raw-HTML token with no determinable range (stubbed) → full save takes the fail-closed path, append returns `null`; already-escaped `\<x>` on a neutralised line → unchanged (parity repair keeps odd runs); `\\<x>` → becomes odd; `>` is never changed on any line, including a neutralised one; HTML in the first paragraph of a callout (`> [!NOTE] Gemini` / `> text <iframe src=x>`) → the header line stays byte-identical and `countExistingMessages()` returns the same count before and after the gate, on both the normal and the fail-closed path; fenced code containing `<div>` → untouched; a body that still parses to HTML after 3 iterations (stubbed parser) → fail-closed path escapes every non-code line; parser throwing (stub) → fail-closed escapes every line; with `repairFromLine` > 0, both of these (and the unlocatable token) → `null`, never a repaired string; size bound: a body of only `<` characters inside one HTML block, and one with `\\<` runs → output length ≤ 2 × input after all iterations and fail-closed; log emitted only when something changed and contains no body text; with `repairFromLine`: HTML only before it → unchanged and no iteration or fail-closed; an `html_block` starting before it and reaching it → `null`; HTML only after it → repaired; a token spanning it → only lines from it on change; fail-closed never changes lines before it |
+| Gate placement | `generateNoteContent()` body is gated, frontmatter is not; on the append path the joined body is gated with `repairFromLine` at the tail, and the existing note body stays byte-identical even when it contains user-written HTML (HTML block, inline HTML, and HTML in the paragraph right before the separator); file download and clipboard outputs are gated (they use `generateNoteContent`); on both the full-save and append paths the gate runs after image placeholder resolution and callout flattening |
+| Worst-case size and concurrency | a body just under `maxNoteSizeMiB` made of one HTML block filled with `<` (every iteration plus fail-closed run), through `handleMultiOutput()` with all three outputs → the pre-gate check passes, every output fails with the size-cap error after the gate, and nothing is written, downloaded or copied; a body whose gated length stays under the cap → all outputs succeed and each sent body is ≤ the cap; append where the existing body alone is above the cap and the tail is small (pre-gate `note.body` check passes) → `success: false`, `putFile` not called; append where existing body plus gated tail crosses the cap only because of the tail → same; append whose joined body stays under the cap → written; each production caller (`saveToObsidian`, file download, clipboard) given a `renderNote()` result over the cap → that output fails with `noteSizeError` and none of `putFile`, `putBinaryFile`, the download calls (note and image files) or the clipboard write is called, checked with a note that carries images; CRLF existing note whose LF joined body is under the cap but whose CRLF form is over it → append refused, `putFile` not called; the same note with an LF existing file → written; Obsidian save of a note with images under the cap → images are written before the note, embeds unchanged from today, and a failing image write still produces today's warning; `generateNoteContent()` still returns a string equal to `renderNote().content`; gate unit: output ≤ 2× input; wall time and peak heap of the rejecting case recorded in the PR (§9) |
+| Append in context | existing body ending inside an open fence (plain, and inside a callout longer than `maxCalloutLines` so that flattening un-quotes it), with a tail containing a fenced block that contains each §5.2 payload → after `appendToExistingNote()` the written body has no raw HTML on any tail line (markdown-it re-parse of the whole written body); same for an existing body ending inside a list item; an existing body ending inside an unclosed HTML block of each crossing type (`<pre>`, `<script>`, `<style>`, `<textarea>`, `<!--`) → the gate returns `null`, `appendToExistingNote()` returns `success: false`, `putFile` is never called and the file is unchanged; an existing body ending inside a type 6 block (`<div>`) followed by the separator → the append proceeds (the blank line ends the block); `countExistingMessages()` on the written file equals existing plus appended, which guards the #406 seam |
+| Flatten split equivalence | for existing bodies and tails with callouts below, at and above `maxCalloutLines`, including a callout at the very end of the existing body and at the start of the tail: `flatten(existing) + '\n\n' + flatten(tail)` equals `flatten(existing + '\n\n' + tail)`, so splitting the flatten step does not change any written note |
+| `escapeMarkdownText` (P14) | text node starting with `>` → exactly one backslash before `>`; text node starting with `>` right after an inline element (`<b>x</b>&gt; y`) → one backslash; pinned list equals Turndown 7.2.4's minus `^>` |
+| `escapeDestination` / `links` / `images` (P15) | `href="a b\<iframe src=//evil\>"` and the same in `src` → odd backslash count before every `<`/`>`, link still parses as one link; `(`/`)` in destinations escaped once |
+| Claude fallback (P16) | user element with no convertible HTML (text-node only) containing `<iframe>` → `format: 'text'`, escaped by `escapeUserText()`; same through `harvestWindow()` |
+| `escapeInlineText` / `escapeMarkdownLink` | `<a>` → `\<a\>`; `\<a>` → `\\\<a\>`; `\\<a>` → five backslashes then `<`; no brackets → unchanged |
+| Assistant `htmlToMarkdown` | text node `` `<iframe>` `` with literal backticks → escaped; `\<iframe>` and `\\<iframe>` in a text node → odd backslash count before `<`; `<code>&lt;div&gt;</code>` → `` `<div>` ``; `<pre><code>` unchanged; no double escape (`&lt;module&gt;` → exactly `\<module\>`) |
+| `wrapInlineCode` / `inlineCode` | `` a`<iframe> `` → delimited by two backticks, whole content inside the span; content starting with a backtick gets padding; plain content keeps a single backtick; content with a newline stays on one line; `a|<b>` → `\|` |
+| Custom rules | table cell, image alt with `<img>` escaped; math fallback (over-long LaTeX and LaTeX containing `$`) with `<iframe>` escaped; math branch `a<b` → `a\lt b`, `\\<x>` and `\<x>` → no `<` remains, `a>b` → `a\gt b` |
+| `escapeUserText` scanner | `` \`<x>\` `` → escaped; `` `<x>` `` → preserved; ``` ``a`b`` ``` → preserved; unclosed `` `<x> `` → escaped; `` \\`<x>` `` (escaped backslash, real span) → preserved; `\\<x>` → odd count; `$` still escaped outside code; a backtick pair split across two lines → both backticks escaped, contents escaped; list items `` - `open `` / `` - <iframe>` `` → iframe escaped; heading `` # `a `` then `` <iframe>` `` → escaped; table row `` | `a | <iframe>` | `` → escaped; `` `[[x]] <iframe>` `` → escaped; `>     ```` / `> <img>` / `>     ```` (over-indented quote "fence") → img escaped; `> ```` / `> <img>` / `> ```` (real quoted fence) → preserved; tab after `>` before a fence → not a fence, contents escaped; `> ```` / `<iframe>` (no `>`) / `> ```` → iframe escaped (quote depth dropped, fence ended); `> > ```` / `> <iframe>` / `> > ```` → iframe escaped; `> ```` / `> > <x>` / `> ```` → preserved as code; indented-fence container end: `- item` / blank / `  ```` / `  code` / `<iframe src=x>` / `  ```` → the `<iframe>` line is escaped (indent 0 < 2 ends the fence state), and the closing `  ```` line is treated as a new opening fence, so what follows is handled as fenced code; this matches how markdown-it parses the *escaped* text (`\<iframe …>` is paragraph text, and a fence may interrupt a paragraph), verified by the seam oracle; a fence opened at column 0 with a less-indented content line → unchanged (N = 0, rule inactive); a top-level fence indented 2 with a column-0 content line → escaped (the accepted over-escape, R2) |
+| Assistant inline code near `$` | prose `$` + `<code>&lt;x&gt;</code>` + `$` → recorded for O1 (output asserted as-is; Obsidian behaviour verified in §5.3) |
+| Claude user content | user HTML with `` \`<x>\` ``, `\<x>`, `$` → escaped once; `formatMessage` does not re-escape `contentFormat: 'markdown'`; the same input through the **auto-scroll path** (`harvestWindow()` via `collectMessages()`), carried through `conversationToNote()`, is escaped exactly once (same output as the normal path) |
+| References | title `<iframe>` and `\<iframe>` escaped; URL with `)` `[` `]` space in path/query/fragment encoded; `https://[::1]/a(b)` → `https://[::1]/a%28b%29` and `https://[::1]:8080/` unchanged (IPv6 host kept); `https://u)ser@example.com/x` → `https://u%29ser@example.com/x` (userinfo parenthesis cannot end the link) |
+| Built-in image/link attributes | `<img alt="<x>" title="<y>">` and `<a title="<y>">` (also with one and two preceding backslashes): assert the §2 mechanical form directly on the emitted Markdown — an odd number of backslashes before every `<`/`>` in alt and title |
+| NotebookLM footnote defs | citation title `<iframe>` and `\<iframe>` escaped once; non-numeric visible citation text → valid label (digits or running index) |
+| Forged placeholders (P13) | assistant HTML (no citations, e.g. Claude) containing `<p data-footnote-def="">&lt;iframe&gt;</p>`, `<p data-footnote-def="x y" data-footnote-url="javascript:x">`, `<span data-footnote-ref="a]b&lt;x&gt;">REF</span>`, `<img data-g2o-image="x)(y" alt="<x>">` → no live HTML, labels validated, invalid ids rendered by `images`, `javascript:` URL dropped |
+| Image id normalisation | ChatGPT message id containing characters outside the set → marker id normalised, marker still rendered by `g2oImage`, and the captured image is keyed by the same id |
+| Placeholder writer/reader seam | `g2oImage` output with alt containing `]` and `<` is matched by `PLACEHOLDER_PATTERN` in `image-output.ts` and resolves for every output destination |
+| Tool activity (via Claude extractor) | label `<img src=x>` and `\<img>` escaped |
+| `buildQuestionHeader` | `<img src=x>` escaped; truncation never splits `\<` |
+
+Existing DES-011 cases (`markdown.test.ts`) must keep passing; any expected-output change must be explained in the PR (expected: the §4.2 link fix, P11 backslash counts, math `\lt`/`\gt` (§4.3), and user inline code that §4.4 no longer preserves).
+
+### 5.2 Seam test (Q12)
+
+`test/lib/note-html-boundary-seam.test.ts`, in the style of `fence-writer-reader-seam.test.ts`:
+
+- Payloads: `<iframe src="https://evil.example/">`, `<img src=//evil/x>`, each also with one and two preceding backslashes, wrapped in literal backticks, inside inline code containing a backtick, split across two lines inside a backtick pair, split across two list items, a heading and the next line, a GFM table row, a wikilink, between two over-indented blockquote "fences", and on a column-0 line after an indented fence opened inside a list item (`- item` / blank / `  ```` / `  code` / payload / `  ````), where the list item and its fence end before the payload.
+- Paths, each through `conversationToNote()`: assistant HTML (all platforms), user plain text, Claude user HTML, Deep Research References (Gemini and Claude Sources), Perplexity and NotebookLM footnote defs, table cells, image alt, math fallback, Tool activity, question headers.
+- Oracle: render the note body (before the gate) with `markdown-it` (HTML enabled, footnote plugin) and assert that no element from a payload (`iframe`, `img` with the payload `src`) appears, and that inline-code payloads appear only inside `<code>`. Equivalently, **assert the gate is a no-op** (`neutralizeLiveHtml(body) === body`) for every payload and path. This tests the fidelity layer against an independent parser. It does not test the gate against itself; the gate's own tests are in §5.1.
+- Boundary assertion: the same payloads with the fidelity layer **bypassed** (raw payload strings injected into a body) come out of `generateNoteContent()` with no raw HTML.
+- Second assertion, for places the HTML oracle cannot see (image alt and link/image title are attributes, never parsed as HTML by a renderer): the §2 mechanical form checked directly on the Markdown source of those constructs, located through the renderer's token stream.
+
+### 5.3 Manual smoke (real Obsidian)
+
+Save one conversation and one Deep Research report containing the payloads; confirm in Reading mode that the payloads display as text; that code blocks, single-line inline code and links render as before; that math containing `<` renders with `\lt`; and that a multi-line inline code span in a user prompt shows as literal backticks (the accepted degradation, §4.4). Also check the O4 constructs: write a note by hand (bypassing the extension) with the payload inside a wikilink alias, an embed, `$…$`, `%%…%%` and `==…==`, run it through `neutralizeLiveHtml` in a test harness, open the result in Obsidian, and confirm nothing renders as HTML. Browser automation cannot load the extension into Chrome or open Obsidian, so the user runs this step.
+
+## 6. Files Changed
+
+| File | Change |
+|------|--------|
+| `src/lib/html-gate.ts` (new) | `neutralizeLiveHtml` (§4.0) |
+| `src/lib/note-generator.ts` | new `renderNote()` (gates the body, reports `gatedBodyLength`); `generateNoteContent()` keeps its string signature and delegates to it (§4.0) |
+| `src/background/output-handlers.ts` | `rejectOversizedNote()` uses the shared `noteSizeError()`; file and clipboard handlers use `renderNote()` and fail the output above the cap |
+| `src/background/note-size.ts` (new) | `noteSizeError(length, capMiB)`, shared by both background handler files |
+| `src/lib/append-utils.ts` | `buildAppendContent()` returns `{ frontmatter, existingBody, tail, messagesAppended, eol }` instead of a joined string (§4.0, append path). Its only production caller is `appendToExistingNote()`; the `buildAppendContent` tests in `test/lib/append-utils.test.ts`, which assert on `content`, are updated to assert on the parts |
+| `src/background/obsidian-handlers.ts` | `appendToExistingNote()`: flatten existing body and tail separately, join, gate with `repairFromLine`, refuse without writing when the gate returns `null`, prepend frontmatter, apply line ending; post-gate size-cap check on the whole gated joined body before `putFile`; `saveToObsidian` uses `renderNote()` and fails the output above the cap; split `prepareNoteImages()` into a pure resolve step and a write step, and reorder `saveFreshNote()` to resolve → flatten → `renderNote()` → size check → write images → `putFile`; append size check measured after `applyLineEnding` |
+| `package.json` / `package-lock.json` | **runtime** dependencies `markdown-it` and `markdown-it-footnote` (exact versions at least two weeks old); `@types/markdown-it` and `@types/markdown-it-footnote` as devDependencies. `markdown-it-footnote` 4.0.0 ships no type declarations (its package metadata has no `types`/`typings`), and `npm run build` starts with `tsc --noEmit` under `strict: true`, so without the second package the import fails the build. The latest `@types/markdown-it-footnote` is 3.0.4 (checked 2026-10-17), one major behind the plugin; if its declarations do not match 4.0.0's export, a local `src/types/markdown-it-footnote.d.ts` declaring the default export as a `markdown-it` plugin replaces it (decided at implementation, recorded in the PR) |
+| `src/content/markdown-rules.ts` | `escapeInlineText`; Turndown factory with assistant and user instances; `escape` overrides; custom-rule escaping; `images`/`links` rules replacing the built-ins; math fallback; line-local scanner with span safety checks in `escapeUserText`; math `\lt`/`\gt`; delete `escapeAngleBrackets` and `htmlToMarkdownRaw`; `htmlToMarkdown` drops the post-pass |
+| `src/lib/code-fence.ts` | `wrapInlineCode`; `stripBlockquote: 'strict'` mode for `nextFenceState`, with blockquote depth in the open-fence state (lenient mode unchanged for the reader) |
+| `src/lib/types.ts` | `ConversationMessage.contentFormat?` |
+| `src/content/markdown-formatting.ts` | honour `contentFormat`; escape question headers |
+| `src/content/markdown.ts` | pass `contentFormat` to `formatMessage`; drop the `escapeAngleBrackets` re-export |
+| `src/content/markdown-deep-research.ts` | References URL via shared normaliser |
+| `src/content/extractors/footnotes.ts` | widen `escapeMarkdownLink`; shared `toMarkdownSafeUrl` (moved + widened); `footnoteDefsToHtml` takes structured `{ label, title, url? }` |
+| `src/content/extractors/perplexity.ts` | pass structured footnote entries; drop its own escaping |
+| `src/content/extractors/notebooklm.ts` | pass structured footnote entries; normalise fallback labels |
+| `src/lib/sanitize.ts` | force-keep `data-footnote-url` |
+| `src/lib/image-output.ts` | `PLACEHOLDER_PATTERN` accepts backslash-escaped alt |
+| `src/content/image-markers.ts` | normalise marker ids to `[A-Za-z0-9_-]{1,128}` |
+| `src/content/extractors/claude.ts` | user content via user Turndown + `contentFormat: 'markdown'` through one private user-message builder shared by `buildMessagesFromElements()` and `harvestWindow()`; escape Tool activity labels |
+| `test/content/markdown.test.ts`, `test/lib/code-fence.test.ts`, `test/extractors/*.test.ts`, `test/lib/note-html-boundary-seam.test.ts` | §5 |
+| `docs/adr/044-note-body-html-boundary.md` | decision record (docs PR) |
+| `docs/design/DES-011-angle-bracket-escape.md` | header note pointing to ADR-044 / DES-019 (docs PR) |
+
+No changes to: popup, manifest, frontmatter/filename code (`image-output.ts` is shared library code used by the background). The background handler changes are exactly those listed above: `appendToExistingNote()` and `saveFreshNote()` / `prepareNoteImages()` in `obsidian-handlers.ts`, and the file and clipboard handlers plus `rejectOversizedNote()` in `output-handlers.ts`.
+
+## 7. Delivery
+
+1. **Docs PR** (branch `docs/note-html-boundary`): `CONTEXT.md` (Source, Citation — already edited), this DES, ADR-044, DES-011 header note.
+2. **Issues**: [#539](https://github.com/sho7650/obsidian-AI-exporter/issues/539) (F1), [#540](https://github.com/sho7650/obsidian-AI-exporter/issues/540) (F2, listing P5, P6, P8–P16) and [#541](https://github.com/sho7650/obsidian-AI-exporter/issues/541) (Tool activity, P7). Public, in English, one-sentence exploit description, no attack strings (Q11).
+3. **Fix PR**: all of §4 (the gate in §4.0 and the fidelity layer in §4.1–§4.8) plus §5 in one PR, closing the three issues. The seam test only passes once every path is fixed, so the fixes ship together.
+4. Delete `CLAUDE-SECURITY-20261017-041618/` after the issues exist.
+5. Release notes (release-please `fix:`): previously saved notes are not rewritten. To fix an existing note, re-save the conversation with append mode off. If that creates a new note instead of updating the old one (which happens with a date in the vault path or filename, a changed conversation title, or a note saved without an `id`), delete or move the old note by hand (Q9).
+   Also called out: an append is now refused when the note it would write (existing body plus new messages, after escaping and line-ending restoration) is above "Maximum note size". This can affect an existing note that the user has grown by hand. Raising the setting, or turning append mode off for that save, resolves it.
+
+## 8. Open Items
+
+| ID | Question | Recommendation |
+|----|----------|---------------|
+| O1 | Math rendering: (a) does `\lt `/`\gt ` render correctly in Obsidian, including the `\text{…}` limitation; (b) in assistant output, can prose `$` on both sides of emitted inline code make Obsidian parse a math span that contains the code's `<`, and does Obsidian treat HTML inside math as HTML? The §2 contract does not depend on (a); (b) is a residual question for assistant output only (user text escapes every `$`) | Verify both in §5.3. If (b) shows live HTML, escape `$` in the assistant Turndown `escape` override as well (prose `$` from KaTeX is not affected: math arrives via `data-math`, not text nodes) |
+| O2 | Runtime dependencies `markdown-it` and `markdown-it-footnote`, with `@types/markdown-it` and `@types/markdown-it-footnote` as devDependencies (§6) | **Resolved:** approved by the user (`markdown-it` 2026-10-17 with option B, the footnote plugin and its types 2026-10-18). Installed in the fix PR, pinned to versions at least two weeks old; record the service-worker bundle size before and after in the PR |
+| O4 | Agreement between `markdown-it` and Obsidian's renderer: wikilinks/embeds (`[[a|<b>]]`, `![[…]]`), `$…$` math, `%%…%%` comments, `==…==` highlights. Does Obsidian ever render raw HTML where `markdown-it` sees code, a link or text? | Verify in §5.3. Any construct found to disagree gets either a `markdown-it` plugin that models it, or a gate rule that treats it as HTML (always the over-escaping direction) |
+| O3 | Behaviour diff on real conversations | Run the existing e2e snapshot tests; every snapshot change must be an escaping fix, the §4.2 link fix, an inline-code delimiter change, a math `\lt`/`\gt` change, or a user inline-code degradation (§4.4) |
+
+## 9. Risks
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|------------|
+| `markdown-it` and Obsidian disagree on what is raw HTML (O4) | Low | Medium (a hole the gate cannot see) | Fidelity layer still escapes those paths; O4 verification; disagreements resolved only in the over-escaping direction |
+| Gate cost on large notes, including adversarial input at the size cap with all three outputs at once | Low | Low | Gated output is at most 2× the input (§4.0 size bound, unit-tested). Acceptance test in §5.1: a body at `maxNoteSizeMiB` made of the worst case (one HTML block filled with `<`, so every iteration and the fail-closed path run) is sent through `handleMultiOutput()` with Obsidian, file and clipboard together; it asserts every output is rejected by the post-gate size check and nothing is sent, and records wall time and peak heap in the PR. No time threshold is fixed in advance: one is set from that measurement and recorded in the PR, so it is not a guessed number. `markdown-it` parses roughly a megabyte in tens of milliseconds; the gate parses once when nothing is found, which is the expected case. Measure with the largest e2e fixture and record it in the PR |
+| Service-worker bundle grows | Certain | Low | `markdown-it` is imported only by `src/lib/html-gate.ts`, which only the background imports; content-script and popup bundles are unchanged. Record per-entry sizes from the Vite build output before and after in the PR |
+| Gate silently masks fidelity bugs in production | Medium | Low | Gate logs when it acts; §5.2 asserts the gate is a no-op on every seam payload, so fidelity bugs fail CI |
+| Appended tail changes meaning in context (the existing note may end inside a fence, list or HTML block) | Medium | Medium (live HTML from a tail that looked like code on its own) | The append gate parses the joined, flattened body and repairs only tail lines (§4.0); the "append in context" test covers each open-context ending |
+| A path composes two escapers again (R1 broken) | Medium | Low (one path re-opens) | Seam payloads with one and two preceding backslashes on every path; unit "exactly one escape" checks |
+| A custom or built-in rule emitting page text or an attribute is missed | Medium | Low | §4.3 lists every current custom and built-in rule; seam test covers each, with the mechanical check for attributes |
+| Rule precedence: Turndown `addRule()` `unshift`s (last added wins, no replacement by name), so an overlapping filter can silently shadow another rule; a Turndown upgrade could also add attribute-emitting built-ins | Low | Medium (e.g. `images` shadowing `g2oImage` would drop image export) | Custom rules use disjoint filters (`images` excludes `data-g2o-image`). Tests assert, for a plain `<img>`, an `<img data-g2o-image>` and an `<a title>`, that the intended rule produced the output (`images`, `g2oImage`, `links`), not a built-in or a sibling custom rule |
+| An Obsidian inline construct claims a backtick before the code span does, for a construct the §4.4 safety checks do not list | Low | Low | Line-local pairing removes all block-structure dependence; the remaining inline precedence cases (`|`, wikilinks, `$`) are listed and tested; §5.3 confirms in Obsidian. Any new construct found later is added to the checks, which only ever widens escaping |
+| Users notice multi-line inline code in prompts rendering as literal backticks | Medium | Low | Documented accepted degradation (§4.4, Q5); release notes |
+| Math with `<` inside `\text{…}` errors in MathJax | Low | Low | Rare in assistant LaTeX; O1 verification; falls back to a visible error, never HTML |
+| `contentFormat` forgotten by a future extractor that emits Markdown | Low | Low (double escape, visible backslashes — safe) | Default `'text'` fails safe; seam test covers Claude |
+| Append mode duplicates text because escaping changed | Low | Medium | Append counts messages by callout structure (ADR-028), not text equality |
+| The gate breaks a callout header and append undercounts messages | Low | Medium (whole tail re-appended, the #406 class) | The gate only repairs `<`, never `>`; callout headers contain no `<`; §5.1 asserts header bytes and `countExistingMessages()` are unchanged by the gate, including fail-closed |
+| An existing note ends inside an unclosed raw HTML block (types 1–5), so the appended tail becomes raw HTML | Low (user-written) | Medium | Gate returns `null`; the append is refused with an error and the file is left unchanged (§4.0); branch test in §5.1 |
+| Splitting the append flatten step changes what is written | Low | Medium (callout flattened differently, #406 class) | Runs never cross the empty separator line; the split equivalence test pins it |
+| Append refused for an existing note whose body (with the user's own edits) is above `maxNoteSizeMiB` — previously allowed, since only the extracted `note.body` was checked | Low (the existing body is normally an earlier, shorter save of the same conversation) | Low | Clear error naming the cap; raising the setting or turning append mode off resolves it; called out in the release notes |
+| Users expect a re-save to fix an existing note | Medium | Low | Release notes give one rule covering every case where a save makes a new note (append mode, dated path or filename, changed title, no `id`) (§7.5, Q9) |
+| Inline-code delimiter change alters existing notes' look | Low | Low | Only content containing backticks changes; it was rendering wrongly before |

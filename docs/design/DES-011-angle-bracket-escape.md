@@ -3,6 +3,7 @@
 > Requirement: [REQ-083](../requirements/REQ-083-angle-bracket-escape.md)
 > Status: Draft
 > Date: 2026-02-27
+> **Superseded framing (2026-10-18):** this design treats angle-bracket escaping as a rendering fix. It is now a security boundary, enforced by a final HTML gate, and the escaping below is reworked as the fidelity layer. See [DES-019](DES-019-note-body-html-boundary.md) and [ADR-044](../adr/044-note-body-html-boundary.md). The post-pass described here (`escapeAngleBrackets`) is removed by that work.
 
 ## 1. Problem Statement
 
