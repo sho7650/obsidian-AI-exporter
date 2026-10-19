@@ -78,6 +78,24 @@ export function fenceCodeBlock(code: string, lang = ''): string {
   return `\n${fence}${sanitizeInfoString(lang)}\n${trimmed}\n${fence}\n`;
 }
 
+/**
+ * `content` as an inline code span nothing in it can end (DES-019 §4.3, P10):
+ * the delimiter is one backtick longer than the longest run in the content,
+ * padded with a space when the content starts or ends with a backtick, and the
+ * span is kept on one line. A `|` beside an angle bracket is written `\|`: in a
+ * GFM table row the cell split happens before code spans are parsed, so a bare
+ * `|` would cut the span and leave its `<` in prose. Elsewhere `\|` shows a
+ * visible backslash, an accepted cost (R2).
+ */
+export function wrapInlineCode(content: string): string {
+  let code = content.replace(/\r?\n|\r/g, ' ');
+  if (/[<>]/.test(code)) code = code.replace(/\|/g, '\\|');
+  const longest = (code.match(/`+/g) ?? []).reduce((max, run) => Math.max(max, run.length), 0);
+  const delimiter = '`'.repeat(longest + 1);
+  const padding = /^`|`$/.test(code) ? ' ' : '';
+  return `${delimiter}${padding}${code}${padding}${delimiter}`;
+}
+
 /** The fence currently held open, or `null` when outside any fenced block. */
 export type OpenFence = { readonly char: FenceChar; readonly length: number } | null;
 

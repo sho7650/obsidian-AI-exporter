@@ -105,6 +105,68 @@ export function escapeUserText(text: string): string {
 }
 
 // ============================================================
+// Escaping primitives (DES-019 §4.1)
+// ============================================================
+//
+// Each escapes `\` in the same pass as its targets, so whatever the input held,
+// every `<` and `>` ends up behind an odd backslash run (R1). None of them may
+// run over the output of another backslash-escaper.
+
+/**
+ * Escape a plain-text fragment that is never code and has had no escaping:
+ * table cells, Tool activity labels, question headers.
+ */
+export function escapeInlineText(text: string): string {
+  return text.replace(/[\\<>]/g, '\\$&');
+}
+
+/**
+ * Escape a raw `href`/`src` value as a link destination, in the shape
+ * Turndown uses: `<…>` around a destination that contains a space. Turndown's
+ * own escaper is not reused because it leaves existing backslashes alone, so
+ * `\<` in the value would become an even run (P15).
+ */
+export function escapeDestination(url: string): string {
+  const escaped = url.replace(/[\\<>()]/g, '\\$&');
+  return escaped.includes(' ') ? `<${escaped}>` : escaped;
+}
+
+/**
+ * Turndown 7.2.4's text-node escape list without its `^>` entry, in the same
+ * order. A test pins it to Turndown's source. `^>` is dropped because `>` is
+ * escaped everywhere below, and keeping both would put two backslashes before
+ * a leading `>` (P14).
+ */
+export const MARKDOWN_ESCAPES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\\/g, '\\\\'],
+  [/\*/g, '\\*'],
+  [/^-/g, '\\-'],
+  [/^\+ /g, '\\+ '],
+  [/^(=+)/g, '\\$1'],
+  [/^(#{1,6}) /g, '\\$1 '],
+  [/`/g, '\\`'],
+  [/^~~~/g, '\\~~~'],
+  [/\[/g, '\\['],
+  [/\]/g, '\\]'],
+  [/_/g, '\\_'],
+  [/^(\d+)\. /g, '$1\\. '],
+];
+
+/**
+ * Escape a raw text node for the Turndown `escape` override (§4.2). It
+ * replaces Turndown's escaper rather than wrapping it: the list doubles every
+ * original backslash first, so the one backslash added before `<` and `>`
+ * always leaves an odd run.
+ */
+export function escapeMarkdownText(text: string): string {
+  const escaped = MARKDOWN_ESCAPES.reduce(
+    (acc, [pattern, replacement]) => acc.replace(pattern, replacement),
+    text
+  );
+  return escaped.replace(/[<>]/g, '\\$&');
+}
+
+// ============================================================
 // Turndown Configuration
 // ============================================================
 

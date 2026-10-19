@@ -16,6 +16,7 @@ import {
   outerFenceLength,
   sanitizeInfoString,
   fenceCodeBlock,
+  wrapInlineCode,
   nextFenceState,
   type OpenFence,
 } from '../../src/lib/code-fence';
@@ -106,6 +107,23 @@ describe('fenceCodeBlock', () => {
 
   it('sanitizes the language hint', () => {
     expect(fenceCodeBlock('x', `m${F3}d`)).toBe(`\n${F3}md\nx\n${F3}\n`);
+  });
+});
+
+describe('wrapInlineCode', () => {
+  // DES-019 §4.3 (P10): the delimiter must be longer than any backtick run in
+  // the content, or the span ends early and the rest becomes prose.
+  it.each([
+    ['plain content keeps a single backtick', 'x < y', `${BT(1)}x < y${BT(1)}`],
+    ['a backtick in the content', 'a`<iframe>', `${BT(2)}a${BT(1)}<iframe>${BT(2)}`],
+    ['the longest run decides', 'a``b`c', `${BT(3)}a${BT(2)}b${BT(1)}c${BT(3)}`],
+    ['a leading backtick gets padding', '`x', `${BT(2)} ${BT(1)}x ${BT(2)}`],
+    ['a trailing backtick gets padding', 'x`', `${BT(2)} x${BT(1)} ${BT(2)}`],
+    ['a newline stays on one line', 'a\nb', `${BT(1)}a b${BT(1)}`],
+    ['a pipe beside HTML is escaped', 'a|<b>', `${BT(1)}a\\|<b>${BT(1)}`],
+    ['a pipe without HTML is kept', 'a|b', `${BT(1)}a|b${BT(1)}`],
+  ])('%s', (_name, content, expected) => {
+    expect(wrapInlineCode(content)).toBe(expected);
   });
 });
 
