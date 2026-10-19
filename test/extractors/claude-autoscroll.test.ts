@@ -190,6 +190,26 @@ describe('ClaudeExtractor auto-scroll (virtualization)', () => {
     expect(result.warnings).toBeUndefined();
   });
 
+  it('escapes user content once on the auto-scroll path too (DES-019 §4.4)', async () => {
+    // harvestWindow builds its own messages; the format must still be carried.
+    const turns: Turn[] = [
+      { role: 'user', content: '<p>`&lt;x&gt;` $HOME</p>' },
+      ...conversation.slice(1),
+    ];
+    mountVirtualizedClaude(turns, 3);
+    extractor.applySettings(settings());
+
+    const promise = extractor.extract();
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result.data?.messages[0]).toMatchObject({
+      role: 'user',
+      content: '\\`\\<x\\>\\` \\$HOME',
+      contentFormat: 'markdown',
+    });
+  });
+
   it('extracts only the mounted window when auto-scroll is disabled', async () => {
     mountVirtualizedClaude(conversation, 3);
     extractor.applySettings(settings({ enableAutoScroll: false }));

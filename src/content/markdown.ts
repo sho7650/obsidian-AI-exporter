@@ -27,7 +27,7 @@ import {
 } from '../lib/tag-template';
 
 // Re-exports (preserve existing import paths)
-export { htmlToMarkdown, escapeAngleBrackets, escapeUserText } from './markdown-rules';
+export { htmlToMarkdown, escapeUserText } from './markdown-rules';
 export { convertDeepResearchContent } from './markdown-deep-research';
 
 /**
@@ -112,7 +112,7 @@ function buildBody(data: ConversationData, options: TemplateOptions): string {
   return data.messages
     .flatMap(message => [
       ...(message.toolContent ? [formatToolContent(message.toolContent, options)] : []),
-      formatMessage(message.content, message.role, options, data.source),
+      formatMessage(message.content, message.role, options, data.source, message.contentFormat),
     ])
     .join('\n\n');
 }

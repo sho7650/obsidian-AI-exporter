@@ -13,8 +13,6 @@ import { fenceCodeBlock, nextFenceState, type OpenFence } from '../lib/code-fenc
 const BLOCKQUOTE_PREFIX_PATTERN = /^(\s*>\s*)+/;
 /** Inline code segments — capture group means odd split indices are code. */
 const INLINE_CODE_SPLIT_PATTERN = /(`[^`]+`)/;
-/** Angle brackets, including backslash-escaped forms (`\<`, `\>`). */
-const ANGLE_BRACKET_PATTERN = /\\[<>]|[<>]/g;
 /**
  * Angle brackets plus `$`. Used for user text so pasted shell/YAML (`$VAR`,
  * `$$TMP`) is not parsed by Obsidian as `$...$` / `$$...$$` math — dozens of
@@ -85,17 +83,6 @@ function escapeByLine(text: string, pattern: RegExp): string {
 }
 
 /**
- * Escape angle brackets in Markdown text for safe Obsidian rendering.
- * Preserves brackets inside fenced code blocks, inline code, and
- * blockquote markers. Leaves `$` untouched so assistant KaTeX math survives.
- *
- * CommonMark §2.4: \< and \> are valid backslash escapes.
- */
-export function escapeAngleBrackets(text: string): string {
-  return escapeByLine(text, ANGLE_BRACKET_PATTERN);
-}
-
-/**
  * Escape user-message text for safe Obsidian rendering: angle brackets AND
  * `$`. User prompts are plain text that frequently contains pasted shell/YAML
  * `$`, which must not be interpreted as math. Fenced/inline code is preserved.
@@ -158,29 +145,58 @@ export const MARKDOWN_ESCAPES: ReadonlyArray<readonly [RegExp, string]> = [
  * original backslash first, so the one backslash added before `<` and `>`
  * always leaves an odd run.
  */
-export function escapeMarkdownText(text: string): string {
+export function escapeMarkdownText(text: string, escapeExtra: RegExp = /[<>]/g): string {
   const escaped = MARKDOWN_ESCAPES.reduce(
     (acc, [pattern, replacement]) => acc.replace(pattern, replacement),
     text
   );
-  return escaped.replace(/[<>]/g, '\\$&');
+  return escaped.replace(escapeExtra, '\\$&');
 }
 
 // ============================================================
 // Turndown Configuration
 // ============================================================
 
-// Initialize Turndown with custom rules
-const turndown = new TurndownService({
-  headingStyle: 'atx',
-  codeBlockStyle: 'fenced',
-  bulletListMarker: '-',
-  emDelimiter: '*',
-  strongDelimiter: '**',
-});
+/**
+ * Render a page-derived LaTeX value as Markdown math, or fall back to plain
+ * text when the value would degrade or break Obsidian's math rendering:
+ * - longer than {@link MAX_MATH_LENGTH} (malformed/abusive input), or
+ * - contains a literal `$` (breaks the `$…$` / `$$…$$` delimiters).
+ *
+ * Multi-line LaTeX is left intact — real KaTeX inline formulas (e.g. matrices
+ * with `\\` row breaks) legitimately span lines.
+ *
+ * On fallback, backslashes are escaped first, then `$` → `\$`, so the plain
+ * text is not re-parsed as math (escaping the escape character prevents a
+ * preceding `\` from pairing with the inserted one and re-opening a delimiter).
+ */
+function formatMath(latex: string, display: boolean): string {
+  if (latex.length > MAX_MATH_LENGTH || latex.includes('$')) {
+    const plain = latex.replace(/\\/g, '\\\\').replace(/\$/g, '\\$');
+    return display ? `\n${plain}\n` : plain;
+  }
+  return display ? `\n$$\n${latex}\n$$\n` : `$${latex}$`;
+}
+
+// Extract a table cell's text. Cells are serialized via textContent (inline
+// Turndown rules do not run inside the custom table rule), so footnote-ref
+// placeholder spans must be converted to `[^label]` here or their marker
+// text would leak into the cell verbatim. For the same reason the instance
+// `escape()` never sees the text, so it is escaped here (DES-019 §4.3, P6).
+function tableCellText(cell: Element): string {
+  if (!cell.querySelector('[data-footnote-ref]')) {
+    return escapeInlineText(cell.textContent?.trim() || '');
+  }
+  const clone = cell.cloneNode(true) as Element;
+  clone.querySelectorAll('[data-footnote-ref]').forEach(ref => {
+    const label = ref.getAttribute('data-footnote-ref');
+    ref.replaceWith(label ? `[^${label}]` : '');
+  });
+  return escapeInlineText(clone.textContent?.trim() || '');
+}
 
 // Custom rule for code blocks with language detection
-turndown.addRule('codeBlocks', {
+const codeBlocksRule: TurndownService.Rule = {
   filter: node => {
     return node.nodeName === 'PRE' && node.querySelector('code') !== null;
   },
@@ -196,12 +212,12 @@ turndown.addRule('codeBlocks', {
     const code = codeElement.textContent || '';
     return fenceCodeBlock(code, lang);
   },
-});
+};
 
 // Custom rule for ChatGPT CodeMirror code blocks (2026-03 DOM change)
 // ChatGPT replaced <pre><code> with <pre> containing a CodeMirror editor (.cm-content)
 // Code is in <span> elements with <br> for line breaks; header has language + Copy/Run buttons
-turndown.addRule('codemirrorCodeBlocks', {
+const codemirrorCodeBlocksRule: TurndownService.Rule = {
   filter: node => {
     return (
       node.nodeName === 'PRE' &&
@@ -249,24 +265,24 @@ turndown.addRule('codemirrorCodeBlocks', {
 
     return fenceCodeBlock(code, lang);
   },
-});
+};
 
 // Custom rule for inline code
-turndown.addRule('inlineCode', {
+const inlineCodeRule: TurndownService.Rule = {
   filter: node => {
     return node.nodeName === 'CODE' && node.parentNode?.nodeName !== 'PRE';
   },
   replacement: content => {
     return `\`${content}\``;
   },
-});
+};
 
 // Custom rule for image placeholders.
 // Converts <img data-g2o-image="ID" alt="A"> to a stable placeholder link
 // `![A](g2o-image://ID)`, resolved per output destination in the background
 // (Obsidian embed, downloaded file, or stripped for clipboard). Emitted on its
 // own paragraph so the image renders as a block, not inline with prose.
-turndown.addRule('g2oImage', {
+const g2oImageRule: TurndownService.Rule = {
   filter: node => {
     return node.nodeName === 'IMG' && node.hasAttribute('data-g2o-image');
   },
@@ -276,11 +292,11 @@ turndown.addRule('g2oImage', {
     const alt = el.getAttribute('alt') ?? '';
     return `\n\n![${alt}](g2o-image://${id})\n\n`;
   },
-});
+};
 
 // Custom rule for footnote reference placeholders
 // Converts <span data-footnote-ref="N">REF</span> to [^N]
-turndown.addRule('footnoteRef', {
+const footnoteRefRule: TurndownService.Rule = {
   filter: node => {
     return node.nodeName === 'SPAN' && node.hasAttribute('data-footnote-ref');
   },
@@ -288,13 +304,13 @@ turndown.addRule('footnoteRef', {
     const index = node.getAttribute('data-footnote-ref');
     return `[^${index}]`;
   },
-});
+};
 
 // Custom rule for footnote definitions (NotebookLM citations)
 // Converts <p data-footnote-def>[^label]: title</p> to a literal footnote
 // definition line. Bypasses Turndown's default text-escaping so the
 // `[^label]:` syntax survives intact.
-turndown.addRule('footnoteDef', {
+const footnoteDefRule: TurndownService.Rule = {
   filter: node => {
     return node.nodeName === 'P' && node.hasAttribute('data-footnote-def');
   },
@@ -302,31 +318,10 @@ turndown.addRule('footnoteDef', {
     const text = (node.textContent ?? '').trim();
     return text ? `\n\n${text}` : '';
   },
-});
-
-/**
- * Render a page-derived LaTeX value as Markdown math, or fall back to plain
- * text when the value would degrade or break Obsidian's math rendering:
- * - longer than {@link MAX_MATH_LENGTH} (malformed/abusive input), or
- * - contains a literal `$` (breaks the `$…$` / `$$…$$` delimiters).
- *
- * Multi-line LaTeX is left intact — real KaTeX inline formulas (e.g. matrices
- * with `\\` row breaks) legitimately span lines.
- *
- * On fallback, backslashes are escaped first, then `$` → `\$`, so the plain
- * text is not re-parsed as math (escaping the escape character prevents a
- * preceding `\` from pairing with the inserted one and re-opening a delimiter).
- */
-function formatMath(latex: string, display: boolean): string {
-  if (latex.length > MAX_MATH_LENGTH || latex.includes('$')) {
-    const plain = latex.replace(/\\/g, '\\\\').replace(/\$/g, '\\$');
-    return display ? `\n${plain}\n` : plain;
-  }
-  return display ? `\n$$\n${latex}\n$$\n` : `$${latex}$`;
-}
+};
 
 // Custom rule for display math blocks (Gemini KaTeX: <div data-math="...">)
-turndown.addRule('mathBlock', {
+const mathBlockRule: TurndownService.Rule = {
   filter: node => {
     return node.nodeName === 'DIV' && node.hasAttribute('data-math');
   },
@@ -335,10 +330,10 @@ turndown.addRule('mathBlock', {
     if (!latex) return _content;
     return formatMath(latex, true);
   },
-});
+};
 
 // Custom rule for inline math (Gemini KaTeX: <span data-math="...">)
-turndown.addRule('mathInline', {
+const mathInlineRule: TurndownService.Rule = {
   filter: node => {
     return (
       node.nodeName === 'SPAN' &&
@@ -351,26 +346,10 @@ turndown.addRule('mathInline', {
     if (!latex) return _content;
     return formatMath(latex, false);
   },
-});
-
-// Extract a table cell's text. Cells are serialized via textContent (inline
-// Turndown rules do not run inside the custom table rule), so footnote-ref
-// placeholder spans must be converted to `[^label]` here or their marker
-// text would leak into the cell verbatim.
-function tableCellText(cell: Element): string {
-  if (!cell.querySelector('[data-footnote-ref]')) {
-    return cell.textContent?.trim() || '';
-  }
-  const clone = cell.cloneNode(true) as Element;
-  clone.querySelectorAll('[data-footnote-ref]').forEach(ref => {
-    const label = ref.getAttribute('data-footnote-ref');
-    ref.replaceWith(label ? `[^${label}]` : '');
-  });
-  return clone.textContent?.trim() || '';
-}
+};
 
 // Custom rule for tables
-turndown.addRule('tables', {
+const tablesRule: TurndownService.Rule = {
   filter: 'table',
   replacement: (content, table) => {
     const rows: string[][] = [];
@@ -413,27 +392,65 @@ turndown.addRule('tables', {
 
     return '\n' + lines.join('\n') + '\n';
   },
-});
+};
 
 /**
- * Convert HTML content to Markdown without escaping angle brackets.
- *
- * Use this when the caller will apply {@link escapeAngleBrackets} later
- * (e.g. via {@link formatMessage} in markdown-formatting.ts), to avoid
- * double-escaping `<` and `>` characters.
+ * Every custom rule, in registration order. Turndown's `addRule()` unshifts,
+ * so when two filters match the same node the later rule wins.
  */
-export function htmlToMarkdownRaw(html: string): string {
-  // Clean up HTML before conversion
-  const cleaned = html.replace(/<br\s*\/?>/gi, '\n').replace(/&nbsp;/g, ' ');
+const CUSTOM_RULES: ReadonlyArray<readonly [string, TurndownService.Rule]> = [
+  ['codeBlocks', codeBlocksRule],
+  ['codemirrorCodeBlocks', codemirrorCodeBlocksRule],
+  ['inlineCode', inlineCodeRule],
+  ['g2oImage', g2oImageRule],
+  ['footnoteRef', footnoteRefRule],
+  ['footnoteDef', footnoteDefRule],
+  ['mathBlock', mathBlockRule],
+  ['mathInline', mathInlineRule],
+  ['tables', tablesRule],
+];
 
-  return turndown.turndown(cleaned);
+/**
+ * A Turndown instance with every custom rule, so rules are defined once for
+ * both instances (DES-019 §4.2). `escapeExtra` is what the instance's
+ * `escape()` adds on top of Turndown's list: Turndown calls it only for
+ * non-code text nodes, so code is excluded by construction.
+ */
+function createTurndown(escapeExtra: RegExp): TurndownService {
+  const service = new TurndownService({
+    headingStyle: 'atx',
+    codeBlockStyle: 'fenced',
+    bulletListMarker: '-',
+    emDelimiter: '*',
+    strongDelimiter: '**',
+  });
+  service.escape = text => escapeMarkdownText(text, escapeExtra);
+  for (const [name, rule] of CUSTOM_RULES) service.addRule(name, rule);
+  return service;
+}
+
+/** Assistant answers: angle brackets only, so KaTeX `$` survives. */
+const assistantTurndown = createTurndown(/[<>]/g);
+/** User prompts also escape `$`: pasted shell `$VAR` must not open math. */
+const userTurndown = createTurndown(/[<>$]/g);
+
+function cleanHtml(html: string): string {
+  return html.replace(/<br\s*\/?>/gi, '\n').replace(/&nbsp;/g, ' ');
 }
 
 /**
- * Convert HTML content to Markdown with angle brackets escaped for safe
- * Obsidian rendering. Use this when the result is the final markdown and
- * no further escaping will be applied.
+ * Convert assistant HTML to Markdown. Page text is escaped as Turndown writes
+ * it, so the result needs no further escaping.
  */
 export function htmlToMarkdown(html: string): string {
-  return escapeAngleBrackets(htmlToMarkdownRaw(html));
+  return assistantTurndown.turndown(cleanHtml(html));
+}
+
+/**
+ * Convert user-message HTML (Claude) to Markdown, escaped the same way plus
+ * `$`. The result is final Markdown (`contentFormat: 'markdown'`), never
+ * passed to {@link escapeUserText}.
+ */
+export function userHtmlToMarkdown(html: string): string {
+  return userTurndown.turndown(cleanHtml(html));
 }

@@ -15,6 +15,8 @@ import {
   createClaudePageWithThinkingStatus,
   createClaudePageWithMultiStatusResponse,
 } from '../fixtures/dom-helpers';
+import { conversationToNote } from '../../src/content/markdown';
+import { DEFAULT_TEMPLATE_OPTIONS } from '../../src/lib/settings-schema';
 
 describe('ClaudeExtractor', () => {
   let extractor: ClaudeExtractor;
@@ -797,6 +799,57 @@ describe('ClaudeExtractor', () => {
       const result = await extractor.extract();
       expect(result.success).toBe(true);
       expect(result.data?.source).toBe('claude');
+    });
+  });
+
+  // ========== DES-019 §4.4: user content is escaped exactly once ==========
+  describe('user content escaping (DES-019 §4.4, P3, P16)', () => {
+    function mountUser(userHtml: string): void {
+      setClaudeLocation('test-123');
+      loadFixture(`
+        <div data-testid="user-message">${userHtml}</div>
+        <div class="font-claude-response">
+          <div class="standard-markdown"><p>Response</p></div>
+        </div>
+      `);
+    }
+
+    function noteBody(): string {
+      const messages = extractor.extractMessages();
+      const data = { id: 'claude_test-123', title: 't', url: 'u', source: 'claude' as const };
+      return conversationToNote(
+        {
+          ...data,
+          messages,
+          extractedAt: new Date(0),
+          metadata: {
+            messageCount: 2,
+            userMessageCount: 1,
+            assistantMessageCount: 1,
+            hasCodeBlocks: false,
+          },
+        },
+        DEFAULT_TEMPLATE_OPTIONS
+      ).body;
+    }
+
+    it('converts user HTML once, as Markdown that the note does not escape again', () => {
+      mountUser('<p>`&lt;x&gt;` \\&lt;y&gt; $HOME</p>');
+
+      const [user] = extractor.extractMessages();
+      expect(user.contentFormat).toBe('markdown');
+      expect(user.content).toBe('\\`\\<x\\>\\` \\\\\\<y\\> \\$HOME');
+      expect(noteBody()).toContain('> \\`\\<x\\>\\` \\\\\\<y\\> \\$HOME');
+    });
+
+    it('marks the textContent fallback as text, so the note escapes it', () => {
+      mountUser('&lt;iframe src=x&gt;');
+      const userEl = document.querySelector('[data-testid="user-message"]')!;
+      Object.defineProperty(userEl, 'innerHTML', { get: () => '', configurable: true });
+
+      const [user] = extractor.extractMessages();
+      expect(user).toMatchObject({ content: '<iframe src=x>', contentFormat: 'text' });
+      expect(noteBody()).toContain('> \\<iframe src=x\\>');
     });
   });
 

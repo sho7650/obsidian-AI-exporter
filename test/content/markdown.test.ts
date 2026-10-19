@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   htmlToMarkdown,
-  escapeAngleBrackets,
   escapeUserText,
   generateFileName,
   generateContentHash,
@@ -22,7 +21,7 @@ describe('escapeUserText — math dollar escaping (Obsidian hang fix)', () => {
     expect(escapeUserText('cat "$$TMP"')).toBe('cat "\\$\\$TMP"');
   });
 
-  it('still escapes angle brackets like escapeAngleBrackets', () => {
+  it('still escapes angle brackets', () => {
     expect(escapeUserText('a > b')).toBe('a \\> b');
   });
 
@@ -33,13 +32,6 @@ describe('escapeUserText — math dollar escaping (Obsidian hang fix)', () => {
 
   it('preserves $ inside inline code', () => {
     expect(escapeUserText('use `$HOME` now')).toBe('use `$HOME` now');
-  });
-});
-
-describe('escapeAngleBrackets — leaves $ untouched (assistant math preserved)', () => {
-  it('does not escape $ so KaTeX math survives', () => {
-    expect(escapeAngleBrackets('$$E = mc^2$$')).toBe('$$E = mc^2$$');
-    expect(escapeAngleBrackets('inline $x^2$ math')).toBe('inline $x^2$ math');
   });
 });
 
@@ -432,45 +424,70 @@ describe('htmlToMarkdown', () => {
       expect(result).toBe('Use `<span>` for this');
     });
   });
+
+  describe('escaping at generation time (DES-019 §4.2)', () => {
+    it.each([
+      // F2: literal backticks in prose are not a code span to Obsidian.
+      ['literal backticks around a tag', '<p>`&lt;iframe&gt;`</p>', '\\`\\<iframe\\>\\`'],
+      ['one backslash before a tag', '<p>\\&lt;iframe&gt;</p>', '\\\\\\<iframe\\>'],
+      ['two backslashes before a tag', '<p>\\\\&lt;iframe&gt;</p>', '\\\\\\\\\\<iframe\\>'],
+      // P14: a leading `>` gets exactly one backslash, also after an inline element.
+      ['a leading `>`', '<p>&gt; quoted</p>', '\\> quoted'],
+      ['a `>` right after an inline element', '<p><b>x</b>&gt; y</p>', '**x**\\> y'],
+      ['no double escape', '<p>&lt;module&gt;</p>', '\\<module\\>'],
+    ])('%s', (_name, html, expected) => {
+      expect(htmlToMarkdown(html)).toBe(expected);
+    });
+  });
+  describe('custom rules escape the page text they emit (DES-019 §4.3)', () => {
+    it('escapes a table cell once', () => {
+      const html =
+        '<table><thead><tr><th>&lt;iframe src=x&gt;</th></tr></thead>' +
+        '<tbody><tr><td>\\&lt;b&gt;</td></tr></tbody></table>';
+      expect(htmlToMarkdown(html)).toBe('| \\<iframe src=x\\> |\n| --- |\n| \\\\\\<b\\> |');
+    });
+  });
 });
 
-describe('escapeAngleBrackets', () => {
+// Moved from escapeAngleBrackets, deleted with the assistant post-pass
+// (DES-019 §4.2). None of these inputs contains `$`, so the expectations hold.
+describe('escapeUserText — fences, inline code and blockquotes', () => {
   describe('basic escaping', () => {
     it('escapes bare angle brackets', () => {
-      expect(escapeAngleBrackets('<module>')).toBe('\\<module\\>');
+      expect(escapeUserText('<module>')).toBe('\\<module\\>');
     });
 
     it('escapes nested angle brackets', () => {
-      expect(escapeAngleBrackets('<Generic<T>>')).toBe('\\<Generic\\<T\\>\\>');
+      expect(escapeUserText('<Generic<T>>')).toBe('\\<Generic\\<T\\>\\>');
     });
 
     it('escapes multiple angle brackets per line', () => {
-      expect(escapeAngleBrackets('<a> and <b>')).toBe('\\<a\\> and \\<b\\>');
+      expect(escapeUserText('<a> and <b>')).toBe('\\<a\\> and \\<b\\>');
     });
 
     it('returns plain text unchanged', () => {
-      expect(escapeAngleBrackets('plain text')).toBe('plain text');
+      expect(escapeUserText('plain text')).toBe('plain text');
     });
 
     it('returns empty string unchanged', () => {
-      expect(escapeAngleBrackets('')).toBe('');
+      expect(escapeUserText('')).toBe('');
     });
   });
 
   describe('fenced code block preservation', () => {
     it('preserves angle brackets in fenced code blocks', () => {
       const input = '```\n<div>test</div>\n```';
-      expect(escapeAngleBrackets(input)).toBe('```\n<div>test</div>\n```');
+      expect(escapeUserText(input)).toBe('```\n<div>test</div>\n```');
     });
 
     it('preserves angle brackets in fenced code blocks with language', () => {
       const input = '```typescript\nconst x: Array<string> = [];\n```';
-      expect(escapeAngleBrackets(input)).toBe(input);
+      expect(escapeUserText(input)).toBe(input);
     });
 
     it('preserves fenced code blocks inside blockquotes', () => {
       const input = '> ```\n> <code>\n> ```';
-      expect(escapeAngleBrackets(input)).toBe(input);
+      expect(escapeUserText(input)).toBe(input);
     });
 
     // Issue #433, second order: the length-blind fence toggle thought the
@@ -482,7 +499,7 @@ describe('escapeAngleBrackets', () => {
 
       it('preserves angle brackets across an inner fence', () => {
         const input = [`${F4}markdown`, `${F3}html`, '<div>a</div>', F3, F4].join('\n');
-        expect(escapeAngleBrackets(input)).toBe(input);
+        expect(escapeUserText(input)).toBe(input);
       });
 
       it('still escapes text that follows the closing fence', () => {
@@ -490,28 +507,28 @@ describe('escapeAngleBrackets', () => {
         const expected = [`${F4}md`, `${F3}html`, '<div>a</div>', F3, F4, 'after \\<span\\>'].join(
           '\n'
         );
-        expect(escapeAngleBrackets(input)).toBe(expected);
+        expect(escapeUserText(input)).toBe(expected);
       });
 
       it('does not let an inner fence with an info string close the block', () => {
         const input = [F3, `${F3}html`, '<div>a</div>'].join('\n');
-        expect(escapeAngleBrackets(input)).toBe(input);
+        expect(escapeUserText(input)).toBe(input);
       });
 
       it('preserves a tilde block a user pasted', () => {
         const input = ['~~~md', '<div>a</div>', '~~~'].join('\n');
-        expect(escapeAngleBrackets(input)).toBe(input);
+        expect(escapeUserText(input)).toBe(input);
       });
     });
   });
 
   describe('inline code preservation', () => {
     it('preserves angle brackets in inline code', () => {
-      expect(escapeAngleBrackets('Use `<span>` for this')).toBe('Use `<span>` for this');
+      expect(escapeUserText('Use `<span>` for this')).toBe('Use `<span>` for this');
     });
 
     it('escapes outside inline code but preserves inside', () => {
-      expect(escapeAngleBrackets('The `<div>` element and <module>')).toBe(
+      expect(escapeUserText('The `<div>` element and <module>')).toBe(
         'The `<div>` element and \\<module\\>'
       );
     });
@@ -519,11 +536,11 @@ describe('escapeAngleBrackets', () => {
 
   describe('blockquote marker preservation', () => {
     it('preserves blockquote markers', () => {
-      expect(escapeAngleBrackets('> text with <tag>')).toBe('> text with \\<tag\\>');
+      expect(escapeUserText('> text with <tag>')).toBe('> text with \\<tag\\>');
     });
 
     it('preserves nested blockquote markers', () => {
-      expect(escapeAngleBrackets('> > nested <tag>')).toBe('> > nested \\<tag\\>');
+      expect(escapeUserText('> > nested <tag>')).toBe('> > nested \\<tag\\>');
     });
   });
 
@@ -531,13 +548,13 @@ describe('escapeAngleBrackets', () => {
     it('handles text before and after fenced code block', () => {
       const input = 'Before <module>\n```\n<div>\n```\nAfter <span>';
       const expected = 'Before \\<module\\>\n```\n<div>\n```\nAfter \\<span\\>';
-      expect(escapeAngleBrackets(input)).toBe(expected);
+      expect(escapeUserText(input)).toBe(expected);
     });
 
     it('handles inline code mixed with bare angles', () => {
       const input = '`<a>` then <b> then `<c>`';
       const expected = '`<a>` then \\<b\\> then `<c>`';
-      expect(escapeAngleBrackets(input)).toBe(expected);
+      expect(escapeUserText(input)).toBe(expected);
     });
   });
 });
