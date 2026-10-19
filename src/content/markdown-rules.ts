@@ -7,7 +7,7 @@
 
 import TurndownService from 'turndown';
 import { MAX_LANG_HINT_LENGTH, MAX_MATH_LENGTH } from '../lib/constants';
-import { fenceCodeBlock, nextFenceState, type OpenFence } from '../lib/code-fence';
+import { fenceCodeBlock, nextFenceState, wrapInlineCode, type OpenFence } from '../lib/code-fence';
 
 /** Leading blockquote prefix (one or more `> ` markers) to preserve as-is. */
 const BLOCKQUOTE_PREFIX_PATTERN = /^(\s*>\s*)+/;
@@ -166,16 +166,23 @@ export function escapeMarkdownText(text: string, escapeExtra: RegExp = /[<>]/g):
  * Multi-line LaTeX is left intact — real KaTeX inline formulas (e.g. matrices
  * with `\\` row breaks) legitimately span lines.
  *
- * On fallback, backslashes are escaped first, then `$` → `\$`, so the plain
- * text is not re-parsed as math (escaping the escape character prevents a
- * preceding `\` from pairing with the inserted one and re-opening a delimiter).
+ * On fallback, `\`, `$` and the angle brackets are escaped in one pass, so
+ * the plain text is not re-parsed as math (escaping the escape character
+ * prevents a preceding `\` from pairing with an inserted one) and carries no
+ * live HTML (DES-019 §4.3, P9).
+ *
+ * In math, `<` and `>` become `\lt ` and `\gt `, standard in both MathJax
+ * (Obsidian) and KaTeX. The trailing space keeps `a<b` from becoming the
+ * unknown command `\ltb`. The math then holds no angle bracket at all, so
+ * safety does not depend on how Obsidian treats HTML inside math.
  */
 function formatMath(latex: string, display: boolean): string {
   if (latex.length > MAX_MATH_LENGTH || latex.includes('$')) {
-    const plain = latex.replace(/\\/g, '\\\\').replace(/\$/g, '\\$');
+    const plain = latex.replace(/[\\$<>]/g, '\\$&');
     return display ? `\n${plain}\n` : plain;
   }
-  return display ? `\n$$\n${latex}\n$$\n` : `$${latex}$`;
+  const tex = latex.replace(/</g, '\\lt ').replace(/>/g, '\\gt ');
+  return display ? `\n$$\n${tex}\n$$\n` : `$${tex}$`;
 }
 
 // Extract a table cell's text. Cells are serialized via textContent (inline
@@ -272,9 +279,9 @@ const inlineCodeRule: TurndownService.Rule = {
   filter: node => {
     return node.nodeName === 'CODE' && node.parentNode?.nodeName !== 'PRE';
   },
-  replacement: content => {
-    return `\`${content}\``;
-  },
+  // Sized by wrapInlineCode so a backtick in the code cannot end the span
+  // and turn the rest into prose (DES-019 §4.3, P10).
+  replacement: content => wrapInlineCode(content),
 };
 
 // Custom rule for image placeholders.
@@ -291,6 +298,42 @@ const g2oImageRule: TurndownService.Rule = {
     if (!id) return '';
     const alt = el.getAttribute('alt') ?? '';
     return `\n\n![${alt}](g2o-image://${id})\n\n`;
+  },
+};
+
+/** Turndown's attribute clean-up: collapse line breaks and their indentation. */
+function cleanAttribute(value: string | null): string {
+  return value ? value.replace(/(\n+\s*)+/g, '\n') : '';
+}
+
+/** One pass over `\`, `"` and the brackets, for a link or image title (P12). */
+function titlePart(node: Element): string {
+  const title = cleanAttribute(node.getAttribute('title')).replace(/[\\"<>]/g, '\\$&');
+  return title ? ` "${title}"` : '';
+}
+
+// Turndown's built-in `image` and `inlineLink` write alt and title through
+// module-internal escapers that leave `<` alone, and their destination escaper
+// keeps existing backslashes (P12, P15). These replace them with the same
+// output shape. The image filter is the exact complement of g2oImage's, so the
+// two never compete for one node.
+const imagesRule: TurndownService.Rule = {
+  filter: node => node.nodeName === 'IMG' && !node.hasAttribute('data-g2o-image'),
+  replacement: (_content, node) => {
+    const el = node as Element;
+    const src = el.getAttribute('src') ?? '';
+    if (!src) return '';
+    const alt = cleanAttribute(el.getAttribute('alt')).replace(/[\\[\]<>]/g, '\\$&');
+    return `![${alt}](${escapeDestination(src)}${titlePart(el)})`;
+  },
+};
+
+// Link text is ordinary text nodes, already escaped by the instance escape().
+const linksRule: TurndownService.Rule = {
+  filter: node => node.nodeName === 'A' && Boolean(node.getAttribute('href')),
+  replacement: (content, node) => {
+    const el = node as Element;
+    return `[${content}](${escapeDestination(el.getAttribute('href') ?? '')}${titlePart(el)})`;
   },
 };
 
@@ -403,6 +446,8 @@ const CUSTOM_RULES: ReadonlyArray<readonly [string, TurndownService.Rule]> = [
   ['codemirrorCodeBlocks', codemirrorCodeBlocksRule],
   ['inlineCode', inlineCodeRule],
   ['g2oImage', g2oImageRule],
+  ['images', imagesRule],
+  ['links', linksRule],
   ['footnoteRef', footnoteRefRule],
   ['footnoteDef', footnoteDefRule],
   ['mathBlock', mathBlockRule],

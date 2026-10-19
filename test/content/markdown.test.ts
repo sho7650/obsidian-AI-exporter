@@ -440,6 +440,78 @@ describe('htmlToMarkdown', () => {
     });
   });
   describe('custom rules escape the page text they emit (DES-019 §4.3)', () => {
+    it.each([
+      ['LaTeX containing `$`', 'a$<iframe src=x>', 'a\\$\\<iframe src=x\\>'],
+      ['LaTeX with a backslash before `<`', 'a$\\<b>', 'a\\$\\\\\\<b\\>'],
+    ])('escapes the plain-text math fallback for %s (P9)', (_name, latex, expected) => {
+      expect(htmlToMarkdown(`<p><span data-math="${latex}">k</span></p>`)).toBe(expected);
+    });
+
+    it('escapes over-long LaTeX shown as plain text (P9)', () => {
+      const latex = `<iframe src=x>${'x'.repeat(MAX_MATH_LENGTH)}`;
+      expect(htmlToMarkdown(`<p><span data-math="${latex}">k</span></p>`)).toBe(
+        `\\<iframe src=x\\>${'x'.repeat(MAX_MATH_LENGTH)}`
+      );
+    });
+
+    it.each([
+      ['a<b', '$a\\lt b$'],
+      ['a>b', '$a\\gt b$'],
+      ['\\<x>', '$\\\\lt x\\gt $'],
+    ])('writes %s in math as \\lt / \\gt, leaving no angle bracket', (latex, expected) => {
+      expect(htmlToMarkdown(`<p><span data-math="${latex}">k</span></p>`)).toBe(expected);
+    });
+
+    it('records inline code between prose dollars as emitted (O1, checked in Obsidian)', () => {
+      // Whether Obsidian reads this as math holding a live `<x>` is open item O1;
+      // the output is pinned so a change to it is noticed.
+      expect(htmlToMarkdown('<p>$a <code>&lt;x&gt;</code> b$</p>')).toBe('$a `<x>` b$');
+    });
+
+    it('does the same in display math', () => {
+      expect(htmlToMarkdown('<div data-math="a&lt;b">k</div>')).toBe('$$\na\\lt b\n$$');
+    });
+
+    it.each([
+      // P12: Turndown's built-ins write alt and title without the instance escape().
+      [
+        'image alt and title',
+        '<img src="a.png" alt="<x>" title="<y>">',
+        '![\\<x\\>](a.png "\\<y\\>")',
+      ],
+      [
+        'backslashes before brackets in alt and title',
+        '<img src="a.png" alt="\\<x> [z]" title="\\\\<y> &quot;q&quot;">',
+        '![\\\\\\<x\\> \\[z\\]](a.png "\\\\\\\\\\<y\\> \\"q\\"")',
+      ],
+      ['an image without src', '<img alt="x">', ''],
+      ['link title', '<a href="https://e.com" title="<y>">t</a>', '[t](https://e.com "\\<y\\>")'],
+      [
+        'parentheses in a destination',
+        '<a href="https://e.com/a(b)">t</a>',
+        '[t](https://e.com/a\\(b\\))',
+      ],
+      // P15: an even run before `<` would end the destination and leave the tag live.
+      [
+        'a tag behind a backslash in a destination with a space',
+        '<a href="a b\\<iframe src=//evil\\>">t</a>',
+        '[t](<a b\\\\\\<iframe src=//evil\\\\\\>>)',
+      ],
+      [
+        'the same in an image source',
+        '<img src="a b\\<iframe src=//evil\\>" alt="x">',
+        '![x](<a b\\\\\\<iframe src=//evil\\\\\\>>)',
+      ],
+    ])('escapes %s (P12, P15)', (_name, html, expected) => {
+      expect(htmlToMarkdown(html)).toBe(expected);
+    });
+
+    it('delimits inline code so a backtick in it cannot end the span (P10)', () => {
+      expect(htmlToMarkdown('<p>see <code>a`&lt;iframe&gt;</code> here</p>')).toBe(
+        'see ``a`<iframe>`` here'
+      );
+    });
+
     it('escapes a table cell once', () => {
       const html =
         '<table><thead><tr><th>&lt;iframe src=x&gt;</th></tr></thead>' +
