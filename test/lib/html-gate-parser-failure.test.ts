@@ -53,10 +53,7 @@ describe('neutralizeLiveHtml with an untrustworthy parse', () => {
   });
 
   it('escapes every non-code line when a token is unlocatable on a full save', () => {
-    stub.tokens = [
-      ...unlocatable,
-      { type: 'fence', nesting: 0, map: [2, 5], children: null },
-    ];
+    stub.tokens = [...unlocatable, { type: 'fence', nesting: 0, map: [2, 5], children: null }];
     expect(neutralizeLiveHtml(body)).toBe(
       'safe line\n\n```\n<div>code</div>\n```\n\nnew \\<b>line\\</b>\n'
     );
@@ -67,6 +64,27 @@ describe('neutralizeLiveHtml with an untrustworthy parse', () => {
     expect(neutralizeLiveHtml(body)).toBe(
       'safe line\n\n```\n\\<div>code\\</div>\n```\n\nnew \\<b>line\\</b>\n'
     );
+  });
+
+  describe('without an unescaped `<`, the parse is skipped', () => {
+    // Raw HTML and autolinks both start with an unescaped `<`, so a body
+    // without one cannot carry live HTML. A throwing parser proves no parse ran.
+    beforeEach(() => {
+      stub.throws = true;
+    });
+
+    it.each([
+      ['no `<` at all', '> [!NOTE] Claude\n> plain & simple\n'],
+      ['only escaped `<`', 'a \\<b> and \\\\\\<i>\n\n```\n\\<div>\n```\n'],
+    ])('returns a body with %s unchanged, full save or append', (_name, input) => {
+      expect(neutralizeLiveHtml(input)).toBe(input);
+      expect(neutralizeLiveHtml(input, { repairFromLine: 1 })).toBe(input);
+      expect(console.warn).not.toHaveBeenCalled();
+    });
+
+    it('still parses a `<` behind an even backslash run', () => {
+      expect(neutralizeLiveHtml('a \\\\<b>')).toBe('a \\\\\\<b>');
+    });
   });
 
   it.each([

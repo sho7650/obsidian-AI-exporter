@@ -103,6 +103,19 @@ function repairLine(line: string): string {
   );
 }
 
+/**
+ * Raw HTML and autolinks both start with a `<` that is not backslash-escaped,
+ * so a body without one cannot carry live HTML and needs no parse. This is the
+ * common case once per-path escaping has run, and it keeps markdown-it, whose
+ * memory grows with token count (DES-019 §9), off most saves.
+ */
+function hasUnescapedLessThan(body: string): boolean {
+  for (const [, run] of body.matchAll(/(\\*)</g)) {
+    if (run.length % 2 === 0) return true;
+  }
+  return false;
+}
+
 /** Re-parse after each repair; a repair can uncover HTML the previous parse hid. */
 const MAX_ITERATIONS = 3;
 
@@ -163,6 +176,7 @@ export interface GateOptions {
 export function neutralizeLiveHtml(body: string): string;
 export function neutralizeLiveHtml(body: string, options: GateOptions): string | null;
 export function neutralizeLiveHtml(body: string, options: GateOptions = {}): string | null {
+  if (!hasUnescapedLessThan(body)) return body;
   const from = options.repairFromLine ?? 0;
   let current = body;
   let iterations = 0;
