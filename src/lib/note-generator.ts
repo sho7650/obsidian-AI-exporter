@@ -6,13 +6,23 @@
  */
 
 import { escapeYamlValue } from './yaml-utils';
+import { neutralizeLiveHtml } from './html-gate';
 import type { ObsidianNote, ExtensionSettings } from './types';
+
+export interface RenderedNote {
+  content: string;
+  /** Length of the body as sent, after the HTML gate; what `maxNoteSizeMiB` caps. */
+  gatedBodyLength: number;
+}
 
 /**
  * Generate full note content with frontmatter and body
  * Uses YAML escaping to prevent injection attacks (NEW-04)
+ *
+ * The body passes the HTML gate as its last transform (DES-019 §4.0). The
+ * frontmatter does not: its values are YAML-escaped and render as text.
  */
-export function generateNoteContent(note: ObsidianNote, settings: ExtensionSettings): string {
+export function renderNote(note: ObsidianNote, settings: ExtensionSettings): RenderedNote {
   const { templateOptions } = settings;
   const lines: string[] = [];
 
@@ -51,8 +61,12 @@ export function generateNoteContent(note: ObsidianNote, settings: ExtensionSetti
   lines.push('---');
   lines.push('');
 
-  // Add body
-  lines.push(note.body);
+  const body = neutralizeLiveHtml(note.body);
+  lines.push(body);
 
-  return lines.join('\n');
+  return { content: lines.join('\n'), gatedBodyLength: body.length };
+}
+
+export function generateNoteContent(note: ObsidianNote, settings: ExtensionSettings): string {
+  return renderNote(note, settings).content;
 }

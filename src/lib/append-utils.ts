@@ -57,15 +57,20 @@ interface FileLookupResult {
  */
 interface AppendResult {
   /**
-   * Rebuilt file content (frontmatter + existing body + new messages),
-   * **LF-normalised**.
+   * The parts of the rebuilt file, **LF-normalised**: the updated frontmatter
+   * block (`---` … `---`), the existing body exactly as it was, and the new
+   * messages. They are returned apart, not joined, because the caller gates
+   * the joined body with the existing part as read-only context (DES-019
+   * §4.0) and flattens the two parts separately.
    *
    * The file's own ending is NOT restored here: the caller may still transform
    * the body (callout flattening), and those transforms are written against LF
    * per ADR-026. Restoring early left them matching against a trailing `\r` —
    * see {@link eol}.
    */
-  content: string;
+  frontmatter: string;
+  existingBody: string;
+  tail: string;
   /** Number of new messages appended */
   messagesAppended: number;
   /**
@@ -424,17 +429,18 @@ export function buildAppendContent(
     message_count: newTotal,
   });
 
-  // 6. Rebuild: updated frontmatter + existing body + separator + new messages
+  // 6. Hand back updated frontmatter, existing body and new messages; the
+  // caller joins them as frontmatter + '\n' + body + '\n\n' + new messages.
   //
   // Everything above works on the LF-normalised forms parseFrontmatter returns,
   // and the result stays LF here. The file's own ending is restored by the
   // caller as the last step before the write, so that any body transform it
   // still applies also sees LF (ADR-026). An append must add to the file, not
   // rewrite every line of it (#365).
-  const content = updatedRaw + '\n' + parsed.body + '\n\n' + newMessages;
-
   return {
-    content,
+    frontmatter: updatedRaw,
+    existingBody: parsed.body,
+    tail: newMessages,
     messagesAppended: newTotal - existingCount,
     eol: parsed.eol,
   };

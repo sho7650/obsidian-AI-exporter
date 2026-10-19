@@ -5,7 +5,7 @@
  * DES-005 Section 3.1 — covers branch 57.14% → 100%
  */
 import { describe, it, expect } from 'vitest';
-import { generateNoteContent } from '../../src/lib/note-generator';
+import { generateNoteContent, renderNote } from '../../src/lib/note-generator';
 import type { ObsidianNote, ExtensionSettings } from '../../src/lib/types';
 
 // Factory: creates a minimal valid ObsidianNote
@@ -125,6 +125,26 @@ describe('generateNoteContent', () => {
       const content = generateNoteContent(note, settings);
 
       expect(content).not.toMatch(/^message_count:/m);
+    });
+  });
+
+  describe('HTML gate', () => {
+    const htmlNote = createTestNote({
+      body: '> [!NOTE] Gemini\n> see <iframe src=x>',
+      frontmatter: { ...note.frontmatter, title: 'About <b>tags</b>' },
+    });
+
+    it('gates the body and leaves the frontmatter to its own escaping', () => {
+      const { content, gatedBodyLength } = renderNote(htmlNote, createTestSettings());
+      const gatedBody = '> [!NOTE] Gemini\n> see \\<iframe src=x>';
+      expect(content.endsWith(`---\n\n${gatedBody}`)).toBe(true);
+      expect(content).toContain('title: "About <b>tags</b>"');
+      expect(gatedBodyLength).toBe(gatedBody.length);
+    });
+
+    it('keeps generateNoteContent returning the rendered string', () => {
+      const settings = createTestSettings();
+      expect(generateNoteContent(htmlNote, settings)).toBe(renderNote(htmlNote, settings).content);
     });
   });
 });
