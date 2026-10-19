@@ -260,3 +260,57 @@ describe('nextFenceState', () => {
     expect(state).toEqual({ char: '`', length: 3 });
   });
 });
+
+describe("nextFenceState in 'strict' mode (DES-019 §4.4)", () => {
+  const strict = { stripBlockquote: 'strict' } as const;
+  const step = (state: OpenFence, line: string) => nextFenceState(state, line, strict);
+  const opened = (line: string): OpenFence => step(null, line).state;
+
+  it('records the blockquote depth and the indentation after the markers', () => {
+    expect(opened(`> >  ${F3}js`)).toEqual({ char: '`', length: 3, depth: 2, indent: 1 });
+  });
+
+  it('gives a `>` only one following space, as CommonMark does', () => {
+    // `>` plus four more spaces is indented code inside the quote, not a fence.
+    expect(step(null, `>     ${F3}`)).toEqual({ state: null, isDelimiter: false });
+    expect(opened(`>    ${F3}`)).toMatchObject({ depth: 1, indent: 3 });
+  });
+
+  it('closes on a delimiter at the same depth', () => {
+    expect(step(opened(`> ${F3}`), `> ${F3}`)).toEqual({ state: null, isDelimiter: true });
+  });
+
+  it('keeps a deeper line as code, even when it looks like a delimiter', () => {
+    const fence = opened(`> ${F3}`);
+    expect(step(fence, `> > ${F3}`)).toEqual({ state: fence, isDelimiter: false });
+  });
+
+  it('ends the fence when the depth drops, then reads the line at its own depth', () => {
+    const fence = opened(`> ${F3}`);
+    expect(step(fence, '<iframe>')).toEqual({ state: null, isDelimiter: false });
+    expect(step(fence, F3)).toEqual({
+      state: { char: '`', length: 3, depth: 0, indent: 0 },
+      isDelimiter: true,
+    });
+  });
+
+  it('does not treat a line with a tab after `>` as a delimiter', () => {
+    expect(step(null, `>\t${F3}`)).toEqual({ state: null, isDelimiter: false });
+  });
+
+  it.each([
+    ['a tab after `>`', `> ${F3}`, `>\t${F3}`],
+    ['a line indented less than the opening fence', `  ${F3}`, 'code'],
+    ['the same inside a quote', `>   ${F3}`, '> x'],
+  ])('reports %s inside an open fence as uncertain', (_name, opener, line) => {
+    expect(step(opened(opener), line)).toMatchObject({ uncertain: true });
+  });
+
+  it.each([
+    ['a blank line', `  ${F3}`, ''],
+    ['a line indented at least as far as the fence', `  ${F3}`, '  code'],
+    ['any line of a fence opened at column 0', F3, 'code'],
+  ])('keeps %s certain', (_name, opener, line) => {
+    expect(step(opened(opener), line).uncertain).toBeFalsy();
+  });
+});

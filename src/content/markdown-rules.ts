@@ -7,88 +7,116 @@
 
 import TurndownService from 'turndown';
 import { MAX_LANG_HINT_LENGTH, MAX_MATH_LENGTH } from '../lib/constants';
-import { fenceCodeBlock, nextFenceState, wrapInlineCode, type OpenFence } from '../lib/code-fence';
+import {
+  fenceCodeBlock,
+  nextFenceState,
+  splitBlockquotePrefix,
+  wrapInlineCode,
+  type OpenFence,
+} from '../lib/code-fence';
 
-/** Leading blockquote prefix (one or more `> ` markers) to preserve as-is. */
-const BLOCKQUOTE_PREFIX_PATTERN = /^(\s*>\s*)+/;
-/** Inline code segments — capture group means odd split indices are code. */
-const INLINE_CODE_SPLIT_PATTERN = /(`[^`]+`)/;
-/**
- * Angle brackets plus `$`. Used for user text so pasted shell/YAML (`$VAR`,
- * `$$TMP`) is not parsed by Obsidian as `$...$` / `$$...$$` math — dozens of
- * stray `$` otherwise create giant "math" spans that blank the note and hang
- * the KaTeX/MathJax renderer.
- */
-const ANGLE_BRACKET_DOLLAR_PATTERN = /\\[<>]|[<>$]/g;
+// ============================================================
+// User text: a line-local code-span scanner (DES-019 §4.4)
+// ============================================================
 
 /**
- * Escape special characters in a single line of Markdown text, preserving
- * blockquote markers and inline code segments. `pattern` selects which
- * characters are escaped.
+ * Escaped in user prose: angle brackets; `$`, so pasted shell/YAML (`$VAR`,
+ * `$$TMP`) does not open Obsidian math, where dozens of stray `$` blank the
+ * note and hang the renderer; and backticks, so no span can pair across
+ * lines. The backslash run before each becomes 2n+1: always odd (R1), and
+ * the user's own backslashes still display (P11).
  */
-function escapeSpecialCharsInLine(line: string, pattern: RegExp): string {
-  // 1. Extract blockquote prefix (preserve as-is)
-  const bqMatch = line.match(BLOCKQUOTE_PREFIX_PATTERN);
-  const prefix = bqMatch ? bqMatch[0] : '';
-  const rest = line.slice(prefix.length);
+const USER_PROSE_TARGET_PATTERN = /(\\*)([<>$`])/g;
 
-  // 2. Split by inline code segments (capture group → odd indices are code)
-  const parts = rest.split(INLINE_CODE_SPLIT_PATTERN);
-
-  // 3. Escape target characters in non-code segments.
-  //    Also handle \< and \> (backslash+angle) to prevent incomplete escaping (CodeQL js/incomplete-sanitization).
-  const escaped = parts
-    .map((part, i) => {
-      if (i % 2 === 1) return part; // inline code — preserve
-      return part.replace(pattern, match => {
-        if (match.length === 2) {
-          // \< or \> → escaped backslash + escaped angle bracket
-          return '\\\\' + '\\' + match[1];
-        }
-        return '\\' + match;
-      });
-    })
-    .join('');
-
-  return prefix + escaped;
+function escapeUserProse(text: string): string {
+  return text.replace(USER_PROSE_TARGET_PATTERN, '$1$1\\$2');
 }
 
 /**
- * Escape target characters across Markdown text, skipping fenced code blocks
- * (where the characters are already literal in Obsidian).
- *
- * Fence state comes from {@link nextFenceState}, which is length- and
- * character-aware: an inner fence inside a longer block is content, not a
- * delimiter. A length-blind toggle used to lose track there and write escaped
- * `\<div\>` into the middle of a code block (issue #433, ADR-029).
- *
- * Both fence characters open a block here — a user may paste a tilde-fenced
- * block, and its contents deserve the same protection.
+ * Span content Obsidian may not render as code: a GFM table row splits cells
+ * before code spans are parsed, and wikilink precedence is unverified.
  */
-function escapeByLine(text: string, pattern: RegExp): string {
-  const lines = text.split('\n');
-  // Delimiters may sit inside a blockquote (`> ```), so markers are stripped
-  // before matching.
-  let fence: OpenFence = null;
+function isUnsafeSpan(content: string): boolean {
+  return content.includes('|') || content.includes('[[') || content.includes(']]');
+}
 
-  const result = lines.map(line => {
-    const step = nextFenceState(fence, line, { stripBlockquote: true });
-    fence = step.state;
-    if (step.isDelimiter || fence !== null) return line;
+interface BacktickRun {
+  readonly start: number;
+  readonly length: number;
+  /** Preceded by an odd backslash run, so it cannot open a span. */
+  readonly escaped: boolean;
+}
 
-    return escapeSpecialCharsInLine(line, pattern);
-  });
+function backtickRuns(text: string): BacktickRun[] {
+  return [...text.matchAll(/(\\*)(`+)/g)].map(match => ({
+    start: match.index + match[1].length,
+    length: match[2].length,
+    escaped: match[1].length % 2 === 1,
+  }));
+}
 
-  return result.join('\n');
+/** For each run, the index of the next run of the same length, or -1. */
+function nextSameLength(runs: BacktickRun[]): number[] {
+  const next = new Array<number>(runs.length).fill(-1);
+  const seen = new Map<number, number>();
+  for (let i = runs.length - 1; i >= 0; i--) {
+    next[i] = seen.get(runs[i].length) ?? -1;
+    seen.set(runs[i].length, i);
+  }
+  return next;
 }
 
 /**
- * Escape user-message text for safe Obsidian rendering: angle brackets AND
- * `$`. User prompts are plain text that frequently contains pasted shell/YAML
- * `$`, which must not be interpreted as math. Fenced/inline code is preserved.
+ * Escape one line's text, keeping only code spans that open and close on it
+ * and pass {@link isUnsafeSpan}. Pairing follows CommonMark within the line:
+ * an unescaped run opens, the next run of the same length closes.
+ */
+function escapeUserLine(text: string, keepSpans: boolean): string {
+  if (!keepSpans) return escapeUserProse(text);
+  const runs = backtickRuns(text);
+  const next = nextSameLength(runs);
+  let out = '';
+  let pos = 0;
+  for (let i = 0; i < runs.length; i++) {
+    const opener = runs[i];
+    const j = opener.escaped ? -1 : next[i];
+    if (j === -1) continue;
+    const closer = runs[j];
+    const end = closer.start + closer.length;
+    if (!isUnsafeSpan(text.slice(opener.start + opener.length, closer.start))) {
+      out += escapeUserProse(text.slice(pos, opener.start)) + text.slice(opener.start, end);
+      pos = end;
+    }
+    i = j;
+  }
+  return out + escapeUserProse(text.slice(pos));
+}
+
+/**
+ * Escape a plain-text user message. Lines inside fenced blocks stay as they
+ * are; fence state is tracked the CommonMark way, blockquote depth included
+ * ({@link nextFenceState} in `'strict'` mode). Every other line is scanned on
+ * its own, so no span crosses a line. Once fence state is uncertain, the rest
+ * of the message is escaped as prose with no span kept: inside a real fence
+ * the added backslashes are literal text, outside it they are escapes, so
+ * both readings are safe (R2).
  */
 export function escapeUserText(text: string): string {
-  return escapeByLine(text, ANGLE_BRACKET_DOLLAR_PATTERN);
+  let fence: OpenFence = null;
+  let uncertain = false;
+  return text
+    .split('\n')
+    .map(line => {
+      if (!uncertain) {
+        const step = nextFenceState(fence, line, { stripBlockquote: 'strict' });
+        uncertain = step.uncertain === true;
+        fence = step.state;
+        if (!uncertain && (step.isDelimiter || fence !== null)) return line;
+      }
+      const { marker, rest } = splitBlockquotePrefix(line);
+      return marker + escapeUserLine(rest, !uncertain);
+    })
+    .join('\n');
 }
 
 // ============================================================
