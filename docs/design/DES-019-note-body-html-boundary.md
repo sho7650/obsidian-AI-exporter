@@ -63,13 +63,18 @@ Decisions from the design session (2026-10-17):
 | # | Decision |
 |---|----------|
 | Q1 | Keeping page text from becoming live HTML is a **security boundary**, not a rendering nicety. Since Q14 the boundary is enforced by the final gate; a fidelity-layer path that bypasses escaping is a bug the gate catches |
+| Q2 | Glossary terms for cited pages: a **Source** is a web page the assistant cites, listed once in References; a **Citation** is the in-answer marker pointing to a Source, and several Citations can point to one Source. "Reference" is not used for a single Source (References is the section heading), and "footnote" only for the Markdown syntax. Recorded in `CONTEXT.md` |
+| Q3 | The scan report directory `CLAUDE-SECURITY-20261017-041618/` is deleted once the findings are GitHub issues: the report is tied to one revision, while the issues and ADR-044 carry the decisions forward (§7.4, done 2026-10-18) |
 | Q4 | Scope is the **note body**. Frontmatter values go through `escapeYamlValue()` and render as text in Properties; filenames have their own sanitization. Both are out of scope |
 | Q5 | "Code" means what Obsidian renders as code: fenced blocks, and inline code spans. **Narrowed after plan review round 2:** in user text, only single-line spans that pass the §4.4 safety checks are preserved; multi-line inline code in a user prompt degrades to literal backticks (R2). Confirmed by the user 2026-10-17 |
 | Q6 | Assistant HTML is escaped **at generation time** (Turndown `escape` override), not by a post-pass. Plain-text user content uses a CommonMark-aware code-span scanner |
 | Q7 | One shared URL normaliser for Source links, used by every platform |
+| Q8 | Record the boundary as [ADR-044](../adr/044-note-body-html-boundary.md), covering scope (Q4), the code exception (Q5) and the fix approach (Q6, Q14), and update DES-011's framing with a header note |
 | Q9 | No vault migration. Existing notes keep whatever they contain. Re-saving the conversation fixes a note only when the save overwrites that same file. A save creates a new note instead, leaving the old one as it was, in any of these cases: append mode (the existing body is never rewritten, §4.0); a date in `vaultPath` or `filenameScheme: 'title-date'` (a new path or name); a changed conversation title (the filename contains a title slug, `markdown.ts:53-63`); a note saved without an `id` (treated as not ours, `note-identity.ts:72`). Release notes give one rule: re-save, and if a new note appears instead of the old one being updated, delete or move the old note by hand (§7.5) |
 | Q10 | Tool activity (P7) is in scope. Q1 implies every known path, so P5–P16 are in scope on the same reasoning (as fidelity-layer fixes since Q14) |
+| Q11 | Issues are ordinary **public** GitHub issues in English, with a one-sentence exploit description and no attack strings, rather than a private security advisory: every finding is LOW and needs the victim to save attacker-influenced content (§7.2) |
 | Q12 | One seam test guards every body path through `conversationToNote()` |
+| Q13 | Two PRs: a docs PR first (this DES, ADR-044, `CONTEXT.md`), then one fix PR with every fix and the seam test, closing all three issues. The seam test passes only once every path is fixed, so the fixes are not split (§7.1, §7.3) |
 | Q14 | **A final HTML gate is the boundary** (2026-10-17, after plan review). `markdown-it` becomes a **runtime** dependency, bundled into the background service worker only. Per-path escaping (Q6) is kept as the fidelity layer and as defence in depth |
 
 ## 3. Glossary
