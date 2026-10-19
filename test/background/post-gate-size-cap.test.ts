@@ -148,6 +148,49 @@ describe('post-gate size cap', () => {
     expect(chrome.downloads.download).not.toHaveBeenCalled();
   });
 
+  describe('worst case through all three outputs at once', () => {
+    const outputs = ['obsidian', 'file', 'clipboard'];
+
+    function downloadedNote(): string {
+      const [options] = vi.mocked(chrome.downloads.download).mock.calls[0];
+      const base64 = options.url.split('base64,')[1];
+      return new TextDecoder().decode(Uint8Array.from(atob(base64), c => c.charCodeAt(0)));
+    }
+
+    it('rejects every output after the gate when a body just under the cap doubles', async () => {
+      // One HTML block of `<`: every pass and the fail-closed run happen.
+      const response = await save(noteWithBody(htmlBlockOfLessThan(MIB)), outputs);
+
+      expect(response.results.map(r => [r.destination, r.success])).toEqual([
+        ['obsidian', false],
+        ['file', false],
+        ['clipboard', false],
+      ]);
+      for (const result of response.results) {
+        // 2.0 MiB is the gated size: the pre-gate check let the 1.0 MiB body through.
+        expect(result.error).toMatch(/^Note is 2\.0 MiB, above the 1 MiB limit/);
+      }
+      expect(mockClient.putFile).not.toHaveBeenCalled();
+      expect(chrome.downloads.download).not.toHaveBeenCalled();
+      expect(clipboardWrites()).toHaveLength(0);
+    });
+
+    it('sends every output when the gated body stays under the cap', async () => {
+      const response = await save(noteWithBody(htmlBlockOfLessThan(0.45 * MIB)), outputs);
+
+      expect(response.allSuccessful).toBe(true);
+      const sent = [
+        mockClient.putFile.mock.calls[0][1] as string,
+        downloadedNote(),
+        (clipboardWrites()[0] as [{ content: string }])[0].content,
+      ];
+      for (const content of sent) {
+        expect(content).toContain('<pre>\n\\<\\<');
+        expect(content.length).toBeLessThanOrEqual(MIB);
+      }
+    });
+  });
+
   describe('Obsidian fresh save', () => {
     const image = { id: 'img-1', mimeType: 'image/png', data: 'iVBORw0KGgo=', alt: 'pic' };
 
