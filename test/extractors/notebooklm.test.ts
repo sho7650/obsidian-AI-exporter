@@ -314,6 +314,72 @@ describe('NotebookLMExtractor', () => {
       expect(markdown).toContain('[^m0-5]: 5');
     });
 
+    describe('labels: one per original citation number (DES-019 §4.8)', () => {
+      const button = (inner: string): string =>
+        `<span><button class="citation-marker">${inner}</button></span>`;
+      const labelled = (aria: string, visible: string): string =>
+        button(`<span aria-label="${aria}">${visible}</span>`);
+
+      const extractMarkdown = async (buttons: string[]): Promise<string> => {
+        createNotebookLMPage('test-id', [
+          { role: 'user', content: 'Question' },
+          {
+            role: 'assistant',
+            content: `
+              <labs-tailwind-structural-element-view-v2>
+                <paragraph-element-view>
+                  <div class="paragraph is-rich-chat-ui normal">
+                    <span>Cite</span>${buttons.join('<span>,</span>')}
+                  </div>
+                </paragraph-element-view>
+              </labs-tailwind-structural-element-view-v2>`,
+          },
+        ]);
+        const result = await extractor.extract();
+        const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+        return htmlToMarkdown(assistantMsg!.content);
+      };
+
+      it('gives fallback values that share digits their own labels', async () => {
+        const markdown = await extractMarkdown([button('source-1a'), button('source-1b')]);
+
+        expect(markdown).toContain('Cite[^m0-1],[^m0-2]');
+        expect(markdown).toContain('[^m0-1]: source-1a');
+        expect(markdown).toContain('[^m0-2]: source-1b');
+      });
+
+      it('does not reuse a number already taken by a running index', async () => {
+        const markdown = await extractMarkdown([labelled('1: Source A', '1'), button('x1')]);
+
+        expect(markdown).toContain('Cite[^m0-1],[^m0-2]');
+        expect(markdown).toContain('[^m0-1]: Source A');
+        expect(markdown).toContain('[^m0-2]: x1');
+      });
+
+      it('keeps sharing one label for citations with the same original number', async () => {
+        const markdown = await extractMarkdown([
+          labelled('3: Source C', '3'),
+          labelled('3: Source C', '3'),
+        ]);
+
+        expect(markdown).toContain('Cite[^m0-3],[^m0-3]');
+        expect(markdown.match(/\[\^m0-3\]: /g)).toHaveLength(1);
+      });
+
+      it('takes the smallest free number when the digits are empty or too long', async () => {
+        const long = '9'.repeat(70);
+        const markdown = await extractMarkdown([
+          labelled('1: Source A', '1'),
+          button('abc'),
+          labelled(`${long}: Source L`, long),
+        ]);
+
+        expect(markdown).toContain('Cite[^m0-1],[^m0-2],[^m0-3]');
+        expect(markdown).toContain('[^m0-2]: abc');
+        expect(markdown).toContain('[^m0-3]: Source L');
+      });
+    });
+
     it('escapes HTML in a citation title (DES-019 §4.8)', async () => {
       createNotebookLMPage('test-id', [
         { role: 'user', content: 'Question' },

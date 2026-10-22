@@ -60,6 +60,38 @@ function isMoreCitationsButton(button: Element): boolean {
   return button.querySelector('mat-icon') !== null;
 }
 
+/** Longest label the footnote rules accept (DES-019 §4.8). */
+const MAX_FOOTNOTE_LABEL_LENGTH = 64;
+
+/**
+ * Assigns each original citation number of one message its own label number.
+ * An original that is digits keeps them and a fallback value is reduced to its
+ * digits, unless that number is empty, already taken by another original, or
+ * would make the label too long: then the smallest free positive integer is
+ * used. So two citations share a label only when they share an original.
+ */
+function createLabelNumberer(messageIndex: number): (original: string) => string {
+  const assigned = new Map<string, string>();
+  const taken = new Set<string>();
+  const fits = (number: string): boolean =>
+    `m${messageIndex}-${number}`.length <= MAX_FOOTNOTE_LABEL_LENGTH;
+
+  return original => {
+    const existing = assigned.get(original);
+    if (existing !== undefined) return existing;
+
+    let number = original.replace(/\D/g, '');
+    if (number === '' || taken.has(number) || !fits(number)) {
+      let next = 1;
+      while (taken.has(String(next))) next++;
+      number = String(next);
+    }
+    assigned.set(original, number);
+    taken.add(number);
+    return number;
+  };
+}
+
 function transformCitationsToFootnotes(
   html: string,
   messageIndex: number
@@ -68,8 +100,8 @@ function transformCitationsToFootnotes(
     hasCitations: doc => doc.querySelector(COMPUTED_SELECTORS.citationButton) !== null,
     collectFootnotes: doc => {
       const buttons = Array.from(doc.querySelectorAll(COMPUTED_SELECTORS.citationButton));
-      const footnoteByNumber = new Map<string, string>();
-      const order: string[] = [];
+      const labelNumber = createLabelNumberer(messageIndex);
+      const titleByNumber = new Map<string, string>();
 
       for (const button of buttons) {
         if (isMoreCitationsButton(button)) {
@@ -81,18 +113,15 @@ function transformCitationsToFootnotes(
           button.remove();
           continue;
         }
-        const label = `m${messageIndex}-${parsed.number}`;
-        button.replaceWith(createFootnoteRef(doc, label));
+        const number = labelNumber(parsed.number);
+        button.replaceWith(createFootnoteRef(doc, `m${messageIndex}-${number}`));
 
-        if (!footnoteByNumber.has(parsed.number)) {
-          footnoteByNumber.set(parsed.number, parsed.title);
-          order.push(parsed.number);
-        }
+        if (!titleByNumber.has(number)) titleByNumber.set(number, parsed.title);
       }
 
-      return order.map(num => ({
-        label: `m${messageIndex}-${num}`,
-        title: footnoteByNumber.get(num) ?? '',
+      return [...titleByNumber].map(([number, title]) => ({
+        label: `m${messageIndex}-${number}`,
+        title,
       }));
     },
   });
