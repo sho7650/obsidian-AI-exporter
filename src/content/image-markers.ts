@@ -12,13 +12,36 @@
  * because it extracts in one pass; ChatGPT keys on the widget's own uuid
  * because its virtualized harvest revisits the same turn once per scroll
  * window — pending entries therefore de-duplicate by id, last write wins.
+ * Caller ids can hold page text, so each is normalised into the set the
+ * Turndown rule accepts before it keys a marker or a capture (DES-019 §4.8).
  */
 
 import { captureImage } from './image-capture';
+import { generateHash } from '../lib/hash';
+import { IMAGE_ID_PATTERN } from '../lib/image-output';
 import type { ExtractedImage, ExtractionResult } from '../lib/types';
 
 /** The attribute the Turndown rule turns into `![alt](g2o-image://id)`. */
 const MARKER_ATTRIBUTE = 'data-g2o-image';
+
+/** Longest id the Turndown rule accepts. */
+const MAX_IMAGE_ID_LENGTH = 128;
+
+/** Length of `generateHash()` output, appended after a `-`. */
+const HASH_LENGTH = 8;
+
+/**
+ * `original` in the accepted set: kept when it already is, otherwise its other
+ * characters become `-` and it is cut and suffixed with a hash of the whole
+ * original, so ids that differ only in replaced or cut characters stay apart.
+ */
+function toImageId(original: string): string {
+  if (IMAGE_ID_PATTERN.test(original)) return original;
+  const base = original
+    .replace(/[^A-Za-z0-9_-]/g, '-')
+    .slice(0, MAX_IMAGE_ID_LENGTH - HASH_LENGTH - 1);
+  return `${base}-${generateHash(original)}`;
+}
 
 export interface MarkerOptions {
   /** Matches the generated `<img>` elements inside the element being read. */
@@ -49,11 +72,14 @@ function createMarker(doc: Document, id: string, alt: string): HTMLImageElement 
 export class ImageMarkerCollector {
   private pending = new Map<string, PendingImage>();
   private failures: string[] = [];
+  /** Caller id → marker id, so a turn revisited by a harvest keeps its id. */
+  private ids = new Map<string, string>();
 
   /** Forget everything from the previous extraction. */
   reset(): void {
     this.pending = new Map();
     this.failures = [];
+    this.ids = new Map();
   }
 
   get pendingCount(): number {
@@ -131,10 +157,29 @@ export class ImageMarkerCollector {
     if (!options.enabled || !live) return null;
     const src = live.getAttribute('src') ?? '';
     if (!src) return null;
-    const id = options.idFor(live, index);
+    const id = this.markerId(options.idFor(live, index));
     const alt = live.getAttribute('alt') ?? '';
     this.pending.set(id, { id, alt, element: live });
     return createMarker(doc, id, alt);
+  }
+
+  /**
+   * The marker id for a caller id: the same one every time it is seen, and
+   * never one a different caller id already holds (`-2`, `-3`, … appended).
+   */
+  private markerId(original: string): string {
+    const known = this.ids.get(original);
+    if (known !== undefined) return known;
+
+    const base = toImageId(original);
+    const taken = new Set(this.ids.values());
+    let id = base;
+    for (let n = 2; taken.has(id); n++) {
+      const suffix = `-${n}`;
+      id = base.slice(0, MAX_IMAGE_ID_LENGTH - suffix.length) + suffix;
+    }
+    this.ids.set(original, id);
+    return id;
   }
 
   /** Sequential to avoid overwhelming the page; a handful of images. */

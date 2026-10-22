@@ -14,6 +14,7 @@ import {
   wrapInlineCode,
   type OpenFence,
 } from '../lib/code-fence';
+import { IMAGE_ID_PATTERN } from '../lib/image-output';
 import { isHttpUrl } from '../lib/validation';
 import { escapeMarkdownLink, isFootnoteLabel, toMarkdownSafeUrl } from './extractors/footnotes';
 
@@ -320,16 +321,27 @@ const inlineCodeRule: TurndownService.Rule = {
 // (Obsidian embed, downloaded file, or stripped for clipboard). Emitted on its
 // own paragraph so the image renders as a block, not inline with prose.
 const g2oImageRule: TurndownService.Rule = {
-  filter: node => {
-    return node.nodeName === 'IMG' && node.hasAttribute('data-g2o-image');
-  },
+  filter: node => isImageMarker(node),
   replacement: (_content, el) => {
-    const id = el.getAttribute('data-g2o-image');
-    if (!id) return '';
-    const alt = el.getAttribute('alt') ?? '';
-    return `\n\n![${alt}](g2o-image://${id})\n\n`;
+    const id = el.getAttribute('data-g2o-image') ?? '';
+    return `\n\n![${imageAlt(el)}](g2o-image://${id})\n\n`;
   },
 };
+
+/**
+ * An image placeholder the extension wrote: an `<img>` whose marker id is in
+ * the set the background resolves. The page can forge the attribute, so any
+ * other id is an ordinary image (DES-019 §4.8).
+ */
+function isImageMarker(node: Node): boolean {
+  if (node.nodeName !== 'IMG') return false;
+  return IMAGE_ID_PATTERN.test((node as Element).getAttribute('data-g2o-image') ?? '');
+}
+
+/** An image's alt text, escaped once for `![…]` (DES-019 §4.3). */
+function imageAlt(el: Node): string {
+  return cleanAttribute((el as Element).getAttribute('alt')).replace(/[\\[\]<>]/g, '\\$&');
+}
 
 /** Turndown's attribute clean-up: collapse line breaks and their indentation. */
 function cleanAttribute(value: string | null): string {
@@ -348,13 +360,12 @@ function titlePart(node: Element): string {
 // output shape. The image filter is the exact complement of g2oImage's, so the
 // two never compete for one node.
 const imagesRule: TurndownService.Rule = {
-  filter: node => node.nodeName === 'IMG' && !node.hasAttribute('data-g2o-image'),
+  filter: node => node.nodeName === 'IMG' && !isImageMarker(node),
   replacement: (_content, node) => {
     const el = node as Element;
     const src = el.getAttribute('src') ?? '';
     if (!src) return '';
-    const alt = cleanAttribute(el.getAttribute('alt')).replace(/[\\[\]<>]/g, '\\$&');
-    return `![${alt}](${escapeDestination(src)}${titlePart(el)})`;
+    return `![${imageAlt(el)}](${escapeDestination(src)}${titlePart(el)})`;
   },
 };
 

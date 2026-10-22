@@ -5,6 +5,7 @@ import {
   resolveImagesForFile,
   resolveImagesForObsidian,
 } from '../../src/lib/image-output';
+import { htmlToMarkdown } from '../../src/content/markdown';
 import type { ExtractedImage } from '../../src/lib/types';
 
 const img = (id: string, mimeType = 'image/png'): ExtractedImage => ({
@@ -74,5 +75,26 @@ describe('resolveImagesForFile', () => {
     expect(files).toEqual([
       { fileName: 'note-base-img-1.png', mimeType: 'image/png', data: 'UE5H' },
     ]);
+  });
+});
+
+describe('placeholder writer/reader seam (DES-019 §4.3)', () => {
+  // The rule escapes the alt; the reader must still see one placeholder.
+  const body = htmlToMarkdown('<p>a</p><img data-g2o-image="img-1" alt="x]<y>"><p>b</p>');
+
+  it('strips a placeholder whose alt holds escaped brackets', () => {
+    expect(stripImagePlaceholders(body)).toBe('a\n\nb');
+  });
+
+  it('resolves it for Obsidian', () => {
+    expect(resolveImagesForObsidian(body, [img('img-1')], 'n').body).toBe(
+      'a\n\n![[n-img-1.png]]\n\nb'
+    );
+  });
+
+  it('resolves it for a file download, keeping the escaped alt', () => {
+    expect(resolveImagesForFile(body, [img('img-1')], 'n').body).toBe(
+      'a\n\n![x\\]\\<y\\>](n-img-1.png)\n\nb'
+    );
   });
 });

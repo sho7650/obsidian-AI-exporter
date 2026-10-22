@@ -47,6 +47,22 @@ describe('htmlToMarkdown — image placeholders', () => {
     expect(md).toContain('![](g2o-image://img-2)');
   });
 
+  it('escapes the alt text (DES-019 §4.3, P9)', () => {
+    expect(htmlToMarkdown('<img data-g2o-image="img-1" alt="a]\\<x>">')).toBe(
+      '![a\\]\\\\\\<x\\>](g2o-image://img-1)'
+    );
+  });
+
+  it.each([
+    ['characters outside the set', 'x)(y'],
+    ['more than 128 characters', 'a'.repeat(129)],
+  ])('leaves a marker whose id has %s to the ordinary image rule', (_name, id) => {
+    expect(htmlToMarkdown(`<img data-g2o-image="${id}" alt="<x>">`)).toBe('');
+    expect(htmlToMarkdown(`<img data-g2o-image="${id}" alt="<x>" src="https://e.com/a.png">`)).toBe(
+      '![\\<x\\>](https://e.com/a.png)'
+    );
+  });
+
   it('places the placeholder on its own line within surrounding content', () => {
     const md = htmlToMarkdown('<p>Before</p><img data-g2o-image="img-3" alt="a"><p>After</p>');
     expect(md).toContain('![a](g2o-image://img-3)');
