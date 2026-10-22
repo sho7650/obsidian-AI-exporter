@@ -10,7 +10,7 @@
 import { BaseExtractor, type ScrollConfig } from './base';
 import { hostnameOf } from './deep-research-result';
 import { sanitizeHtml } from '../../lib/sanitize';
-import { userHtmlToMarkdown } from '../markdown-rules';
+import { escapeInlineText, userHtmlToMarkdown } from '../markdown-rules';
 import { generateHash } from '../../lib/hash';
 import type { HarvestEntry } from '../../lib/scroll-accumulate';
 import type { ConversationMessage, DeepResearchSource, SyncSettings } from '../../lib/types';
@@ -378,7 +378,8 @@ export class ClaudeExtractor extends BaseExtractor {
    *
    * Only the row's own label is read: a row the user has expanded also holds
    * the step's queries and interim notes in `[data-cds-row-panel]`, which we
-   * leave out rather than export them for expanded rows alone.
+   * leave out rather than export them for expanded rows alone. The label is
+   * page text inside Markdown we build, so it is escaped here (DES-019 §4.6).
    */
   private extractToolContentFromElement(element: Element): string | null {
     const labels = this.queryAllWithFallback<HTMLElement>(SELECTORS.toolStatus, element)
@@ -386,7 +387,7 @@ export class ClaudeExtractor extends BaseExtractor {
         this.sanitizeText(status.querySelector(':scope > [data-cds-row] bdi')?.textContent ?? '')
       )
       .filter(label => label !== '')
-      .map(label => `**${label}**`);
+      .map(label => `**${escapeInlineText(label)}**`);
     return labels.length > 0 ? labels.join('\n\n') : null;
   }
 

@@ -116,6 +116,24 @@ describe('Claude Tool activity on the 2026-10 transcript DOM', () => {
     expect(answer?.content).toContain('Here is the report.');
   });
 
+  it('escapes HTML in a Tool activity label (DES-019 §4.6, #541)', async () => {
+    createClaudeHubPage('hub-tool-html', [
+      { role: 'user', text: 'Research this' },
+      {
+        role: 'assistant',
+        parts: [
+          { kind: 'tool', label: 'Read \\&lt;iframe src=x&gt;' },
+          { kind: 'text', html: '<p>Done.</p>' },
+        ],
+      },
+    ]);
+
+    const result = await extractor.extract();
+
+    const answer = result.data?.messages.find(m => m.role === 'assistant');
+    expect(answer?.toolContent).toBe('**Read \\\\\\<iframe src=x\\>**');
+  });
+
   it('exports a label only, even when the user expanded the Tool activity row', async () => {
     createClaudeHubPage('hub-expanded-tool', [
       { role: 'user', text: 'Research this' },

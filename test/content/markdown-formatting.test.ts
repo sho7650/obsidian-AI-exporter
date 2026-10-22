@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildQuestionHeader, stripMarkdownChars } from '../../src/content/markdown-formatting';
+import { neutralizeLiveHtml } from '../../src/lib/html-gate';
 
 /**
  * Unit tests for buildQuestionHeader (issue #187).
@@ -147,5 +148,21 @@ describe('stripMarkdownChars', () => {
 
   it('returns empty string for input of only markdown chars', () => {
     expect(stripMarkdownChars('`*_~[]')).toBe('');
+  });
+});
+
+describe('buildQuestionHeader escapes the page text it keeps (DES-019 §4.7, P8)', () => {
+  it.each([
+    ['a tag', '<iframe src=x> hi', '## \\<iframe src=x\\> hi'],
+    ['a backslash before a tag', 'a \\<b>', '## a \\\\\\<b\\>'],
+  ])('%s', (_name, input, expected) => {
+    expect(buildQuestionHeader(input)).toBe(expected);
+    expect(neutralizeLiveHtml(expected)).toBe(expected);
+  });
+
+  it('escapes after truncating, so the cut cannot split an escape', () => {
+    // 59 characters of text keep the `<` as the last visible character.
+    const header = buildQuestionHeader(`${'a'.repeat(58)}<${'b'.repeat(10)}`);
+    expect(header).toBe(`## ${'a'.repeat(58)}\\<…`);
   });
 });
