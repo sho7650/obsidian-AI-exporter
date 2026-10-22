@@ -15,6 +15,7 @@ import {
   createFootnoteRef,
   escapeMarkdownLink,
   footnoteDefsToHtml,
+  toMarkdownSafeUrl,
   transformCitations,
 } from './footnotes';
 import type { CitationTransformResult } from './footnotes';
@@ -119,16 +120,6 @@ function parseCitationTitle(citation: Element, url: string): { title: string; ri
   if (pillText) return { title: pillText, rich: false };
 
   return { title: new URL(url).hostname, rich: false };
-}
-
-/**
- * Normalize a citation URL for use inside `[title](url)` markdown syntax:
- * the URL constructor percent-encodes spaces and other raw characters, and
- * parentheses are escaped manually (they are valid in URLs but terminate
- * the markdown link target).
- */
-function toMarkdownSafeUrl(url: string): string {
-  return new URL(url).href.replace(/\(/g, '%28').replace(/\)/g, '%29');
 }
 
 /**

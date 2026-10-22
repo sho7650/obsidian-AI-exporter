@@ -8,6 +8,7 @@ import {
   convertDeepResearchContent,
 } from '../../src/content/markdown';
 import { sanitizeHtml } from '../../src/lib/sanitize';
+import { neutralizeLiveHtml } from '../../src/lib/html-gate';
 import { MAX_MATH_LENGTH } from '../../src/lib/constants';
 import type { ConversationData, TemplateOptions, DeepResearchLinks } from '../../src/lib/types';
 
@@ -1153,7 +1154,7 @@ describe('convertDeepResearchContent', () => {
     expect(result).toContain('[^1]');
     // v3.0: References section with footnote definitions
     expect(result).toContain('# References');
-    expect(result).toContain('[^1]: [Source](https://example.com)');
+    expect(result).toContain('[^1]: [Source](https://example.com/)');
   });
 
   it('removes sources carousel', () => {
@@ -1220,9 +1221,9 @@ describe('convertDeepResearchContent', () => {
 
     const result = convertDeepResearchContent(html, links);
 
-    expect(result).toContain('[^1]: [A](https://a.com)');
-    expect(result).toContain('[^2]: [B](https://b.com)');
-    expect(result).toContain('[^3]: [C](https://c.com)');
+    expect(result).toContain('[^1]: [A](https://a.com/)');
+    expect(result).toContain('[^2]: [B](https://b.com/)');
+    expect(result).toContain('[^3]: [C](https://c.com/)');
   });
 
   it('rejects dangerous URL schemes in source references', () => {
@@ -1246,7 +1247,7 @@ describe('convertDeepResearchContent', () => {
     expect(result).not.toContain('javascript:');
     expect(result).not.toContain('data:text');
     // Safe URL preserved
-    expect(result).toContain('[^3]: [Safe](https://safe.com)');
+    expect(result).toContain('[^3]: [Safe](https://safe.com/)');
     // Dangerous sources show title only (no link)
     expect(result).toContain('[^1]: XSS');
     expect(result).toContain('[^2]: Data');
@@ -1272,7 +1273,35 @@ describe('convertDeepResearchContent', () => {
     expect(result).toContain('[^1]: File');
     expect(result).toContain('[^2]: Mail');
     expect(result).toContain('[^3]: Sneaky');
-    expect(result).toContain('[^4]: [Safe](https://safe.com)');
+    expect(result).toContain('[^4]: [Safe](https://safe.com/)');
+  });
+});
+
+describe('convertDeepResearchContent: References are escaped (DES-019 §4.5, F1)', () => {
+  const convert = (url: string, title: string): string =>
+    convertDeepResearchContent('<p>Text</p>', {
+      sources: [{ index: 0, url, title, domain: 'example.com' }],
+    });
+
+  it('escapes HTML in a linked Source title', () => {
+    expect(convert('https://example.com/', '<iframe src=//evil>')).toContain(
+      '[^1]: [\\<iframe src=//evil\\>](https://example.com/)'
+    );
+  });
+
+  it('escapes HTML in a Source title shown without a link', () => {
+    expect(convert('javascript:x', 'a \\<img src=x>')).toContain('[^1]: a \\\\\\<img src=x\\>');
+  });
+
+  it('normalises the Source URL so it cannot end the link', () => {
+    expect(convert('https://example.com/a b)<img src=x>', 'T')).toContain(
+      '[^1]: [T](https://example.com/a%20b%29%3Cimg%20src=x%3E)'
+    );
+  });
+
+  it('leaves nothing for the final gate to change', () => {
+    const body = convert('https://u)ser@example.com/<x>', '<iframe>](javascript:x)');
+    expect(neutralizeLiveHtml(body)).toBe(body);
   });
 });
 
@@ -1326,7 +1355,7 @@ describe('conversationToNote with Deep Research links', () => {
     // v3.0: Obsidian native footnotes
     expect(note.body).toContain('[^1]');
     expect(note.body).toContain('# References');
-    expect(note.body).toContain('[^1]: [Source](https://example.com)');
+    expect(note.body).toContain('[^1]: [Source](https://example.com/)');
   });
 });
 

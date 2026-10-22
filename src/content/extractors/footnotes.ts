@@ -71,11 +71,27 @@ function escapeHtml(value: string): string {
 }
 
 /**
- * Escape Markdown link metacharacters in text.
- * Prevents injection of Markdown links via crafted titles.
+ * Escape a plain-text link label: link metacharacters, so a crafted title
+ * cannot end the label, and angle brackets, so it cannot start HTML. The
+ * backslash is escaped in the same pass (DES-019 §4.1, R1).
  */
 export function escapeMarkdownLink(text: string): string {
-  return text.replace(/[\\[\]()]/g, '\\$&');
+  return text.replace(/[\\[\]()<>]/g, '\\$&');
+}
+
+/**
+ * Normalise an http(s) URL for use inside `[title](url)` (DES-019 §4.5). The
+ * URL parser percent-encodes spaces and angle brackets; parentheses can end
+ * the destination and the parser leaves them in userinfo too, so they are
+ * encoded everywhere. Brackets are encoded only after the authority, since an
+ * IPv6 host needs its own and userinfo has them encoded already.
+ */
+export function toMarkdownSafeUrl(url: string): string {
+  const { href, pathname, search, hash } = new URL(url);
+  const split = href.length - (pathname + search + hash).length;
+  const authority = href.slice(0, split);
+  const rest = href.slice(split).replace(/\[/g, '%5B').replace(/\]/g, '%5D');
+  return (authority + rest).replace(/\(/g, '%28').replace(/\)/g, '%29');
 }
 
 /**
