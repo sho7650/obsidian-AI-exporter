@@ -520,6 +520,53 @@ describe('htmlToMarkdown', () => {
       expect(htmlToMarkdown(html)).toBe('| \\<iframe src=x\\> |\n| --- |\n| \\\\\\<b\\> |');
     });
   });
+
+  describe('footnote placeholders are validated and escaped (DES-019 §4.8, P13)', () => {
+    const LONG = 'a'.repeat(65);
+
+    it.each([
+      ['a valid label', '<p>x<span data-footnote-ref="m1-2">REF</span></p>', 'x[^m1-2]'],
+      ['a label with markup', '<p>x<span data-footnote-ref="a]&lt;b">REF</span></p>', 'x'],
+      ['a label over 64 characters', `<p>x<span data-footnote-ref="${LONG}">REF</span></p>`, 'x'],
+    ])('footnoteRef: %s', (_name, html, expected) => {
+      expect(htmlToMarkdown(sanitizeHtml(html))).toBe(expected);
+    });
+
+    it('drops an invalid reference inside a table cell', () => {
+      const html =
+        '<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>' +
+        'a<span data-footnote-ref="m1-1">REF</span>' +
+        'b<span data-footnote-ref="x&lt;y">REF</span></td></tr></tbody></table>';
+      expect(htmlToMarkdown(sanitizeHtml(html))).toBe('| h |\n| --- |\n| a[^m1-1]b |');
+    });
+
+    it.each([
+      [
+        'a linked title, escaped once with its URL normalised',
+        '<p data-footnote-def="m1-1" data-footnote-url="https://e.com/a(b)">\\&lt;i&gt; [x]</p>',
+        '[^m1-1]: [\\\\\\<i\\> \\[x\\]](https://e.com/a%28b%29)',
+      ],
+      [
+        'a title without a URL',
+        '<p data-footnote-def="m1-1">Source &lt;iframe&gt;</p>',
+        '[^m1-1]: Source \\<iframe\\>',
+      ],
+      [
+        'a title whose URL is not http(s)',
+        '<p data-footnote-def="m1-1" data-footnote-url="javascript:x">T</p>',
+        '[^m1-1]: T',
+      ],
+      [
+        'an invalid label, converted as ordinary text',
+        '<p data-footnote-def="a b">[^a]: &lt;i&gt;</p>',
+        '\\[^a\\]: \\<i\\>',
+      ],
+    ])('footnoteDef: %s', (_name, html, expected) => {
+      const markdown = htmlToMarkdown(sanitizeHtml(html));
+      expect(markdown).toBe(expected);
+      expect(neutralizeLiveHtml(markdown)).toBe(markdown);
+    });
+  });
 });
 
 // Moved from escapeAngleBrackets, deleted with the assistant post-pass

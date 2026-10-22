@@ -90,7 +90,10 @@ function transformCitationsToFootnotes(
         }
       }
 
-      return order.map(num => `[^m${messageIndex}-${num}]: ${footnoteByNumber.get(num)}`);
+      return order.map(num => ({
+        label: `m${messageIndex}-${num}`,
+        title: footnoteByNumber.get(num) ?? '',
+      }));
     },
   });
 }

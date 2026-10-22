@@ -11,13 +11,7 @@ import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { isHttpUrl } from '../../lib/validation';
 import type { ConversationMessage } from '../../lib/types';
-import {
-  createFootnoteRef,
-  escapeMarkdownLink,
-  footnoteDefsToHtml,
-  toMarkdownSafeUrl,
-  transformCitations,
-} from './footnotes';
+import { createFootnoteRef, footnoteDefsToHtml, transformCitations } from './footnotes';
 import type { CitationTransformResult } from './footnotes';
 
 import { SELECTORS } from './selectors/perplexity';
@@ -204,11 +198,11 @@ function transformCitationsToFootnotes(
       const sources = collectCitationSources(doc, messageIndex);
       removeCitationResidue(doc);
 
-      return [...sources.entries()].map(
-        ([url, source]) =>
-          `[^m${messageIndex}-${source.number}]: ` +
-          `[${escapeMarkdownLink(source.title)}](${toMarkdownSafeUrl(url)})`
-      );
+      return [...sources.entries()].map(([url, source]) => ({
+        label: `m${messageIndex}-${source.number}`,
+        title: source.title,
+        url,
+      }));
     },
   });
 }

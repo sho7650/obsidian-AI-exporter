@@ -14,6 +14,8 @@ import {
   wrapInlineCode,
   type OpenFence,
 } from '../lib/code-fence';
+import { isHttpUrl } from '../lib/validation';
+import { escapeMarkdownLink, isFootnoteLabel, toMarkdownSafeUrl } from './extractors/footnotes';
 
 // ============================================================
 // User text: a line-local code-span scanner (DES-019 §4.4)
@@ -225,7 +227,7 @@ function tableCellText(cell: Element): string {
   const clone = cell.cloneNode(true) as Element;
   clone.querySelectorAll('[data-footnote-ref]').forEach(ref => {
     const label = ref.getAttribute('data-footnote-ref');
-    ref.replaceWith(label ? `[^${label}]` : '');
+    ref.replaceWith(isFootnoteLabel(label) ? `[^${label}]` : '');
   });
   return escapeInlineText(clone.textContent?.trim() || '');
 }
@@ -366,28 +368,34 @@ const linksRule: TurndownService.Rule = {
 };
 
 // Custom rule for footnote reference placeholders
-// Converts <span data-footnote-ref="N">REF</span> to [^N]
+// Converts <span data-footnote-ref="N">REF</span> to [^N]. The page can forge
+// the attribute, so a label outside the accepted set emits nothing: the REF
+// text is a placeholder, never content (DES-019 §4.8).
 const footnoteRefRule: TurndownService.Rule = {
   filter: node => {
     return node.nodeName === 'SPAN' && node.hasAttribute('data-footnote-ref');
   },
   replacement: (_content, node) => {
-    const index = node.getAttribute('data-footnote-ref');
-    return `[^${index}]`;
+    const label = node.getAttribute('data-footnote-ref');
+    return isFootnoteLabel(label) ? `[^${label}]` : '';
   },
 };
 
-// Custom rule for footnote definitions (NotebookLM citations)
-// Converts <p data-footnote-def>[^label]: title</p> to a literal footnote
-// definition line. Bypasses Turndown's default text-escaping so the
-// `[^label]:` syntax survives intact.
+// Custom rule for footnote definitions (NotebookLM and Perplexity citations)
+// Converts <p data-footnote-def="L" data-footnote-url="U">title</p> to
+// `[^L]: [title](U)`, or `[^L]: title` without an http(s) URL. The title is
+// escaped here in one pass (R1); an invalid label leaves the paragraph to the
+// ordinary rules, which escape it as text (DES-019 §4.8).
 const footnoteDefRule: TurndownService.Rule = {
   filter: node => {
-    return node.nodeName === 'P' && node.hasAttribute('data-footnote-def');
+    return node.nodeName === 'P' && isFootnoteLabel(node.getAttribute('data-footnote-def'));
   },
   replacement: (_content, node) => {
-    const text = (node.textContent ?? '').trim();
-    return text ? `\n\n${text}` : '';
+    const label = node.getAttribute('data-footnote-def');
+    const title = escapeMarkdownLink((node.textContent ?? '').replace(/\s+/g, ' ').trim());
+    const url = node.getAttribute('data-footnote-url')?.trim() ?? '';
+    const definition = isHttpUrl(url) ? `[${title}](${toMarkdownSafeUrl(url)})` : title;
+    return `\n\n[^${label}]: ${definition}`;
   },
 };
 

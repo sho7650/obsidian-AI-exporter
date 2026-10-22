@@ -23,13 +23,18 @@ describe('transformCitations', () => {
 });
 
 describe('footnoteDefsToHtml', () => {
-  it('escapes HTML metacharacters in page-derived footnote titles', () => {
-    // Titles come from the page, and this string is parsed as HTML again
-    // downstream, so markup in a title must arrive as text.
-    const html = footnoteDefsToHtml([`[^1]: <img src=x onerror="a()"> & 'b'`]);
+  it('writes structured entries as attributes and text, HTML-escaped', () => {
+    // Titles and URLs come from the page, and this string is parsed as HTML
+    // again downstream, so markup in either must arrive as text.
+    const html = footnoteDefsToHtml([
+      { label: 'm1-1', title: `<img src=x onerror="a()"> & 'b'`, url: 'https://e.com/?a=1&b="2"' },
+      { label: 'm1-2', title: 'No URL' },
+    ]);
 
     expect(html).toBe(
-      '<p data-footnote-def="">[^1]: &lt;img src=x onerror=&quot;a()&quot;&gt; &amp; &#39;b&#39;</p>'
+      '<p data-footnote-def="m1-1" data-footnote-url="https://e.com/?a=1&amp;b=&quot;2&quot;">' +
+        '&lt;img src=x onerror=&quot;a()&quot;&gt; &amp; &#39;b&#39;</p>' +
+        '<p data-footnote-def="m1-2">No URL</p>'
     );
   });
 });

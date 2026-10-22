@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { NotebookLMExtractor } from '../../src/content/extractors/notebooklm';
 import { htmlToMarkdown } from '../../src/content/markdown';
+import { neutralizeLiveHtml } from '../../src/lib/html-gate';
 import {
   loadFixture,
   clearFixture,
@@ -311,6 +312,31 @@ describe('NotebookLMExtractor', () => {
 
       expect(markdown).toContain('[^m0-5]');
       expect(markdown).toContain('[^m0-5]: 5');
+    });
+
+    it('escapes HTML in a citation title (DES-019 §4.8)', async () => {
+      createNotebookLMPage('test-id', [
+        { role: 'user', content: 'Question' },
+        {
+          role: 'assistant',
+          content: `
+            <labs-tailwind-structural-element-view-v2>
+              <paragraph-element-view>
+                <div class="paragraph is-rich-chat-ui normal">
+                  <span>Cite</span>
+                  <span><button class="citation-marker"><span aria-label="1: &lt;iframe src=x&gt; [a](b)">1</span></button></span>
+                </div>
+              </paragraph-element-view>
+            </labs-tailwind-structural-element-view-v2>`,
+        },
+      ]);
+
+      const result = await extractor.extract();
+      const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
+      const markdown = htmlToMarkdown(assistantMsg!.content);
+
+      expect(markdown).toContain('[^m0-1]: \\<iframe src=x\\> \\[a\\]\\(b\\)');
+      expect(neutralizeLiveHtml(markdown)).toBe(markdown);
     });
   });
 

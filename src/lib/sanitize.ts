@@ -107,7 +107,7 @@ function preprocessKatexToNode(html: string): string | HTMLElement {
  * - data-turn-source-index (Deep Research inline citations, 1-based index into source list)
  * - data-math (KaTeX math expressions — Gemini native or standard KaTeX via preprocessKatex)
  * - data-footnote-ref (NotebookLM citation placeholder spans → Turndown rule)
- * - data-footnote-def (NotebookLM footnote definition paragraphs → Turndown rule)
+ * - data-footnote-def / data-footnote-url (footnote definition paragraphs → Turndown rule)
  * - data-g2o-image (image placeholder marker on <img> → Turndown rule)
  * while blocking all other data-* attributes.
  *
@@ -127,6 +127,7 @@ export function sanitizeHtml(html: string): string {
       data.attrName === 'data-math' ||
       data.attrName === 'data-footnote-ref' ||
       data.attrName === 'data-footnote-def' ||
+      data.attrName === 'data-footnote-url' ||
       data.attrName === 'data-g2o-image'
     ) {
       data.forceKeepAttr = true;
