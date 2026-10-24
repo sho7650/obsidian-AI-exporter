@@ -85,7 +85,9 @@ export function fenceCodeBlock(code: string, lang = ''): string {
  * span is kept on one line. A `|` beside an angle bracket is written `\|`: in a
  * GFM table row the cell split happens before code spans are parsed, so a bare
  * `|` would cut the span and leave its `<` in prose. Elsewhere `\|` shows a
- * visible backslash, an accepted cost (R2).
+ * visible backslash, an accepted cost (R2). Existing backslashes are not
+ * doubled: inside a code span they are literal, and the table split only
+ * checks the one character before `|`, so doubling would change the code.
  */
 export function wrapInlineCode(content: string): string {
   let code = content.replace(/\r?\n|\r/g, ' ');
