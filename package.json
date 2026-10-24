@@ -58,7 +58,7 @@
     "tsx": "^4.22.0",
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^8.0.16",
+    "vite": "^8.3.5",
     "vite-plugin-static-copy": "^3.4.0",
     "vitest": "^4.1.8"
   },
