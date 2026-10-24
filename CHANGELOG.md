@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.13](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.12...v2.14.13) (2026-10-24)
+
+
+### Miscellaneous
+
+* **deps-dev:** Bump fast-uri from 3.1.8 to 3.1.9 ([#553](https://github.com/sho7650/obsidian-AI-exporter/issues/553)) ([93728b0](https://github.com/sho7650/obsidian-AI-exporter/commit/93728b0de47bc03cc90f4400842428d893ae9d86))
+* **deps-dev:** bump vite from 8.2.2 to 8.3.5 ([#544](https://github.com/sho7650/obsidian-AI-exporter/issues/544)) ([47bf35a](https://github.com/sho7650/obsidian-AI-exporter/commit/47bf35a688c36866fa1dc266b776ff8b6d7cf2b5))
+
 ## [2.14.12](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.11...v2.14.12) (2026-10-24)
 
 
