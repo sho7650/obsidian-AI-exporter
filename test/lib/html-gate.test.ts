@@ -91,10 +91,11 @@ describe('neutralizeLiveHtml', () => {
     // Escaping each `<!X` turns its declaration into a paragraph, which re-pairs
     // the fences: the last line, code before the repair, becomes raw HTML.
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const chain = Array.from({ length: 4 }, () => '<!X\n```\nx>\n```').join('\n');
-    const out = neutralizeLiveHtml(`${chain}\n<img src=https://evil.example/x>`);
+    const links = (declaration: string): string =>
+      Array.from({ length: 4 }, () => `${declaration}\n\`\`\`\nx>\n\`\`\``).join('\n');
+    const out = neutralizeLiveHtml(`${links('<!X')}\n<img src=https://evil.example/x>`);
     expect(new MarkdownIt({ html: true }).render(out)).not.toMatch(/<img|<!X/);
-    expect(out).toBe(`${chain.replace(/<!X/g, '\\<!X')}\n\\<img src=https://evil.example/x>`);
+    expect(out).toBe(`${links('\\<!X')}\n\\<img src=https://evil.example/x>`);
   });
 
   it.each([
