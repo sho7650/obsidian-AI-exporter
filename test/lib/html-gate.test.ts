@@ -223,4 +223,35 @@ describe('neutralizeLiveHtml', () => {
       'intro\n\nbefore ^[\\<img src=x>] after\n'
     );
   });
+
+  it('escapes HTML inside an inline footnote written in an image alt', () => {
+    // The footnote_ref is a child of the image token, not of the inline token,
+    // and the footnote still renders in the footnotes section.
+    expect(neutralizeLiveHtml('intro\n\n![a ^[<img src=x>]](u)\n')).toBe(
+      'intro\n\n![a ^[\\<img src=x>]](u)\n'
+    );
+  });
+
+  describe('an inline footnote nested in another', () => {
+    // markdown-it-footnote 4.0.0 loses the inner footnote: its content is in no
+    // token, and the outer footnote ends up referencing itself. Whether Obsidian
+    // renders the lost content is unknown, so the cycle is treated like an
+    // unlocatable raw-HTML token.
+    const nested = 'intro\n\na ^[x ^[<img src=x>]] b\n';
+
+    it('takes the fail-closed path on a full save', () => {
+      expect(neutralizeLiveHtml(nested)).toBe('intro\n\na ^[x ^[\\<img src=x>]] b\n');
+    });
+
+    it('refuses an append', () => {
+      expect(neutralizeLiveHtml(`mine\n\n${nested}`, { repairFromLine: 2 })).toBeNull();
+    });
+  });
+
+  it('does not mistake one footnote referenced twice in a paragraph for a cycle', () => {
+    const body = 'a[^1] b[^1] <i>x</i>\n\n[^1]: note\n\n`<code>` stays\n';
+    expect(neutralizeLiveHtml(body)).toBe(
+      'a[^1] b[^1] \\<i>x\\</i>\n\n[^1]: note\n\n`<code>` stays\n'
+    );
+  });
 });

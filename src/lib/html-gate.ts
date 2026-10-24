@@ -28,18 +28,48 @@ function isHtml(token: Token): boolean {
   return token.type === 'html_inline' || token.type === 'html_block';
 }
 
-function containsHtml(tokens: Token[] | null | undefined): boolean {
-  return tokens?.some(t => isHtml(t) || containsHtml(t.children)) ?? false;
+interface InlineScan {
+  /** The inline token renders raw HTML, directly or through a footnote. */
+  html: boolean;
+  /** A footnote reference leads back to a footnote still being followed. */
+  cycle: boolean;
 }
 
-/** HTML that an inline token renders: its own children, plus any inline footnote it references. */
-function inlineCarriesHtml(token: Token, env: GateEnv): boolean {
+/**
+ * Walk an inline token's descendants and the inline footnotes they reference,
+ * through footnotes nested in footnotes. Descendants, not just children: a
+ * footnote written in an image alt is a child of the image token, and still
+ * renders as a footnote.
+ *
+ * A cycle means content was lost: markdown-it-footnote 4.0.0 drops a nested
+ * inline footnote's content and leaves the outer footnote referencing itself.
+ * Only a return to a footnote on the current path counts, so one footnote
+ * referenced twice in a paragraph is not a cycle.
+ */
+function scanInline(token: Token, env: GateEnv): InlineScan {
   const footnotes = env.footnotes?.list ?? [];
-  return (token.children ?? []).some(
-    child =>
-      child.type === 'html_inline' ||
-      (child.type === 'footnote_ref' && containsHtml(footnotes[child.meta?.id]?.tokens))
-  );
+  const following = new Set<number>();
+  let cycle = false;
+  const followsToHtml = (ref: Token): boolean => {
+    const id = ref.meta?.id as number;
+    if (following.has(id)) {
+      cycle = true;
+      return false;
+    }
+    following.add(id);
+    const found = carries(footnotes[id]?.tokens);
+    following.delete(id);
+    return found;
+  };
+  const carries = (tokens: Token[] | null | undefined): boolean =>
+    (tokens ?? []).some(
+      child =>
+        isHtml(child) ||
+        (child.type === 'footnote_ref' && followsToHtml(child)) ||
+        carries(child.children)
+    );
+  const html = carries(token.children);
+  return { html, cycle };
 }
 
 /**
@@ -64,8 +94,11 @@ function collectHtmlRanges(tokens: Token[], env: GateEnv): void {
       record(token.map as LineRange | null);
       if (token.map) env.blocks.push([token.map[0], token.map[1]]);
     }
-    if (token.type === 'inline' && inlineCarriesHtml(token, env)) {
-      record(token.map as LineRange | null);
+    if (token.type === 'inline') {
+      const scan = scanInline(token, env);
+      // Lost content cannot be located, so it takes the unlocatable path.
+      if (scan.cycle) env.unlocatable = true;
+      if (scan.html) record(token.map as LineRange | null);
     }
   }
 }

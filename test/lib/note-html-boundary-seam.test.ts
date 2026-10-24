@@ -479,13 +479,23 @@ const FRAMES: readonly Form[] = [
   ['referenced footnote definition', p => `a[^1]\n\n[^1]: ${p}`],
   ['unreferenced footnote definition', p => `[^1]: ${p}`],
   ['inline footnote', p => `before ^[a ${p}] after`],
+  ['inline footnote in an image alt', p => `![a ^[${p}]](u)`],
+  ['nested inline footnote', p => `a ^[x ^[${p}]] b`],
 ];
 
+/**
+ * How a renderer that keeps what markdown-it loses would read the body.
+ * markdown-it-footnote 4.0.0 drops a nested inline footnote's content, so the
+ * oracle alone could never see it; read unnested, it is part of the outer one.
+ */
+function keepNestedFootnote(body: string): string {
+  return body.replace('a ^[x ^[', 'a ^[x ').replace(/\]\] b/, '] b');
+}
 describe.each(FRAMES)(
   'boundary — raw payload, %s, through generateNoteContent()',
   (_frame, place) => {
     it.each(TEXT_PAYLOADS)('$name', ({ text }) => {
-      expect(rawHtml(writtenBody(place(text)))).toEqual([]);
+      expect(rawHtml(keepNestedFootnote(writtenBody(place(text))))).toEqual([]);
     });
   }
 );
