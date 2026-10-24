@@ -80,7 +80,9 @@ async function save(note: ObsidianNote, outputs: string[]): Promise<SaveResponse
     validSender as chrome.runtime.MessageSender,
     sendResponse
   );
-  await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+  // The worst-case bodies take the gate through every iteration on all three
+  // outputs: 0.65 to 1.3 s locally, beyond waitFor's 1 s default on CI.
+  await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled(), { timeout: 10_000 });
   return sendResponse.mock.calls[0][0] as SaveResponse;
 }
 
