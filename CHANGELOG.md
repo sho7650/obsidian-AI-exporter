@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.12](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.11...v2.14.12) (2026-10-24)
+
+
+### Bug Fixes
+
+* keep page text from becoming live HTML in note bodies (DES-019) ([#552](https://github.com/sho7650/obsidian-AI-exporter/issues/552)) ([321020d](https://github.com/sho7650/obsidian-AI-exporter/commit/321020d34542489d6126b1b74b63b5c6578a6c97))
+
 ## [2.14.11](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.10...v2.14.11) (2026-10-24)
 
 
