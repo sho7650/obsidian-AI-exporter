@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.14](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.13...v2.14.14) (2026-10-24)
+
+
+### Documentation
+
+* sync docs with shipped Claude tool output and HTML escaping, rewrite Japanese copy ([#556](https://github.com/sho7650/obsidian-AI-exporter/issues/556)) ([1b10f9d](https://github.com/sho7650/obsidian-AI-exporter/commit/1b10f9d09936b5f22de5e6491325ef7a27543a83))
+
 ## [2.14.13](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.12...v2.14.13) (2026-10-24)
 
 
