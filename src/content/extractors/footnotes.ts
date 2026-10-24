@@ -3,19 +3,36 @@
  *
  * Platform extractors (NotebookLM, Perplexity) rewrite their inline citation
  * DOM into placeholder elements BEFORE sanitization:
- *   - <span data-footnote-ref="label">REF</span>   → `[^label]`   (footnoteRef rule)
- *   - <p data-footnote-def>[^label]: title</p>     → literal line (footnoteDef rule)
- * Both attributes are allow-listed in sanitizeHtml() and converted to Obsidian
- * footnote syntax by the Turndown rules in markdown-rules.ts.
+ *   - <span data-footnote-ref="label">REF</span>          → `[^label]`
+ *   - <p data-footnote-def="label" data-footnote-url="url">title</p>
+ *                                                     → `[^label]: [title](url)`
+ * The attributes are allow-listed in sanitizeHtml(), so the page can forge
+ * them too: the Turndown rules in markdown-rules.ts validate the label and
+ * escape the title and URL whatever their origin (DES-019 §4.8).
  */
 
 const FOOTNOTE_REF_ATTR = 'data-footnote-ref';
 
+/** Labels the footnote rules accept; anything else is not a footnote. */
+const FOOTNOTE_LABEL_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
+
+/** Whether `label` is a footnote label the rules will emit. */
+export function isFootnoteLabel(label: string | null): label is string {
+  return label !== null && FOOTNOTE_LABEL_PATTERN.test(label);
+}
+
+/** One footnote definition, as plain page text: the rule escapes it. */
+export interface FootnoteEntry {
+  readonly label: string;
+  readonly title: string;
+  readonly url?: string;
+}
+
 export interface CitationTransformResult {
   /** HTML with citation elements replaced by footnote-ref placeholder spans. */
   html: string;
-  /** Per-message footnote definition lines (`[^label]: title`), deduped. */
-  footnotes: string[];
+  /** Per-message footnote definitions, deduped. */
+  footnotes: FootnoteEntry[];
 }
 
 /**
@@ -27,9 +44,9 @@ export interface CitationTransformHooks {
   hasCitations(doc: Document): boolean;
   /**
    * Replace citation nodes with footnote-ref placeholders (mutating `doc`)
-   * and return the deduped footnote definition lines.
+   * and return the deduped footnote definitions.
    */
-  collectFootnotes(doc: Document): string[];
+  collectFootnotes(doc: Document): FootnoteEntry[];
 }
 
 /**
@@ -71,11 +88,27 @@ function escapeHtml(value: string): string {
 }
 
 /**
- * Escape Markdown link metacharacters in text.
- * Prevents injection of Markdown links via crafted titles.
+ * Escape a plain-text link label: link metacharacters, so a crafted title
+ * cannot end the label, and angle brackets, so it cannot start HTML. The
+ * backslash is escaped in the same pass (DES-019 §4.1, R1).
  */
 export function escapeMarkdownLink(text: string): string {
-  return text.replace(/[\\[\]()]/g, '\\$&');
+  return text.replace(/[\\[\]()<>]/g, '\\$&');
+}
+
+/**
+ * Normalise an http(s) URL for use inside `[title](url)` (DES-019 §4.5). The
+ * URL parser percent-encodes spaces and angle brackets; parentheses can end
+ * the destination and the parser leaves them in userinfo too, so they are
+ * encoded everywhere. Brackets are encoded only after the authority, since an
+ * IPv6 host needs its own and userinfo has them encoded already.
+ */
+export function toMarkdownSafeUrl(url: string): string {
+  const { href, pathname, search, hash } = new URL(url);
+  const split = href.length - (pathname + search + hash).length;
+  const authority = href.slice(0, split);
+  const rest = href.slice(split).replace(/\[/g, '%5B').replace(/\]/g, '%5D');
+  return (authority + rest).replace(/\(/g, '%28').replace(/\)/g, '%29');
 }
 
 /**
@@ -92,9 +125,14 @@ export function createFootnoteRef(doc: Document, label: string): HTMLSpanElement
 }
 
 /**
- * Wrap footnote definition lines in `<p data-footnote-def>` paragraphs so the
- * footnoteDef Turndown rule emits them as literal `[^label]: title` lines.
+ * Write footnote definitions as `<p data-footnote-def>` paragraphs for the
+ * footnoteDef Turndown rule, which builds the `[^label]: …` line.
  */
-export function footnoteDefsToHtml(footnotes: string[]): string {
-  return footnotes.map(line => `<p data-footnote-def="">${escapeHtml(line)}</p>`).join('');
+export function footnoteDefsToHtml(footnotes: readonly FootnoteEntry[]): string {
+  return footnotes
+    .map(({ label, title, url }) => {
+      const urlAttr = url === undefined ? '' : ` data-footnote-url="${escapeHtml(url)}"`;
+      return `<p data-footnote-def="${escapeHtml(label)}"${urlAttr}>${escapeHtml(title)}</p>`;
+    })
+    .join('');
 }

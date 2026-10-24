@@ -16,7 +16,7 @@
 import { htmlToMarkdown } from './markdown-rules';
 import { buildSourceMap } from '../lib/source-map';
 import { isHttpUrl } from '../lib/validation';
-import { escapeMarkdownLink } from './extractors/footnotes';
+import { escapeMarkdownLink, toMarkdownSafeUrl } from './extractors/footnotes';
 import type { DeepResearchLinks, DeepResearchSource } from '../lib/types';
 
 /**
@@ -31,7 +31,8 @@ const STANDALONE_CITATION_PATTERN =
   /<sup[^>]*?data-turn-source-index="(\d+)"[^>]*?>[\s\S]*?<\/sup>/gi;
 
 /**
- * Sanitize URL for use in footnote links.
+ * Sanitize URL for use in footnote links: '' unless http(s), else the shared
+ * normaliser's output, which nothing in it can end the link (DES-019 §4.5).
  *
  * Allowlist (http/https via isHttpUrl) rather than a scheme denylist:
  * denylists miss unlisted schemes (file:, mailto:, about:, ...) and are
@@ -39,7 +40,7 @@ const STANDALONE_CITATION_PATTERN =
  */
 function sanitizeUrl(url: string): string {
   const trimmed = url.trim();
-  return isHttpUrl(trimmed) ? trimmed : '';
+  return isHttpUrl(trimmed) ? toMarkdownSafeUrl(trimmed) : '';
 }
 
 /**

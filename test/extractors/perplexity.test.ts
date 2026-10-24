@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PerplexityExtractor } from '../../src/content/extractors/perplexity';
 import { htmlToMarkdown } from '../../src/content/markdown';
+import { neutralizeLiveHtml } from '../../src/lib/html-gate';
 import { sanitizeHtml } from '../../src/lib/sanitize';
 import {
   loadFixture,
@@ -203,7 +204,7 @@ describe('PerplexityExtractor', () => {
       const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
       // Assistant message is messages[1] → footnote label prefix m1-
       expect(assistantMsg?.content).toContain('data-footnote-ref="m1-1"');
-      expect(assistantMsg?.content).toContain(
+      expect(htmlToMarkdown(assistantMsg?.content ?? '')).toContain(
         '[^m1-1]: [biccamera.co](https://www.biccamera.co.jp/apple/applecare/)'
       );
       // The reported bug: pill text glued to prose as "domain+N"
@@ -226,7 +227,7 @@ describe('PerplexityExtractor', () => {
       expect(result.success).toBe(true);
       const assistantMsg = result.data?.messages.find(m => m.role === 'assistant');
       expect(assistantMsg?.content).toContain('data-footnote-ref="m1-1"');
-      expect(assistantMsg?.content).toContain(
+      expect(htmlToMarkdown(assistantMsg?.content ?? '')).toContain(
         '[^m1-1]: [AppleCare+: How to extend your Apple warranty]' +
           '(https://www.macworld.com/article/230521/applecare-warranty-faq.html)'
       );
@@ -248,10 +249,12 @@ describe('PerplexityExtractor', () => {
       const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
       // Same URL → same label, single definition
       expect(content.match(/data-footnote-ref="m1-1"/g)).toHaveLength(2);
-      expect(content.match(/\[\^m1-1\]: /g)).toHaveLength(1);
+      expect(htmlToMarkdown(content).match(/\[\^m1-1\]: /g)).toHaveLength(1);
       // Different URL → next sequential label
       expect(content).toContain('data-footnote-ref="m1-2"');
-      expect(content).toContain('[^m1-2]: [other.example](https://other.example.org/b)');
+      expect(htmlToMarkdown(content)).toContain(
+        '[^m1-2]: [other.example](https://other.example.org/b)'
+      );
     });
 
     it('produces unique footnote labels across messages', async () => {
@@ -311,7 +314,9 @@ describe('PerplexityExtractor', () => {
       const result = await extractor.extract();
       const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
       // "+2" suffix must be stripped from the title
-      expect(content).toContain('[^m1-1]: [netsetsu](https://netsetsu.com/mac-applecare-later/)');
+      expect(htmlToMarkdown(content)).toContain(
+        '[^m1-1]: [netsetsu](https://netsetsu.com/mac-applecare-later/)'
+      );
     });
 
     it('renders footnote syntax through the markdown pipeline', async () => {
@@ -360,7 +365,7 @@ describe('PerplexityExtractor', () => {
       const result = await extractor.extract();
       const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
       expect(content).toContain('data-footnote-ref="m1-1"');
-      expect(content).toContain('[^m1-1]: [example](https://example.com/modern)');
+      expect(htmlToMarkdown(content)).toContain('[^m1-1]: [example](https://example.com/modern)');
       expect(content).not.toContain('legacysite');
     });
 
@@ -412,7 +417,9 @@ describe('PerplexityExtractor', () => {
       ]);
       const result = await extractor.extract();
       const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
-      expect(content).toContain('[^m1-1]: [Full Article Title](https://example.com/article)');
+      expect(htmlToMarkdown(content)).toContain(
+        '[^m1-1]: [Full Article Title](https://example.com/article)'
+      );
       expect(content.match(/data-footnote-ref="m1-1"/g)).toHaveLength(2);
     });
 
@@ -437,6 +444,24 @@ describe('PerplexityExtractor', () => {
       expect(defLine).toContain('Intro to C:\\\\Windows\\\\ \\[draft\\] \\(v2\\)');
     });
 
+    it('escapes HTML in a citation title (DES-019 §4.8)', async () => {
+      setPerplexityLocation('test-slug');
+      const anchor = createPerplexityInlineCitation(
+        'https://example.com/x',
+        'example',
+        '<iframe src=x>'
+      );
+      createPerplexityPage('test-slug', [
+        { role: 'user', content: 'Escape test' },
+        { role: 'assistant', content: `<p>Text.${anchor}</p>` },
+      ]);
+      const result = await extractor.extract();
+      const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
+      const markdown = htmlToMarkdown(content);
+      expect(markdown).toContain('[^m1-1]: [\\<iframe src=x\\>](https://example.com/x)');
+      expect(neutralizeLiveHtml(markdown)).toBe(markdown);
+    });
+
     it('percent-escapes parentheses and spaces in footnote URLs', async () => {
       setPerplexityLocation('test-slug');
       const pill = createPerplexityPillCitation(
@@ -450,8 +475,10 @@ describe('PerplexityExtractor', () => {
       ]);
       const result = await extractor.extract();
       const content = result.data?.messages.find(m => m.role === 'assistant')?.content ?? '';
-      expect(content).toContain('(https://en.wikipedia.org/wiki/Mercury_%28planet%29)');
-      expect(content).toContain('(https://example.com/my%20page)');
+      expect(htmlToMarkdown(content)).toContain(
+        '(https://en.wikipedia.org/wiki/Mercury_%28planet%29)'
+      );
+      expect(htmlToMarkdown(content)).toContain('(https://example.com/my%20page)');
     });
 
     it('preserves ordinary (non-citation) links in prose', async () => {
@@ -942,7 +969,9 @@ describe('PerplexityExtractor', () => {
       const reportMsg = result.data!.messages[1];
       expect(reportMsg.content).toContain('data-footnote-ref="m1-1"');
       // URL is normalized via new URL().href (adds the trailing slash)
-      expect(reportMsg.content).toContain('[^m1-1]: [source](https://example.com/)');
+      expect(htmlToMarkdown(reportMsg.content)).toContain(
+        '[^m1-1]: [source](https://example.com/)'
+      );
       expect(reportMsg.content).not.toContain('source+1');
     });
 

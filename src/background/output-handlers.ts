@@ -5,8 +5,9 @@
  */
 
 import { extractErrorMessage } from '../lib/error-utils';
-import { BYTES_PER_MIB, DEFAULT_NOTE_SIZE_MIB } from '../lib/constants';
-import { generateNoteContent } from '../lib/note-generator';
+import { DEFAULT_NOTE_SIZE_MIB } from '../lib/constants';
+import { renderNote } from '../lib/note-generator';
+import { isOverNoteSize, noteSizeError } from './note-size';
 import { handleSave } from './obsidian-handlers';
 import { resolveImagesForFile, stripImagePlaceholders } from '../lib/image-output';
 import { bytesToBase64 } from '../lib/image-utils';
@@ -18,6 +19,10 @@ import type {
   MultiOutputResponse,
   OffscreenClipboardMessage,
 } from '../lib/types';
+
+function noteSizeCap(settings: ExtensionSettings): number {
+  return settings.maxNoteSizeMiB ?? DEFAULT_NOTE_SIZE_MIB;
+}
 
 /** Note filename without its `.md` extension — the base for image filenames. */
 function noteBaseName(fileName: string): string {
@@ -166,7 +171,11 @@ async function handleDownloadToFile(
         ? resolveImagesForFile(note.body, images, noteBaseName(note.fileName))
         : { body: stripImagePlaceholders(note.body), files: [] };
 
-    const content = generateNoteContent({ ...note, body }, settings);
+    const { content, gatedBodyLength } = renderNote({ ...note, body }, settings);
+    const capMiB = noteSizeCap(settings);
+    if (isOverNoteSize(gatedBodyLength, capMiB)) {
+      return { destination: 'file', success: false, error: noteSizeError(gatedBodyLength, capMiB) };
+    }
     const mdError = await downloadDataUrl(
       `data:text/markdown;charset=utf-8;base64,${stringToBase64(content)}`,
       note.fileName
@@ -210,7 +219,15 @@ async function handleCopyToClipboard(
     // Clipboard output never references images: strip any placeholders so the
     // copied markdown stays clean (issue #186).
     const clipboardNote = { ...note, body: stripImagePlaceholders(note.body) };
-    const content = generateNoteContent(clipboardNote, settings);
+    const { content, gatedBodyLength } = renderNote(clipboardNote, settings);
+    const capMiB = noteSizeCap(settings);
+    if (isOverNoteSize(gatedBodyLength, capMiB)) {
+      return {
+        destination: 'clipboard',
+        success: false,
+        error: noteSizeError(gatedBodyLength, capMiB),
+      };
+    }
 
     await ensureOffscreenDocument();
 
@@ -257,10 +274,7 @@ function rejectOversizedNote(
   outputs: OutputDestination[],
   capMiB: number
 ): MultiOutputResponse {
-  const sizeMiB = (note.body.length / BYTES_PER_MIB).toFixed(1);
-  const error =
-    `Note is ${sizeMiB} MiB, above the ${capMiB} MiB limit. ` +
-    'Raise "Maximum note size" in Settings and sync again.';
+  const error = noteSizeError(note.body.length, capMiB);
   return {
     results: outputs.map(destination => ({ destination, success: false, error })),
     allSuccessful: false,
@@ -273,8 +287,8 @@ export async function handleMultiOutput(
   outputs: OutputDestination[],
   settings: ExtensionSettings
 ): Promise<MultiOutputResponse> {
-  const capMiB = settings.maxNoteSizeMiB ?? DEFAULT_NOTE_SIZE_MIB;
-  if (note.body.length > capMiB * BYTES_PER_MIB) {
+  const capMiB = noteSizeCap(settings);
+  if (isOverNoteSize(note.body.length, capMiB)) {
     return rejectOversizedNote(note, outputs, capMiB);
   }
 

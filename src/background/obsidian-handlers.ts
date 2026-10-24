@@ -6,7 +6,10 @@
 
 import { ObsidianApiClient } from '../lib/obsidian-api';
 import { getErrorMessage } from '../lib/error-utils';
-import { generateNoteContent } from '../lib/note-generator';
+import { renderNote } from '../lib/note-generator';
+import { countLines, neutralizeLiveHtml } from '../lib/html-gate';
+import { isOverNoteSize, noteSizeError } from './note-size';
+import { DEFAULT_NOTE_SIZE_MIB } from '../lib/constants';
 import {
   resolvePathTemplate,
   containsPathTraversal,
@@ -78,6 +81,13 @@ function rememberAppendPath(conversationId: string, path: string): void {
   appendPathMemo.set(conversationId, path);
 }
 
+// The gate returns null for more than one reason and does not say which, so
+// the message names both: only the first is something the user can fix.
+const APPEND_REFUSED_HTML =
+  'Cannot append: either the existing note ends inside an unclosed HTML block (such as <pre>, ' +
+  '<script> or an HTML comment), which you can close in Obsidian, or the new messages contain ' +
+  'HTML that cannot be added safely. Turn off append mode for this save to write the note in full.';
+
 /**
  * Append the new messages to the note found at `path`, unless the capture is
  * truncated and would shrink it (ADR-033).
@@ -99,13 +109,36 @@ async function appendToExistingNote(
   if (appendResult === null) {
     return { success: true, isNewFile: false, messagesAppended: 0 };
   }
+  const { frontmatter, existingBody, tail, eol } = appendResult;
   // Flatten first, restore the file's own line ending last (ADR-026).
   // Reversing these two hands `flattenLargeCallouts()` lines ending in
   // '\r', which its header pattern cannot match past — the callout label
   // was dropped and a raw `[!TYPE] Label` left in the body, which in turn
   // made the message invisible to countExistingMessages() (#406, #407).
-  const flattened = maybeFlatten(appendResult.content, settings);
-  await client.putFile(path, applyLineEnding(flattened, appendResult.eol));
+  //
+  // The two parts are flattened apart, which gives the same result as
+  // flattening them joined: a run ends at any line not starting with `>`, so
+  // none crosses the blank separator. The gate then reads the new messages in
+  // the context of the existing body but changes only their lines.
+  const flatExisting = maybeFlatten(existingBody, settings);
+  const joined = `${flatExisting}\n\n${maybeFlatten(tail, settings)}`;
+  const gated = neutralizeLiveHtml(joined, { repairFromLine: countLines(flatExisting) + 1 });
+  if (gated === null) {
+    console.warn('[G2O Background] append refused: open html block or unparseable note', {
+      id: note.frontmatter.id,
+    });
+    return { success: false, error: APPEND_REFUSED_HTML };
+  }
+
+  const body = applyLineEnding(gated, eol);
+  const capMiB = settings.maxNoteSizeMiB ?? DEFAULT_NOTE_SIZE_MIB;
+  if (isOverNoteSize(body.length, capMiB)) {
+    return {
+      success: false,
+      error: `${noteSizeError(body.length, capMiB)} Or turn off append mode for this save.`,
+    };
+  }
+  await client.putFile(path, applyLineEnding(`${frontmatter}\n`, eol) + body);
   return { success: true, isNewFile: false, messagesAppended: appendResult.messagesAppended };
 }
 
@@ -230,14 +263,22 @@ async function saveFreshNote(
   const refusal = refuseTruncatedOverwrite(note, target.existingMessageCount);
   if (refusal) return refusal;
 
-  const { note: saveNote, failedImages } = await prepareNoteImages(
-    client,
-    settings,
-    note,
-    templateVariables
+  // Nothing is written until the size check passes, images included, so a
+  // rejected note leaves no orphaned images in the vault (DES-019 §4.0).
+  const resolved = resolveNoteImages(settings, note, templateVariables);
+  const flattenedBody = maybeFlatten(resolved.note.body, settings);
+  const { content, gatedBodyLength } = renderNote(
+    { ...resolved.note, body: flattenedBody },
+    settings
   );
-  const flattenedBody = maybeFlatten(saveNote.body, settings);
-  const content = generateNoteContent({ ...saveNote, body: flattenedBody }, settings);
+  const capMiB = settings.maxNoteSizeMiB ?? DEFAULT_NOTE_SIZE_MIB;
+  if (isOverNoteSize(gatedBodyLength, capMiB)) {
+    return { success: false, error: noteSizeError(gatedBodyLength, capMiB) };
+  }
+  const failedImages = [
+    ...resolved.failedImages,
+    ...(await writeNoteImages(client, resolved.files)),
+  ];
   await client.putFile(target.path, content);
 
   const warning = imageWarning(failedImages);
@@ -249,10 +290,19 @@ async function saveFreshNote(
   };
 }
 
-/** Outcome of the image-writing pass: the note to save, plus any images lost. */
-interface PreparedNote {
+/** Image files to write, at their vault paths. */
+interface ImageWrite {
+  path: string;
+  fileName: string;
+  data: string;
+  mimeType: string;
+}
+
+/** A fresh save's images resolved, before anything is written. */
+interface ResolvedNote {
   note: ObsidianNote;
-  /** File names of images that could not be written (issue #376) */
+  files: readonly ImageWrite[];
+  /** File names of images that could not be saved (issue #376) */
   failedImages: readonly string[];
 }
 
@@ -267,48 +317,57 @@ function imageWarning(failedImages: readonly string[]): string | undefined {
 }
 
 /**
- * For a fresh (non-append) save, write captured images to the vault and return
- * a note whose body embeds them via `![[filename]]` wikilinks. When image
- * export is disabled or there are no images, image placeholders are stripped.
- *
- * Image-write failures never block the note (DES-017 principle), but they are
- * no longer silent: the failed file names are returned so the caller can
- * surface them to the user (issue #376).
+ * For a fresh (non-append) save, return a note whose body embeds its captured
+ * images via `![[filename]]` wikilinks, plus the files to write. Writes
+ * nothing. When image export is disabled or there are no images, image
+ * placeholders are stripped.
  */
-async function prepareNoteImages(
-  client: ObsidianApiClient,
+function resolveNoteImages(
   settings: ExtensionSettings,
   note: ObsidianNote,
   templateVariables: Record<string, string>
-): Promise<PreparedNote> {
+): ResolvedNote {
   const images = settings.enableImageExport ? (note.images ?? []) : [];
   if (images.length === 0) {
     const stripped = note.body.includes('g2o-image://')
       ? { ...note, body: stripImagePlaceholders(note.body) }
       : note;
-    return { note: stripped, failedImages: [] };
+    return { note: stripped, files: [], failedImages: [] };
   }
 
   const baseName = note.fileName.replace(/\.md$/i, '');
   const { body, files } = resolveImagesForObsidian(note.body, images, baseName);
 
   const imageDir = resolvePathTemplate(settings.imageVaultPath, templateVariables);
+  const writes: ImageWrite[] = [];
   const failedImages: string[] = [];
   for (const file of files) {
     const path = imageDir ? `${imageDir}/${file.fileName}` : file.fileName;
-    if (containsPathTraversal(path)) {
-      failedImages.push(file.fileName);
-      continue;
-    }
+    if (containsPathTraversal(path)) failedImages.push(file.fileName);
+    else writes.push({ path, fileName: file.fileName, data: file.data, mimeType: file.mimeType });
+  }
+  return { note: { ...note, body }, files: writes, failedImages };
+}
+
+/**
+ * Write the resolved image files. Image-write failures never block the note
+ * (DES-017 principle), but they are no longer silent: the failed file names
+ * are returned so the caller can surface them to the user (issue #376).
+ */
+async function writeNoteImages(
+  client: ObsidianApiClient,
+  files: readonly ImageWrite[]
+): Promise<string[]> {
+  const failedImages: string[] = [];
+  for (const file of files) {
     try {
-      await client.putBinaryFile(path, base64ToBytes(file.data), file.mimeType);
+      await client.putBinaryFile(file.path, base64ToBytes(file.data), file.mimeType);
     } catch (error) {
       console.warn('[G2O Background] Image write failed:', file.fileName, error);
       failedImages.push(file.fileName);
     }
   }
-
-  return { note: { ...note, body }, failedImages };
+  return failedImages;
 }
 
 /** Probe attempts: original + hash suffix + a few counters for hash collisions */

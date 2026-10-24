@@ -41,6 +41,13 @@ export interface ConversationMessage {
   htmlContent?: string;
   /** Tool-use content (web search, code interpreter) — rendered as separate callout */
   toolContent?: string;
+  /**
+   * How a user message's `content` was produced (DES-019 §4.4). `'text'`
+   * (default) is plain text, escaped when the note is built; `'markdown'` was
+   * converted from HTML with escaping already applied, and is never escaped
+   * again (R1). Set from how the content was extracted, not from the role.
+   */
+  contentFormat?: 'text' | 'markdown';
   /** Zero-based message order in conversation */
   index: number;
 }

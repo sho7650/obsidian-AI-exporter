@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   htmlToMarkdown,
-  escapeAngleBrackets,
   escapeUserText,
   generateFileName,
   generateContentHash,
@@ -9,6 +8,7 @@ import {
   convertDeepResearchContent,
 } from '../../src/content/markdown';
 import { sanitizeHtml } from '../../src/lib/sanitize';
+import { neutralizeLiveHtml } from '../../src/lib/html-gate';
 import { MAX_MATH_LENGTH } from '../../src/lib/constants';
 import type { ConversationData, TemplateOptions, DeepResearchLinks } from '../../src/lib/types';
 
@@ -22,7 +22,7 @@ describe('escapeUserText — math dollar escaping (Obsidian hang fix)', () => {
     expect(escapeUserText('cat "$$TMP"')).toBe('cat "\\$\\$TMP"');
   });
 
-  it('still escapes angle brackets like escapeAngleBrackets', () => {
+  it('still escapes angle brackets', () => {
     expect(escapeUserText('a > b')).toBe('a \\> b');
   });
 
@@ -36,13 +36,6 @@ describe('escapeUserText — math dollar escaping (Obsidian hang fix)', () => {
   });
 });
 
-describe('escapeAngleBrackets — leaves $ untouched (assistant math preserved)', () => {
-  it('does not escape $ so KaTeX math survives', () => {
-    expect(escapeAngleBrackets('$$E = mc^2$$')).toBe('$$E = mc^2$$');
-    expect(escapeAngleBrackets('inline $x^2$ math')).toBe('inline $x^2$ math');
-  });
-});
-
 describe('htmlToMarkdown — image placeholders', () => {
   it('converts a data-g2o-image marker to a g2o-image placeholder link', () => {
     const md = htmlToMarkdown('<img data-g2o-image="img-1" alt="（AI 生成）">');
@@ -52,6 +45,22 @@ describe('htmlToMarkdown — image placeholders', () => {
   it('handles a marker with no alt text', () => {
     const md = htmlToMarkdown('<img data-g2o-image="img-2">');
     expect(md).toContain('![](g2o-image://img-2)');
+  });
+
+  it('escapes the alt text (DES-019 §4.3, P9)', () => {
+    expect(htmlToMarkdown('<img data-g2o-image="img-1" alt="a]\\<x>">')).toBe(
+      '![a\\]\\\\\\<x\\>](g2o-image://img-1)'
+    );
+  });
+
+  it.each([
+    ['characters outside the set', 'x)(y'],
+    ['more than 128 characters', 'a'.repeat(129)],
+  ])('leaves a marker whose id has %s to the ordinary image rule', (_name, id) => {
+    expect(htmlToMarkdown(`<img data-g2o-image="${id}" alt="<x>">`)).toBe('');
+    expect(htmlToMarkdown(`<img data-g2o-image="${id}" alt="<x>" src="https://e.com/a.png">`)).toBe(
+      '![\\<x\\>](https://e.com/a.png)'
+    );
   });
 
   it('places the placeholder on its own line within surrounding content', () => {
@@ -432,45 +441,189 @@ describe('htmlToMarkdown', () => {
       expect(result).toBe('Use `<span>` for this');
     });
   });
+
+  describe('escaping at generation time (DES-019 §4.2)', () => {
+    it.each([
+      // F2: literal backticks in prose are not a code span to Obsidian.
+      ['literal backticks around a tag', '<p>`&lt;iframe&gt;`</p>', '\\`\\<iframe\\>\\`'],
+      ['one backslash before a tag', '<p>\\&lt;iframe&gt;</p>', '\\\\\\<iframe\\>'],
+      ['two backslashes before a tag', '<p>\\\\&lt;iframe&gt;</p>', '\\\\\\\\\\<iframe\\>'],
+      // P14: a leading `>` gets exactly one backslash, also after an inline element.
+      ['a leading `>`', '<p>&gt; quoted</p>', '\\> quoted'],
+      ['a `>` right after an inline element', '<p><b>x</b>&gt; y</p>', '**x**\\> y'],
+      ['no double escape', '<p>&lt;module&gt;</p>', '\\<module\\>'],
+    ])('%s', (_name, html, expected) => {
+      expect(htmlToMarkdown(html)).toBe(expected);
+    });
+  });
+  describe('custom rules escape the page text they emit (DES-019 §4.3)', () => {
+    it.each([
+      ['LaTeX containing `$`', 'a$<iframe src=x>', 'a\\$\\<iframe src=x\\>'],
+      ['LaTeX with a backslash before `<`', 'a$\\<b>', 'a\\$\\\\\\<b\\>'],
+    ])('escapes the plain-text math fallback for %s (P9)', (_name, latex, expected) => {
+      expect(htmlToMarkdown(`<p><span data-math="${latex}">k</span></p>`)).toBe(expected);
+    });
+
+    it('escapes over-long LaTeX shown as plain text (P9)', () => {
+      const latex = `<iframe src=x>${'x'.repeat(MAX_MATH_LENGTH)}`;
+      expect(htmlToMarkdown(`<p><span data-math="${latex}">k</span></p>`)).toBe(
+        `\\<iframe src=x\\>${'x'.repeat(MAX_MATH_LENGTH)}`
+      );
+    });
+
+    it.each([
+      ['a<b', '$a\\lt b$'],
+      ['a>b', '$a\\gt b$'],
+      ['\\<x>', '$\\\\lt x\\gt $'],
+    ])('writes %s in math as \\lt / \\gt, leaving no angle bracket', (latex, expected) => {
+      expect(htmlToMarkdown(`<p><span data-math="${latex}">k</span></p>`)).toBe(expected);
+    });
+
+    it('records inline code between prose dollars as emitted (O1, checked in Obsidian)', () => {
+      // Whether Obsidian reads this as math holding a live `<x>` is open item O1;
+      // the output is pinned so a change to it is noticed.
+      expect(htmlToMarkdown('<p>$a <code>&lt;x&gt;</code> b$</p>')).toBe('$a `<x>` b$');
+    });
+
+    it('does the same in display math', () => {
+      expect(htmlToMarkdown('<div data-math="a&lt;b">k</div>')).toBe('$$\na\\lt b\n$$');
+    });
+
+    it.each([
+      // P12: Turndown's built-ins write alt and title without the instance escape().
+      [
+        'image alt and title',
+        '<img src="a.png" alt="<x>" title="<y>">',
+        '![\\<x\\>](a.png "\\<y\\>")',
+      ],
+      [
+        'backslashes before brackets in alt and title',
+        '<img src="a.png" alt="\\<x> [z]" title="\\\\<y> &quot;q&quot;">',
+        '![\\\\\\<x\\> \\[z\\]](a.png "\\\\\\\\\\<y\\> \\"q\\"")',
+      ],
+      ['an image without src', '<img alt="x">', ''],
+      ['link title', '<a href="https://e.com" title="<y>">t</a>', '[t](https://e.com "\\<y\\>")'],
+      [
+        'parentheses in a destination',
+        '<a href="https://e.com/a(b)">t</a>',
+        '[t](https://e.com/a\\(b\\))',
+      ],
+      // P15: an even run before `<` would end the destination and leave the tag live.
+      [
+        'a tag behind a backslash in a destination with a space',
+        '<a href="a b\\<iframe src=//evil\\>">t</a>',
+        '[t](<a b\\\\\\<iframe src=//evil\\\\\\>>)',
+      ],
+      [
+        'the same in an image source',
+        '<img src="a b\\<iframe src=//evil\\>" alt="x">',
+        '![x](<a b\\\\\\<iframe src=//evil\\\\\\>>)',
+      ],
+    ])('escapes %s (P12, P15)', (_name, html, expected) => {
+      expect(htmlToMarkdown(html)).toBe(expected);
+    });
+
+    it('delimits inline code so a backtick in it cannot end the span (P10)', () => {
+      expect(htmlToMarkdown('<p>see <code>a`&lt;iframe&gt;</code> here</p>')).toBe(
+        'see ``a`<iframe>`` here'
+      );
+    });
+
+    it('escapes a table cell once', () => {
+      const html =
+        '<table><thead><tr><th>&lt;iframe src=x&gt;</th></tr></thead>' +
+        '<tbody><tr><td>\\&lt;b&gt;</td></tr></tbody></table>';
+      expect(htmlToMarkdown(html)).toBe('| \\<iframe src=x\\> |\n| --- |\n| \\\\\\<b\\> |');
+    });
+  });
+
+  describe('footnote placeholders are validated and escaped (DES-019 §4.8, P13)', () => {
+    const LONG = 'a'.repeat(65);
+
+    it.each([
+      ['a valid label', '<p>x<span data-footnote-ref="m1-2">REF</span></p>', 'x[^m1-2]'],
+      ['a label with markup', '<p>x<span data-footnote-ref="a]&lt;b">REF</span></p>', 'x'],
+      ['a label over 64 characters', `<p>x<span data-footnote-ref="${LONG}">REF</span></p>`, 'x'],
+    ])('footnoteRef: %s', (_name, html, expected) => {
+      expect(htmlToMarkdown(sanitizeHtml(html))).toBe(expected);
+    });
+
+    it('drops an invalid reference inside a table cell', () => {
+      const html =
+        '<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>' +
+        'a<span data-footnote-ref="m1-1">REF</span>' +
+        'b<span data-footnote-ref="x&lt;y">REF</span></td></tr></tbody></table>';
+      expect(htmlToMarkdown(sanitizeHtml(html))).toBe('| h |\n| --- |\n| a[^m1-1]b |');
+    });
+
+    it.each([
+      [
+        'a linked title, escaped once with its URL normalised',
+        '<p data-footnote-def="m1-1" data-footnote-url="https://e.com/a(b)">\\&lt;i&gt; [x]</p>',
+        '[^m1-1]: [\\\\\\<i\\> \\[x\\]](https://e.com/a%28b%29)',
+      ],
+      [
+        'a title without a URL',
+        '<p data-footnote-def="m1-1">Source &lt;iframe&gt;</p>',
+        '[^m1-1]: Source \\<iframe\\>',
+      ],
+      [
+        'a title whose URL is not http(s)',
+        '<p data-footnote-def="m1-1" data-footnote-url="javascript:x">T</p>',
+        '[^m1-1]: T',
+      ],
+      [
+        'an invalid label, converted as ordinary text',
+        '<p data-footnote-def="a b">[^a]: &lt;i&gt;</p>',
+        '\\[^a\\]: \\<i\\>',
+      ],
+    ])('footnoteDef: %s', (_name, html, expected) => {
+      const markdown = htmlToMarkdown(sanitizeHtml(html));
+      expect(markdown).toBe(expected);
+      expect(neutralizeLiveHtml(markdown)).toBe(markdown);
+    });
+  });
 });
 
-describe('escapeAngleBrackets', () => {
+// Moved from escapeAngleBrackets, deleted with the assistant post-pass
+// (DES-019 §4.2). None of these inputs contains `$`, so the expectations hold.
+describe('escapeUserText — fences, inline code and blockquotes', () => {
   describe('basic escaping', () => {
     it('escapes bare angle brackets', () => {
-      expect(escapeAngleBrackets('<module>')).toBe('\\<module\\>');
+      expect(escapeUserText('<module>')).toBe('\\<module\\>');
     });
 
     it('escapes nested angle brackets', () => {
-      expect(escapeAngleBrackets('<Generic<T>>')).toBe('\\<Generic\\<T\\>\\>');
+      expect(escapeUserText('<Generic<T>>')).toBe('\\<Generic\\<T\\>\\>');
     });
 
     it('escapes multiple angle brackets per line', () => {
-      expect(escapeAngleBrackets('<a> and <b>')).toBe('\\<a\\> and \\<b\\>');
+      expect(escapeUserText('<a> and <b>')).toBe('\\<a\\> and \\<b\\>');
     });
 
     it('returns plain text unchanged', () => {
-      expect(escapeAngleBrackets('plain text')).toBe('plain text');
+      expect(escapeUserText('plain text')).toBe('plain text');
     });
 
     it('returns empty string unchanged', () => {
-      expect(escapeAngleBrackets('')).toBe('');
+      expect(escapeUserText('')).toBe('');
     });
   });
 
   describe('fenced code block preservation', () => {
     it('preserves angle brackets in fenced code blocks', () => {
       const input = '```\n<div>test</div>\n```';
-      expect(escapeAngleBrackets(input)).toBe('```\n<div>test</div>\n```');
+      expect(escapeUserText(input)).toBe('```\n<div>test</div>\n```');
     });
 
     it('preserves angle brackets in fenced code blocks with language', () => {
       const input = '```typescript\nconst x: Array<string> = [];\n```';
-      expect(escapeAngleBrackets(input)).toBe(input);
+      expect(escapeUserText(input)).toBe(input);
     });
 
     it('preserves fenced code blocks inside blockquotes', () => {
       const input = '> ```\n> <code>\n> ```';
-      expect(escapeAngleBrackets(input)).toBe(input);
+      expect(escapeUserText(input)).toBe(input);
     });
 
     // Issue #433, second order: the length-blind fence toggle thought the
@@ -482,7 +635,7 @@ describe('escapeAngleBrackets', () => {
 
       it('preserves angle brackets across an inner fence', () => {
         const input = [`${F4}markdown`, `${F3}html`, '<div>a</div>', F3, F4].join('\n');
-        expect(escapeAngleBrackets(input)).toBe(input);
+        expect(escapeUserText(input)).toBe(input);
       });
 
       it('still escapes text that follows the closing fence', () => {
@@ -490,28 +643,28 @@ describe('escapeAngleBrackets', () => {
         const expected = [`${F4}md`, `${F3}html`, '<div>a</div>', F3, F4, 'after \\<span\\>'].join(
           '\n'
         );
-        expect(escapeAngleBrackets(input)).toBe(expected);
+        expect(escapeUserText(input)).toBe(expected);
       });
 
       it('does not let an inner fence with an info string close the block', () => {
         const input = [F3, `${F3}html`, '<div>a</div>'].join('\n');
-        expect(escapeAngleBrackets(input)).toBe(input);
+        expect(escapeUserText(input)).toBe(input);
       });
 
       it('preserves a tilde block a user pasted', () => {
         const input = ['~~~md', '<div>a</div>', '~~~'].join('\n');
-        expect(escapeAngleBrackets(input)).toBe(input);
+        expect(escapeUserText(input)).toBe(input);
       });
     });
   });
 
   describe('inline code preservation', () => {
     it('preserves angle brackets in inline code', () => {
-      expect(escapeAngleBrackets('Use `<span>` for this')).toBe('Use `<span>` for this');
+      expect(escapeUserText('Use `<span>` for this')).toBe('Use `<span>` for this');
     });
 
     it('escapes outside inline code but preserves inside', () => {
-      expect(escapeAngleBrackets('The `<div>` element and <module>')).toBe(
+      expect(escapeUserText('The `<div>` element and <module>')).toBe(
         'The `<div>` element and \\<module\\>'
       );
     });
@@ -519,11 +672,11 @@ describe('escapeAngleBrackets', () => {
 
   describe('blockquote marker preservation', () => {
     it('preserves blockquote markers', () => {
-      expect(escapeAngleBrackets('> text with <tag>')).toBe('> text with \\<tag\\>');
+      expect(escapeUserText('> text with <tag>')).toBe('> text with \\<tag\\>');
     });
 
     it('preserves nested blockquote markers', () => {
-      expect(escapeAngleBrackets('> > nested <tag>')).toBe('> > nested \\<tag\\>');
+      expect(escapeUserText('> > nested <tag>')).toBe('> > nested \\<tag\\>');
     });
   });
 
@@ -531,13 +684,13 @@ describe('escapeAngleBrackets', () => {
     it('handles text before and after fenced code block', () => {
       const input = 'Before <module>\n```\n<div>\n```\nAfter <span>';
       const expected = 'Before \\<module\\>\n```\n<div>\n```\nAfter \\<span\\>';
-      expect(escapeAngleBrackets(input)).toBe(expected);
+      expect(escapeUserText(input)).toBe(expected);
     });
 
     it('handles inline code mixed with bare angles', () => {
       const input = '`<a>` then <b> then `<c>`';
       const expected = '`<a>` then \\<b\\> then `<c>`';
-      expect(escapeAngleBrackets(input)).toBe(expected);
+      expect(escapeUserText(input)).toBe(expected);
     });
   });
 });
@@ -1064,7 +1217,7 @@ describe('convertDeepResearchContent', () => {
     expect(result).toContain('[^1]');
     // v3.0: References section with footnote definitions
     expect(result).toContain('# References');
-    expect(result).toContain('[^1]: [Source](https://example.com)');
+    expect(result).toContain('[^1]: [Source](https://example.com/)');
   });
 
   it('removes sources carousel', () => {
@@ -1131,9 +1284,9 @@ describe('convertDeepResearchContent', () => {
 
     const result = convertDeepResearchContent(html, links);
 
-    expect(result).toContain('[^1]: [A](https://a.com)');
-    expect(result).toContain('[^2]: [B](https://b.com)');
-    expect(result).toContain('[^3]: [C](https://c.com)');
+    expect(result).toContain('[^1]: [A](https://a.com/)');
+    expect(result).toContain('[^2]: [B](https://b.com/)');
+    expect(result).toContain('[^3]: [C](https://c.com/)');
   });
 
   it('rejects dangerous URL schemes in source references', () => {
@@ -1157,7 +1310,7 @@ describe('convertDeepResearchContent', () => {
     expect(result).not.toContain('javascript:');
     expect(result).not.toContain('data:text');
     // Safe URL preserved
-    expect(result).toContain('[^3]: [Safe](https://safe.com)');
+    expect(result).toContain('[^3]: [Safe](https://safe.com/)');
     // Dangerous sources show title only (no link)
     expect(result).toContain('[^1]: XSS');
     expect(result).toContain('[^2]: Data');
@@ -1183,7 +1336,35 @@ describe('convertDeepResearchContent', () => {
     expect(result).toContain('[^1]: File');
     expect(result).toContain('[^2]: Mail');
     expect(result).toContain('[^3]: Sneaky');
-    expect(result).toContain('[^4]: [Safe](https://safe.com)');
+    expect(result).toContain('[^4]: [Safe](https://safe.com/)');
+  });
+});
+
+describe('convertDeepResearchContent: References are escaped (DES-019 §4.5, F1)', () => {
+  const convert = (url: string, title: string): string =>
+    convertDeepResearchContent('<p>Text</p>', {
+      sources: [{ index: 0, url, title, domain: 'example.com' }],
+    });
+
+  it('escapes HTML in a linked Source title', () => {
+    expect(convert('https://example.com/', '<iframe src=//evil>')).toContain(
+      '[^1]: [\\<iframe src=//evil\\>](https://example.com/)'
+    );
+  });
+
+  it('escapes HTML in a Source title shown without a link', () => {
+    expect(convert('javascript:x', 'a \\<img src=x>')).toContain('[^1]: a \\\\\\<img src=x\\>');
+  });
+
+  it('normalises the Source URL so it cannot end the link', () => {
+    expect(convert('https://example.com/a b)<img src=x>', 'T')).toContain(
+      '[^1]: [T](https://example.com/a%20b%29%3Cimg%20src=x%3E)'
+    );
+  });
+
+  it('leaves nothing for the final gate to change', () => {
+    const body = convert('https://u)ser@example.com/<x>', '<iframe>](javascript:x)');
+    expect(neutralizeLiveHtml(body)).toBe(body);
   });
 });
 
@@ -1237,7 +1418,7 @@ describe('conversationToNote with Deep Research links', () => {
     // v3.0: Obsidian native footnotes
     expect(note.body).toContain('[^1]');
     expect(note.body).toContain('# References');
-    expect(note.body).toContain('[^1]: [Source](https://example.com)');
+    expect(note.body).toContain('[^1]: [Source](https://example.com/)');
   });
 });
 

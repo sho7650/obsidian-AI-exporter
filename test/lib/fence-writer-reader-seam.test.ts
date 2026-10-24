@@ -3,9 +3,10 @@
  *
  * `conversationToNote()` decides how a code block is fenced;
  * `countExistingMessages()` / `extractTailMessages()` decide how much of a
- * saved note append mode believes is already there; `escapeAngleBrackets()`
+ * saved note append mode believes is already there; `escapeUserText()`
  * decides which characters get backslashes. All three parse fences, and #433
- * was the three of them disagreeing about where a code block ends.
+ * was the three of them disagreeing about where a code block ends. (The
+ * escaper named in #433, `escapeAngleBrackets()`, was removed by DES-019.)
  *
  * ADR-028 taught that the seam, not the unit, is what catches this class: both
  * modules were individually well covered when #406 shipped. So these tests

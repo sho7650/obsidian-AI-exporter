@@ -11,12 +11,7 @@ import { BaseExtractor } from './base';
 import { sanitizeHtml } from '../../lib/sanitize';
 import { isHttpUrl } from '../../lib/validation';
 import type { ConversationMessage } from '../../lib/types';
-import {
-  createFootnoteRef,
-  escapeMarkdownLink,
-  footnoteDefsToHtml,
-  transformCitations,
-} from './footnotes';
+import { createFootnoteRef, footnoteDefsToHtml, transformCitations } from './footnotes';
 import type { CitationTransformResult } from './footnotes';
 
 import { SELECTORS } from './selectors/perplexity';
@@ -122,16 +117,6 @@ function parseCitationTitle(citation: Element, url: string): { title: string; ri
 }
 
 /**
- * Normalize a citation URL for use inside `[title](url)` markdown syntax:
- * the URL constructor percent-encodes spaces and other raw characters, and
- * parentheses are escaped manually (they are valid in URLs but terminate
- * the markdown link target).
- */
-function toMarkdownSafeUrl(url: string): string {
-  return new URL(url).href.replace(/\(/g, '%28').replace(/\)/g, '%29');
-}
-
-/**
  * Rewrite modern citation pills into footnote-ref placeholder spans,
  * deduping by URL. The same source cited twice reuses one footnote label;
  * labels are `m{messageIndex}-{n}` so they stay unique across messages.
@@ -213,11 +198,11 @@ function transformCitationsToFootnotes(
       const sources = collectCitationSources(doc, messageIndex);
       removeCitationResidue(doc);
 
-      return [...sources.entries()].map(
-        ([url, source]) =>
-          `[^m${messageIndex}-${source.number}]: ` +
-          `[${escapeMarkdownLink(source.title)}](${toMarkdownSafeUrl(url)})`
-      );
+      return [...sources.entries()].map(([url, source]) => ({
+        label: `m${messageIndex}-${source.number}`,
+        title: source.title,
+        url,
+      }));
     },
   });
 }

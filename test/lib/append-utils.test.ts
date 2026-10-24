@@ -628,12 +628,12 @@ describe('buildAppendContent', () => {
 
     expect(result).not.toBeNull();
     expect(result!.messagesAppended).toBe(2);
-    expect(result!.content).toContain('message_count: 4');
-    expect(result!.content).toContain('New question');
-    expect(result!.content).toContain('New answer');
+    expect(result!.frontmatter).toContain('message_count: 4');
+    expect(result!.tail).toContain('New question');
+    expect(result!.tail).toContain('New answer');
     // Preserves existing content
-    expect(result!.content).toContain('> Hello');
-    expect(result!.content).toContain('> Hi there!');
+    expect(result!.existingBody).toContain('> Hello');
+    expect(result!.existingBody).toContain('> Hi there!');
   });
 
   // ===== line endings (issue #365) =====
@@ -671,10 +671,12 @@ describe('buildAppendContent', () => {
     expect(result!.messagesAppended).toBe(2);
     // The file's own ending is reported, not applied.
     expect(result!.eol).toBe('\r\n');
-    expect(result!.content).not.toContain('\r');
-    expect(result!.content).toContain('New question');
+    for (const part of [result!.frontmatter, result!.existingBody, result!.tail]) {
+      expect(part).not.toContain('\r');
+    }
+    expect(result!.tail).toContain('New question');
     // Applying it reproduces the byte-preservation guarantee of #365.
-    const written = applyLineEnding(result!.content, result!.eol);
+    const written = applyLineEnding(result!.existingBody, result!.eol);
     expect(written).not.toMatch(/(?<!\r)\n/);
     expect(written).toContain(['> [!QUESTION] User', '> Hello'].join('\r\n'));
   });
@@ -695,7 +697,9 @@ describe('buildAppendContent', () => {
     const result = buildAppendContent(existing, testNote, testSettings);
 
     expect(result).not.toBeNull();
-    expect(result!.content).not.toContain('\r');
+    for (const part of [result!.frontmatter, result!.existingBody, result!.tail]) {
+      expect(part).not.toContain('\r');
+    }
   });
 
   it('updates modified timestamp in frontmatter', () => {
@@ -715,7 +719,7 @@ describe('buildAppendContent', () => {
     const result = buildAppendContent(existing, testNote, testSettings);
     expect(result).not.toBeNull();
     // Should have a new modified date (not the old one)
-    expect(result!.content).not.toContain('2026-01-01T00:00:00.000Z');
+    expect(result!.frontmatter).not.toContain('2026-01-01T00:00:00.000Z');
   });
 
   it('uses timezone setting for modified timestamp in frontmatter', () => {
@@ -739,7 +743,7 @@ describe('buildAppendContent', () => {
     const result = buildAppendContent(existing, testNote, settingsWithTz);
     expect(result).not.toBeNull();
     // Modified timestamp should have JST offset
-    expect(result!.content).toMatch(/modified: .*\+09:00/);
+    expect(result!.frontmatter).toMatch(/modified: .*\+09:00/);
   });
 
   // ========== Issue #187: Question headers in append mode ==========
@@ -795,14 +799,16 @@ describe('buildAppendContent', () => {
     expect(result).not.toBeNull();
     expect(result!.messagesAppended).toBe(2);
     // Header for the new question must be carried into the appended tail
-    expect(result!.content).toContain('## New question');
+    expect(result!.tail).toContain('## New question');
     // Existing header should not be duplicated
-    const headerCount = (result!.content.match(/^## Hello$/gm) ?? []).length;
+    const headerCount = (
+      `${result!.existingBody}\n${result!.tail}`.match(/^## Hello$/gm) ?? []
+    ).length;
     expect(headerCount).toBe(1);
     // Existing content preserved
-    expect(result!.content).toContain('> Hello');
-    expect(result!.content).toContain('> Hi there!');
-    expect(result!.content).toContain('New answer');
+    expect(result!.existingBody).toContain('> Hello');
+    expect(result!.existingBody).toContain('> Hi there!');
+    expect(result!.tail).toContain('New answer');
   });
 
   it('preserves user-added notes in existing body', () => {
@@ -823,7 +829,7 @@ describe('buildAppendContent', () => {
 
     const result = buildAppendContent(existing, testNote, testSettings);
     expect(result).not.toBeNull();
-    expect(result!.content).toContain('My personal note about this conversation');
+    expect(result!.existingBody).toContain('My personal note about this conversation');
   });
 });
 
@@ -925,9 +931,9 @@ describe('buildAppendContent — frontmatter tags stay as the user left them (is
 
     expect(result).not.toBeNull();
     expect(result!.messagesAppended).toBe(2);
-    expect(result!.content).toContain('tags:\n  - my/own-tag\n  - hand-edited\n');
-    expect(result!.content).not.toContain('ai/chat');
-    expect(result!.content).toContain('message_count: 4');
-    expect(result!.content).toContain('Second answer');
+    expect(result!.frontmatter).toContain('tags:\n  - my/own-tag\n  - hand-edited\n');
+    expect(result!.frontmatter).not.toContain('ai/chat');
+    expect(result!.frontmatter).toContain('message_count: 4');
+    expect(result!.tail).toContain('Second answer');
   });
 });

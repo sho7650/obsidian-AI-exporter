@@ -30,6 +30,8 @@
   },
   "dependencies": {
     "dompurify": "^3.4.17",
+    "markdown-it": "14.3.2",
+    "markdown-it-footnote": "4.0.0",
     "turndown": "^7.1.2"
   },
   "devDependencies": {
@@ -41,6 +43,8 @@
     "@playwright/test": "^1.58.2",
     "@types/chrome": "^0.0.268",
     "@types/jsdom": "^27.0.0",
+    "@types/markdown-it": "14.2.0",
+    "@types/markdown-it-footnote": "3.0.4",
     "@types/turndown": "^5.0.4",
     "@vitest/coverage-v8": "^4.1.8",
     "dotenv": "^17.3.1",

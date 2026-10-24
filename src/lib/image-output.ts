@@ -25,8 +25,17 @@ export interface ImageResolution {
   readonly files: ResolvedImageFile[];
 }
 
-/** Matches `![alt](g2o-image://ID)`, capturing alt (1) and id (2). */
-const PLACEHOLDER_PATTERN = /!\[([^\]]*)\]\(g2o-image:\/\/([^)]+)\)/g;
+/**
+ * Image ids the content script writes and the Turndown rule accepts
+ * (DES-019 §4.8). The page can forge a marker, so the rule checks this.
+ */
+export const IMAGE_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+
+/**
+ * Matches `![alt](g2o-image://ID)`, capturing alt (1) and id (2). The writer
+ * escapes the alt, so a backslash pair such as `\]` belongs to it.
+ */
+const PLACEHOLDER_PATTERN = /!\[((?:\\.|[^\]\\])*)\]\(g2o-image:\/\/([^)]+)\)/g;
 
 /** Collapse 3+ consecutive newlines left behind by removed placeholders. */
 function collapseBlankLines(body: string): string {

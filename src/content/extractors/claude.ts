@@ -10,7 +10,7 @@
 import { BaseExtractor, type ScrollConfig } from './base';
 import { hostnameOf } from './deep-research-result';
 import { sanitizeHtml } from '../../lib/sanitize';
-import { htmlToMarkdownRaw } from '../markdown-rules';
+import { escapeInlineText, userHtmlToMarkdown } from '../markdown-rules';
 import { generateHash } from '../../lib/hash';
 import type { HarvestEntry } from '../../lib/scroll-accumulate';
 import type { ConversationMessage, DeepResearchSource, SyncSettings } from '../../lib/types';
@@ -160,11 +160,18 @@ export class ClaudeExtractor extends BaseExtractor {
       });
     }
 
-    const messages = this.buildMessagesFromElements(
-      sortedElements,
-      el => this.extractUserContent(el),
-      el => this.extractAssistantContent(el)
-    );
+    const messages: ConversationMessage[] = [];
+    sortedElements.forEach((item, index) => {
+      const turn = this.extractTurn(item);
+      if (turn.content) {
+        messages.push({
+          id: `${item.type}-${index}`,
+          role: item.type,
+          ...turn,
+          index: messages.length,
+        });
+      }
+    });
 
     // Attach tool content to corresponding assistant messages (DES-014 H-5: immutable)
     if (toolContentById.size === 0) return messages;
@@ -246,10 +253,8 @@ export class ClaudeExtractor extends BaseExtractor {
   private harvestWindow(): HarvestEntry<ConversationMessage>[] {
     const entries: HarvestEntry<ConversationMessage>[] = [];
     this.collectSortedElements().forEach(item => {
-      const content =
-        item.type === 'user'
-          ? this.extractUserContent(item.element)
-          : this.extractAssistantContent(item.element);
+      const turn = this.extractTurn(item);
+      const content = turn.content;
       if (!content) return;
 
       // `data-index` is monotonic in conversation order; use it both as the
@@ -263,8 +268,7 @@ export class ClaudeExtractor extends BaseExtractor {
       const message: ConversationMessage = {
         id: key,
         role: item.type,
-        content,
-        htmlContent: item.type === 'assistant' ? content : undefined,
+        ...turn,
         index: 0, // re-indexed after accumulation
       };
 
@@ -281,31 +285,45 @@ export class ClaudeExtractor extends BaseExtractor {
   }
 
   /**
+   * One turn's message fields. Both message paths (extractMessages and
+   * harvestWindow) build messages from this, so a user message's
+   * `contentFormat` is set in exactly one place (DES-019 §4.4, P16).
+   */
+  private extractTurn(item: {
+    element: Element;
+    type: 'user' | 'assistant';
+  }): Pick<ConversationMessage, 'content' | 'contentFormat' | 'htmlContent'> {
+    if (item.type === 'user') return this.extractUserContent(item.element);
+    const content = this.extractAssistantContent(item.element);
+    return { content, htmlContent: content };
+  }
+
+  /**
    * Extract user message content as markdown.
    *
    * Sanitizes the grid container's innerHTML via DOMPurify and converts it
-   * to markdown (without angle-bracket escaping — {@link formatMessage}
-   * applies that step later). This preserves paragraph breaks and
-   * `<pre>`/`<code>` blocks that a plain `textContent` extraction would
-   * flatten or drop entirely (see issue #200).
+   * to escaped markdown. This preserves paragraph breaks and `<pre>`/`<code>`
+   * blocks that a plain `textContent` extraction would flatten or drop
+   * entirely (see issue #200).
    *
    * Falls back to sanitized plain text for elements that produce no
-   * markdown output (e.g. bare text nodes without block structure).
+   * markdown output (e.g. bare text nodes without block structure). The
+   * format records which one was used: plain text is escaped later, when the
+   * note is built, while the markdown is already escaped (P16).
    */
-  private extractUserContent(element: Element): string {
+  private extractUserContent(
+    element: Element
+  ): Pick<ConversationMessage, 'content' | 'contentFormat'> {
     const rawHtml = element.innerHTML;
     if (rawHtml) {
-      const markdown = htmlToMarkdownRaw(sanitizeHtml(rawHtml)).trim();
-      if (markdown) return markdown;
+      const markdown = userHtmlToMarkdown(sanitizeHtml(rawHtml)).trim();
+      if (markdown) return { content: markdown, contentFormat: 'markdown' };
     }
 
     // Defensive fallback: preserve prior behavior for elements that have
     // only a text node and no convertible HTML structure.
     const textContent = element.textContent?.trim();
-    if (textContent) {
-      return this.sanitizeText(textContent);
-    }
-    return '';
+    return { content: textContent ? this.sanitizeText(textContent) : '', contentFormat: 'text' };
   }
 
   /**
@@ -360,7 +378,8 @@ export class ClaudeExtractor extends BaseExtractor {
    *
    * Only the row's own label is read: a row the user has expanded also holds
    * the step's queries and interim notes in `[data-cds-row-panel]`, which we
-   * leave out rather than export them for expanded rows alone.
+   * leave out rather than export them for expanded rows alone. The label is
+   * page text inside Markdown we build, so it is escaped here (DES-019 §4.6).
    */
   private extractToolContentFromElement(element: Element): string | null {
     const labels = this.queryAllWithFallback<HTMLElement>(SELECTORS.toolStatus, element)
@@ -368,7 +387,7 @@ export class ClaudeExtractor extends BaseExtractor {
         this.sanitizeText(status.querySelector(':scope > [data-cds-row] bdi')?.textContent ?? '')
       )
       .filter(label => label !== '')
-      .map(label => `**${label}**`);
+      .map(label => `**${escapeInlineText(label)}**`);
     return labels.length > 0 ? labels.join('\n\n') : null;
   }
 

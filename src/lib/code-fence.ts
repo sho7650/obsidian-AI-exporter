@@ -78,16 +78,80 @@ export function fenceCodeBlock(code: string, lang = ''): string {
   return `\n${fence}${sanitizeInfoString(lang)}\n${trimmed}\n${fence}\n`;
 }
 
-/** The fence currently held open, or `null` when outside any fenced block. */
-export type OpenFence = { readonly char: FenceChar; readonly length: number } | null;
+/**
+ * `content` as an inline code span nothing in it can end (DES-019 §4.3, P10):
+ * the delimiter is one backtick longer than the longest run in the content,
+ * padded with a space when the content starts or ends with a backtick, and the
+ * span is kept on one line. A `|` beside an angle bracket is written `\|`: in a
+ * GFM table row the cell split happens before code spans are parsed, so a bare
+ * `|` would cut the span and leave its `<` in prose. Elsewhere `\|` shows a
+ * visible backslash, an accepted cost (R2). Existing backslashes are not
+ * doubled: inside a code span they are literal, and the table split only
+ * checks the one character before `|`, so doubling would change the code.
+ */
+export function wrapInlineCode(content: string): string {
+  let code = content.replace(/\r?\n|\r/g, ' ');
+  if (/[<>]/.test(code)) code = code.replace(/\|/g, '\\|');
+  const longest = (code.match(/`+/g) ?? []).reduce((max, run) => Math.max(max, run.length), 0);
+  const delimiter = '`'.repeat(longest + 1);
+  const padding = /^`|`$/.test(code) ? ' ' : '';
+  return `${delimiter}${padding}${code}${padding}${delimiter}`;
+}
+
+/**
+ * The fence currently held open, or `null` when outside any fenced block.
+ * Strict mode also records the blockquote depth the fence opened at and its
+ * indentation after the markers (0–3 spaces).
+ */
+export type OpenFence = {
+  readonly char: FenceChar;
+  readonly length: number;
+  readonly depth?: number;
+  readonly indent?: number;
+} | null;
+
+/** A line split into its blockquote markers and the text after them. */
+export interface QuotePrefix {
+  /** The markers exactly as written, to be kept verbatim. */
+  readonly marker: string;
+  readonly depth: number;
+  readonly rest: string;
+  /** A tab followed a `>`: how far it indents is not tracked here. */
+  readonly tab: boolean;
+}
+
+/**
+ * Split off blockquote markers the CommonMark way: up to three spaces, `>`,
+ * then at most one space, repeated. A tab after `>` stops the split and is
+ * reported, since part of it may count as indentation.
+ */
+export function splitBlockquotePrefix(line: string): QuotePrefix {
+  let end = 0;
+  let depth = 0;
+  for (;;) {
+    let i = end;
+    while (i < line.length && i - end < 3 && line[i] === ' ') i++;
+    if (line[i] !== '>') break;
+    i++;
+    depth++;
+    if (line[i] === '\t')
+      return { marker: line.slice(0, i), depth, rest: line.slice(i), tab: true };
+    if (line[i] === ' ') i++;
+    end = i;
+  }
+  return { marker: line.slice(0, end), depth, rest: line.slice(end), tab: false };
+}
 
 export interface FenceScanOptions {
   /**
-   * Strip leading blockquote markers before matching. `escapeByLine()` sets
-   * this because a callout carries every code line behind `> `;
-   * `scanMessageStarts()` does not, keeping its column-0-only policy (ADR-028).
+   * Strip leading blockquote markers before matching. `true` strips them
+   * leniently (any whitespace after `>`), which is enough for readers where
+   * over-detecting a fence cannot create HTML. `'strict'` strips them the
+   * CommonMark way and tracks blockquote depth and fence indentation, for
+   * `escapeUserText()` (DES-019 §4.4). `scanMessageStarts()` strips nothing,
+   * keeping its column-0-only policy (ADR-028).
    */
-  readonly stripBlockquote?: boolean;
+  readonly stripBlockquote?: boolean | 'strict';
   /**
    * Fence characters allowed to OPEN a block. Both by default. The message
    * counter passes backticks only: it never reads its own tildes, and a stray
@@ -102,6 +166,11 @@ export interface FenceStep {
   readonly state: OpenFence;
   /** True when the line is itself an opening or closing delimiter. */
   readonly isDelimiter: boolean;
+  /**
+   * Strict mode only: the line leaves it open whether the fence is still
+   * open, so the caller must stop trusting fence state (DES-019 §4.4).
+   */
+  readonly uncertain?: boolean;
 }
 
 /** Length of the fence-character run starting at `index`, or 0 if none. */
@@ -127,6 +196,7 @@ export function nextFenceState(
   line: string,
   options: FenceScanOptions = {}
 ): FenceStep {
+  if (options.stripBlockquote === 'strict') return nextStrictFenceState(state, line, options);
   const prepared = options.stripBlockquote ? line.replace(BLOCKQUOTE_PREFIX_PATTERN, '') : line;
   const start = fenceStart(prepared);
   if (start === -1) return { state, isDelimiter: false };
@@ -154,4 +224,49 @@ export function nextFenceState(
   }
 
   return { state, isDelimiter: false };
+}
+
+/** Leading spaces of `text`. */
+function leadingSpaces(text: string): number {
+  return text.length - text.trimStart().length;
+}
+
+/**
+ * Strict mode (DES-019 §4.4). A fence inside a blockquote ends with the
+ * blockquote, since fenced code takes no lazy continuation, so a shallower
+ * line ends it and is then read at its own depth; a deeper line is code.
+ *
+ * Two lines are reported as uncertain while a fence is open: a tab after `>`
+ * (it may or may not indent a closing delimiter), and a non-blank line
+ * indented less than an indented opening fence (the fence may sit in a list
+ * item that this line ends, or stay open with its real delimiter still to
+ * come). The two readings disagree about later lines.
+ */
+/** Strict mode: whether `quote` leaves it open that the fence is still open. */
+function isUncertainInFence(state: NonNullable<OpenFence>, quote: QuotePrefix): boolean {
+  if (quote.tab) return true;
+  return quote.rest.trim() !== '' && leadingSpaces(quote.rest) < (state.indent ?? 0);
+}
+
+function nextStrictFenceState(
+  state: OpenFence,
+  line: string,
+  options: FenceScanOptions
+): FenceStep {
+  const quote = splitBlockquotePrefix(line);
+  const inner = { openChars: options.openChars };
+  if (state !== null) {
+    const depth = state.depth ?? 0;
+    if (quote.depth < depth) return nextStrictFenceState(null, line, options);
+    if (quote.depth > depth) return { state, isDelimiter: false };
+    if (isUncertainInFence(state, quote)) return { state, isDelimiter: false, uncertain: true };
+    return nextFenceState(state, quote.rest, inner);
+  }
+  if (quote.tab) return { state, isDelimiter: false };
+  const step = nextFenceState(null, quote.rest, inner);
+  if (step.state === null) return step;
+  return {
+    state: { ...step.state, depth: quote.depth, indent: leadingSpaces(quote.rest) },
+    isDelimiter: true,
+  };
 }

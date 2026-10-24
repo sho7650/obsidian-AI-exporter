@@ -5,7 +5,7 @@
  * or plain text format. Also handles tool-use content rendering.
  */
 
-import { htmlToMarkdown, escapeUserText } from './markdown-rules';
+import { htmlToMarkdown, escapeInlineText, escapeUserText } from './markdown-rules';
 import { PLATFORM_LABELS } from '../lib/constants';
 import type { AIPlatform, TemplateOptions } from '../lib/types';
 
@@ -37,6 +37,8 @@ export function stripMarkdownChars(text: string): string {
  *   word-boundary breaks past the halfway mark and appending an ellipsis.
  * - Returns an empty string for empty/whitespace-only content so callers can
  *   fall back to the unheaded format.
+ * - Escapes `\`, `<` and `>` last, so truncation cannot cut an escape in half
+ *   (DES-019 §4.7, P8).
  *
  * @internal Exported for testing
  */
@@ -46,7 +48,7 @@ export function buildQuestionHeader(content: string): string {
   if (!cleaned) return '';
 
   if (cleaned.length <= QUESTION_HEADER_MAX_LENGTH) {
-    return `## ${cleaned}`;
+    return `## ${escapeInlineText(cleaned)}`;
   }
 
   // Reserve one character for the ellipsis so total visible length stays within budget.
@@ -54,7 +56,7 @@ export function buildQuestionHeader(content: string): string {
   const slice = cleaned.substring(0, sliceEnd);
   const lastSpace = slice.lastIndexOf(' ');
   const truncated = lastSpace > sliceEnd / 2 ? slice.substring(0, lastSpace) : slice;
-  return `## ${truncated}…`;
+  return `## ${escapeInlineText(truncated)}…`;
 }
 
 /** Wrap converted message text in the configured message format. */
@@ -97,11 +99,18 @@ export function formatMessage(
   content: string,
   role: 'user' | 'assistant',
   options: TemplateOptions,
-  source: AIPlatform
+  source: AIPlatform,
+  contentFormat: 'text' | 'markdown' = 'text'
 ): string {
   // Convert HTML to Markdown for assistant messages; escape angle brackets and
-  // `$` (Obsidian math) for user messages, which are plain pasted text.
-  const markdown = role === 'assistant' ? htmlToMarkdown(content) : escapeUserText(content);
+  // `$` (Obsidian math) for plain-text user messages. User Markdown is already
+  // escaped by the extractor that converted it (DES-019 §4.4).
+  const markdown =
+    role === 'assistant'
+      ? htmlToMarkdown(content)
+      : contentFormat === 'markdown'
+        ? content
+        : escapeUserText(content);
   const formatted = applyMessageFormat(markdown, role, options, PLATFORM_LABELS[source]);
 
   // Optional: prepend `##` question header for user messages (issue #187).

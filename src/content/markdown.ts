@@ -27,7 +27,7 @@ import {
 } from '../lib/tag-template';
 
 // Re-exports (preserve existing import paths)
-export { htmlToMarkdown, escapeAngleBrackets, escapeUserText } from './markdown-rules';
+export { htmlToMarkdown, escapeUserText } from './markdown-rules';
 export { convertDeepResearchContent } from './markdown-deep-research';
 
 /**
@@ -111,10 +111,27 @@ function buildBody(data: ConversationData, options: TemplateOptions): string {
   // own collapsible callout before the assistant message it belongs to.
   return data.messages
     .flatMap(message => [
-      ...(message.toolContent ? [formatToolContent(message.toolContent, options)] : []),
-      formatMessage(message.content, message.role, options, data.source),
+      ...(message.toolContent
+        ? [formatToolContent(toLineFeeds(message.toolContent), options)]
+        : []),
+      formatMessage(
+        toLineFeeds(message.content),
+        message.role,
+        options,
+        data.source,
+        message.contentFormat
+      ),
     ])
     .join('\n\n');
+}
+
+/**
+ * Page text with every line break as LF. The formatters split on LF to quote
+ * and escape line by line, while Markdown also breaks lines at a lone CR or
+ * CRLF, so a CR left in would put a line outside its callout (DES-019 §4.4).
+ */
+function toLineFeeds(text: string): string {
+  return text.replace(/\r\n?/g, '\n');
 }
 
 /**

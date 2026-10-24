@@ -161,6 +161,71 @@ describe('ImageMarkerCollector', () => {
     });
   });
 
+  describe('marker ids are normalised to the set the rule accepts (DES-019 §4.8)', () => {
+    const A119 = 'a'.repeat(119);
+    const markerId = (html: string): string | null =>
+      host(html).querySelector('img')?.getAttribute('data-g2o-image') ?? null;
+    const mark = (id: string): string =>
+      markerId(
+        collector.rewrite(host('<img class="gen" src="a">'), {
+          selector: 'img.gen',
+          enabled: true,
+          idFor: () => id,
+        })
+      ) ?? '';
+
+    it.each([
+      ['a valid id, unchanged', 'img-1', 'img-1'],
+      ['characters outside the set, replaced and hashed', 'img-a:b-0', 'img-a-b-0-5a2fb79e'],
+      ['a different original with the same shape', 'img-a/b-0', 'img-a-b-0-5a34b7b3'],
+      ['an id over 128 characters, cut and hashed', `${'a'.repeat(130)}x`, `${A119}-57907058`],
+      ['another that differs past the cut', `${'a'.repeat(130)}y`, `${A119}-57907059`],
+    ])('%s', (_name, original, expected) => {
+      expect(mark(original)).toBe(expected);
+    });
+
+    it('keeps the marker and its pending capture on one id', async () => {
+      mark('img-a:b-0');
+      mark('img-a/b-0');
+      mockedCapture.mockImplementation(async (_el, id, alt) => ({
+        image: { id, alt, mimeType: 'image/png', data: 'UE5H' },
+      }));
+
+      const result = await collector.attach(okResult());
+
+      expect(result.data?.images?.map(i => i.id)).toEqual([
+        'img-a-b-0-5a2fb79e',
+        'img-a-b-0-5a34b7b3',
+      ]);
+    });
+
+    it('gives the same original the same id in every harvest window', () => {
+      expect(mark('turn:1')).toBe(mark('turn:1'));
+      expect(collector.pendingCount).toBe(1);
+    });
+
+    it('appends a counter when a different original already took the id', () => {
+      const taken = mark('img-a:b-0');
+      expect(mark(taken)).toBe(`${taken}-2`);
+      // The same original again keeps its counted id.
+      expect(mark(taken)).toBe(`${taken}-2`);
+      expect(collector.pendingCount).toBe(2);
+    });
+
+    it('cuts the base so a counted id stays within 128 characters', () => {
+      const taken = mark('c'.repeat(130));
+      expect(taken).toHaveLength(128);
+
+      expect(mark(taken)).toBe(`${taken.slice(0, 126)}-2`);
+    });
+
+    it('reset() forgets the mapping', () => {
+      const taken = mark('img-a:b-0');
+      collector.reset();
+      expect(mark(taken)).toBe(taken);
+    });
+  });
+
   it('reset clears pending images and failures', async () => {
     const el = host('<img class="gen" src="a">');
     collector.rewrite(el, { selector: 'img.gen', enabled: true, idFor: () => 'img-x' });
