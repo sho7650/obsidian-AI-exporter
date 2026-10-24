@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import MarkdownIt from 'markdown-it';
 import { neutralizeLiveHtml } from '../../src/lib/html-gate';
 import { countExistingMessages } from '../../src/lib/message-counter';
 
@@ -84,6 +85,44 @@ describe('neutralizeLiveHtml', () => {
       '[G2O Background] html gate neutralised',
       expect.objectContaining({ failClosed: true })
     );
+  });
+
+  it('leaves no live HTML when the fail-closed repair itself moves the code ranges', () => {
+    // Escaping each `<!X` turns its declaration into a paragraph, which re-pairs
+    // the fences: the last line, code before the repair, becomes raw HTML.
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const chain = Array.from({ length: 4 }, () => '<!X\n```\nx>\n```').join('\n');
+    const out = neutralizeLiveHtml(`${chain}\n<img src=https://evil.example/x>`);
+    expect(new MarkdownIt({ html: true }).render(out)).not.toMatch(/<img|<!X/);
+    expect(out).toBe(`${chain.replace(/<!X/g, '\\<!X')}\n\\<img src=https://evil.example/x>`);
+  });
+
+  it.each([
+    ['a lone CR', '\r'],
+    ['CRLF', '\r\n'],
+  ])('counts lines the way markdown-it does when they end in %s', (_name, eol) => {
+    // Code keeps its `<`: the HTML line is found where markdown-it puts it,
+    // without falling back to escaping everything.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const body = ['~~~', '<div>code</div>', '~~~', '<img src=x>'].join(eol);
+    expect(neutralizeLiveHtml(body)).toBe(
+      ['~~~', '<div>code</div>', '~~~', '\\<img src=x>'].join(eol)
+    );
+    expect(warn).toHaveBeenCalledWith(
+      '[G2O Background] html gate neutralised',
+      expect.objectContaining({ lines: 1, failClosed: false })
+    );
+  });
+
+  it('stays linear on a long backslash run that no `<` follows', () => {
+    // A `(\\*)<` scan restarted inside the run is quadratic: 64K backslashes
+    // took seconds. The first body takes the no-parse check, the second a repair.
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const run = '\\'.repeat(1 << 17);
+    const start = performance.now();
+    expect(neutralizeLiveHtml(`${run}x`)).toBe(`${run}x`);
+    expect(neutralizeLiveHtml(`<b>${run}x`)).toBe(`\\<b>${run}x`);
+    expect(performance.now() - start).toBeLessThan(500);
   });
 
   it('logs counts only, never body text, when it changes something', () => {

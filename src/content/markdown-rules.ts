@@ -29,7 +29,9 @@ import { escapeMarkdownLink, isFootnoteLabel, toMarkdownSafeUrl } from './extrac
  * lines. The backslash run before each becomes 2n+1: always odd (R1), and
  * the user's own backslashes still display (P11).
  */
-const USER_PROSE_TARGET_PATTERN = /(\\*)([<>$`])/g;
+// `(?<!\\)`: match only from where a backslash run begins, so a long run with
+// no target after it is scanned once, not from every position (quadratic).
+const USER_PROSE_TARGET_PATTERN = /(?<!\\)(\\*)([<>$`])/g;
 
 function escapeUserProse(text: string): string {
   return text.replace(USER_PROSE_TARGET_PATTERN, '$1$1\\$2');
@@ -51,7 +53,7 @@ interface BacktickRun {
 }
 
 function backtickRuns(text: string): BacktickRun[] {
-  return [...text.matchAll(/(\\*)(`+)/g)].map(match => ({
+  return [...text.matchAll(/(?<!\\)(\\*)(`+)/g)].map(match => ({
     start: match.index + match[1].length,
     length: match[2].length,
     escaped: match[1].length % 2 === 1,

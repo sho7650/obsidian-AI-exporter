@@ -125,13 +125,17 @@ function scan(body: string): GateEnv {
   return env;
 }
 
+// `(?<!\\)` starts a match only where a backslash run begins. Without it, a
+// long run that no `<` follows is rescanned from every position inside it,
+// which is quadratic (64K backslashes took seconds).
+
 /**
  * Escape every `<` whose preceding backslash run is even (zero included).
  * An odd run already escapes it, so existing escapes are kept as they are and
  * each `<` gains at most one backslash however often this runs.
  */
 function repairLine(line: string): string {
-  return line.replace(/(\\*)</g, (match, run: string) =>
+  return line.replace(/(?<!\\)(\\*)</g, (match, run: string) =>
     run.length % 2 === 0 ? `${run}\\<` : match
   );
 }
@@ -143,7 +147,7 @@ function repairLine(line: string): string {
  * memory grows with token count (DES-019 §9), off most saves.
  */
 function hasUnescapedLessThan(body: string): boolean {
-  for (const [, run] of body.matchAll(/(\\*)</g)) {
+  for (const [, run] of body.matchAll(/(?<!\\)(\\*)</g)) {
     if (run.length % 2 === 0) return true;
   }
   return false;
@@ -162,15 +166,36 @@ function lineMask(lineCount: number, ranges: LineRange[], from = 0): Uint8Array 
   return mask;
 }
 
+// markdown-it counts a lone CR and CRLF as line breaks, like LF, so every line
+// number it reports is in these terms. Splitting on LF alone would put a
+// repair on the wrong line.
+const LINE_BREAK = /\r\n?|\n/;
+
+/** Lines as markdown-it numbers them; `repairFromLine` is counted the same way. */
+export function countLines(text: string): number {
+  return text.split(LINE_BREAK).length;
+}
+
 function repairLines(body: string, select: (lineCount: number) => Uint8Array): string {
-  const lines = body.split('\n');
-  const mask = select(lines.length);
-  return lines.map((line, i) => (mask[i] ? repairLine(line) : line)).join('\n');
+  // A capturing split keeps each line break, at the odd indices, as it was.
+  const parts = body.split(new RegExp(`(${LINE_BREAK.source})`));
+  const mask = select((parts.length + 1) / 2);
+  return parts.map((part, i) => (i % 2 === 0 && mask[i / 2] ? repairLine(part) : part)).join('');
 }
 
 function countChangedLines(before: string, after: string): number {
-  const old = before.split('\n');
-  return after.split('\n').filter((line, i) => line !== old[i]).length;
+  const old = before.split(LINE_BREAK);
+  return after.split(LINE_BREAK).filter((line, i) => line !== old[i]).length;
+}
+
+/** True unless a parse of `body` finds no raw HTML and nothing it cannot place. */
+function mayCarryHtml(body: string): boolean {
+  try {
+    const { ranges, unlocatable } = scan(body);
+    return unlocatable || ranges.length > 0;
+  } catch {
+    return true;
+  }
 }
 
 /**
@@ -178,6 +203,11 @@ function countChangedLines(before: string, after: string): number {
  * escape every line outside code. With no earlier context on a full save, no
  * HTML block can reach these lines from outside, so line-level escaping is
  * enough. Callout headers survive because they contain no `<`.
+ *
+ * Escaping can itself re-pair fences, so a line that was code becomes raw
+ * HTML. The result is therefore checked, and if it may still carry HTML every
+ * line is escaped, code included: with every `<` behind an odd backslash run,
+ * no block structure can start raw HTML.
  */
 function failClosed(body: string): string {
   let code: LineRange[] = [];
@@ -186,7 +216,9 @@ function failClosed(body: string): string {
   } catch {
     // Unparseable: escape every line.
   }
-  return repairLines(body, n => lineMask(n, code).map(inCode => 1 - inCode));
+  const outsideCode = repairLines(body, n => lineMask(n, code).map(inCode => 1 - inCode));
+  if (!mayCarryHtml(outsideCode)) return outsideCode;
+  return repairLines(outsideCode, n => new Uint8Array(n).fill(1));
 }
 
 export interface GateOptions {

@@ -7,7 +7,7 @@
 import { ObsidianApiClient } from '../lib/obsidian-api';
 import { getErrorMessage } from '../lib/error-utils';
 import { renderNote } from '../lib/note-generator';
-import { neutralizeLiveHtml } from '../lib/html-gate';
+import { countLines, neutralizeLiveHtml } from '../lib/html-gate';
 import { isOverNoteSize, noteSizeError } from './note-size';
 import { DEFAULT_NOTE_SIZE_MIB } from '../lib/constants';
 import {
@@ -88,10 +88,6 @@ const APPEND_REFUSED_HTML =
   '<script> or an HTML comment), which you can close in Obsidian, or the new messages contain ' +
   'HTML that cannot be added safely. Turn off append mode for this save to write the note in full.';
 
-function lineCount(text: string): number {
-  return text.split('\n').length;
-}
-
 /**
  * Append the new messages to the note found at `path`, unless the capture is
  * truncated and would shrink it (ADR-033).
@@ -126,7 +122,7 @@ async function appendToExistingNote(
   // the context of the existing body but changes only their lines.
   const flatExisting = maybeFlatten(existingBody, settings);
   const joined = `${flatExisting}\n\n${maybeFlatten(tail, settings)}`;
-  const gated = neutralizeLiveHtml(joined, { repairFromLine: lineCount(flatExisting) + 1 });
+  const gated = neutralizeLiveHtml(joined, { repairFromLine: countLines(flatExisting) + 1 });
   if (gated === null) {
     console.warn('[G2O Background] append refused: open html block or unparseable note', {
       id: note.frontmatter.id,

@@ -116,3 +116,14 @@ describe('escapeUserText: indented fences whose extent is uncertain (DES-019 §4
     expect(neutralizeLiveHtml(output)).toBe(output);
   });
 });
+
+describe('escapeUserText: cost', () => {
+  it('stays linear on a long backslash run that no target follows', () => {
+    // A `(\\*)x` scan restarted inside the run is quadratic: 64K backslashes
+    // took seconds, and a user can paste that.
+    const run = '\\'.repeat(1 << 17);
+    const start = performance.now();
+    expect(escapeUserText(`${run}x`)).toBe(`${run}x`);
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+});

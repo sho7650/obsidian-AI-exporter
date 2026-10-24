@@ -107,6 +107,28 @@ describe('append: HTML gate', () => {
     );
   });
 
+  it('finds HTML on the line markdown-it puts it when the new messages hold lone CRs', async () => {
+    // The existing file is read with its line endings normalised (ADR-026), so
+    // only the new messages can still carry a lone CR, which markdown-it counts
+    // as a line break.
+    const existing = [
+      '> [!QUESTION] User',
+      '> hi',
+      '',
+      '> [!NOTE] Claude',
+      '<b>mine</b>',
+    ];
+    const tail = ['> [!QUESTION] User', '> next', '', '> [!NOTE] Claude', '~~~\r<i>x</i>\r~~~\r<img src=x>'];
+    mockClient.getFile.mockResolvedValue(existingFile(existing));
+
+    const result = await handleSave(settings, noteWith(existing, tail));
+
+    expect(result.success).toBe(true);
+    expect(writtenBody()).toBe(
+      [...existing, '', ...tail.slice(0, 4), '~~~\r<i>x</i>\r~~~\r\\<img src=x>'].join('\n')
+    );
+  });
+
   const base = ['> [!QUESTION] User', '> hi', '', '> [!NOTE] Claude', '> ok'];
 
   it.each([

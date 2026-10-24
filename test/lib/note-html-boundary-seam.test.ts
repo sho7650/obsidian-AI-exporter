@@ -111,6 +111,10 @@ const BLOCK_FORMS: readonly Form[] = [
   ['table row', p => `| a | b |\n| --- | --- |\n| \`a | ${p}\` |`],
   ['over-indented quote fences', p => `>     ${F3}\n> ${p}\n>     ${F3}`],
   ['column 0 after a list-item fence', p => `- item\n\n  ${F3}\n  code\n${p}\n  ${F3}`],
+  // markdown-it counts a lone CR and CRLF as line breaks; a writer splitting on
+  // LF alone leaves these lines outside the callout it meant to put them in.
+  ['lone CR line breaks', p => `~~~\r> x\r> ~~~\r${p}`],
+  ['CRLF line breaks', p => `~~~\r\n> x\r\n> ~~~\r\n${p}`],
 ];
 
 interface Payload {

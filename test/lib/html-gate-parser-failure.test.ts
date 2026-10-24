@@ -8,7 +8,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 type Rule = (state: { tokens: unknown[]; env: unknown }) => void;
 const stub = vi.hoisted(() => ({
   rule: null as Rule | null,
-  tokens: [] as unknown[],
+  // Tokens for every parse, or per source text when a test needs the parse to
+  // change once the gate has repaired something.
+  tokens: [] as unknown[] | ((src: string) => unknown[]),
   throws: false,
 }));
 
@@ -24,9 +26,10 @@ vi.mock('markdown-it', () => ({
     use() {
       return this;
     }
-    parse(_src: string, env: unknown) {
+    parse(src: string, env: unknown) {
       if (stub.throws) throw new Error('parser failure');
-      stub.rule?.({ tokens: stub.tokens, env });
+      const tokens = typeof stub.tokens === 'function' ? stub.tokens(src) : stub.tokens;
+      stub.rule?.({ tokens, env });
       return [];
     }
   },
@@ -53,9 +56,18 @@ describe('neutralizeLiveHtml with an untrustworthy parse', () => {
   });
 
   it('escapes every non-code line when a token is unlocatable on a full save', () => {
-    stub.tokens = [...unlocatable, { type: 'fence', nesting: 0, map: [2, 5], children: null }];
+    const fence = { type: 'fence', nesting: 0, map: [2, 5], children: null };
+    // Unlocatable until the gate repairs the HTML line, as a real parse would be.
+    stub.tokens = src => (src.includes('new <b>') ? [...unlocatable, fence] : [fence]);
     expect(neutralizeLiveHtml(body)).toBe(
       'safe line\n\n```\n<div>code</div>\n```\n\nnew \\<b>line\\</b>\n'
+    );
+  });
+
+  it('escapes code too when the fail-closed result still parses as untrustworthy', () => {
+    stub.tokens = [...unlocatable, { type: 'fence', nesting: 0, map: [2, 5], children: null }];
+    expect(neutralizeLiveHtml(body)).toBe(
+      'safe line\n\n```\n\\<div>code\\</div>\n```\n\nnew \\<b>line\\</b>\n'
     );
   });
 
