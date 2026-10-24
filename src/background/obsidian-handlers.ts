@@ -81,9 +81,12 @@ function rememberAppendPath(conversationId: string, path: string): void {
   appendPathMemo.set(conversationId, path);
 }
 
+// The gate returns null for more than one reason and does not say which, so
+// the message names both: only the first is something the user can fix.
 const APPEND_REFUSED_HTML =
-  'Cannot append: the existing note ends inside an unclosed HTML block (such as <pre>, ' +
-  '<script> or an HTML comment). Close it in Obsidian, or turn off append mode for this save.';
+  'Cannot append: either the existing note ends inside an unclosed HTML block (such as <pre>, ' +
+  '<script> or an HTML comment), which you can close in Obsidian, or the new messages contain ' +
+  'HTML that cannot be added safely. Turn off append mode for this save to write the note in full.';
 
 function lineCount(text: string): number {
   return text.split('\n').length;

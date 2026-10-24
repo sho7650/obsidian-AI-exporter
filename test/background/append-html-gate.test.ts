@@ -117,7 +117,15 @@ describe('append: HTML gate', () => {
       [...base, '> a', '> b', '> c', '> d', '> ```', '> unclosed'],
     ],
   ])('reads the tail after %s, where its fenced <iframe> is live', async (_name, existing) => {
-    const tail = ['> [!QUESTION] User', '> next', '', '> [!NOTE] Claude', '```', '<iframe src=x>', '```'];
+    const tail = [
+      '> [!QUESTION] User',
+      '> next',
+      '',
+      '> [!NOTE] Claude',
+      '```',
+      '<iframe src=x>',
+      '```',
+    ];
     mockClient.getFile.mockResolvedValue(existingFile(existing));
 
     const result = await handleSave(settings, noteWith(base, tail));
@@ -143,6 +151,20 @@ describe('append: HTML gate', () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('append refused'), {
       id: 'claude_abc-def',
     });
+  });
+
+  it('refuses with an error that also covers the new messages, when they cannot be placed', async () => {
+    // A nested inline footnote loses content in the parser, so the gate cannot
+    // place it and refuses; closing a block in the existing note would not help.
+    const tail = ['> [!QUESTION] User', '> next', '', '> [!NOTE] Claude', '> a ^[x ^[<b>y</b>]] b'];
+    mockClient.getFile.mockResolvedValue(existingFile(base));
+
+    const result = await handleSave(settings, noteWith(base, tail));
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/new messages/);
+    expect(result.error).toMatch(/append mode/);
+    expect(mockClient.putFile).not.toHaveBeenCalled();
   });
 
   describe('size cap on the written body', () => {
@@ -193,12 +215,18 @@ describe('append: HTML gate', () => {
       expect(lfLength + existing.length).toBeGreaterThan(MIB);
 
       mockClient.getFile.mockResolvedValue(existingFile(existing, '\r\n'));
-      const crlf = await handleSave({ ...capped, flattenLargeCallouts: false }, noteWith(existing, tail));
+      const crlf = await handleSave(
+        { ...capped, flattenLargeCallouts: false },
+        noteWith(existing, tail)
+      );
       expect(crlf.success).toBe(false);
       expect(mockClient.putFile).not.toHaveBeenCalled();
 
       mockClient.getFile.mockResolvedValue(existingFile(existing, '\n'));
-      const lf = await handleSave({ ...capped, flattenLargeCallouts: false }, noteWith(existing, tail));
+      const lf = await handleSave(
+        { ...capped, flattenLargeCallouts: false },
+        noteWith(existing, tail)
+      );
       expect(lf.success).toBe(true);
     });
   });
