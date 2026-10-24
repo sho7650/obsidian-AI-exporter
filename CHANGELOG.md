@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.11](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.10...v2.14.11) (2026-10-24)
+
+
+### Bug Fixes
+
+* **notebooklm:** drop the citation fallback the page no longer renders ([#547](https://github.com/sho7650/obsidian-AI-exporter/issues/547)) ([f11d50d](https://github.com/sho7650/obsidian-AI-exporter/commit/f11d50da7382144bff8396554edbdb5273dff1ea))
+
 ## [2.14.10](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.9...v2.14.10) (2026-10-24)
 
 
