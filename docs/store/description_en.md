@@ -19,7 +19,7 @@ This extension extracts conversations from Google Gemini (gemini.google.com), Cl
 • Configurable timezone for frontmatter dates
 • LaTeX math formula preservation ($$...$$ and $...$) across all platforms
 • Nested code blocks - a code block inside a code block exports intact
-• Web search results saved as collapsible callouts (Claude)
+• Claude's web searches and tool steps saved as collapsible callouts
 • Append mode - only new messages are added to existing notes
 • Optional `## ` question headers for TOC navigation in long conversations
 • Auto-scroll for long conversations, including virtualized (windowed) Claude and ChatGPT threads - with configurable timeouts and note size cap

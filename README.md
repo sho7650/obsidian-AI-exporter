@@ -22,7 +22,7 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 - **Filename schemes**: Choose `title-id` (default) or `title-date` naming for exported notes
 - **Vault path templates**: Organize with `{platform}` and date tokens (`{YYYY}`, `{MM}`, …) for auto-sorting
 - **Filename collision safety**: Never overwrites a note belonging to a different conversation, and never replaces a complete note with a partially-loaded one
-- **Tool content support**: Optionally include Claude's web search results and tool activity as collapsible `[!ABSTRACT]` callouts
+- **Tool content support**: Optionally include the steps Claude ran (web searches, tool calls) as collapsible `[!ABSTRACT]` callouts
 - **Question headers (optional)**: Prepend a `## ` heading (first 60 chars of the question) before each user message for TOC navigation in long conversations
 - **Large-callout flattening**: Optionally flatten very long messages to plain text when saving to Obsidian, avoiding renderer slowdowns; the line threshold is configurable (default 200)
 - **Configurable timezone**: Set timezone for frontmatter dates (created/modified)
@@ -192,19 +192,16 @@ Code blocks are fenced to fit their content. When a block contains another fence
 
 ### Tool Content Format (Claude)
 
-When "Include tool/search results" is enabled, Claude's web search and tool activity are rendered as collapsible callouts before the assistant response:
+When "Include tool/search results" is enabled, the steps Claude ran for an answer (web searches, tool calls) are rendered as a collapsible callout before the assistant response:
 
 ```markdown
 > [!ABSTRACT]- Searched the web
-> Rust latest version 2026 (10 results)
-> - Rust Versions | Rust Changelogs (releases.rs)
-> - Rust | endoflife.date (endoflife.date)
 
 > [!NOTE] Claude
 > Here are the latest Rust version details...
 ```
 
-The `[!ABSTRACT]-` callout is collapsed by default in Obsidian (the `-` suffix).
+The `[!ABSTRACT]-` callout is collapsed by default in Obsidian (the `-` suffix). Only each step's label is exported: Claude keeps the queries and result lists collapsed on the page, and the extension does not click to expand them. When an answer has several steps, the first label is the callout title and the rest follow as lines inside it. Thinking steps are not tool activity and are never exported here.
 
 ### Deep Research Format
 
@@ -375,6 +372,7 @@ Import the certificate into your OS certificate store and restart Chrome. The ge
 - **Sender verification**: Only trusted origins can send messages
 - **CSP**: Content Security Policy configured for extension pages
 - **YAML escaping**: Frontmatter values properly escaped
+- **No live HTML in notes**: Page text that would render as raw HTML in Obsidian is escaped before the note is written, downloaded, or copied, so an exported conversation cannot load remote resources or inject markup into your vault
 
 ## Privacy
 
