@@ -227,7 +227,7 @@ The `tags:` list comes from two user settings in `TemplateOptions` (`conversatio
 - **Gemini** (`gemini.google.com`): Conversations, Deep Research reports, Gem conversations (`/gem/{gemId}/{conversationId}` — the conversation id is the second path segment), and generated images (see Image Export below)
 - **Claude** (`claude.ai`): Conversations, Extended Thinking, and Artifacts with inline citations
 - **ChatGPT** (`chatgpt.com`): Conversations (including custom GPTs via `/g/` URLs)
-- **Perplexity** (`www.perplexity.ai`): Conversations
+- **Perplexity** (`www.perplexity.ai`): Conversations. Conversation URLs are `/session/{uuid}` since 2026-11 (the old `/search/{slug}` redirects there); the conversation id is the last path segment, so new notes are keyed by the uuid ([ADR-045](docs/adr/045-perplexity-session-url-id.md))
 - **Gemini Notebook** (`notebook.google.com`, formerly NotebookLM on `notebooklm.google.com`): Chat conversations with source citations. Both hosts are matched while the legacy one redirects ([ADR-023](docs/adr/023-multi-host-platform-registry.md)); the platform id stays `notebooklm`
 
 ## Image Export

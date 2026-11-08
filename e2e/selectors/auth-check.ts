@@ -24,12 +24,15 @@ import type { Page } from 'playwright';
  *   getConversationId); a dead one bounces to /gem/{gemId}, which must stay
  *   `test_data_missing`, so the conversation segment is required.
  * - ChatGPT custom-GPT chats live at /g/{slug}/c/{uuid} (chatgpt.ts).
+ * - Perplexity chats live at /session/{uuid} since 2026-11; the old
+ *   /search/{slug} redirects there (perplexity.ts getConversationId). The id
+ *   segment is required so a bare /session/ stays `test_data_missing`.
  */
 export const AUTH_URL_PATTERNS: Readonly<Record<string, RegExp>> = {
   gemini: /^https:\/\/gemini\.google\.com\/(?:app\/|deepresearch\/|gem\/[a-f0-9]+\/[a-f0-9]+)/i,
   claude: /^https:\/\/claude\.ai\/chat\//,
   chatgpt: /^https:\/\/chatgpt\.com\/(?:c\/|g\/[^/]+\/c\/)/,
-  perplexity: /^https:\/\/www\.perplexity\.ai\/search\//,
+  perplexity: /^https:\/\/www\.perplexity\.ai\/(?:search|session)\/[^/?#]+/,
   notebooklm: /^https:\/\/(?:notebook|notebooklm)\.google\.com\/notebook\//,
 };
 
