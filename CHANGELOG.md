@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.16](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.15...v2.14.16) (2026-11-08)
+
+
+### Bug Fixes
+
+* support perplexity /session/&lt;uuid&gt; conversation urls ([#562](https://github.com/sho7650/obsidian-AI-exporter/issues/562)) ([025d3a6](https://github.com/sho7650/obsidian-AI-exporter/commit/025d3a64f917d5ccba2f4ac8ace76b84abc414c0))
+
 ## [2.14.15](https://github.com/sho7650/obsidian-AI-exporter/compare/v2.14.14...v2.14.15) (2026-10-24)
 
 
