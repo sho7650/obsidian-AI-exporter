@@ -16,6 +16,17 @@ import type { CitationTransformResult } from './footnotes';
 
 import { SELECTORS } from './selectors/perplexity';
 
+/**
+ * Conversation URL path; the last segment is the conversation id.
+ *
+ * Since 2026-11 Perplexity serves conversations at `/session/{uuid}` and
+ * redirects the old `/search/{slug}` to it (measured live, see
+ * docs/requirements/REQ-perplexity-session-url.md). The `/search/` form stays
+ * accepted because it is still in old links and is on screen until the
+ * redirect lands.
+ */
+const CONVERSATION_PATH = /^\/(?:search|session)\/([^/]+)\/?$/;
+
 // ========== Layout selectors kept out of the live contract ==========
 //
 // Both groups below are DETECTION-ONLY: neither can be guaranteed to match on
@@ -227,11 +238,13 @@ export class PerplexityExtractor extends BaseExtractor {
   /**
    * Extract conversation ID from URL
    *
-   * URL format: https://www.perplexity.ai/search/{slug}
-   * @returns Full slug string or null if not found
+   * URL formats:
+   * - https://www.perplexity.ai/session/{uuid} (current)
+   * - https://www.perplexity.ai/search/{slug} (legacy, redirects to /session/)
+   * @returns The uuid or slug, or null if not on a conversation URL
    */
   getConversationId(): string | null {
-    const match = window.location.pathname.match(/\/search\/([^/]+)$/);
+    const match = window.location.pathname.match(CONVERSATION_PATH);
     return match ? match[1] : null;
   }
 

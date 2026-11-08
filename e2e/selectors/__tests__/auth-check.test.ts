@@ -3,6 +3,7 @@ import { resolveAuthStatus, isLoginUrl, AUTH_URL_PATTERNS } from '../auth-check'
 
 const GEMINI_PATTERN = AUTH_URL_PATTERNS.gemini;
 const CHATGPT_PATTERN = AUTH_URL_PATTERNS.chatgpt;
+const PERPLEXITY_PATTERN = AUTH_URL_PATTERNS.perplexity;
 
 describe('isLoginUrl', () => {
   it('recognizes Google account login URLs', () => {
@@ -110,6 +111,45 @@ describe('resolveAuthStatus', () => {
         loggedOutMarkerPresent: false,
       });
       expect(status).toBe('authenticated');
+    });
+
+    // Since 2026-11 Perplexity redirects /search/{slug} to /session/{uuid}
+    // (docs/requirements/REQ-perplexity-session-url.md).
+    it('accepts a Perplexity /session/ conversation URL', () => {
+      const status = resolveAuthStatus({
+        finalUrl: 'https://www.perplexity.ai/session/bd1ba34a-f750-487b-8640-d2491123fcbb',
+        conversationPattern: PERPLEXITY_PATTERN,
+        loggedOutMarkerPresent: false,
+      });
+      expect(status).toBe('authenticated');
+    });
+
+    it('still accepts a legacy Perplexity /search/ conversation URL', () => {
+      const status = resolveAuthStatus({
+        finalUrl:
+          'https://www.perplexity.ai/search/amerikate-macbook-womai-tutaho-vRujSvdQSHuGQNJJESP8uw',
+        conversationPattern: PERPLEXITY_PATTERN,
+        loggedOutMarkerPresent: false,
+      });
+      expect(status).toBe('authenticated');
+    });
+
+    it('treats a Perplexity /session/ without an id as test_data_missing', () => {
+      const status = resolveAuthStatus({
+        finalUrl: 'https://www.perplexity.ai/session/',
+        conversationPattern: PERPLEXITY_PATTERN,
+        loggedOutMarkerPresent: false,
+      });
+      expect(status).toBe('test_data_missing');
+    });
+
+    it('treats the Perplexity home page as test_data_missing', () => {
+      const status = resolveAuthStatus({
+        finalUrl: 'https://www.perplexity.ai/',
+        conversationPattern: PERPLEXITY_PATTERN,
+        loggedOutMarkerPresent: false,
+      });
+      expect(status).toBe('test_data_missing');
     });
   });
 

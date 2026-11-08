@@ -889,6 +889,15 @@ export function setPerplexityLocation(slug: string): void {
 }
 
 /**
+ * Set window.location to a Perplexity conversation URL in the 2026-11 form
+ *
+ * @param uuid Session id from /session/{uuid}
+ */
+export function setPerplexitySessionLocation(uuid: string): void {
+  defineLocation('www.perplexity.ai', `/session/${uuid}`);
+}
+
+/**
  * Shared inner pill body: domain text plus an optional "+N" counter.
  * Kept in one place so the three citation variants below cannot drift apart
  * when the fixture is refreshed against newer observed DOM.

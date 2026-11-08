@@ -9,6 +9,7 @@ import {
   resetLocation,
   createPerplexityConversationDOM,
   setPerplexityLocation,
+  setPerplexitySessionLocation,
   defineLocation,
   createPerplexityInlineCitation,
   createPerplexityPillCitation,
@@ -74,6 +75,21 @@ describe('PerplexityExtractor', () => {
     it('extracts slug with URL-encoded characters', () => {
       setPerplexityLocation('da-shou-ting-toraba-CG5SwgBvRti46_Hs1jFYAw');
       expect(extractor.getConversationId()).toBe('da-shou-ting-toraba-CG5SwgBvRti46_Hs1jFYAw');
+    });
+
+    it('extracts uuid from /session/{uuid} URL', () => {
+      setPerplexitySessionLocation('bd1ba34a-f750-487b-8640-d2491123fcbb');
+      expect(extractor.getConversationId()).toBe('bd1ba34a-f750-487b-8640-d2491123fcbb');
+    });
+
+    it('extracts uuid from /session/{uuid}/ with a trailing slash', () => {
+      setPerplexitySessionLocation('bd1ba34a-f750-487b-8640-d2491123fcbb/');
+      expect(extractor.getConversationId()).toBe('bd1ba34a-f750-487b-8640-d2491123fcbb');
+    });
+
+    it('returns null for /session/ without an id', () => {
+      defineLocation('www.perplexity.ai', '/session/');
+      expect(extractor.getConversationId()).toBeNull();
     });
 
     it('returns null for non-search paths', () => {
