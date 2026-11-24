@@ -21,6 +21,7 @@ import { applyLineEnding } from '../lib/frontmatter-parser';
 import { classifyNoteProbe, isSameConversation, type ProbeState } from '../lib/note-identity';
 import { evaluateTruncationGuard } from '../lib/truncation-guard';
 import { resolveImagesForObsidian, stripImagePlaceholders } from '../lib/image-output';
+import { resolveArtifacts, stripArtifactPlaceholders } from '../lib/artifact-output';
 import { flattenLargeCallouts } from '../lib/callout-flatten';
 import { base64ToBytes } from '../lib/image-utils';
 import { collisionSuffix, candidateFileName } from '../lib/filename-collision';
@@ -212,11 +213,13 @@ export async function handleSave(
       return { success: false, error: 'Invalid file path' };
     }
 
-    // Append mode does not handle images yet (v1): strip any image placeholders
-    // from the appended content so no dangling `g2o-image://` tokens are written.
-    const appendNote = note.body.includes('g2o-image://')
-      ? { ...note, body: stripImagePlaceholders(note.body) }
-      : note;
+    // Append mode does not handle images or crafts yet (v1): strip any
+    // placeholders from the appended content so no dangling `g2o-image://` /
+    // `g2o-craft://` tokens are written.
+    const appendNote =
+      note.body.includes('g2o-image://') || note.body.includes('g2o-craft://')
+        ? { ...note, body: stripArtifactPlaceholders(stripImagePlaceholders(note.body)) }
+        : note;
     const appendResult = await tryAppendMode(
       client,
       settings,
@@ -266,9 +269,10 @@ async function saveFreshNote(
   // Nothing is written until the size check passes, images included, so a
   // rejected note leaves no orphaned images in the vault (DES-019 §4.0).
   const resolved = resolveNoteImages(settings, note, templateVariables);
-  const flattenedBody = maybeFlatten(resolved.note.body, settings);
+  const resolvedArtifacts = resolveNoteArtifacts(settings, resolved.note, templateVariables);
+  const flattenedBody = maybeFlatten(resolvedArtifacts.note.body, settings);
   const { content, gatedBodyLength } = renderNote(
-    { ...resolved.note, body: flattenedBody },
+    { ...resolvedArtifacts.note, body: flattenedBody },
     settings
   );
   const capMiB = settings.maxNoteSizeMiB ?? DEFAULT_NOTE_SIZE_MIB;
@@ -279,9 +283,13 @@ async function saveFreshNote(
     ...resolved.failedImages,
     ...(await writeNoteImages(client, resolved.files)),
   ];
+  const failedArtifacts = [
+    ...resolvedArtifacts.failedArtifacts,
+    ...(await writeNoteArtifacts(client, resolvedArtifacts.files)),
+  ];
   await client.putFile(target.path, content);
 
-  const warning = imageWarning(failedImages);
+  const warning = joinWarnings(imageWarning(failedImages), artifactWarning(failedArtifacts));
   return {
     success: true,
     isNewFile: target.isNewFile,
@@ -368,6 +376,83 @@ async function writeNoteImages(
     }
   }
   return failedImages;
+}
+
+/** Artifact files to write, at their vault paths. */
+interface ArtifactWrite {
+  path: string;
+  fileName: string;
+  content: string;
+}
+
+/** A fresh save's artifacts resolved, before anything is written. */
+interface ResolvedArtifacts {
+  note: ObsidianNote;
+  files: readonly ArtifactWrite[];
+  /** File names of artifacts that could not be saved */
+  failedArtifacts: readonly string[];
+}
+
+/**
+ * For a fresh (non-append) save, return a note whose body links its captured
+ * artifacts with `[[filename]]` wikilinks, plus the files to write. They go to
+ * the image folder (ADR-046). Writes nothing; placeholders with no artifact
+ * are stripped.
+ */
+function resolveNoteArtifacts(
+  settings: ExtensionSettings,
+  note: ObsidianNote,
+  templateVariables: Record<string, string>
+): ResolvedArtifacts {
+  const artifacts = note.artifacts ?? [];
+  if (artifacts.length === 0) {
+    const stripped = note.body.includes('g2o-craft://')
+      ? { ...note, body: stripArtifactPlaceholders(note.body) }
+      : note;
+    return { note: stripped, files: [], failedArtifacts: [] };
+  }
+
+  const baseName = note.fileName.replace(/\.md$/i, '');
+  const { body, files } = resolveArtifacts(note.body, artifacts, baseName);
+
+  const dir = resolvePathTemplate(settings.imageVaultPath, templateVariables);
+  const writes: ArtifactWrite[] = [];
+  const failedArtifacts: string[] = [];
+  for (const file of files) {
+    const path = dir ? `${dir}/${file.fileName}` : file.fileName;
+    if (containsPathTraversal(path)) failedArtifacts.push(file.fileName);
+    else writes.push({ path, fileName: file.fileName, content: file.content });
+  }
+  return { note: { ...note, body }, files: writes, failedArtifacts };
+}
+
+/** Write the resolved artifact files; a failure never blocks the note. */
+async function writeNoteArtifacts(
+  client: ObsidianApiClient,
+  files: readonly ArtifactWrite[]
+): Promise<string[]> {
+  const failed: string[] = [];
+  for (const file of files) {
+    try {
+      await client.putFile(file.path, file.content);
+    } catch (error) {
+      console.warn('[G2O Background] Craft write failed:', file.fileName, error);
+      failed.push(file.fileName);
+    }
+  }
+  return failed;
+}
+
+/** The user-facing warning for crafts that could not be written, if any. */
+function artifactWarning(failed: readonly string[]): string | undefined {
+  if (failed.length === 0) return undefined;
+  const noun = failed.length === 1 ? 'craft' : 'crafts';
+  return `${failed.length} ${noun} could not be saved: ${failed.join(', ')}`;
+}
+
+function joinWarnings(...warnings: Array<string | undefined>): string | undefined {
+  const present = warnings.filter((w): w is string => Boolean(w));
+  return present.length > 0 ? present.join('. ') : undefined;
 }
 
 /** Probe attempts: original + hash suffix + a few counters for hash collisions */

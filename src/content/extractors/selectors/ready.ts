@@ -19,6 +19,7 @@ import { SELECTORS as CLAUDE } from './claude';
 import { SELECTORS as CHATGPT } from './chatgpt';
 import { SELECTORS as PERPLEXITY } from './perplexity';
 import { SELECTORS as NOTEBOOKLM } from './notebooklm';
+import { SELECTORS as MERLIN } from './merlin';
 
 export const CONVERSATION_READY_SELECTORS: Readonly<Record<AIPlatform, string>> = {
   gemini: GEMINI.conversationTurn[0],
@@ -28,6 +29,7 @@ export const CONVERSATION_READY_SELECTORS: Readonly<Record<AIPlatform, string>> 
   // first conversation element to render, before any answer exists.
   perplexity: PERPLEXITY.userQuery[0],
   notebooklm: NOTEBOOKLM.conversationTurn[0],
+  merlin: MERLIN.conversationTurn[0],
 };
 
 /** Selector list matching a rendered conversation on any supported platform. */

@@ -16,7 +16,7 @@
  * Turndown rule accepts before it keys a marker or a capture (DES-019 §4.8).
  */
 
-import { captureImage } from './image-capture';
+import { captureImage, type CaptureOptions } from './image-capture';
 import { generateHash } from '../lib/hash';
 import { IMAGE_ID_PATTERN } from '../lib/image-output';
 import type { ExtractedImage, ExtractionResult } from '../lib/types';
@@ -74,6 +74,8 @@ export class ImageMarkerCollector {
   private failures: string[] = [];
   /** Caller id → marker id, so a turn revisited by a harvest keeps its id. */
   private ids = new Map<string, string>();
+
+  constructor(private readonly captureOptions?: CaptureOptions) {}
 
   /** Forget everything from the previous extraction. */
   reset(): void {
@@ -186,7 +188,9 @@ export class ImageMarkerCollector {
   private async collect(): Promise<ExtractedImage[]> {
     const images: ExtractedImage[] = [];
     for (const { id, alt, element } of this.pending.values()) {
-      const result = await captureImage(element, id, alt);
+      const result = this.captureOptions
+        ? await captureImage(element, id, alt, this.captureOptions)
+        : await captureImage(element, id, alt);
       if (result.image) {
         images.push(result.image);
         continue;

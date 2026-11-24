@@ -27,6 +27,9 @@ import type { Page } from 'playwright';
  * - Perplexity chats live at /session/{uuid} since 2026-11; the old
  *   /search/{slug} redirects there (perplexity.ts getConversationId). The id
  *   segment is required so a bare /session/ stays `test_data_missing`.
+ * - Merlin chats live at /chat/{uuid} (merlin.ts getConversationId); the id
+ *   segment is required so a bare /chat/ or /chat/projects stays
+ *   `test_data_missing`.
  */
 export const AUTH_URL_PATTERNS: Readonly<Record<string, RegExp>> = {
   gemini: /^https:\/\/gemini\.google\.com\/(?:app\/|deepresearch\/|gem\/[a-f0-9]+\/[a-f0-9]+)/i,
@@ -34,6 +37,7 @@ export const AUTH_URL_PATTERNS: Readonly<Record<string, RegExp>> = {
   chatgpt: /^https:\/\/chatgpt\.com\/(?:c\/|g\/[^/]+\/c\/)/,
   perplexity: /^https:\/\/www\.perplexity\.ai\/(?:search|session)\/[^/?#]+/,
   notebooklm: /^https:\/\/(?:notebook|notebooklm)\.google\.com\/notebook\//,
+  merlin: /^https:\/\/www\.getmerlin\.in\/chat\/[0-9a-f]{8}-[0-9a-f-]+/i,
 };
 
 /**

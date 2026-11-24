@@ -25,6 +25,7 @@ const HOST_DISPLAY_NAMES = {
   'claude.ai': 'Claude',
   'chatgpt.com': 'ChatGPT',
   'www.perplexity.ai': 'Perplexity',
+  'www.getmerlin.in': 'Merlin',
   // Google rebranded NotebookLM to "Gemini Notebook" and moved the host. Both
   // hosts stay listed while the old one still redirects (ADR-023), and both
   // serve the *same* product, so both map to the current brand name. Requiring

@@ -23,6 +23,7 @@
     "https://claude.ai/*",
     "https://chatgpt.com/*",
     "https://www.perplexity.ai/*",
+    "https://www.getmerlin.in/*",
     "https://notebook.google.com/*",
     "https://notebooklm.google.com/*",
     "https://*.googleusercontent.com/*",
@@ -44,6 +45,7 @@
         "https://claude.ai/*",
         "https://chatgpt.com/*",
         "https://www.perplexity.ai/*",
+        "https://www.getmerlin.in/*",
         "https://notebook.google.com/*",
         "https://notebooklm.google.com/*"
       ],

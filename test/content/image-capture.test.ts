@@ -406,3 +406,59 @@ describe('captureImage — same-origin https source', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
+
+describe('captureImage — fetchCrossOriginFromPage', () => {
+  const CDN_URL = 'https://storage.googleapis.com/dall-e-images/u%2Fx.png';
+
+  it('reads a cross-origin https source from the page, without messaging the worker', async () => {
+    const sendMessage = vi.fn();
+    vi.stubGlobal('chrome', { runtime: { sendMessage } });
+    mockFetchBlob(blobLike(new Uint8Array([0x50, 0x4e, 0x47]), 'image/png'));
+
+    const result = await captureImage(loadedImage(CDN_URL), 'img-cdn-1', 'alt', {
+      fetchCrossOriginFromPage: true,
+    });
+
+    expect(result.image).toMatchObject({ id: 'img-cdn-1', mimeType: 'image/png', data: 'UE5H' });
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the worker when the page read fails', async () => {
+    const sendMessage = vi.fn().mockResolvedValue({ success: false, error: 'not allowed' });
+    vi.stubGlobal('chrome', { runtime: { sendMessage } });
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+    const result = await captureImage(loadedImage(CDN_URL), 'img-cdn-2', '', {
+      fetchCrossOriginFromPage: true,
+    });
+
+    expect(result.image).toBeNull();
+    expect(result.reason).toBe('not allowed');
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not read a non-https source from the page', async () => {
+    const sendMessage = vi.fn().mockResolvedValue({ success: false, error: 'bad scheme' });
+    vi.stubGlobal('chrome', { runtime: { sendMessage } });
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+
+    await captureImage(loadedImage('http://cdn.example.test/x.png'), 'img-cdn-3', '', {
+      fetchCrossOriginFromPage: true,
+    });
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('keeps delegating to the worker by default', async () => {
+    const sendMessage = vi.fn().mockResolvedValue({ success: false, error: 'x' });
+    vi.stubGlobal('chrome', { runtime: { sendMessage } });
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+
+    await captureImage(loadedImage(CDN_URL), 'img-cdn-4', '');
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+  });
+});

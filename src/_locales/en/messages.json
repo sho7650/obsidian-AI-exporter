@@ -4,7 +4,7 @@
     "description": "Extension name shown in browser"
   },
   "extDescription": {
-    "message": "Export AI conversations from Gemini, Claude, ChatGPT, Perplexity, and Gemini Notebook to Obsidian via Local REST API",
+    "message": "Export AI conversations from Gemini, Claude, ChatGPT, Perplexity, Merlin, and Gemini Notebook to Obsidian via Local REST API",
     "description": "Extension description shown in browser and store"
   },
   "ui_syncButton": {
@@ -52,7 +52,7 @@
     "description": "Collapsible section title for advanced settings"
   },
   "settings_vaultPathHelp": {
-    "message": "Use {platform} for source (gemini, claude, chatgpt, perplexity, notebooklm) and {YYYY} {YY} {MM} {DD} for the save date (local time). Example: AI/{platform}/{YYYY}/{MM}",
+    "message": "Use {platform} for source (gemini, claude, chatgpt, perplexity, notebooklm, merlin) and {YYYY} {YY} {MM} {DD} for the save date (local time). Example: AI/{platform}/{YYYY}/{MM}",
     "description": "Help text explaining template variables for vault path"
   },
   "settings_filenameScheme": {
@@ -128,7 +128,7 @@
     "description": "Label for the frontmatter tag list written to Deep Research notes"
   },
   "settings_tagsHelp": {
-    "message": "Comma-separated. {platform} becomes gemini, claude, chatgpt, perplexity or notebooklm. Nested tags like ai/chat are fine. Leave empty to restore the defaults.",
+    "message": "Comma-separated. {platform} becomes gemini, claude, chatgpt, perplexity, notebooklm or merlin. Nested tags like ai/chat are fine. Leave empty to restore the defaults.",
     "description": "Help text under the two tag list fields"
   },
   "settings_includeSource": {
@@ -366,7 +366,7 @@
     "description": "Label for tool content toggle"
   },
   "settings_toolContentHelp": {
-    "message": "Save web search and tool results from Claude",
+    "message": "Save web search and tool results from Claude, and the files (crafts) Merlin generates",
     "description": "Help text for tool content toggle"
   },
   "settings_enableImageExport": {

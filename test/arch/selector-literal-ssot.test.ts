@@ -26,7 +26,7 @@ const root = path.resolve(import.meta.dirname, '../..');
 const extractorsDir = path.join(root, 'src/content/extractors');
 const selectorsDir = path.join(extractorsDir, 'selectors');
 
-const PLATFORMS = ['gemini', 'claude', 'chatgpt', 'perplexity', 'notebooklm'] as const;
+const PLATFORMS = ['gemini', 'claude', 'chatgpt', 'perplexity', 'notebooklm', 'merlin'] as const;
 
 function stripComments(code: string): string {
   return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');

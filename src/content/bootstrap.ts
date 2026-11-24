@@ -11,6 +11,7 @@ import { ClaudeExtractor } from './extractors/claude';
 import { ChatGPTExtractor } from './extractors/chatgpt';
 import { PerplexityExtractor } from './extractors/perplexity';
 import { NotebookLMExtractor } from './extractors/notebooklm';
+import { MerlinExtractor } from './extractors/merlin';
 import { CONVERSATION_CONTAINER_SELECTOR } from './extractors/selectors/ready';
 import { extractErrorMessage } from '../lib/error-utils';
 import type { IConversationExtractor } from '../lib/types';
@@ -64,6 +65,7 @@ const PLATFORM_ROOT_SELECTORS: Record<AIPlatform, string[]> = {
   chatgpt: ['main'],
   perplexity: ['main'],
   notebooklm: ['main'],
+  merlin: ['main'],
 };
 
 /**
@@ -76,6 +78,7 @@ const EXTRACTOR_CONSTRUCTORS: Record<AIPlatform, new () => IConversationExtracto
   chatgpt: ChatGPTExtractor,
   perplexity: PerplexityExtractor,
   notebooklm: NotebookLMExtractor,
+  merlin: MerlinExtractor,
 };
 
 /**

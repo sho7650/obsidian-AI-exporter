@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Chrome Extension that extracts AI conversations from Google Gemini, Claude AI, ChatGPT, and Perplexity and saves them to Obsidian via the Local REST API. Built with CRXJS + Vite + TypeScript.
+Chrome Extension that extracts AI conversations from Google Gemini, Claude AI, ChatGPT, Perplexity, and Merlin and saves them to Obsidian via the Local REST API. Built with CRXJS + Vite + TypeScript.
 
 ## ⚠️ Absolute Rules
 
@@ -136,7 +136,7 @@ Load the extension in Chrome: `chrome://extensions` → Load unpacked → select
 ## Architecture
 
 ```
-Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, notebook.google.com + legacy notebooklm.google.com)
+Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, www.getmerlin.in, notebook.google.com + legacy notebooklm.google.com)
     ↓ extracts conversation / Deep Research / Artifacts
 Background Service Worker
     ↓ sends to Obsidian
@@ -174,7 +174,7 @@ Vault path supports template variables resolved at save time by `resolvePathTemp
 
 | Token        | Resolves to                                                             |
 | ------------ | ----------------------------------------------------------------------- |
-| `{platform}` | Source name (`gemini`, `claude`, `chatgpt`, `perplexity`, `notebooklm`) |
+| `{platform}` | Source name (`gemini`, `claude`, `chatgpt`, `perplexity`, `notebooklm`, `merlin`) |
 | `{YYYY}`     | 4-digit year, local time (e.g. `2026`)                                  |
 | `{YY}`       | 2-digit year, local time (e.g. `26`)                                    |
 | `{MM}`       | 2-digit month, zero-padded, local time (e.g. `05`)                      |
@@ -229,16 +229,27 @@ The `tags:` list comes from two user settings in `TemplateOptions` (`conversatio
 - **ChatGPT** (`chatgpt.com`): Conversations (including custom GPTs via `/g/` URLs)
 - **Perplexity** (`www.perplexity.ai`): Conversations. Conversation URLs are `/session/{uuid}` since 2026-11 (the old `/search/{slug}` redirects there); the conversation id is the last path segment, so new notes are keyed by the uuid ([ADR-045](docs/adr/045-perplexity-session-url-id.md))
 - **Gemini Notebook** (`notebook.google.com`, formerly NotebookLM on `notebooklm.google.com`): Chat conversations with source citations. Both hosts are matched while the legacy one redirects ([ADR-023](docs/adr/023-multi-host-platform-registry.md)); the platform id stays `notebooklm`
+- **Merlin** (`www.getmerlin.in`): Conversations at `/chat/{uuid}` (title from the top-bar breadcrumb, assistant label always "Merlin"), generated images, tables, KaTeX/raw `$$…$$` math, and — with `enableToolContent` on — crafts saved as separate files ([ADR-046](docs/adr/046-artifact-export.md), `docs/requirements/REQ-merlin-extractor.md`)
 
 ## Image Export
 
-Gemini- and ChatGPT-generated images are exported alongside the conversation ([ADR-008](docs/adr/008-image-sync-strategy.md), [ADR-041](docs/adr/041-chatgpt-generated-image-capture.md), issues #186 / #423). Because Gemini uses blob: URLs that only the page context can read, images are captured as base64 **in the content script** (`src/content/image-capture.ts`) before sanitization, and each generated `<img>` is rewritten to a `data-g2o-image` marker by the shared `ImageMarkerCollector` (`src/content/image-markers.ts`). ChatGPT's images are page-readable too — `blob:` URLs since the 2026-09 layout (#515), same-origin `chatgpt.com/backend-api/…` before it — so the page reads them directly with no extra host; marker ids come from the answer's message id (legacy: the widget's `image-<uuid>`) so the virtualized harvest stays stable, and the detection selectors are extractor-private (#402). `conversationToNote()` emits a destination-agnostic placeholder `![alt](g2o-image://{id})`; the background resolves it per output (`src/lib/image-output.ts`):
+Gemini-, ChatGPT- and Merlin-generated images are exported alongside the conversation ([ADR-008](docs/adr/008-image-sync-strategy.md), [ADR-041](docs/adr/041-chatgpt-generated-image-capture.md), issues #186 / #423). Because Gemini uses blob: URLs that only the page context can read, images are captured as base64 **in the content script** (`src/content/image-capture.ts`) before sanitization, and each generated `<img>` is rewritten to a `data-g2o-image` marker by the shared `ImageMarkerCollector` (`src/content/image-markers.ts`). ChatGPT's images are page-readable too — `blob:` URLs since the 2026-09 layout (#515), same-origin `chatgpt.com/backend-api/…` before it — so the page reads them directly with no extra host; marker ids come from the answer's message id (legacy: the widget's `image-<uuid>`) so the virtualized harvest stays stable, and the detection selectors are extractor-private (#402). Merlin's come from `storage.googleapis.com`, which answers the page's origin with CORS headers, so the Merlin extractor builds its collector with `fetchCrossOriginFromPage` and the page reads them (no manifest host); the "Generato con <model>" line under each image is dropped. `conversationToNote()` emits a destination-agnostic placeholder `![alt](g2o-image://{id})`; the background resolves it per output (`src/lib/image-output.ts`):
 
 - **Obsidian**: image written to the vault (`putBinaryFile`) under `imageVaultPath` (default `AI/{platform}/images`, template tokens supported); body uses a wikilink embed `![[filename]]`.
 - **File download**: markdown + each image as separate files; body references the filename only.
 - **Clipboard**: placeholders stripped; no image copied.
 
 Controlled by the `enableImageExport` setting (default on). Append mode strips placeholders (image handling deferred). Guards: ≤20 images/note, ≤10MB/image.
+
+## Artifact (craft) Export
+
+Merlin "crafts" (`.html`, `.md`, `.mmd`, …) are text files generated in a conversation ([ADR-046](docs/adr/046-artifact-export.md)). Their source is not in the message DOM, so — only when `enableToolContent` is on — the Merlin extractor automates the UI (`src/content/extractors/merlin-crafts.ts`): open the card, select the "Code" tab (Radix activates on `mousedown`), rebuild the source per `code > span.block`, then restore the panel; it never touches the Edit tab. The extractor leaves a `<span data-g2o-craft>` marker per card (`ArtifactMarkerCollector`, `src/content/artifact-markers.ts`), `conversationToNote()` emits `[name](g2o-craft://{id})`, and the background resolves it per output (`src/lib/artifact-output.ts`):
+
+- **Obsidian**: file `{noteBaseName}-{originalName}` (duplicates get `-2`, `-3`, … before the extension) written with `putFile` under `imageVaultPath`; body uses a wikilink `[[filename]]` (not an embed).
+- **File download**: markdown + each craft as separate files; body references the file name with the same wikilink.
+- **Clipboard / append mode**: placeholders stripped; no file written.
+
+Guards: ≤20 crafts/note (`MAX_IMAGES_PER_NOTE`), ≤10MB/craft. A craft that cannot be read never aborts the export: the note is saved and a warning is shown.
 
 ## Adding New Platforms
 
