@@ -10,6 +10,7 @@ import { renderNote } from '../lib/note-generator';
 import { isOverNoteSize, noteSizeError } from './note-size';
 import { handleSave } from './obsidian-handlers';
 import { resolveImagesForFile, stripImagePlaceholders } from '../lib/image-output';
+import { resolveArtifacts, stripArtifactPlaceholders } from '../lib/artifact-output';
 import { bytesToBase64 } from '../lib/image-utils';
 import type {
   ExtensionSettings,
@@ -157,20 +158,50 @@ function downloadDataUrl(url: string, filename: string): Promise<string | null> 
 }
 
 /**
- * Download note as a file, plus each captured image as a separate file.
- * The markdown references images by filename only (issue #186).
+ * The note body for a file download, with image placeholders resolved to
+ * filename-only links and craft placeholders to wikilinks, plus the files each
+ * of them adds to the download.
+ */
+function resolveFileDownloads(note: ObsidianNote, settings: ExtensionSettings) {
+  const baseName = noteBaseName(note.fileName);
+  const images = settings.enableImageExport ? (note.images ?? []) : [];
+  const { body: imageBody, files } =
+    images.length > 0
+      ? resolveImagesForFile(note.body, images, baseName)
+      : { body: stripImagePlaceholders(note.body), files: [] };
+  const { body, files: artifactFiles } = imageBody.includes('g2o-craft://')
+    ? resolveArtifacts(imageBody, note.artifacts ?? [], baseName)
+    : { body: imageBody, files: [] };
+  return { body, files, artifactFiles };
+}
+
+/**
+ * Download the craft files next to the note. Resolves with an error message
+ * for the first one that fails, or null when every download succeeded.
+ */
+async function downloadCrafts(
+  files: ReadonlyArray<{ fileName: string; content: string }>
+): Promise<string | null> {
+  for (const file of files) {
+    const error = await downloadDataUrl(
+      `data:text/plain;charset=utf-8;base64,${stringToBase64(file.content)}`,
+      file.fileName
+    );
+    if (error) return `Craft download failed (${file.fileName}): ${error}`;
+  }
+  return null;
+}
+
+/**
+ * Download note as a file, plus each captured image and craft as a separate
+ * file. The markdown references images by filename only (issue #186).
  */
 async function handleDownloadToFile(
   note: ObsidianNote,
   settings: ExtensionSettings
 ): Promise<OutputResult> {
   try {
-    const images = settings.enableImageExport ? (note.images ?? []) : [];
-    const { body, files } =
-      images.length > 0
-        ? resolveImagesForFile(note.body, images, noteBaseName(note.fileName))
-        : { body: stripImagePlaceholders(note.body), files: [] };
-
+    const { body, files, artifactFiles } = resolveFileDownloads(note, settings);
     const { content, gatedBodyLength } = renderNote({ ...note, body }, settings);
     const capMiB = noteSizeCap(settings);
     if (isOverNoteSize(gatedBodyLength, capMiB)) {
@@ -198,6 +229,11 @@ async function handleDownloadToFile(
       }
     }
 
+    const craftError = await downloadCrafts(artifactFiles);
+    if (craftError) {
+      return { destination: 'file', success: false, error: craftError };
+    }
+
     return { destination: 'file', success: true };
   } catch (error) {
     return {
@@ -216,9 +252,14 @@ async function handleCopyToClipboard(
   settings: ExtensionSettings
 ): Promise<OutputResult> {
   try {
-    // Clipboard output never references images: strip any placeholders so the
-    // copied markdown stays clean (issue #186).
-    const clipboardNote = { ...note, body: stripImagePlaceholders(note.body) };
+    // Clipboard output never references images or crafts: strip any
+    // placeholders so the copied markdown stays clean (issue #186).
+    const clipboardNote = {
+      ...note,
+      body: stripImagePlaceholders(
+        note.body.includes('g2o-craft://') ? stripArtifactPlaceholders(note.body) : note.body
+      ),
+    };
     const { content, gatedBodyLength } = renderNote(clipboardNote, settings);
     const capMiB = noteSizeCap(settings);
     if (isOverNoteSize(gatedBodyLength, capMiB)) {

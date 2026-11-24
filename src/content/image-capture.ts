@@ -102,6 +102,28 @@ function readableFromPage(url: string): boolean {
 }
 
 /**
+ * Options of {@link captureImage}.
+ */
+export interface CaptureOptions {
+  /**
+   * Read a cross-origin `https:` source from the page itself instead of going
+   * straight to the service worker. For a CDN that answers the page's origin
+   * with `Access-Control-Allow-Origin` (Merlin's `storage.googleapis.com`,
+   * verified 2026-11-24), which needs no extra host in the manifest and no
+   * worker allow-list entry. A failed read still falls back to the worker.
+   */
+  fetchCrossOriginFromPage?: boolean;
+}
+
+function isHttpsUrl(url: string): boolean {
+  try {
+    return new URL(url).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Fetch an image from the page and return it as an {@link ExtractedImage} with
  * base64 data. Returns `null` on any failure (network error, non-OK response,
  * oversized image, unsupported type) so a single bad image never aborts the
@@ -114,9 +136,10 @@ function readableFromPage(url: string): boolean {
 export async function fetchImageAsBase64(
   url: string,
   id: string,
-  alt: string
+  alt: string,
+  options: CaptureOptions = {}
 ): Promise<ExtractedImage | null> {
-  if (!readableFromPage(url)) {
+  if (!readableFromPage(url) && !(options.fetchCrossOriginFromPage && isHttpsUrl(url))) {
     return fetchRemoteImage(url, id, alt);
   }
 
@@ -227,14 +250,18 @@ function captureFromElement(
 export async function captureImage(
   element: HTMLImageElement,
   id: string,
-  alt: string
+  alt: string,
+  options: CaptureOptions = {}
 ): Promise<ImageCaptureResult> {
   const src = element.getAttribute('src') ?? '';
   if (!src) return captureFailed('image element has no src');
 
   if (!readableFromPage(src)) {
-    const remote = await fetchRemoteImageDetailed(src, id, alt);
-    return remote;
+    if (options.fetchCrossOriginFromPage && isHttpsUrl(src)) {
+      const viaPage = await fetchImageAsBase64(src, id, alt, options);
+      if (viaPage) return { image: viaPage };
+    }
+    return fetchRemoteImageDetailed(src, id, alt);
   }
 
   const viaUrl = await fetchImageAsBase64(src, id, alt);

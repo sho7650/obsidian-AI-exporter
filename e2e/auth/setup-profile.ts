@@ -34,6 +34,7 @@ const TARGET_URLS = [
   'https://chatgpt.com',
   'https://www.perplexity.ai',
   'https://notebook.google.com',
+  'https://www.getmerlin.in',
 ];
 
 function waitForLine(prompt: string): Promise<void> {

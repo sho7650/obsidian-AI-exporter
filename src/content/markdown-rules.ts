@@ -15,6 +15,7 @@ import {
   type OpenFence,
 } from '../lib/code-fence';
 import { IMAGE_ID_PATTERN } from '../lib/image-output';
+import { ARTIFACT_ID_PATTERN } from '../lib/artifact-output';
 import { isHttpUrl } from '../lib/validation';
 import { escapeMarkdownLink, isFootnoteLabel, toMarkdownSafeUrl } from './extractors/footnotes';
 
@@ -345,6 +346,25 @@ function imageAlt(el: Node): string {
   return cleanAttribute((el as Element).getAttribute('alt')).replace(/[\\[\]<>]/g, '\\$&');
 }
 
+// Custom rule for artifact placeholders (ADR-046).
+// Converts <span data-g2o-craft="ID">name</span> to `[name](g2o-craft://ID)` on
+// its own paragraph; the background resolves it to a `[[file]]` wikilink or
+// strips it. The page can forge the attribute, so an id outside the accepted
+// set is an ordinary span (its text stays, escaped as text).
+const g2oCraftRule: TurndownService.Rule = {
+  filter: node =>
+    node.nodeName === 'SPAN' &&
+    ARTIFACT_ID_PATTERN.test((node as Element).getAttribute('data-g2o-craft') ?? ''),
+  replacement: (_content, node) => {
+    const id = (node as Element).getAttribute('data-g2o-craft') ?? '';
+    const label = (node.textContent ?? '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/[\\[\]<>]/g, '\\$&');
+    return `\n\n[${label}](g2o-craft://${id})\n\n`;
+  },
+};
+
 /** Turndown's attribute clean-up: collapse line breaks and their indentation. */
 function cleanAttribute(value: string | null): string {
   return value ? value.replace(/(\n+\s*)+/g, '\n') : '';
@@ -495,6 +515,7 @@ const CUSTOM_RULES: ReadonlyArray<readonly [string, TurndownService.Rule]> = [
   ['codemirrorCodeBlocks', codemirrorCodeBlocksRule],
   ['inlineCode', inlineCodeRule],
   ['g2oImage', g2oImageRule],
+  ['g2oCraft', g2oCraftRule],
   ['images', imagesRule],
   ['links', linksRule],
   ['footnoteRef', footnoteRefRule],

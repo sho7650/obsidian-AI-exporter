@@ -1,6 +1,6 @@
 # Obsidian AI Exporter
 
-Chrome Extension that exports AI conversations from Google Gemini, Claude AI, ChatGPT, Perplexity, and Gemini Notebook (formerly NotebookLM) to Obsidian via the Local REST API.
+Chrome Extension that exports AI conversations from Google Gemini, Claude AI, ChatGPT, Perplexity, Merlin, and Gemini Notebook (formerly NotebookLM) to Obsidian via the Local REST API.
 
 [日本語版はこちら](README.ja.md)
 
@@ -9,20 +9,20 @@ Chrome Extension that exports AI conversations from Google Gemini, Claude AI, Ch
 
 ## Features
 
-- **Multi-platform support**: Export from Google Gemini, Claude AI, ChatGPT, Perplexity, and Gemini Notebook (formerly NotebookLM)
+- **Multi-platform support**: Export from Google Gemini, Claude AI, ChatGPT, Perplexity, Merlin, and Gemini Notebook (formerly NotebookLM)
 - **One-click export**: Floating "Sync" button on supported AI pages
 - **Persistent sync status**: A ✓ / ! / × badge stays on the sync button after a sync finishes — click it for the file name, per-destination results, warnings, and when the sync ran. It clears when you switch conversations, dismiss it, or — on Claude and ChatGPT — when a message newer than the sync appears
 - **Multiple output options**: Save to Obsidian, download as file, or copy to clipboard
 - **Deep Research support**: Export Gemini Deep Research, Claude Extended Thinking, and Perplexity Deep Research reports
-- **Artifact support**: Extract Claude Artifacts with inline citations and sources
-- **Image export**: Gemini- and ChatGPT-generated images are saved alongside the conversation — embedded in your vault, downloaded as files, or stripped for clipboard
+- **Artifact support**: Extract Claude Artifacts with inline citations and sources; Merlin crafts (`.html`, `.md`, `.mmd`, …) are saved as separate files next to the note
+- **Image export**: Gemini-, ChatGPT- and Merlin-generated images are saved alongside the conversation — embedded in your vault, downloaded as files, or stripped for clipboard
 - **Source citations**: Gemini Notebook chat citations are exported as footnotes
 - **Auto-scroll**: Automatically loads all messages in long conversations, including virtualized (windowed) Claude and ChatGPT threads — its two timeouts are configurable (idle, default 15s; total, default 300s) for very long threads, and the note size cap (default 8 MiB, up to 16 MiB) can be raised for the longest ones
 - **Append mode**: Only new messages are added to existing notes
 - **Filename schemes**: Choose `title-id` (default) or `title-date` naming for exported notes
 - **Vault path templates**: Organize with `{platform}` and date tokens (`{YYYY}`, `{MM}`, …) for auto-sorting
 - **Filename collision safety**: Never overwrites a note belonging to a different conversation, and never replaces a complete note with a partially-loaded one
-- **Tool content support**: Optionally include the steps Claude ran (web searches, tool calls) as collapsible `[!ABSTRACT]` callouts
+- **Tool content support**: Optionally include the steps Claude ran (web searches, tool calls) as collapsible `[!ABSTRACT]` callouts, and the files Merlin generates (crafts)
 - **Question headers (optional)**: Prepend a `## ` heading (first 60 chars of the question) before each user message for TOC navigation in long conversations
 - **Large-callout flattening**: Optionally flatten very long messages to plain text when saving to Obsidian, avoiding renderer slowdowns; the line threshold is configurable (default 200)
 - **Configurable timezone**: Set timezone for frontmatter dates (created/modified)
@@ -122,6 +122,14 @@ Gemini- and ChatGPT-generated images are captured and exported automatically (se
 2. Click the purple "Sync" button in the bottom-right corner
 3. The conversation will be exported with the same output options as Gemini
 
+### Merlin
+
+1. Open a chat on [www.getmerlin.in](https://www.getmerlin.in) (`/chat/{uuid}`, including chats inside a project)
+2. Click the purple "Sync" button in the bottom-right corner
+3. The conversation will be exported with the same output options as Gemini. The note is titled after the chat, every answer is labelled "Merlin" whichever model produced it, and the project name is not exported. Generated images are saved like Gemini's; only the response currently displayed is exported when a message has several versions
+
+**Crafts (files Merlin generates):** turn on **Include tool/search results** to export them too. The extension opens each craft card, reads the source from the "Code" tab and puts it back as it found it, then saves `{note name}-{craft name}` (for example `note-handshake-http.html`) in the image folder, linked from the note as `[[…]]`. Two crafts with the same name keep both (`…-2`). Crafts are not exported in append mode or to the clipboard, and at most 20 crafts (10 MB each) are saved per note; a craft that cannot be read produces a warning and the rest of the note is still saved.
+
 ### Gemini Notebook (formerly NotebookLM)
 
 1. Open a notebook on [notebook.google.com](https://notebook.google.com) (the old `notebooklm.google.com` links still work — Google redirects them)
@@ -186,7 +194,7 @@ message_count: 4
 
 **Message Format** in Advanced Settings switches this between callouts (above), plain blockquotes, and plain text. **User Callout Type** and **Assistant Callout Type** change the `QUESTION` / `NOTE` keywords.
 
-**Conversation Tags** and **Deep Research Tags** (Advanced Settings → Frontmatter Fields) set the `tags:` list so it matches the tags your vault already uses. Each field is comma-separated; `{platform}` expands to the source id (`gemini`, `claude`, `chatgpt`, `perplexity`, `notebooklm`), nested tags such as `ai/chat` are allowed, and an empty field restores the defaults (`ai-conversation, {platform}` and `ai-research, deep-research, {platform}`). Entries follow Obsidian's tag rules (letters, digits, `_`, `-`, `/`; no spaces); an invalid entry makes the whole field fall back to its default. Notes already in the vault are never rewritten: append mode leaves their `tags:` block as you left it.
+**Conversation Tags** and **Deep Research Tags** (Advanced Settings → Frontmatter Fields) set the `tags:` list so it matches the tags your vault already uses. Each field is comma-separated; `{platform}` expands to the source id (`gemini`, `claude`, `chatgpt`, `perplexity`, `notebooklm`, `merlin`), nested tags such as `ai/chat` are allowed, and an empty field restores the defaults (`ai-conversation, {platform}` and `ai-research, deep-research, {platform}`). Entries follow Obsidian's tag rules (letters, digits, `_`, `-`, `/`; no spaces); an invalid entry makes the whole field fall back to its default. Notes already in the vault are never rewritten: append mode leaves their `tags:` block as you left it.
 
 Code blocks are fenced to fit their content. When a block contains another fenced block — common when you ask an AI to write a `README.md` or a prompt — the outer fence grows to four or more backticks so the inner fences stay part of the content, which is the nesting rule Obsidian documents. The original fence character cannot be recovered (the page only exposes the rendered code), so the outer fence is always backticks.
 
@@ -242,7 +250,7 @@ The **Vault Path** setting supports template tokens that are resolved at save ti
 
 | Token        | Resolves to                                                             |
 | ------------ | ----------------------------------------------------------------------- |
-| `{platform}` | Source name (`gemini`, `claude`, `chatgpt`, `perplexity`, `notebooklm`) |
+| `{platform}` | Source name (`gemini`, `claude`, `chatgpt`, `perplexity`, `notebooklm`, `merlin`) |
 | `{YYYY}`     | 4-digit year, local time (e.g. `2026`)                                  |
 | `{YY}`       | 2-digit year, local time (e.g. `26`)                                    |
 | `{MM}`       | 2-digit month, zero-padded (e.g. `07`)                                  |
@@ -265,7 +273,7 @@ An export whose auto-scroll stopped early is also refused rather than written, w
 
 ## Image Export
 
-Images generated by Gemini and by ChatGPT are exported alongside the conversation (enabled by default; toggle with **Export images** in Advanced Settings). Each image is captured as base64 and then resolved per output destination:
+Images generated by Gemini, ChatGPT and Merlin are exported alongside the conversation (enabled by default; toggle with **Export images** in Advanced Settings). Each image is captured as base64 and then resolved per output destination:
 
 - **Obsidian**: images are written to your vault under **Image Folder** (default `AI/{platform}/images`, supports the same template tokens as the vault path); the note body embeds them with `![[filename]]` wikilinks.
 - **File download**: the Markdown file and each image are downloaded as separate files.
@@ -274,6 +282,8 @@ Images generated by Gemini and by ChatGPT are exported alongside the conversatio
 Gemini serves generated images either from `blob:` URLs, which only the page can read, or from Google's image CDN (`googleusercontent.com`). The extension reads `blob:` URLs in the page and downloads CDN-hosted images in the background worker — the browser blocks the page from fetching them directly. That CDN redirects the download to `lh3.google.com`, so the extension requests access to both hosts; they are used only to download images you asked to export.
 
 ChatGPT serves generated images from `chatgpt.com` itself, so the page fetches them directly with your existing session — no additional host permission is involved. An image turn in ChatGPT has no text of its own; it is exported as a message containing just the image.
+
+Merlin serves generated images from `storage.googleapis.com` with CORS enabled for its own pages, so the page fetches them directly too — again no additional host permission. The "Generated with <model>" line Merlin prints under each image is left out of the note.
 
 Guards: up to 20 images per note and 10 MB per image. Append mode strips image placeholders (image handling in append mode is deferred). If an image cannot be saved, the note is still written and a warning names the images that were skipped.
 
@@ -308,7 +318,7 @@ If `node_modules/` is missing, the Nix wrapper exits with an instruction to run 
 ## Architecture
 
 ```
-Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, notebook.google.com + legacy notebooklm.google.com)
+Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, www.getmerlin.in, notebook.google.com + legacy notebooklm.google.com)
     ↓ extracts conversation / Deep Research / Artifacts
 Background Service Worker
     ↓ sends to Obsidian
@@ -325,9 +335,11 @@ Obsidian Local REST API (default: http://127.0.0.1:27123)
 | `src/content/extractors/chatgpt.ts`    | ChatGPT conversation extractor                          |
 | `src/content/extractors/perplexity.ts` | Perplexity conversation extractor                       |
 | `src/content/extractors/notebooklm.ts` | Gemini Notebook chat & source-citation extractor        |
+| `src/content/extractors/merlin.ts`     | Merlin conversation, image & craft extractor            |
 | `src/content/image-capture.ts`         | Captures generated images as base64 in the page context |
 | `src/background/`                      | Service worker for API communication                    |
 | `src/lib/image-output.ts`              | Resolves image placeholders per output destination      |
+| `src/lib/artifact-output.ts`           | Resolves craft placeholders per output destination      |
 | `src/popup/`                           | Settings UI                                             |
 | `src/lib/`                             | Shared utilities and types                              |
 
@@ -380,7 +392,7 @@ This extension:
 
 - Does **not** collect your data, and sends **no** analytics or telemetry anywhere
 - Sends your conversations only to your Obsidian instance (default: 127.0.0.1, configurable for LAN access)
-- Downloads generated images only when image export is enabled, and only for images in the conversation you are exporting: Gemini images from Google's image CDN (`googleusercontent.com`, which redirects to `lh3.google.com`), ChatGPT images from `chatgpt.com` itself — in both cases the same host the AI page already loads them from
+- Downloads generated images only when image export is enabled, and only for images in the conversation you are exporting: Gemini images from Google's image CDN (`googleusercontent.com`, which redirects to `lh3.google.com`), ChatGPT images from `chatgpt.com` itself, Merlin images from `storage.googleapis.com` (fetched by the page, which Merlin's CDN allows) — in each case the same host the AI page already loads them from
 - Stores API key locally in your browser (not synced to cloud)
 
 See our [Privacy Policy](https://sho7650.github.io/obsidian-AI-exporter/privacy.html) for details.

@@ -18,10 +18,21 @@ import {
   VALID_OUTPUT_DESTINATIONS,
   VALID_SOURCES,
 } from '../lib/constants';
-import type { ExtensionMessage, ExtractedImage, ObsidianNote } from '../lib/types';
+import type {
+  ExtensionMessage,
+  ExtractedArtifact,
+  ExtractedImage,
+  ObsidianNote,
+} from '../lib/types';
 import { containsPathTraversal } from '../lib/path-utils';
 import { isHttpUrl } from '../lib/validation';
-import { isAllowedImageMime, isLikelyBase64, isAllowedImageSourceUrl } from '../lib/image-utils';
+import {
+  MAX_IMAGE_SIZE_BYTES,
+  isAllowedImageMime,
+  isLikelyBase64,
+  isAllowedImageSourceUrl,
+} from '../lib/image-utils';
+import { ARTIFACT_ID_PATTERN } from '../lib/artifact-output';
 
 /**
  * Validate message sender (M-02)
@@ -139,6 +150,53 @@ function validateNoteData(note: ObsidianNote | undefined): boolean {
     return false;
   }
 
+  if (note.artifacts !== undefined && !validateArtifacts(note.artifacts)) {
+    return false;
+  }
+
+  return true;
+}
+
+/** Longest artifact name accepted; the file name is sanitized again when written. */
+const MAX_ARTIFACT_NAME_LENGTH = 255;
+
+/**
+ * Validate attached artifacts (DoS guard), the counterpart of
+ * {@link validateImages}: bound the count, each source's size and the
+ * combined size, and require well-formed fields. The name is not trusted as a
+ * path — it is reduced to a file name when written — but a null byte or an
+ * absurd length is refused outright.
+ */
+function isWellFormedArtifact(artifact: Partial<ExtractedArtifact> | null | undefined): boolean {
+  return (
+    !!artifact &&
+    typeof artifact === 'object' &&
+    typeof artifact.id === 'string' &&
+    ARTIFACT_ID_PATTERN.test(artifact.id) &&
+    typeof artifact.name === 'string' &&
+    artifact.name.length > 0 &&
+    artifact.name.length <= MAX_ARTIFACT_NAME_LENGTH &&
+    !artifact.name.includes('\0') &&
+    typeof artifact.language === 'string' &&
+    typeof artifact.content === 'string' &&
+    artifact.content.length <= MAX_IMAGE_SIZE_BYTES
+  );
+}
+
+function validateArtifacts(artifacts: unknown): boolean {
+  if (!Array.isArray(artifacts) || artifacts.length > MAX_IMAGES_PER_NOTE) {
+    return false;
+  }
+  let totalLength = 0;
+  for (const artifact of artifacts as Array<Partial<ExtractedArtifact> | null | undefined>) {
+    if (!isWellFormedArtifact(artifact)) {
+      return false;
+    }
+    totalLength += artifact!.content!.length;
+    if (totalLength > MAX_TOTAL_IMAGE_DATA_LENGTH) {
+      return false;
+    }
+  }
   return true;
 }
 

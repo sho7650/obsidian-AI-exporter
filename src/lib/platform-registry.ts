@@ -37,6 +37,7 @@ export const PLATFORM_REGISTRY: Record<AIPlatform, PlatformInfo> = {
   claude: { hosts: ['claude.ai'], label: 'Claude' },
   chatgpt: { hosts: ['chatgpt.com'], label: 'ChatGPT' },
   perplexity: { hosts: ['www.perplexity.ai'], label: 'Perplexity' },
+  merlin: { hosts: ['www.getmerlin.in'], label: 'Merlin' },
   notebooklm: {
     // Google rebranded NotebookLM to "Gemini Notebook" and moved it to
     // notebook.google.com. The legacy host currently 301s to the new one, but

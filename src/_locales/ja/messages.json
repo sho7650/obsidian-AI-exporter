@@ -3,7 +3,7 @@
     "message": "Obsidian AI Exporter"
   },
   "extDescription": {
-    "message": "Gemini、Claude、ChatGPT、Perplexity、Gemini Notebook（旧 NotebookLM）の AI 会話を Obsidian へエクスポート（Local REST API 経由）"
+    "message": "Gemini、Claude、ChatGPT、Perplexity、Merlin、Gemini Notebook（旧 NotebookLM）の AI 会話を Obsidian へエクスポート（Local REST API 経由）"
   },
   "ui_syncButton": {
     "message": "Obsidian に同期"
@@ -39,7 +39,7 @@
     "message": "詳細設定"
   },
   "settings_vaultPathHelp": {
-    "message": "{platform} はプラットフォーム名（gemini, claude, chatgpt, perplexity, notebooklm）、{YYYY} {YY} {MM} {DD} は保存時のローカル日付に置換されます。例: AI/{platform}/{YYYY}/{MM}"
+    "message": "{platform} はプラットフォーム名（gemini, claude, chatgpt, perplexity, notebooklm, merlin）、{YYYY} {YY} {MM} {DD} は保存時のローカル日付に置換されます。例: AI/{platform}/{YYYY}/{MM}"
   },
   "settings_filenameScheme": {
     "message": "ファイル名スキーム"
@@ -96,7 +96,7 @@
     "message": "Deep Research のタグ"
   },
   "settings_tagsHelp": {
-    "message": "カンマ区切り。{platform} は gemini / claude / chatgpt / perplexity / notebooklm に置き換わります。ai/chat のような階層タグも使えます。空欄にすると既定値に戻ります。"
+    "message": "カンマ区切り。{platform} は gemini / claude / chatgpt / perplexity / notebooklm / merlin に置き換わります。ai/chat のような階層タグも使えます。空欄にすると既定値に戻ります。"
   },
   "settings_includeSource": {
     "message": "ソースと URL を含める"
@@ -271,7 +271,7 @@
     "message": "ツール/検索結果を含める"
   },
   "settings_toolContentHelp": {
-    "message": "Claude の Web 検索やツール結果も保存する"
+    "message": "Claude の Web 検索やツール結果、Merlin が生成したファイル（craft）も保存する"
   },
   "settings_enableImageExport": {
     "message": "画像を書き出す"

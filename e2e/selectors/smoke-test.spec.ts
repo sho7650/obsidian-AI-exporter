@@ -22,6 +22,7 @@ import {
   CHATGPT_SELECTORS,
   PERPLEXITY_SELECTORS,
   NOTEBOOKLM_SELECTORS,
+  MERLIN_SELECTORS,
 } from '../../src/content/extractors/selectors';
 import type { SelectorGroup } from '../../src/content/extractors/selectors/types';
 import { checkAuthStatus, type AuthStatus } from './auth-check';
@@ -69,6 +70,7 @@ const READY_SELECTORS: Readonly<Record<string, string>> = {
   chatgpt_conv: 'div[data-turn-key]', // 2026-09 layout (issue #515)
   perplexity_conv: '.prose[data-renderer="lm"]',
   notebooklm_conv: '.chat-message-pair',
+  merlin_conv: MERLIN_SELECTORS.conversationTurn[0],
 };
 
 /**
@@ -487,6 +489,20 @@ test.describe('NotebookLM', () => {
       'notebooklm_conv',
       {
         SELECTORS: NOTEBOOKLM_SELECTORS,
+      }
+    );
+  });
+});
+
+test.describe('Merlin', () => {
+  test('conversation selectors', async () => {
+    await runPlatformValidation(
+      session.context,
+      'merlin',
+      process.env.MERLIN_CONV_URL,
+      'merlin_conv',
+      {
+        SELECTORS: MERLIN_SELECTORS,
       }
     );
   });

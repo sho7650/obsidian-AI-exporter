@@ -1,6 +1,6 @@
 # Obsidian AI Exporter
 
-Google Gemini、Claude AI、ChatGPT、Perplexity、Gemini Notebook（旧 NotebookLM）の会話を Obsidian に保存する Chrome 拡張機能です。Local REST API を使用してローカル環境で動作します。
+Google Gemini、Claude AI、ChatGPT、Perplexity、Merlin、Gemini Notebook（旧 NotebookLM）の会話を Obsidian に保存する Chrome 拡張機能です。Local REST API を使用してローカル環境で動作します。
 
 [English version](README.md)
 
@@ -9,13 +9,13 @@ Google Gemini、Claude AI、ChatGPT、Perplexity、Gemini Notebook（旧 Noteboo
 
 ## 機能
 
-- **マルチプラットフォーム対応**: Google Gemini、Claude AI、ChatGPT、Perplexity、Gemini Notebook（旧 NotebookLM）からエクスポート
+- **マルチプラットフォーム対応**: Google Gemini、Claude AI、ChatGPT、Perplexity、Merlin、Gemini Notebook（旧 NotebookLM）からエクスポート
 - **ワンクリック保存**: 対応する AI のページに浮かぶ「Sync」ボタンで保存
 - **同期ステータスの常設表示**: 同期が終わっても、同期ボタンに ✓ / ! / × のバッジが残ります。クリックすると、ファイル名、保存先ごとの結果、警告、同期した時刻を確認できます。バッジが消えるのは、会話を切り替えたとき、バッジを閉じたとき、Claude と ChatGPT で同期より新しいメッセージが表示されたときです
 - **複数の出力オプション**: Obsidian への保存、ファイルとしてダウンロード、クリップボードへのコピー
 - **Deep Research 対応**: Gemini Deep Research、Claude Extended Thinking、Perplexity Deep Research のレポートを保存
 - **Artifact 対応**: Claude の Artifact を、インライン引用と出典付きで抽出
-- **画像エクスポート**: Gemini と ChatGPT が生成した画像を会話と一緒に保存。Obsidian では Vault に埋め込み、ファイル出力では別ファイルとしてダウンロードします。クリップボードにコピーするときは画像を除きます
+- **画像エクスポート**: Gemini・ChatGPT・Merlin が生成した画像を会話と一緒に保存。Obsidian では Vault に埋め込み、ファイル出力では別ファイルとしてダウンロードします。クリップボードにコピーするときは画像を除きます
 - **ソース引用**: Gemini Notebook のチャットの引用を脚注としてエクスポート
 - **自動スクロール**: 長い会話のメッセージを自動ですべて読み込み。一度に一部のターンだけを読み込む（仮想化された）Claude・ChatGPT のスレッドにも対応します。非常に長い会話に合わせて 2 つのタイムアウト（アイドル: 既定 15 秒／全体: 既定 300 秒）を延長でき、特に長いものではノートサイズの上限（既定 8 MiB、最大 16 MiB）も引き上げられます
 - **追記モード**: 既存のノートには新しいメッセージだけを追加
@@ -122,6 +122,14 @@ Gemini と ChatGPT が生成した画像も、自動で取り込んでエクス�
 2. 右下の紫色の「Sync」ボタンをクリック
 3. Gemini と同じ出力先に会話がエクスポートされます
 
+### Merlin
+
+1. [www.getmerlin.in](https://www.getmerlin.in) でチャットを開く（`/chat/{uuid}`。プロジェクト内のチャットも対象）
+2. 右下の紫色の「Sync」ボタンをクリック
+3. Gemini と同じ出力先に会話がエクスポートされます。ノートのタイトルはチャット名で、どのモデルの回答でも見出しは常に「Merlin」になり、プロジェクト名は書き出されません。生成画像は Gemini と同様に保存され、メッセージに複数のバージョンがある場合は、表示中のものだけを書き出します
+
+**craft（Merlin が生成するファイル）:** **ツール/検索結果を含める** をオンにすると、craft も書き出します。拡張機能が各 craft のカードを開いて「Code」タブからソースを読み取り、パネルを元の状態に戻したうえで、`{ノート名}-{craft 名}`（例: `note-handshake-http.html`）として画像フォルダに保存し、ノートから `[[…]]` でリンクします。同名の craft が複数ある場合は両方残します（`…-2`）。追記モードとクリップボードでは craft を書き出さず、1 ノートあたり最大 20 件（1 件 10 MB まで）です。読み取れなかった craft は警告として表示され、ノートの残りはそのまま保存されます。
+
 ### Gemini Notebook（旧 NotebookLM）
 
 1. [notebook.google.com](https://notebook.google.com) でノートブックを開く（旧 `notebooklm.google.com` のリンクも、Google がリダイレクトするのでそのまま使えます）
@@ -186,7 +194,7 @@ message_count: 4
 
 詳細設定の**メッセージ形式**で、上のコールアウトを引用ブロックやプレーンテキストに切り替えられます。**ユーザーのコールアウト種類**と**アシスタントのコールアウト種類**で、`QUESTION` / `NOTE` のキーワードを変更できます。
 
-**会話のタグ**と **Deep Research のタグ**（詳細設定 → フロントマター設定）で、`tags:` の中身を Vault で使っているタグに合わせられます。どちらもカンマ区切りで入力します。`{platform}` はソース id（`gemini`、`claude`、`chatgpt`、`perplexity`、`notebooklm`）に置き換わり、`ai/chat` のような階層タグも使えます。欄を空にすると既定値（`ai-conversation, {platform}` と `ai-research, deep-research, {platform}`）に戻ります。各項目は Obsidian のタグの規則（文字・数字・`_`・`-`・`/` のみ、空白は不可）に従います。規則に合わない項目が 1 つでもあると、その欄全体が既定値に戻ります。Vault にある既存のノートは書き換えず、追記モードでも `tags:` ブロックはそのまま残ります。
+**会話のタグ**と **Deep Research のタグ**（詳細設定 → フロントマター設定）で、`tags:` の中身を Vault で使っているタグに合わせられます。どちらもカンマ区切りで入力します。`{platform}` はソース id（`gemini`、`claude`、`chatgpt`、`perplexity`、`notebooklm`、`merlin`）に置き換わり、`ai/chat` のような階層タグも使えます。欄を空にすると既定値（`ai-conversation, {platform}` と `ai-research, deep-research, {platform}`）に戻ります。各項目は Obsidian のタグの規則（文字・数字・`_`・`-`・`/` のみ、空白は不可）に従います。規則に合わない項目が 1 つでもあると、その欄全体が既定値に戻ります。Vault にある既存のノートは書き換えず、追記モードでも `tags:` ブロックはそのまま残ります。
 
 コードブロックのフェンスは、内容に合わせた長さにします。AI に `README.md` やプロンプトを書かせたときのように、ブロックの中にさらにフェンス付きのブロックがあると、外側のフェンスをバッククォート 4 つ以上に伸ばし、内側のフェンスを内容の一部として残します。これは Obsidian のドキュメントにあるネストの書き方です。ページにはレンダリング後のコードしかなく、元のフェンス文字は復元できないため、外側のフェンスは常にバッククォートになります。
 
@@ -242,7 +250,7 @@ message_count: 1
 
 | トークン     | 置き換わる値                                                          |
 | ------------ | --------------------------------------------------------------------- |
-| `{platform}` | ソース名（`gemini`、`claude`、`chatgpt`、`perplexity`、`notebooklm`） |
+| `{platform}` | ソース名（`gemini`、`claude`、`chatgpt`、`perplexity`、`notebooklm`、`merlin`） |
 | `{YYYY}`     | 4桁の年（ローカル時間、例: `2026`）                                   |
 | `{YY}`       | 2桁の年（ローカル時間、例: `26`）                                     |
 | `{MM}`       | 2桁のゼロ埋め月（例: `07`）                                           |
@@ -265,7 +273,7 @@ message_count: 1
 
 ## 画像エクスポート
 
-Gemini と ChatGPT が生成した画像は、会話と一緒にエクスポートされます（既定で有効。詳細設定の**画像を書き出す**で切り替えられます）。各画像は base64 として取り込まれ、出力先ごとに次のように扱われます:
+Gemini、ChatGPT、Merlin が生成した画像は、会話と一緒にエクスポートされます（既定で有効。詳細設定の**画像を書き出す**で切り替えられます）。各画像は base64 として取り込まれ、出力先ごとに次のように扱われます:
 
 - **Obsidian**: 画像は **画像フォルダ**（既定 `AI/{platform}/images`。保存先パスと同じテンプレートトークンが使えます）の下に保存され、本文には `![[filename]]` のウィキリンクで埋め込まれます。
 - **ファイルダウンロード**: Markdown ファイルと各画像を、別々のファイルとしてダウンロードします。
@@ -274,6 +282,8 @@ Gemini と ChatGPT が生成した画像は、会話と一緒にエクスポー�
 Gemini は生成画像を、ページからしか読めない `blob:` URL か、Google の画像 CDN（`googleusercontent.com`）から配信します。拡張機能は、`blob:` URL の画像はページ内で読み取り、CDN の画像はバックグラウンドワーカーでダウンロードします。ブラウザが、ページから CDN の画像を直接取得することをブロックするためです。この CDN はダウンロードを `lh3.google.com` にリダイレクトするので、拡張機能は両方のホストへのアクセス権限を求めます。どちらも、エクスポートを指示した画像のダウンロードにだけ使います。
 
 ChatGPT は生成画像を `chatgpt.com` 自身から配信するので、ページが既存のセッションでそのまま取得します。追加のホスト権限は使いません。ChatGPT の画像のターンには本文がないため、画像だけのメッセージとしてエクスポートされます。
+
+Merlin は生成画像を `storage.googleapis.com` から、自社ページ向けに CORS を許可して配信するので、こちらもページが直接取得します。追加のホスト権限は使いません。Merlin が画像の下に表示する「Generato con <モデル名>」の行は、ノートには含めません。
 
 制限: 1 ノートあたり最大 20 枚、1 枚あたり最大 10 MB。追記モードでは画像のプレースホルダを取り除きます（追記モードでの画像の扱いは後回しにしています）。画像を保存できなかった場合もノートは書き込まれ、保存できなかった画像の名前が警告に表示されます。
 
@@ -308,7 +318,7 @@ ChatGPT は生成画像を `chatgpt.com` 自身から配信するので、ペー
 ## アーキテクチャ
 
 ```
-Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, notebook.google.com + legacy notebooklm.google.com)
+Content Script (gemini.google.com, claude.ai, chatgpt.com, www.perplexity.ai, www.getmerlin.in, notebook.google.com + legacy notebooklm.google.com)
     ↓ 会話 / Deep Research / Artifacts を抽出
 Background Service Worker
     ↓ Obsidian に送信
@@ -325,6 +335,7 @@ Obsidian Local REST API (既定: http://127.0.0.1:27123)
 | `src/content/extractors/chatgpt.ts`    | ChatGPT 会話抽出                           |
 | `src/content/extractors/perplexity.ts` | Perplexity 会話抽出                        |
 | `src/content/extractors/notebooklm.ts` | Gemini Notebook チャット & ソース引用抽出  |
+| `src/content/extractors/merlin.ts`     | Merlin 会話・画像・craft 抽出              |
 | `src/content/image-capture.ts`         | 生成画像をページコンテキストで base64 捕捉 |
 | `src/background/`                      | API 通信用のサービスワーカー               |
 | `src/lib/image-output.ts`              | 出力先ごとに画像プレースホルダを置き換え   |
@@ -380,7 +391,7 @@ OS の証明書ストアに証明書をインポートし、Chrome を再起動�
 
 - データを**収集せず**、解析やテレメトリもどこにも**送信しません**
 - 会話を送る先は、あなたの Obsidian だけです（既定: 127.0.0.1。LAN 上の Obsidian に接続するよう変更もできます）
-- 生成画像をダウンロードするのは、画像エクスポートが有効なときだけで、対象はエクスポート中の会話にある画像だけです。Gemini の画像は Google の画像 CDN（`googleusercontent.com`。`lh3.google.com` にリダイレクトされます）から、ChatGPT の画像は `chatgpt.com` 自身から取得します。どちらも、AI のページがもともと画像を読み込んでいるのと同じホストです
+- 生成画像をダウンロードするのは、画像エクスポートが有効なときだけで、対象はエクスポート中の会話にある画像だけです。Gemini の画像は Google の画像 CDN（`googleusercontent.com`。`lh3.google.com` にリダイレクトされます）から、ChatGPT の画像は `chatgpt.com` 自身から、Merlin の画像は `storage.googleapis.com` から（ページが取得します。Merlin の CDN が許可しています）取得します。いずれも、AI のページがもともと画像を読み込んでいるのと同じホストです
 - API キーはブラウザ内に保存します（クラウドに同期しません）
 
 詳細は[プライバシーポリシー](https://sho7650.github.io/obsidian-AI-exporter/privacy.html)をご覧ください。

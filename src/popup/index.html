@@ -109,7 +109,8 @@
                   <span class="toggle-label">
                     <span data-i18n="settings_enableToolContent">Include tool/search results</span>
                     <span class="toggle-sublabel" data-i18n="settings_toolContentHelp">
-                      Save web search and tool results from Claude
+                      Save web search and tool results from Claude, and the files (crafts) Merlin
+                      generates
                     </span>
                   </span>
                   <span class="toggle-switch">
@@ -245,8 +246,8 @@
                   placeholder="AI/{platform}/{YYYY}/{MM}"
                 />
                 <p class="help" data-i18n="settings_vaultPathHelp">
-                  Use {platform} for source (gemini, claude, chatgpt, perplexity, notebooklm) and
-                  {YYYY} {YY} {MM} {DD} for the save date (local time). Example:
+                  Use {platform} for source (gemini, claude, chatgpt, perplexity, notebooklm,
+                  merlin) and {YYYY} {YY} {MM} {DD} for the save date (local time). Example:
                   AI/{platform}/{YYYY}/{MM}
                 </p>
               </div>
@@ -401,8 +402,9 @@
                 </div>
               </div>
               <p class="help" data-i18n="settings_tagsHelp">
-                Comma-separated. {platform} becomes gemini, claude, chatgpt, perplexity or
-                notebooklm. Nested tags like ai/chat are fine. Leave empty to restore the defaults.
+                Comma-separated. {platform} becomes gemini, claude, chatgpt, perplexity,
+                notebooklm or merlin. Nested tags like ai/chat are fine. Leave empty to restore the
+                defaults.
               </p>
 
               <div class="form-group timezone-group" id="timezoneGroup">

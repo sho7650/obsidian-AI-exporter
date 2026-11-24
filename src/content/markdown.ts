@@ -152,5 +152,6 @@ export function conversationToNote(data: ConversationData, options: TemplateOpti
     body,
     contentHash,
     images: data.images ?? [],
+    artifacts: data.artifacts ?? [],
   };
 }
